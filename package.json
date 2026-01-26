@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.10"
+  },
+  "scripts": {
+    "dev": "bun run index.ts"
+  }
+}
