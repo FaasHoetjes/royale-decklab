@@ -28,6 +28,10 @@ export default class Player {
             }
         );
 
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+
         const player = await response.json() as PlayerData;
         return player;
     }

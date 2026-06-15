@@ -32,3 +32,25 @@ export enum Rarity {
     LEGENDARY = "legendary",
     CHAMPION = "champion"
 }
+
+export interface DeckMeta {
+    cardIds: number[];
+    winRate: number;
+    uses: number;
+    cardVersions?: Array<{
+        cardId: number;
+        version: 'normal' | 'evo' | 'hero';
+    }>;
+}
+
+export interface ScoredDeck {
+    cardIds: number[];
+    metaWinRate: number;
+    playerScore: number;
+    cards: PlayerItemLevel[];
+}
+
+export interface WarDeckResult {
+    decks: ScoredDeck[];
+    totalScore: number;
+}
