@@ -116,23 +116,24 @@ export default function DeckCard({
       ? 'Cycle'
       : 'Control';
 
-  // Order the cards like the in-game evolution slots: slot 1 an evolution, slot
-  // 2 the hero, slot 3 whichever special card is left, then the normal cards.
+  // Order the cards like the in-game evolution slots, which are positional: slot
+  // 1 holds an evolution, slot 2 the hero, slot 3 whichever special is left. Each
+  // slot only accepts its own type — a lone hero stays in slot 2 rather than
+  // sliding into the evo-only slot 1. Empty special slots are filled by normal
+  // cards so the grid stays gapless (just like fielding a regular card in an
+  // unused evo slot in-game).
   const evoQueue = cards.filter(c => metaVersion(c.id) === 'evo');
   const heroQueue = cards.filter(c => metaVersion(c.id) === 'hero');
   const normals = cards.filter(c => metaVersion(c.id) === 'normal');
 
-  const special: Card[] = [];
-  const slot1 = evoQueue.shift() ?? heroQueue.shift();   // prefer an evo
-  const slot2 = heroQueue.shift() ?? evoQueue.shift();   // the hero
+  const slot1 = evoQueue.shift();                        // evo only
+  const slot2 = heroQueue.shift();                       // hero only
   const slot3 = evoQueue.shift() ?? heroQueue.shift();   // remaining special
-  for (const slot of [slot1, slot2, slot3]) {
-    if (slot) special.push(slot);
-  }
-  // Defensive: any leftover specials (a deck shouldn't have more than 3).
-  special.push(...evoQueue, ...heroQueue);
 
-  const orderedCards = [...special, ...normals];
+  const orderedCards = [slot1, slot2, slot3]
+    .map(slot => slot ?? normals.shift())                // fill empty slots with normals
+    .filter((c): c is Card => c !== undefined)
+    .concat(normals, evoQueue, heroQueue);               // rest, plus any defensive leftovers
 
   return (
     <div style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder }}>

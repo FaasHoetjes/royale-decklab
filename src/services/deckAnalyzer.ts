@@ -1,6 +1,76 @@
-import { DeckMeta, PlayerItemLevel, popularityWeight, ScoredDeck, WarDeckResult } from '../models/models';
+import { CardVersion, DeckMeta, PlayerItemLevel, popularityWeight, ScoredDeck, WarDeckResult } from '../models/models';
 
 export default class DeckAnalyzer {
+    // In-game evolution slots: slot 1 takes an Evo, slot 2 a Hero, slot 3 either.
+    // So a legal deck has at most 2 Evos, at most 2 Heroes, and at most 3 specials
+    // overall. Correct meta data already respects this; the cap below is only a
+    // safety net against a malformed deck slipping through.
+    private static readonly MAX_EVO = 2;
+    private static readonly MAX_HERO = 2;
+    private static readonly MAX_SPECIALS = 3;
+
+    /**
+     * Enforces the legal evolution-slot limits on a deck's meta versions,
+     * downgrading any special beyond the limits back to 'normal'. Specials are
+     * kept in array order, so the first legal ones a deck lists win. Returns the
+     * original array untouched when it's already legal, so the shared meta cache
+     * is never mutated.
+     */
+    private capEvolutions(cardVersions: CardVersion[] | undefined): CardVersion[] | undefined {
+        if (!cardVersions) {
+            return cardVersions;
+        }
+        let evo = 0, hero = 0, total = 0;
+        let illegal = false;
+        const capped = cardVersions.map(v => {
+            if (v.version === 'normal') {
+                return v;
+            }
+            const fitsType = v.version === 'evo' ? evo < DeckAnalyzer.MAX_EVO : hero < DeckAnalyzer.MAX_HERO;
+            if (fitsType && total < DeckAnalyzer.MAX_SPECIALS) {
+                if (v.version === 'evo') { evo++; } else { hero++; }
+                total++;
+                return v;
+            }
+            illegal = true;
+            return { cardId: v.cardId, version: 'normal' as const };
+        });
+        return illegal ? capped : cardVersions;
+    }
+
+    /**
+     * Resolves a meta deck's special versions down to what THIS player can
+     * actually field for display: any evo/hero the player hasn't unlocked is
+     * shown as the normal card, because that's the version they'd play. This is
+     * purely cosmetic — scoring still uses the real meta versions (and penalises
+     * missing ones in scoreDecksForPlayer). Ownership comes from evolutionLevel:
+     * >= 1 owns the evo tier, >= 2 owns the hero tier, matching how meta versions
+     * are detected from battle logs. Returns the original array untouched when
+     * the player owns every special, so the shared meta cache is never mutated.
+     */
+    private personalizeVersions(
+        cardVersions: CardVersion[] | undefined,
+        cardMap: Map<number, PlayerItemLevel>
+    ): CardVersion[] | undefined {
+        if (!cardVersions) {
+            return cardVersions;
+        }
+        let changed = false;
+        const personalized = cardVersions.map(v => {
+            if (v.version === 'normal') {
+                return v;
+            }
+            const owned = cardMap.get(v.cardId)?.evolutionLevel ?? 0;
+            const ownsVersion = v.version === 'hero' ? owned >= 2 : owned >= 1;
+            if (ownsVersion) {
+                return v;
+            }
+            changed = true;
+            return { cardId: v.cardId, version: 'normal' as const };
+        });
+        return changed ? personalized : cardVersions;
+    }
+
     scoreDecksForPlayer(
         playerCards: PlayerItemLevel[],
         metaDeck: DeckMeta,
@@ -36,7 +106,7 @@ export default class DeckAnalyzer {
                     const playerEvoLevel = playerCard.evolutionLevel ?? 0;
 
                     if (metaCardVersion.version === 'hero' && playerEvoLevel < 2) {
-                        versionMultiplier = 0.80; // 20% penalty for missing hero
+                        versionMultiplier = 0.90; // 10% penalty for missing hero
                     } else if (metaCardVersion.version === 'evo' && playerEvoLevel < 1) {
                         versionMultiplier = 0.90; // 10% penalty for missing evo
                     }
@@ -105,7 +175,7 @@ export default class DeckAnalyzer {
                 pickRate: deck.pickRate ?? 0,
                 playerScore: score,
                 cards,
-                cardVersions: deck.cardVersions
+                cardVersions: this.capEvolutions(this.personalizeVersions(deck.cardVersions, cardIdToCard))
             });
         }
 
