@@ -12,26 +12,29 @@ interface PlayerResponse {
     name: string;
   };
   warDecks: {
-    decks: Array<{
-      cardIds: number[];
-      metaWinRate: number;
-      confidence: number;
-      uses: number;
-      players: number;
-      pickRate: number;
-      playerScore: number;
-      cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-      cards: Array<{
-        id: number;
-        name: string;
-        level: number;
-        maxLevel: number;
-        elixirCost?: number;
-        elixerCost?: number;
-      }>;
-    }>;
+    decks: ScoredDeckDTO[];
     totalScore: number;
+    alternatives: ScoredDeckDTO[];
   };
+}
+
+interface ScoredDeckDTO {
+  cardIds: number[];
+  metaWinRate: number;
+  confidence: number;
+  uses: number;
+  players: number;
+  pickRate: number;
+  playerScore: number;
+  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
+  cards: Array<{
+    id: number;
+    name: string;
+    level: number;
+    maxLevel: number;
+    elixirCost?: number;
+    elixerCost?: number;
+  }>;
 }
 
 export default function WarDeckGenerator() {
@@ -132,6 +135,7 @@ export default function WarDeckGenerator() {
         <WarDeckResult
           playerName={playerData.player.name}
           decks={playerData.warDecks.decks}
+          alternatives={playerData.warDecks.alternatives}
           totalScore={playerData.warDecks.totalScore}
           onNewSearch={handleNewSearch}
           isDarkMode={isDarkMode}

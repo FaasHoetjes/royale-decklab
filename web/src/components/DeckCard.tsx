@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { slotKind, slotBorderStyle } from '../slotStyles';
 
 interface Card {
   id: number;
@@ -31,6 +32,10 @@ interface DeckCardProps {
   playerScore: number;
   deckNumber: number;
   isDarkMode: boolean;
+  // Swap control. When more than one valid option exists for this slot, the
+  // header shows a "Swap" button that opens a picker of alternative decks.
+  canSwap?: boolean;
+  onSwap?: () => void;
 }
 
 export default function DeckCard({
@@ -44,6 +49,8 @@ export default function DeckCard({
   playerScore,
   deckNumber,
   isDarkMode,
+  canSwap,
+  onSwap,
 }: DeckCardProps) {
   const [showWinRateInfo, setShowWinRateInfo] = useState(false);
 
@@ -95,6 +102,8 @@ export default function DeckCard({
     cardBorder: isDarkMode ? '#444444' : '#e0e0e0',
     cardText: isDarkMode ? '#ffffff' : '#000000',
     cardSecondaryText: isDarkMode ? '#aaaaaa' : '#666',
+    swapBg: isDarkMode ? '#3a3a3a' : '#ededed',
+    swapIcon: isDarkMode ? '#ffffff' : '#333333',
   };
 
   const elixirOf = (c: Card) => (c.elixirCost ?? c.elixerCost) ?? 0;
@@ -180,11 +189,14 @@ export default function DeckCard({
         </div>
       </div>
 
-      <div style={styles.cards}>
-        {orderedCards.map((card) => {
+      <div style={styles.cardsRow}>
+       <div style={styles.cards}>
+        {orderedCards.map((card, index) => {
           const version = metaVersion(card.id);
           const iconUrl = getCardIcon(card);
           const royaleAPIUrl = getRoyaleAPIUrl(card.name, version);
+          // Frame the first three positions as the evo / hero / either slots.
+          const kind = slotKind(index);
           return (
             <a
               key={card.id}
@@ -194,7 +206,14 @@ export default function DeckCard({
               style={styles.cardLink}
               title={`${card.name} · Level ${getDisplayLevel(card)}/16`}
             >
-              <div style={{ ...styles.card, backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}>
+              <div
+                style={{
+                  ...styles.card,
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                  ...(kind ? slotBorderStyle(kind) : {}),
+                }}
+              >
                 {iconUrl && (
                   <img
                     src={iconUrl}
@@ -227,6 +246,23 @@ export default function DeckCard({
             </a>
           );
         })}
+       </div>
+        {canSwap && (
+          <button
+            type="button"
+            onClick={onSwap}
+            aria-label={`Swap deck ${deckNumber}`}
+            title="Swap this deck"
+            style={{ ...styles.swapButton, backgroundColor: theme.swapBg, color: theme.swapIcon }}
+          >
+            <svg viewBox="0 0 512 512" style={styles.swapIcon} aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M32 96l320 0 0-64c0-12.9 7.8-24.6 19.8-29.6s25.7-2.2 34.9 6.9l96 96c6 6 9.4 14.1 9.4 22.6s-3.4 16.6-9.4 22.6l-96 96c-9.2 9.2-22.9 11.9-34.9 6.9s-19.8-16.6-19.8-29.6l0-64L32 160c-17.7 0-32-14.3-32-32s14.3-32 32-32zM480 416l-320 0 0 64c0 12.9-7.8 24.6-19.8 29.6s-25.7 2.2-34.9-6.9l-96-96c-6-6-9.4-14.1-9.4-22.6s3.4-16.6 9.4-22.6l96-96c9.2-9.2 22.9-11.9 34.9-6.9s19.8 16.6 19.8 29.6l0 64 320 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"
+              />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -248,6 +284,31 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: '12px',
+  },
+  cardsRow: {
+    position: 'relative' as const,
+  },
+  swapButton: {
+    position: 'absolute' as const,
+    right: '8px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '44px',
+    height: '44px',
+    border: 'none',
+    borderRadius: '50%',
+    color: 'white',
+    cursor: 'pointer',
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    padding: 0,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+  },
+  swapIcon: {
+    width: '20px',
+    height: '20px',
+    display: 'block',
   },
   archetypeBadge: {
     fontSize: '12px',
@@ -328,8 +389,8 @@ const styles = {
   cards: {
     display: 'grid' as const,
     gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '16px',
-    maxWidth: '520px',
+    gap: '22px',
+    maxWidth: '560px',
     margin: '0 auto',
   },
   cardLink: {

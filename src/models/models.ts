@@ -110,4 +110,11 @@ export interface ScoredDeck {
 export interface WarDeckResult {
     decks: ScoredDeck[];
     totalScore: number;
+    /**
+     * A ranked pool of further valid decks the player could swap in for any of
+     * the four above. These are NOT mutually card-disjoint with each other or
+     * with the four primary decks — the UI resolves card conflicts at swap time
+     * (a swapped-in deck must avoid the cards in the three decks being kept).
+     */
+    alternatives: ScoredDeck[];
 }

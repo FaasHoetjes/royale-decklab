@@ -8,6 +8,7 @@ import {
 } from '../api';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
+import { slotKind, slotBorderStyle } from '../slotStyles';
 
 const DECK_COUNT = 4;
 const SLOTS_PER_DECK = 8;
@@ -152,6 +153,8 @@ export default function WarDeckBuilder() {
                   card && card.level != null
                     ? card.level + (16 - (card.maxLevel ?? 16))
                     : null;
+                // The first three positions are the evo / hero / either slots.
+                const kind = slotKind(slotIndex);
                 return (
                   <button
                     key={slotIndex}
@@ -165,7 +168,7 @@ export default function WarDeckBuilder() {
                   >
                     {card ? (
                       <>
-                        <div style={styles.slotCard}>
+                        <div style={{ ...styles.slotCard, ...(kind ? slotBorderStyle(kind) : {}) }}>
                           {card.iconUrls?.medium && (
                             <img src={card.iconUrls.medium} alt={card.name} style={styles.slotImage} />
                           )}
@@ -199,7 +202,7 @@ export default function WarDeckBuilder() {
                         </div>
                       </>
                     ) : (
-                      <div style={styles.slotEmpty}>
+                      <div style={{ ...styles.slotEmpty, ...(kind ? slotBorderStyle(kind, 'transparent') : {}) }}>
                         <span style={{ ...styles.plus, color: theme.text.secondary }}>+</span>
                       </div>
                     )}

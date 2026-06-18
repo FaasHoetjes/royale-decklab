@@ -1,27 +1,30 @@
+interface ScoredDeckDTO {
+  cardIds: number[];
+  metaWinRate: number;
+  confidence: number;
+  uses: number;
+  players: number;
+  pickRate: number;
+  playerScore: number;
+  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
+  cards: Array<{
+    id: number;
+    name: string;
+    level: number;
+    maxLevel: number;
+    elixerCost: number;
+  }>;
+}
+
 interface PlayerResponse {
   player: {
     tag: string;
     name: string;
   };
   warDecks: {
-    decks: Array<{
-      cardIds: number[];
-      metaWinRate: number;
-      confidence: number;
-      uses: number;
-      players: number;
-      pickRate: number;
-      playerScore: number;
-      cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-      cards: Array<{
-        id: number;
-        name: string;
-        level: number;
-        maxLevel: number;
-        elixerCost: number;
-      }>;
-    }>;
+    decks: ScoredDeckDTO[];
     totalScore: number;
+    alternatives: ScoredDeckDTO[];
   };
 }
 

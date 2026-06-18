@@ -131,6 +131,35 @@ export default class DeckAnalyzer {
         return playerScore;
     }
 
+    // How many extra decks beyond the primary four to return as swap candidates.
+    // The UI offers up to a few valid alternatives per slot after filtering out
+    // decks that clash with the three decks being kept; meta decks share a lot of
+    // cards, so we hand over a generous pool to draw from.
+    private static readonly ALTERNATIVE_POOL_SIZE = 24;
+
+    /** Build the player-facing ScoredDeck view of a meta deck. */
+    private toScoredDeck(
+        deck: DeckMeta,
+        score: number,
+        cardIdToCard: Map<number, PlayerItemLevel>
+    ): ScoredDeck {
+        const cards = deck.cardIds
+            .map(id => cardIdToCard.get(id))
+            .filter((card): card is PlayerItemLevel => card !== undefined);
+
+        return {
+            cardIds: deck.cardIds,
+            metaWinRate: deck.winRate,
+            confidence: deck.confidence ?? deck.winRate,
+            uses: deck.uses,
+            players: deck.players ?? 0,
+            pickRate: deck.pickRate ?? 0,
+            playerScore: score,
+            cards,
+            cardVersions: this.capEvolutions(this.personalizeVersions(deck.cardVersions, cardIdToCard))
+        };
+    }
+
     findBestWarDecks(
         playerCards: PlayerItemLevel[],
         metaDecks: DeckMeta[],
@@ -148,6 +177,7 @@ export default class DeckAnalyzer {
         scoredDecks.sort((a, b) => b.score - a.score);
 
         const selectedDecks: ScoredDeck[] = [];
+        const selected = new Set<DeckMeta>();
         const usedCardIds = new Set<number>();
 
         for (const { deck, score } of scoredDecks) {
@@ -161,29 +191,31 @@ export default class DeckAnalyzer {
             }
 
             deck.cardIds.forEach(id => usedCardIds.add(id));
+            selected.add(deck);
+            selectedDecks.push(this.toScoredDeck(deck, score, cardIdToCard));
+        }
 
-            const cards = deck.cardIds
-                .map(id => cardIdToCard.get(id))
-                .filter((card): card is PlayerItemLevel => card !== undefined);
-
-            selectedDecks.push({
-                cardIds: deck.cardIds,
-                metaWinRate: deck.winRate,
-                confidence: deck.confidence ?? deck.winRate,
-                uses: deck.uses,
-                players: deck.players ?? 0,
-                pickRate: deck.pickRate ?? 0,
-                playerScore: score,
-                cards,
-                cardVersions: this.capEvolutions(this.personalizeVersions(deck.cardVersions, cardIdToCard))
-            });
+        // The swap pool: the next best-scoring decks that weren't chosen as one of
+        // the four. Unlike the four, these may overlap each other and the primaries
+        // — the UI enforces card-disjointness against the three kept decks when a
+        // swap actually happens.
+        const alternatives: ScoredDeck[] = [];
+        for (const { deck, score } of scoredDecks) {
+            if (alternatives.length >= DeckAnalyzer.ALTERNATIVE_POOL_SIZE) {
+                break;
+            }
+            if (selected.has(deck)) {
+                continue;
+            }
+            alternatives.push(this.toScoredDeck(deck, score, cardIdToCard));
         }
 
         const totalScore = selectedDecks.reduce((sum, deck) => sum + deck.playerScore, 0);
 
         return {
             decks: selectedDecks,
-            totalScore
+            totalScore,
+            alternatives
         };
     }
 }
