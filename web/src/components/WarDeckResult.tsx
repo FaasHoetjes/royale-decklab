@@ -162,12 +162,6 @@ export default function WarDeckResult({
           onClose={() => setSwapSlot(null)}
         />
       )}
-
-      <div style={{ ...styles.footer, borderTopColor: theme.headerBorder }}>
-        <button onClick={onNewSearch} style={{ ...styles.button, backgroundColor: theme.buttonBg }}>
-          Search Another Player
-        </button>
-      </div>
     </div>
   );
 }
@@ -195,11 +189,6 @@ const styles = {
     gridTemplateColumns: '1fr',
     gap: '30px',
     marginBottom: '50px',
-  },
-  footer: {
-    textAlign: 'center' as const,
-    paddingTop: '30px',
-    borderTop: '2px solid #ddd',
   },
   button: {
     padding: '14px 32px',
