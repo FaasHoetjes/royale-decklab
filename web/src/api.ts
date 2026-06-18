@@ -7,7 +7,12 @@ interface PlayerResponse {
     decks: Array<{
       cardIds: number[];
       metaWinRate: number;
+      confidence: number;
+      uses: number;
+      players: number;
+      pickRate: number;
       playerScore: number;
+      cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
       cards: Array<{
         id: number;
         name: string;

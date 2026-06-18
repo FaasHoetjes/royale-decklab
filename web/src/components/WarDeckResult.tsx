@@ -12,7 +12,12 @@ interface Card {
 interface ScoredDeck {
   cardIds: number[];
   metaWinRate: number;
+  confidence: number;
+  uses: number;
+  players: number;
+  pickRate: number;
   playerScore: number;
+  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
   cards: Card[];
 }
 
@@ -67,6 +72,11 @@ export default function WarDeckResult({
             key={index}
             cards={deck.cards}
             metaWinRate={deck.metaWinRate}
+            confidence={deck.confidence}
+            uses={deck.uses}
+            players={deck.players}
+            pickRate={deck.pickRate}
+            cardVersions={deck.cardVersions}
             playerScore={deck.playerScore}
             deckNumber={index + 1}
             isDarkMode={isDarkMode}

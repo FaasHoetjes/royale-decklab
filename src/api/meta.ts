@@ -10,13 +10,15 @@ interface TopPlayer {
 
 interface Battle {
     type: string;
+    battleTime: string;
     team: Array<{
         tag: string;
         name: string;
-        cards: Array<{ id: number }>;
+        cards: Array<{ id: number; evolutionLevel?: number }>;
         crowns: number;
     }>;
     opponent: Array<{
+        tag: string;
         crowns: number;
     }>;
 }

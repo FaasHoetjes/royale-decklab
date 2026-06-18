@@ -1,4 +1,4 @@
-import { DeckMeta, PlayerItemLevel, ScoredDeck, WarDeckResult } from '../models/models';
+import { DeckMeta, PlayerItemLevel, popularityWeight, ScoredDeck, WarDeckResult } from '../models/models';
 
 export default class DeckAnalyzer {
     scoreDecksForPlayer(
@@ -25,19 +25,20 @@ export default class DeckAnalyzer {
             totalLevelRatio += levelRatio;
             validCards++;
 
-            // Calculate version penalty if meta deck requires specific EVO/hero versions
+            // Penalty if the meta deck fielded a special version the player
+            // hasn't unlocked. The player's evolutionLevel encodes how far they've
+            // unlocked the card: >= 1 owns the evolution, >= 2 owns the hero tier
+            // (matching how the meta versions are detected from battle logs).
             let versionMultiplier = 1.0;
             if (cardVersions) {
                 const metaCardVersion = cardVersions.find(c => c.cardId === cardId);
                 if (metaCardVersion) {
-                    // Check if player has the required version
-                    const hasHero = (playerCard as any).heroMedium !== undefined;
-                    const hasEvo = (playerCard as any).evolutionLevel !== undefined && (playerCard as any).evolutionLevel > 0;
+                    const playerEvoLevel = playerCard.evolutionLevel ?? 0;
 
-                    if (metaCardVersion.version === 'hero' && !hasHero) {
+                    if (metaCardVersion.version === 'hero' && playerEvoLevel < 2) {
                         versionMultiplier = 0.80; // 20% penalty for missing hero
-                    } else if (metaCardVersion.version === 'evo' && !hasEvo && !hasHero) {
-                        versionMultiplier = 0.90; // 10% penalty for missing evo (when hero not available)
+                    } else if (metaCardVersion.version === 'evo' && playerEvoLevel < 1) {
+                        versionMultiplier = 0.90; // 10% penalty for missing evo
                     }
                 }
             }
@@ -47,7 +48,15 @@ export default class DeckAnalyzer {
 
         const avgLevelRatio = totalLevelRatio / validCards;
         const avgVersionMultiplier = totalVersionMultiplier / validCards;
-        const playerScore = metaDeck.winRate * avgLevelRatio * avgVersionMultiplier;
+        // Score off the confidence-adjusted win rate so small-sample decks don't
+        // outrank well-tested ones. Fall back to the raw rate for caches built
+        // before confidence was stored.
+        const metaStrength = metaDeck.confidence ?? metaDeck.winRate;
+        // Weight by how many distinct players run the deck: a deck one person
+        // plays isn't really "meta" even at a high win rate. Caches built before
+        // player counts existed get no penalty (undefined → weight 1).
+        const popularity = metaDeck.players === undefined ? 1 : popularityWeight(metaDeck.players);
+        const playerScore = metaStrength * popularity * avgLevelRatio * avgVersionMultiplier;
 
         return playerScore;
     }
@@ -90,8 +99,13 @@ export default class DeckAnalyzer {
             selectedDecks.push({
                 cardIds: deck.cardIds,
                 metaWinRate: deck.winRate,
+                confidence: deck.confidence ?? deck.winRate,
+                uses: deck.uses,
+                players: deck.players ?? 0,
+                pickRate: deck.pickRate ?? 0,
                 playerScore: score,
-                cards
+                cards,
+                cardVersions: deck.cardVersions
             });
         }
 

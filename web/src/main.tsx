@@ -5,6 +5,7 @@ import { AppProvider } from './AppContext'
 import Layout from './components/Layout'
 import WarDeckGenerator from './pages/WarDeckGenerator'
 import WarDeckBuilder from './pages/WarDeckBuilder'
+import Faq from './pages/Faq'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route element={<Layout />}>
             <Route path="/" element={<WarDeckGenerator />} />
             <Route path="/builder" element={<WarDeckBuilder />} />
+            <Route path="/faq" element={<Faq />} />
             <Route path="/:playerId" element={<WarDeckGenerator />} />
           </Route>
         </Routes>

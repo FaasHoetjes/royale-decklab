@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface Card {
   id: number;
   name: string;
@@ -13,9 +15,19 @@ interface Card {
   };
 }
 
+interface CardVersionRef {
+  cardId: number;
+  version: 'normal' | 'evo' | 'hero';
+}
+
 interface DeckCardProps {
   cards: Card[];
   metaWinRate: number;
+  confidence: number;
+  uses: number;
+  players: number;
+  pickRate: number;
+  cardVersions?: CardVersionRef[];
   playerScore: number;
   deckNumber: number;
   isDarkMode: boolean;
@@ -24,57 +36,46 @@ interface DeckCardProps {
 export default function DeckCard({
   cards,
   metaWinRate,
+  confidence,
+  uses,
+  players,
+  pickRate,
+  cardVersions,
   playerScore,
   deckNumber,
   isDarkMode,
 }: DeckCardProps) {
+  const [showWinRateInfo, setShowWinRateInfo] = useState(false);
+
   const getDisplayLevel = (card: Card) => {
     const offset = 16 - card.maxLevel;
     return card.level + offset;
   };
 
-  const getCardVersionSuffix = (card: Card, slotIndex: number): string => {
-    const hasEvo = (card.evolutionLevel ?? 0) > 0;
-    const hasHero = !!card.iconUrls?.heroMedium;
+  // Which special version the meta (pro) deck fielded this card as. This is the
+  // real signal — not the card's slot position — so we render the exact cards
+  // the top players evolved / ran as hero.
+  const metaVersion = (cardId: number): 'normal' | 'evo' | 'hero' =>
+    cardVersions?.find(v => v.cardId === cardId)?.version ?? 'normal';
 
-    if (slotIndex === 0) {
-      return (hasEvo && card.iconUrls?.evolutionMedium) ? '-ev1' : '';
-    } else if (slotIndex === 1) {
-      return (hasHero && card.iconUrls?.heroMedium) ? '-hero' : '';
-    } else if (slotIndex === 2) {
-      if (hasHero && card.iconUrls?.heroMedium) {
-        return '-hero';
-      } else if (hasEvo && card.iconUrls?.evolutionMedium) {
-        return '-ev1';
-      }
-      return '';
-    }
-    return '';
-  };
-
-  const getRoyaleAPIUrl = (cardName: string, versionSuffix: string): string => {
+  const getRoyaleAPIUrl = (cardName: string, version: 'normal' | 'evo' | 'hero'): string => {
     const normalizedName = cardName.toLowerCase().replace(/\s+/g, '-');
-    return `https://royaleapi.com/card/${normalizedName}${versionSuffix}`;
+    const suffix = version === 'hero' ? '-hero' : version === 'evo' ? '-ev1' : '';
+    return `https://royaleapi.com/card/${normalizedName}${suffix}`;
   };
 
-  const getCardIcon = (card: Card, slotIndex: number): string => {
+  const getCardIcon = (card: Card): string => {
     const { medium, evolutionMedium, heroMedium } = card.iconUrls || {};
-    const hasEvo = (card.evolutionLevel ?? 0) > 0;
-    const hasHero = !!heroMedium;
-
-    if (slotIndex === 0) {
-      // Slot 1: Show EVO only if player has it, else NORMAL
-      return (hasEvo && evolutionMedium) || medium || '';
-    } else if (slotIndex === 1) {
-      // Slot 2: Show HERO only if player has it, else NORMAL
-      return (hasHero && heroMedium) || medium || '';
-    } else if (slotIndex === 2) {
-      // Slot 3: Show HERO if player has it, else EVO if player has it, else NORMAL
-      return (hasHero && heroMedium) || (hasEvo && evolutionMedium) || medium || '';
-    } else {
-      // Slots 4+: Show NORMAL
-      return medium || '';
+    // Show the art for the version the meta deck actually fielded, falling back
+    // gracefully if that specific artwork isn't available.
+    const version = metaVersion(card.id);
+    if (version === 'hero') {
+      return heroMedium || evolutionMedium || medium || '';
     }
+    if (version === 'evo') {
+      return evolutionMedium || medium || '';
+    }
+    return medium || '';
   };
 
   const theme = {
@@ -87,26 +88,86 @@ export default function DeckCard({
     statsText: isDarkMode ? '#ffffff' : '#000000',
     statsLabel: isDarkMode ? '#aaaaaa' : '#666',
     statsValue: isDarkMode ? '#4a9eff' : '#007bff',
+    tooltipBg: isDarkMode ? '#111111' : '#1a1a1a',
+    tooltipText: '#ffffff',
+    tooltipBorder: isDarkMode ? '#555555' : '#1a1a1a',
     cardBg: isDarkMode ? '#2a2a2a' : '#f8f9ff',
     cardBorder: isDarkMode ? '#444444' : '#e0e0e0',
     cardText: isDarkMode ? '#ffffff' : '#000000',
     cardSecondaryText: isDarkMode ? '#aaaaaa' : '#666',
   };
 
-  const avgElixir = cards.length > 0
-    ? (cards.reduce((sum, c) => sum + ((c.elixirCost || c.elixerCost) || 0), 0) / cards.length).toFixed(1)
-    : '0';
+  const elixirOf = (c: Card) => (c.elixirCost ?? c.elixerCost) ?? 0;
+
+  const avgElixirNum = cards.length > 0
+    ? cards.reduce((sum, c) => sum + elixirOf(c), 0) / cards.length
+    : 0;
+  const avgElixir = avgElixirNum.toFixed(1);
+
+  // At-a-glance archetype flavor. A deliberately simple heuristic — a heavy tank
+  // win condition with high average elixir reads as Beatdown, a very cheap deck
+  // as Cycle, everything else as Control. Not a strict taxonomy (no Bait/Bridge
+  // Spam split), just a quick descriptor.
+  const BEATDOWN_TANKS = ['Golem', 'Lava Hound', 'Electro Giant', 'Giant', 'Goblin Giant'];
+  const hasBeatdownTank = cards.some(c => BEATDOWN_TANKS.includes(c.name));
+  const archetype = hasBeatdownTank && avgElixirNum >= 3.8
+    ? 'Beatdown'
+    : avgElixirNum <= 3.2
+      ? 'Cycle'
+      : 'Control';
+
+  // Order the cards like the in-game evolution slots: slot 1 an evolution, slot
+  // 2 the hero, slot 3 whichever special card is left, then the normal cards.
+  const evoQueue = cards.filter(c => metaVersion(c.id) === 'evo');
+  const heroQueue = cards.filter(c => metaVersion(c.id) === 'hero');
+  const normals = cards.filter(c => metaVersion(c.id) === 'normal');
+
+  const special: Card[] = [];
+  const slot1 = evoQueue.shift() ?? heroQueue.shift();   // prefer an evo
+  const slot2 = heroQueue.shift() ?? evoQueue.shift();   // the hero
+  const slot3 = evoQueue.shift() ?? heroQueue.shift();   // remaining special
+  for (const slot of [slot1, slot2, slot3]) {
+    if (slot) special.push(slot);
+  }
+  // Defensive: any leftover specials (a deck shouldn't have more than 3).
+  special.push(...evoQueue, ...heroQueue);
+
+  const orderedCards = [...special, ...normals];
 
   return (
     <div style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder }}>
       <div style={{ ...styles.header, borderBottomColor: theme.headerBorder }}>
-        <h3 style={{ color: theme.headerText }}>Deck {deckNumber}</h3>
+        <h3 style={{ color: theme.headerText, margin: 0 }}>Deck {deckNumber}</h3>
+        <span style={{ ...styles.archetypeBadge, borderColor: theme.statsValue, color: theme.statsValue }}>
+          {archetype}
+        </span>
       </div>
 
       <div style={{ ...styles.stats, backgroundColor: theme.statsBg }}>
         <div style={styles.stat}>
-          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>Meta Win Rate</span>
-          <span style={{ ...styles.statValue, color: theme.statsValue }}>{(metaWinRate * 100).toFixed(1)}%</span>
+          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
+            Win Rate
+            <span
+              style={{ ...styles.infoIcon, borderColor: theme.statsLabel, color: theme.statsLabel }}
+              onMouseEnter={() => setShowWinRateInfo(true)}
+              onMouseLeave={() => setShowWinRateInfo(false)}
+              role="img"
+              aria-label="Win rate details"
+            >
+              i
+              {showWinRateInfo && (
+                <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
+                  <strong>Confidence-adjusted win rate</strong> (Wilson score).
+                  <br />
+                  Raw win rate: {(metaWinRate * 100).toFixed(1)}% over {uses} game{uses === 1 ? '' : 's'}.
+                  <br />
+                  Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
+                </span>
+              )}
+            </span>
+          </span>
+          <span style={{ ...styles.statValue, color: theme.statsValue }}>{(confidence * 100).toFixed(1)}%</span>
+          <span style={{ ...styles.statSubtext, color: theme.statsLabel }}>{uses} game{uses === 1 ? '' : 's'}</span>
         </div>
         <div style={styles.stat}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>Player Score</span>
@@ -119,10 +180,10 @@ export default function DeckCard({
       </div>
 
       <div style={styles.cards}>
-        {cards.map((card, index) => {
-          const iconUrl = getCardIcon(card, index);
-          const versionSuffix = getCardVersionSuffix(card, index);
-          const royaleAPIUrl = getRoyaleAPIUrl(card.name, versionSuffix);
+        {orderedCards.map((card) => {
+          const version = metaVersion(card.id);
+          const iconUrl = getCardIcon(card);
+          const royaleAPIUrl = getRoyaleAPIUrl(card.name, version);
           return (
             <a
               key={card.id}
@@ -182,6 +243,19 @@ const styles = {
     marginBottom: '20px',
     borderBottom: '3px solid #007bff',
     paddingBottom: '15px',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+  },
+  archetypeBadge: {
+    fontSize: '12px',
+    fontWeight: 700 as const,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
+    padding: '4px 10px',
+    borderRadius: '999px',
+    border: '1.5px solid',
   },
   stats: {
     display: 'flex' as const,
@@ -203,11 +277,52 @@ const styles = {
     color: '#666',
     marginBottom: '6px',
     fontWeight: '500' as const,
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+  },
+  infoIcon: {
+    position: 'relative' as const,
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    width: '14px',
+    height: '14px',
+    borderRadius: '50%',
+    border: '1px solid #666',
+    fontSize: '9px',
+    fontStyle: 'italic' as const,
+    fontWeight: 'bold' as const,
+    cursor: 'help',
+    lineHeight: 1,
+  },
+  tooltip: {
+    position: 'absolute' as const,
+    bottom: 'calc(100% + 8px)',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '220px',
+    padding: '10px 12px',
+    borderRadius: '6px',
+    border: '1px solid',
+    fontSize: '11px',
+    fontWeight: 'normal' as const,
+    fontStyle: 'normal' as const,
+    lineHeight: 1.4,
+    textAlign: 'left' as const,
+    zIndex: 10,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    pointerEvents: 'none' as const,
   },
   statValue: {
     fontSize: '20px',
     fontWeight: 'bold' as const,
     color: '#007bff',
+  },
+  statSubtext: {
+    fontSize: '11px',
+    color: '#666',
+    marginTop: '3px',
   },
   cards: {
     display: 'grid' as const,
