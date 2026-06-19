@@ -30,6 +30,24 @@ input:disabled {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
 }
 
+/* Sidebar nav: subtle neutral hover on inactive items (the active item keeps
+   its own fill + gold accent bar via inline styles, so exclude it here). */
+.nav-link {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.nav-link:not(.active):hover {
+  background-color: rgba(148, 148, 148, 0.12);
+}
+
+/* Theme toggle: give the icon a hover surface so it reads as a real control. */
+.theme-toggle-btn {
+  border-radius: 10px;
+}
+.theme-toggle-btn:hover {
+  background-color: rgba(148, 148, 148, 0.16) !important;
+  opacity: 1 !important;
+}
+
 /* War Deck Generator: swap button hover. */
 .deck-swap-btn {
   transition: transform 0.15s ease, box-shadow 0.15s ease;

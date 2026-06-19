@@ -75,15 +75,19 @@ export default function SwapDeckModal({
 
   const theme = {
     overlay: 'rgba(0, 0, 0, 0.65)',
-    panelBg: isDarkMode ? '#141414' : '#ffffff',
-    panelBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
-    text: isDarkMode ? '#ffffff' : '#000000',
-    subtext: isDarkMode ? '#aaaaaa' : '#666',
-    accent: isDarkMode ? '#4a9eff' : '#007bff',
-    rowBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
-    rowBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
-    activeBorder: isDarkMode ? '#4a9eff' : '#007bff',
-    activeBg: isDarkMode ? '#1a2740' : '#eaf3ff',
+    panelBg: isDarkMode ? '#161618' : '#ffffff',
+    panelBorder: isDarkMode ? '#2a2a2e' : '#e0e0e0',
+    text: isDarkMode ? '#f4f4f5' : '#000000',
+    subtext: isDarkMode ? '#a1a1aa' : '#666',
+    // Gold in dark mode, blue in light — the one accent, kept to the win rate
+    // and the active marker so the picker matches the deck cards.
+    accent: isDarkMode ? '#e8b24a' : '#007bff',
+    rowBg: isDarkMode ? '#1c1c1f' : '#f8f9ff',
+    rowBorder: isDarkMode ? '#2a2a2e' : '#e0e0e0',
+    // The selected deck reads from a neutral elevated fill + a gold border,
+    // never a blue-tinted surface.
+    activeBorder: isDarkMode ? '#e8b24a' : '#007bff',
+    activeBg: isDarkMode ? '#26262a' : '#eaf3ff',
   };
 
   const versionOf = (opt: SwapOption, cardId: number): 'normal' | 'evo' | 'hero' =>
@@ -140,7 +144,7 @@ export default function SwapDeckModal({
                 }}
               >
                 <div style={styles.optionStats}>
-                  <span style={{ ...styles.optionArchetype, borderColor: theme.accent, color: theme.accent }}>
+                  <span style={{ ...styles.optionArchetype, borderColor: theme.rowBorder, color: theme.subtext }}>
                     {archetype}
                   </span>
                   {isActive && (
@@ -155,13 +159,13 @@ export default function SwapDeckModal({
                   </span>
                   <span style={styles.optionStat}>
                     <span style={{ ...styles.optionStatLabel, color: theme.subtext }}>Score</span>
-                    <span style={{ ...styles.optionStatValue, color: theme.accent }}>
+                    <span style={{ ...styles.optionStatValue, color: theme.text }}>
                       {opt.playerScore.toFixed(3)}
                     </span>
                   </span>
                   <span style={styles.optionStat}>
                     <span style={{ ...styles.optionStatLabel, color: theme.subtext }}>Avg Elixir</span>
-                    <span style={{ ...styles.optionStatValue, color: theme.accent }}>{avgElixir}</span>
+                    <span style={{ ...styles.optionStatValue, color: theme.text }}>{avgElixir}</span>
                   </span>
                 </div>
                 <div style={styles.optionCards}>

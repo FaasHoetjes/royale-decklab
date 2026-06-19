@@ -10,6 +10,7 @@ function ThemeToggle() {
     <div style={styles.themeToggle}>
       <button
         onClick={toggleDarkMode}
+        className="theme-toggle-btn"
         style={styles.themeButton}
         title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}

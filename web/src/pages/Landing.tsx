@@ -67,7 +67,7 @@ export default function Landing() {
               style={{ ...styles.input, color: theme.text.primary }}
             />
           </div>
-          <button type="submit" style={{ ...styles.button, backgroundColor: theme.accent }}>
+          <button type="submit" style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}>
             Continue
           </button>
         </form>

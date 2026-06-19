@@ -92,22 +92,33 @@ export default function DeckCard({
   };
 
   const theme = {
-    containerBg: isDarkMode ? '#161616' : '#ffffff',
-    containerBorder: isDarkMode ? '#2a2a2a' : '#e8ecf5',
-    headerText: isDarkMode ? '#ffffff' : '#0d1b3e',
-    statsBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
-    statsBorder: isDarkMode ? '#2a2a2a' : '#eceef6',
-    statsLabel: isDarkMode ? '#9aa3b2' : '#6b7280',
-    statsValue: isDarkMode ? '#ffffff' : '#007bff',
-    tooltipBg: isDarkMode ? '#0a0a0a' : '#1a1a1a',
+    // Container sits one level above the page; the stats strip is recessed one
+    // level below it (a darker well) so the card reads as a layered object.
+    containerBg: isDarkMode ? '#161618' : '#ffffff',
+    containerBorder: isDarkMode ? '#2a2a2e' : '#e8ecf5',
+    containerShadow: isDarkMode
+      ? '0 8px 24px rgba(0, 0, 0, 0.45)'
+      : '0 6px 20px rgba(13, 27, 62, 0.06)',
+    headerText: isDarkMode ? '#f4f4f5' : '#0d1b3e',
+    // Archetype chip: a quiet filled pill, not a loud outline — keeps gold reserved.
+    badgeBg: isDarkMode ? '#26262a' : '#f0f3ff',
+    badgeText: isDarkMode ? '#c4c4cc' : '#3a6ea5',
+    badgeBorder: isDarkMode ? '#34343a' : '#dbe4f5',
+    statsBg: isDarkMode ? '#101012' : '#f8f9ff',
+    statsBorder: isDarkMode ? '#2a2a2e' : '#eceef6',
+    statsLabel: isDarkMode ? '#8a8a93' : '#6b7280',
+    // Secondary metrics stay neutral; the headline (win rate) gets the accent.
+    statsValue: isDarkMode ? '#f4f4f5' : '#0d1b3e',
+    statsValueAccent: isDarkMode ? '#e8b24a' : '#007bff',
+    tooltipBg: isDarkMode ? '#000000' : '#1a1a1a',
     tooltipText: '#ffffff',
     tooltipBorder: isDarkMode ? '#3a3a3a' : '#1a1a1a',
     cardBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
     cardBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
-    cardText: isDarkMode ? '#ffffff' : '#000000',
-    swapBg: isDarkMode ? '#262626' : '#ffffff',
-    swapIcon: isDarkMode ? '#ffffff' : '#007bff',
-    divider: isDarkMode ? '#2a2a2a' : '#eceef6',
+    cardText: isDarkMode ? '#f4f4f5' : '#000000',
+    swapBg: isDarkMode ? '#26262a' : '#ffffff',
+    swapIcon: isDarkMode ? '#f4f4f5' : '#007bff',
+    divider: isDarkMode ? '#2a2a2e' : '#eceef6',
   };
 
   const elixirOf = (c: Card) => (c.elixirCost ?? c.elixerCost) ?? 0;
@@ -149,12 +160,12 @@ export default function DeckCard({
     .concat(normals, evoQueue, heroQueue);               // rest, plus any defensive leftovers
 
   return (
-    <div className="deck-card" style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder }}>
+    <div className="deck-card" style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder, boxShadow: theme.containerShadow }}>
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
         </div>
-        <span style={{ ...styles.archetypeBadge, borderColor: theme.statsValue, color: theme.statsValue }}>
+        <span style={{ ...styles.archetypeBadge, backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, color: theme.badgeText }}>
           {archetype}
         </span>
       </div>
@@ -182,14 +193,14 @@ export default function DeckCard({
               )}
             </span>
           </span>
-          <span style={{ ...styles.statValue, color: theme.statsValue }}>{(confidence * 100).toFixed(1)}%</span>
+          <span style={{ ...styles.statValue, color: theme.statsValueAccent }}>{(confidence * 100).toFixed(1)}%</span>
           <span style={{ ...styles.statSubtext, color: theme.statsLabel }}>{uses} game{uses === 1 ? '' : 's'}</span>
         </div>
-        <div style={styles.stat}>
+        <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}` }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>Player Score</span>
           <span style={{ ...styles.statValue, color: theme.statsValue }}>{playerScore.toFixed(3)}</span>
         </div>
-        <div style={styles.stat}>
+        <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}` }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>Avg Elixir</span>
           <span style={{ ...styles.statValue, color: theme.statsValue }}>{avgElixir}</span>
         </div>

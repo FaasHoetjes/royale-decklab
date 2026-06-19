@@ -90,13 +90,17 @@ export default function WarDeckResult({
   const liveTotalScore = slots.reduce((sum, master) => sum + deckAt(master).playerScore, 0);
 
   const theme = {
+    // Dark: a quiet top-lit gradient + hairline border lifts the hero off the
+    // near-black page without any colored fill. Light: keep the blue banner.
     headerGradient: isDarkMode
-      ? '#161616'
+      ? 'linear-gradient(180deg, #1e1e22 0%, #161618 100%)'
       : 'linear-gradient(135deg, #007bff 0%, #4aa3ff 100%)',
+    headerBorder: isDarkMode ? '#33333a' : 'transparent',
     headerShadow: isDarkMode
-      ? '0 10px 30px rgba(0, 0, 0, 0.55)'
+      ? '0 14px 36px rgba(0, 0, 0, 0.5)'
       : '0 10px 30px rgba(0, 123, 255, 0.25)',
-    headerText: isDarkMode ? '#ffffff' : '#000000',
+    // Eyebrow / labels: a calm light grey in dark mode, translucent white on blue.
+    muted: isDarkMode ? '#a1a1aa' : 'rgba(255, 255, 255, 0.85)',
     buttonBg: isDarkMode ? '#262626' : '#007bff',
   };
 
@@ -116,14 +120,14 @@ export default function WarDeckResult({
 
   return (
     <div style={styles.container}>
-      <div style={{ ...styles.header, background: theme.headerGradient, boxShadow: theme.headerShadow }}>
+      <div style={{ ...styles.header, background: theme.headerGradient, border: `1px solid ${theme.headerBorder}`, boxShadow: theme.headerShadow }}>
         <div style={styles.headerInfo}>
-          <span style={styles.eyebrow}>WAR DECKS</span>
+          <span style={{ ...styles.eyebrow, color: theme.muted, opacity: 1 }}>WAR DECKS</span>
           <h2 style={styles.title}>{playerName}</h2>
-          <span style={styles.subtitle}>4 battle-ready decks · no shared cards</span>
+          <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>4 battle-ready decks · no shared cards</span>
         </div>
         <div style={styles.scoreBlock}>
-          <span style={styles.scoreLabel}>Total Score</span>
+          <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>Total Score</span>
           <span style={styles.scoreValue}>{liveTotalScore.toFixed(3)}</span>
         </div>
       </div>

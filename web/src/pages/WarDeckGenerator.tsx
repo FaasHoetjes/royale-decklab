@@ -120,7 +120,7 @@ export default function WarDeckGenerator() {
         <p style={{ ...styles.error, color: '#ff6b6b' }}>{error || 'Connecting to server...'}</p>
         <button
           onClick={checkMetaStatus}
-          style={{ ...styles.button, backgroundColor: theme.accent }}
+          style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}
         >
           Retry Connection
         </button>

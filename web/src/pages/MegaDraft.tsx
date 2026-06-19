@@ -182,7 +182,7 @@ export default function MegaDraft() {
                     ...styles.difficultyButton,
                     borderColor: active ? theme.accent : theme.border,
                     backgroundColor: active ? theme.accent : theme.bg.tertiary,
-                    color: active ? '#fff' : theme.text.primary,
+                    color: active ? theme.onAccent : theme.text.primary,
                   }}
                 >
                   <span style={{ fontWeight: 800, fontSize: 16 }}>{d.label}</span>
@@ -192,7 +192,7 @@ export default function MegaDraft() {
             })}
           </div>
 
-          <button onClick={startDraft} style={{ ...styles.primaryButton, backgroundColor: theme.accent }}>
+          <button onClick={startDraft} style={{ ...styles.primaryButton, backgroundColor: theme.accent, color: theme.onAccent }}>
             Start Draft
           </button>
           {artError && (
@@ -230,7 +230,7 @@ export default function MegaDraft() {
           <DeckRow title="Computer deck" cards={computerDeck} art={art} theme={theme} accent="#ef4444" />
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 18 }}>
-            <button onClick={startDraft} style={{ ...styles.primaryButton, backgroundColor: theme.accent, width: 'auto', padding: '12px 24px' }}>
+            <button onClick={startDraft} style={{ ...styles.primaryButton, backgroundColor: theme.accent, color: theme.onAccent, width: 'auto', padding: '12px 24px' }}>
               Draft again
             </button>
             <button onClick={() => setPhase('setup')} style={{ ...styles.secondaryButton, color: theme.text.primary, borderColor: theme.border }}>
@@ -250,7 +250,7 @@ export default function MegaDraft() {
 
       {/* Top status bar */}
       <div style={{ ...styles.topBar, backgroundColor: theme.bg.secondary, borderColor: theme.border }}>
-        <div style={{ ...styles.turnPill, backgroundColor: isPlayerTurn ? theme.accent : theme.bg.tertiary, color: isPlayerTurn ? '#fff' : theme.text.secondary }}>
+        <div style={{ ...styles.turnPill, backgroundColor: isPlayerTurn ? theme.accent : theme.bg.tertiary, color: isPlayerTurn ? theme.onAccent : theme.text.secondary }}>
           {isPlayerTurn ? 'Your pick' : 'Computer is thinking…'}
         </div>
         <div style={{ color: theme.text.secondary, fontWeight: 700 }}>Pick {Math.min(pickIndex + 1, TOTAL_PICKS)} / {TOTAL_PICKS}</div>

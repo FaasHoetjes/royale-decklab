@@ -9,9 +9,12 @@ export default function Sidebar() {
   // The generator keys off the URL player id, so point it at the active tag.
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 
-  // Active nav item: neutral dark surface in dark mode, blue in light mode.
-  const activeBg = isDarkMode ? '#262626' : theme.accent;
-  const activeText = isDarkMode ? '#ffffff' : '#ffffff';
+  // Active nav item. Dark mode stays neutral grey for the fill and earns its
+  // identity from a single gold left accent bar + brighter text — no blue tint.
+  // Light mode fills with the blue accent as before.
+  const activeBg = isDarkMode ? theme.bg.elevated : theme.accent;
+  const activeText = isDarkMode ? theme.text.primary : '#ffffff';
+  const activeBar = isDarkMode ? `inset 3px 0 0 ${theme.accent}` : 'none';
 
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true },
@@ -39,10 +42,12 @@ export default function Sidebar() {
             key={item.label}
             to={item.to}
             end={item.end}
+            className="nav-link"
             style={({ isActive }) => ({
               ...styles.navLink,
               color: isActive ? activeText : theme.text.secondary,
               backgroundColor: isActive ? activeBg : 'transparent',
+              boxShadow: isActive ? activeBar : 'none',
             })}
           >
             {item.label}
