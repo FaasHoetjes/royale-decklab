@@ -97,8 +97,6 @@ export default function WarDeckResult({
       ? '0 10px 30px rgba(0, 0, 0, 0.55)'
       : '0 10px 30px rgba(0, 123, 255, 0.25)',
     headerText: isDarkMode ? '#ffffff' : '#000000',
-    scorePillBg: isDarkMode ? '#262626' : 'rgba(255, 255, 255, 0.16)',
-    scorePillBorder: isDarkMode ? '#383838' : 'rgba(255, 255, 255, 0.25)',
     buttonBg: isDarkMode ? '#262626' : '#007bff',
   };
 
@@ -124,7 +122,7 @@ export default function WarDeckResult({
           <h2 style={styles.title}>{playerName}</h2>
           <span style={styles.subtitle}>4 battle-ready decks · no shared cards</span>
         </div>
-        <div style={{ ...styles.scorePill, backgroundColor: theme.scorePillBg, borderColor: theme.scorePillBorder }}>
+        <div style={styles.scoreBlock}>
           <span style={styles.scoreLabel}>Total Score</span>
           <span style={styles.scoreValue}>{liveTotalScore.toFixed(3)}</span>
         </div>
@@ -221,17 +219,10 @@ const styles = {
     opacity: 0.85,
     marginTop: '2px',
   },
-  scorePill: {
+  scoreBlock: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    padding: '14px 28px',
-    borderRadius: '16px',
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    border: '1px solid rgba(255, 255, 255, 0.25)',
-    backdropFilter: 'blur(4px)',
-    minWidth: '130px',
+    alignItems: 'flex-end' as const,
   },
   scoreLabel: {
     fontSize: '11px',
@@ -240,10 +231,12 @@ const styles = {
     textTransform: 'uppercase' as const,
     opacity: 0.85,
   },
+  // Match the player name (styles.title): same size, weight, and white color.
   scoreValue: {
-    fontSize: '30px',
+    fontSize: '32px',
     fontWeight: 800 as const,
     lineHeight: 1.1,
+    color: '#ffffff',
     marginTop: '2px',
   },
   decksGrid: {

@@ -88,13 +88,13 @@ const styles = {
     lineHeight: 1.05,
   },
   brandTop: {
-    fontSize: '22px',
+    fontSize: '28px',
     fontWeight: 700 as const,
     letterSpacing: '1px',
     textAlign: 'right' as const,
   },
   brandBottom: {
-    fontSize: '30px',
+    fontSize: '38px',
     fontWeight: 800 as const,
     letterSpacing: '1px',
   },

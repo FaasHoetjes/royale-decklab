@@ -160,7 +160,7 @@ export default function DeckCard({
       </div>
 
       <div style={{ ...styles.stats, backgroundColor: theme.statsBg, borderColor: theme.statsBorder }}>
-        <div style={styles.stat}>
+        <div style={{ ...styles.stat, position: 'relative' as const }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             Win Rate
             <span
@@ -334,7 +334,9 @@ const styles = {
     display: 'flex' as const,
     justifyContent: 'space-around',
     marginBottom: '24px',
-    padding: '14px 10px',
+    // Extra bottom padding leaves breathing room for the absolutely-positioned
+    // games count that hangs below the win-rate value.
+    padding: '14px 10px 26px',
     backgroundColor: '#f8f9ff',
     border: '1px solid #eceef6',
     borderRadius: '12px',
@@ -399,7 +401,14 @@ const styles = {
   statSubtext: {
     fontSize: '11px',
     color: '#666',
-    marginTop: '3px',
+    // Taken out of flow so the games count sits under the win-rate value
+    // without adding height to the stats row — keeps all three values aligned.
+    position: 'absolute' as const,
+    top: '100%',
+    left: 0,
+    right: 0,
+    textAlign: 'center' as const,
+    marginTop: '1px',
   },
   cards: {
     display: 'grid' as const,
