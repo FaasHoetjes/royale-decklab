@@ -62,8 +62,13 @@ function cardType(card: BuilderCard): 'troop' | 'building' | 'spell' | 'other' {
   return 'other';
 }
 
-// Evolution is a refinement dimension (must-have-evo), while the type buttons
-// are a union — so "Evolution + Troop" means troop cards that have an evolution.
+// Type buttons that can't co-exist — a card has exactly one of these types, so
+// selecting one replaces any other already selected (see toggleFilter).
+const EXCLUSIVE_TYPES: FilterKey[] = ['troop', 'spell', 'building'];
+
+// Every active filter must apply (intersection) — so "Evolution + Building"
+// means buildings that have an evolution. Evolution refines by must-have-evo;
+// each type button asserts the card's type.
 function matchesFilters(card: BuilderCard, active: Set<FilterKey>): boolean {
   if (active.size === 0) return true;
   if (active.has('evolution') && !card.iconUrls?.evolutionMedium) return false;
@@ -77,10 +82,7 @@ function matchesFilters(card: BuilderCard, active: Set<FilterKey>): boolean {
     ['building', cardType(card) === 'building'],
     ['champion', isChampion || !!card.isHero],
   ];
-  const activeTypes = typeChecks.filter(([key]) => active.has(key));
-  // Only "Evolution" active → the evo check above is the whole filter.
-  if (activeTypes.length === 0) return true;
-  return activeTypes.some(([, matches]) => matches);
+  return typeChecks.every(([key, matches]) => !active.has(key) || matches);
 }
 
 // Normalize a card's level to the unified /16 king-level scale.
@@ -116,7 +118,13 @@ export default function CardPicker({
   const toggleFilter = (key: FilterKey) =>
     setFilters((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        // Turning on a type filter clears the other mutually-exclusive types.
+        if (EXCLUSIVE_TYPES.includes(key)) EXCLUSIVE_TYPES.forEach((k) => next.delete(k));
+        next.add(key);
+      }
       return next;
     });
   const clearFilters = () => setFilters(new Set());
@@ -225,11 +233,13 @@ export default function CardPicker({
     // With the Evolution filter on, show the evo art for cards whose evo the
     // player owns; with Hero & Champion on, show the hero art for hero cards
     // they own (falling back to the evo art when no dedicated hero icon exists).
+    // When both filters are on, prefer the hero art — but only for heroes the
+    // player actually owns, so evo-only owners still see their evo card.
     let iconUrl = card.iconUrls?.medium;
-    if (filters.has('evolution') && card.hasEvo && card.iconUrls?.evolutionMedium) {
-      iconUrl = card.iconUrls.evolutionMedium;
-    } else if (filters.has('champion') && card.ownsHero) {
+    if (filters.has('champion') && card.ownsHero) {
       iconUrl = card.iconUrls?.heroMedium ?? card.iconUrls?.evolutionMedium ?? iconUrl;
+    } else if (filters.has('evolution') && card.hasEvo && card.iconUrls?.evolutionMedium) {
+      iconUrl = card.iconUrls.evolutionMedium;
     }
 
     return (
