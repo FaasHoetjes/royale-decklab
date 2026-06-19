@@ -30,8 +30,8 @@ export default function PlayerSearch({ onSearch, isLoading, isDarkMode }: Player
 
   const theme = {
     textSecondary: isDarkMode ? '#cccccc' : '#666',
-    inputBg: isDarkMode ? '#2a2a2a' : '#ffffff',
-    inputBorder: isDarkMode ? '#444444' : '#ddd',
+    inputBg: isDarkMode ? '#1e1e1e' : '#ffffff',
+    inputBorder: isDarkMode ? '#2c2c2c' : '#ddd',
     inputText: isDarkMode ? '#ffffff' : '#000000',
     buttonBg: isDarkMode ? '#4a9eff' : '#007bff',
   };

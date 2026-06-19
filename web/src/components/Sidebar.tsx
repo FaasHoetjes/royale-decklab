@@ -9,6 +9,10 @@ export default function Sidebar() {
   // The generator keys off the URL player id, so point it at the active tag.
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 
+  // Active nav item: neutral dark surface in dark mode, blue in light mode.
+  const activeBg = isDarkMode ? '#262626' : theme.accent;
+  const activeText = isDarkMode ? '#ffffff' : '#ffffff';
+
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true },
     { to: '/builder', label: 'War Deck Builder', end: false },
@@ -37,8 +41,8 @@ export default function Sidebar() {
             end={item.end}
             style={({ isActive }) => ({
               ...styles.navLink,
-              color: isActive ? '#ffffff' : theme.text.secondary,
-              backgroundColor: isActive ? theme.accent : 'transparent',
+              color: isActive ? activeText : theme.text.secondary,
+              backgroundColor: isActive ? activeBg : 'transparent',
             })}
           >
             {item.label}
@@ -52,7 +56,7 @@ export default function Sidebar() {
           <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
           <button
             onClick={() => setActivePlayerTag(null)}
-            style={{ ...styles.changeButton, color: theme.accent }}
+            style={{ ...styles.changeButton, color: isDarkMode ? '#cccccc' : theme.accent }}
           >
             Change player
           </button>

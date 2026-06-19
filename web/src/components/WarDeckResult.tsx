@@ -90,10 +90,16 @@ export default function WarDeckResult({
   const liveTotalScore = slots.reduce((sum, master) => sum + deckAt(master).playerScore, 0);
 
   const theme = {
-    headerBg: isDarkMode ? '#2a2a2a' : '#ffffff',
-    headerBorder: isDarkMode ? '#444444' : '#ddd',
+    headerGradient: isDarkMode
+      ? '#161616'
+      : 'linear-gradient(135deg, #007bff 0%, #4aa3ff 100%)',
+    headerShadow: isDarkMode
+      ? '0 10px 30px rgba(0, 0, 0, 0.55)'
+      : '0 10px 30px rgba(0, 123, 255, 0.25)',
     headerText: isDarkMode ? '#ffffff' : '#000000',
-    buttonBg: isDarkMode ? '#4a9eff' : '#007bff',
+    scorePillBg: isDarkMode ? '#262626' : 'rgba(255, 255, 255, 0.16)',
+    scorePillBorder: isDarkMode ? '#383838' : 'rgba(255, 255, 255, 0.25)',
+    buttonBg: isDarkMode ? '#262626' : '#007bff',
   };
 
   if (decks.length === 0) {
@@ -112,11 +118,16 @@ export default function WarDeckResult({
 
   return (
     <div style={styles.container}>
-      <div style={{ ...styles.header, borderBottomColor: theme.headerBorder }}>
-        <h2 style={{ color: theme.headerText }}>{playerName}'s Best War Decks</h2>
-        <p style={{ ...styles.totalScore, color: theme.headerText }}>
-          Total Score: <strong>{liveTotalScore.toFixed(3)}</strong>
-        </p>
+      <div style={{ ...styles.header, background: theme.headerGradient, boxShadow: theme.headerShadow }}>
+        <div style={styles.headerInfo}>
+          <span style={styles.eyebrow}>WAR DECKS</span>
+          <h2 style={styles.title}>{playerName}</h2>
+          <span style={styles.subtitle}>4 battle-ready decks · no shared cards</span>
+        </div>
+        <div style={{ ...styles.scorePill, backgroundColor: theme.scorePillBg, borderColor: theme.scorePillBorder }}>
+          <span style={styles.scoreLabel}>Total Score</span>
+          <span style={styles.scoreValue}>{liveTotalScore.toFixed(3)}</span>
+        </div>
       </div>
 
       <div style={styles.decksGrid}>
@@ -175,16 +186,65 @@ const styles = {
     margin: '0 auto',
   },
   header: {
-    textAlign: 'center' as const,
-    marginBottom: '50px',
-    paddingBottom: '30px',
-    borderBottom: '3px solid #007bff',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '20px',
+    flexWrap: 'wrap' as const,
+    marginBottom: '40px',
+    padding: '28px 32px',
+    borderRadius: '20px',
+    color: '#ffffff',
+    boxShadow: '0 10px 30px rgba(0, 123, 255, 0.25)',
   },
-  totalScore: {
-    fontSize: '22px',
-    color: '#333',
-    marginTop: '15px',
-    fontWeight: '500' as const,
+  headerInfo: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    gap: '4px',
+  },
+  eyebrow: {
+    fontSize: '12px',
+    fontWeight: 700 as const,
+    letterSpacing: '2px',
+    opacity: 0.8,
+  },
+  title: {
+    margin: 0,
+    fontSize: '32px',
+    fontWeight: 800 as const,
+    lineHeight: 1.1,
+    color: '#ffffff',
+  },
+  subtitle: {
+    fontSize: '13px',
+    fontWeight: 500 as const,
+    opacity: 0.85,
+    marginTop: '2px',
+  },
+  scorePill: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    padding: '14px 28px',
+    borderRadius: '16px',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    border: '1px solid rgba(255, 255, 255, 0.25)',
+    backdropFilter: 'blur(4px)',
+    minWidth: '130px',
+  },
+  scoreLabel: {
+    fontSize: '11px',
+    fontWeight: 700 as const,
+    letterSpacing: '1px',
+    textTransform: 'uppercase' as const,
+    opacity: 0.85,
+  },
+  scoreValue: {
+    fontSize: '30px',
+    fontWeight: 800 as const,
+    lineHeight: 1.1,
+    marginTop: '2px',
   },
   decksGrid: {
     display: 'grid' as const,

@@ -30,6 +30,15 @@ input:disabled {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
 }
 
+/* War Deck Generator: swap button hover. */
+.deck-swap-btn {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.deck-swap-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
+}
+
 @keyframes mega-pop {
   0% { transform: scale(0.6); opacity: 0; }
   60% { transform: scale(1.15); opacity: 1; }

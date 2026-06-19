@@ -74,16 +74,16 @@ export default function SwapDeckModal({
   }, [onClose]);
 
   const theme = {
-    overlay: 'rgba(0, 0, 0, 0.55)',
-    panelBg: isDarkMode ? '#1f1f1f' : '#ffffff',
-    panelBorder: isDarkMode ? '#444444' : '#e0e0e0',
+    overlay: 'rgba(0, 0, 0, 0.65)',
+    panelBg: isDarkMode ? '#141414' : '#ffffff',
+    panelBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
     text: isDarkMode ? '#ffffff' : '#000000',
     subtext: isDarkMode ? '#aaaaaa' : '#666',
     accent: isDarkMode ? '#4a9eff' : '#007bff',
-    rowBg: isDarkMode ? '#2a2a2a' : '#f8f9ff',
-    rowBorder: isDarkMode ? '#444444' : '#e0e0e0',
+    rowBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
+    rowBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
     activeBorder: isDarkMode ? '#4a9eff' : '#007bff',
-    activeBg: isDarkMode ? '#23344f' : '#eaf3ff',
+    activeBg: isDarkMode ? '#1a2740' : '#eaf3ff',
   };
 
   const versionOf = (opt: SwapOption, cardId: number): 'normal' | 'evo' | 'hero' =>

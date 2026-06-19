@@ -92,24 +92,22 @@ export default function DeckCard({
   };
 
   const theme = {
-    containerBg: isDarkMode ? '#222222' : '#ffffff',
-    containerBorder: isDarkMode ? '#444444' : '#007bff',
-    headerBg: isDarkMode ? '#1a1a1a' : '#ffffff',
-    headerBorder: isDarkMode ? '#444444' : '#007bff',
-    headerText: isDarkMode ? '#ffffff' : '#000000',
-    statsBg: isDarkMode ? '#2a2a2a' : '#f8f9ff',
-    statsText: isDarkMode ? '#ffffff' : '#000000',
-    statsLabel: isDarkMode ? '#aaaaaa' : '#666',
-    statsValue: isDarkMode ? '#4a9eff' : '#007bff',
-    tooltipBg: isDarkMode ? '#111111' : '#1a1a1a',
+    containerBg: isDarkMode ? '#161616' : '#ffffff',
+    containerBorder: isDarkMode ? '#2a2a2a' : '#e8ecf5',
+    headerText: isDarkMode ? '#ffffff' : '#0d1b3e',
+    statsBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
+    statsBorder: isDarkMode ? '#2a2a2a' : '#eceef6',
+    statsLabel: isDarkMode ? '#9aa3b2' : '#6b7280',
+    statsValue: isDarkMode ? '#ffffff' : '#007bff',
+    tooltipBg: isDarkMode ? '#0a0a0a' : '#1a1a1a',
     tooltipText: '#ffffff',
-    tooltipBorder: isDarkMode ? '#555555' : '#1a1a1a',
-    cardBg: isDarkMode ? '#2a2a2a' : '#f8f9ff',
-    cardBorder: isDarkMode ? '#444444' : '#e0e0e0',
+    tooltipBorder: isDarkMode ? '#3a3a3a' : '#1a1a1a',
+    cardBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
+    cardBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
     cardText: isDarkMode ? '#ffffff' : '#000000',
-    cardSecondaryText: isDarkMode ? '#aaaaaa' : '#666',
-    swapBg: isDarkMode ? '#3a3a3a' : '#ededed',
-    swapIcon: isDarkMode ? '#ffffff' : '#333333',
+    swapBg: isDarkMode ? '#262626' : '#ffffff',
+    swapIcon: isDarkMode ? '#ffffff' : '#007bff',
+    divider: isDarkMode ? '#2a2a2a' : '#eceef6',
   };
 
   const elixirOf = (c: Card) => (c.elixirCost ?? c.elixerCost) ?? 0;
@@ -151,15 +149,17 @@ export default function DeckCard({
     .concat(normals, evoQueue, heroQueue);               // rest, plus any defensive leftovers
 
   return (
-    <div style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder }}>
-      <div style={{ ...styles.header, borderBottomColor: theme.headerBorder }}>
-        <h3 style={{ color: theme.headerText, margin: 0 }}>Deck {deckNumber}</h3>
+    <div className="deck-card" style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder }}>
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
+        </div>
         <span style={{ ...styles.archetypeBadge, borderColor: theme.statsValue, color: theme.statsValue }}>
           {archetype}
         </span>
       </div>
 
-      <div style={{ ...styles.stats, backgroundColor: theme.statsBg }}>
+      <div style={{ ...styles.stats, backgroundColor: theme.statsBg, borderColor: theme.statsBorder }}>
         <div style={styles.stat}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             Win Rate
@@ -196,65 +196,66 @@ export default function DeckCard({
       </div>
 
       <div style={styles.cardsRow}>
-       <div style={styles.cards}>
-        {orderedCards.map((card, index) => {
-          const iconUrl = getCardIcon(card);
-          // Frame the first three positions as the evo / hero / either slots.
-          const kind = slotKind(index);
-          return (
-            <div
-              key={card.id}
-              style={styles.cardLink}
-              title={`${card.name} · Level ${getDisplayLevel(card)}/16`}
-            >
+        <div style={styles.cards}>
+          {orderedCards.map((card, index) => {
+            const iconUrl = getCardIcon(card);
+            // Frame the first three positions as the evo / hero / either slots.
+            const kind = slotKind(index);
+            return (
               <div
-                style={{
-                  ...styles.card,
-                  backgroundColor: theme.cardBg,
-                  borderColor: theme.cardBorder,
-                  ...(kind ? slotBorderStyle(kind) : {}),
-                }}
+                key={card.id}
+                style={styles.cardLink}
+                title={`${card.name} · Level ${getDisplayLevel(card)}/16`}
               >
-                {iconUrl && (
-                  <img
-                    src={iconUrl}
-                    alt={card.name}
-                    style={styles.cardImage}
-                  />
-                )}
-                <div style={styles.cardElixir}>
-                  <svg viewBox="0 0 28 30" style={styles.cardElixirDrop} aria-hidden="true">
-                    <defs>
-                      <radialGradient id="elixirGrad" cx="36%" cy="62%" r="70%">
-                        <stop offset="0%" stopColor="#f6a8ff" />
-                        <stop offset="45%" stopColor="#d63bd6" />
-                        <stop offset="100%" stopColor="#a0149e" />
-                      </radialGradient>
-                    </defs>
-                    <path
-                      d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
-                      fill="url(#elixirGrad)"
-                      stroke="#000000"
-                      strokeWidth="1.6"
+                <div
+                  style={{
+                    ...styles.card,
+                    backgroundColor: theme.cardBg,
+                    borderColor: theme.cardBorder,
+                    ...(kind ? slotBorderStyle(kind) : {}),
+                  }}
+                >
+                  {iconUrl && (
+                    <img
+                      src={iconUrl}
+                      alt={card.name}
+                      style={styles.cardImage}
                     />
-                    <ellipse cx="9" cy="14" rx="2.4" ry="3.4" fill="rgba(255,255,255,0.55)" transform="rotate(-20 9 14)" />
-                  </svg>
-                  <span style={styles.cardElixirText}>{card.elixirCost || card.elixerCost}</span>
+                  )}
+                  <div style={styles.cardElixir}>
+                    <svg viewBox="0 0 28 30" style={styles.cardElixirDrop} aria-hidden="true">
+                      <defs>
+                        <radialGradient id="elixirGrad" cx="36%" cy="62%" r="70%">
+                          <stop offset="0%" stopColor="#f6a8ff" />
+                          <stop offset="45%" stopColor="#d63bd6" />
+                          <stop offset="100%" stopColor="#a0149e" />
+                        </radialGradient>
+                      </defs>
+                      <path
+                        d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
+                        fill="url(#elixirGrad)"
+                        stroke="#000000"
+                        strokeWidth="1.6"
+                      />
+                      <ellipse cx="9" cy="14" rx="2.4" ry="3.4" fill="rgba(255,255,255,0.55)" transform="rotate(-20 9 14)" />
+                    </svg>
+                    <span style={styles.cardElixirText}>{card.elixirCost || card.elixerCost}</span>
+                  </div>
+                  <div style={styles.cardLevel}>LEVEL {getDisplayLevel(card)}</div>
                 </div>
-                <div style={styles.cardLevel}>LEVEL {getDisplayLevel(card)}</div>
+                <div style={{ ...styles.cardName, color: theme.cardText }}>{card.name}</div>
               </div>
-              <div style={{ ...styles.cardName, color: theme.cardText }}>{card.name}</div>
-            </div>
-          );
-        })}
-       </div>
+            );
+          })}
+        </div>
         {canSwap && (
           <button
             type="button"
             onClick={onSwap}
             aria-label={`Swap deck ${deckNumber}`}
-            title="Swap this deck"
-            style={{ ...styles.swapButton, backgroundColor: theme.swapBg, color: theme.swapIcon }}
+            title="See alternatives for this deck"
+            className="deck-swap-btn"
+            style={{ ...styles.swapButton, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
           >
             <svg viewBox="0 0 512 512" style={styles.swapIcon} aria-hidden="true">
               <path
@@ -271,20 +272,29 @@ export default function DeckCard({
 
 const styles = {
   container: {
-    border: '2px solid #007bff',
-    borderRadius: '12px',
-    padding: '25px',
+    border: '1px solid #e8ecf5',
+    borderRadius: '18px',
+    padding: '24px',
     backgroundColor: '#ffffff',
-    boxShadow: '0 4px 12px rgba(0, 123, 255, 0.1)',
+    boxShadow: '0 6px 20px rgba(13, 27, 62, 0.06)',
   },
   header: {
-    marginBottom: '20px',
-    borderBottom: '3px solid #007bff',
-    paddingBottom: '15px',
+    marginBottom: '18px',
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: '12px',
+  },
+  headerLeft: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '12px',
+  },
+  headerTitle: {
+    margin: 0,
+    fontSize: '19px',
+    fontWeight: 700 as const,
+    letterSpacing: '0.2px',
   },
   cardsRow: {
     position: 'relative' as const,
@@ -293,10 +303,10 @@ const styles = {
     position: 'absolute' as const,
     right: '8px',
     top: '50%',
-    transform: 'translateY(-50%)',
+    marginTop: '-22px',
     width: '44px',
     height: '44px',
-    border: 'none',
+    border: '1px solid',
     borderRadius: '50%',
     color: 'white',
     cursor: 'pointer',
@@ -304,7 +314,7 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     padding: 0,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+    boxShadow: '0 3px 10px rgba(13, 27, 62, 0.18)',
   },
   swapIcon: {
     width: '20px',
@@ -323,11 +333,12 @@ const styles = {
   stats: {
     display: 'flex' as const,
     justifyContent: 'space-around',
-    marginBottom: '25px',
-    padding: '15px',
+    marginBottom: '24px',
+    padding: '14px 10px',
     backgroundColor: '#f8f9ff',
-    borderRadius: '8px',
-    gap: '20px',
+    border: '1px solid #eceef6',
+    borderRadius: '12px',
+    gap: '8px',
   },
   stat: {
     display: 'flex' as const,
@@ -336,10 +347,12 @@ const styles = {
     flex: 1,
   },
   statLabel: {
-    fontSize: '13px',
+    fontSize: '11px',
     color: '#666',
     marginBottom: '6px',
-    fontWeight: '500' as const,
+    fontWeight: 600 as const,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '5px',
@@ -378,9 +391,10 @@ const styles = {
     pointerEvents: 'none' as const,
   },
   statValue: {
-    fontSize: '20px',
-    fontWeight: 'bold' as const,
+    fontSize: '22px',
+    fontWeight: 800 as const,
     color: '#007bff',
+    lineHeight: 1.1,
   },
   statSubtext: {
     fontSize: '11px',
