@@ -143,7 +143,7 @@ export default function CardPicker({
         <div style={{ ...styles.header, borderBottomColor: theme.border }}>
           <div style={styles.titleBlock}>
             <div style={{ ...styles.title, color: theme.text.primary }}>Card Collection</div>
-            <div style={styles.foundText}>
+            <div style={{ ...styles.foundText, color: theme.accent }}>
               Found: {ownedCount}/{cards.length}
             </div>
           </div>
@@ -181,66 +181,78 @@ export default function CardPicker({
           </div>
         </div>
 
-        <div style={styles.grid}>
-          {sortedCards.map((card) => {
-            const isUsed = usedIds.has(card.id);
-            const selectable = card.owned && !isUsed;
-            return (
-              <button
-                key={card.id}
-                ref={(el) => {
-                  if (el) cardRefs.current.set(card.id, el);
-                  else cardRefs.current.delete(card.id);
-                }}
-                disabled={!selectable}
-                onClick={() => selectable && onSelect(card.id)}
-                title={
-                  !card.owned
-                    ? `${card.name} (not owned)`
-                    : isUsed
-                      ? `${card.name} (already in a deck)`
-                      : card.name
-                }
-                style={{
-                  ...styles.cardButton,
-                  cursor: selectable ? 'pointer' : 'default',
-                  opacity: selectable ? 1 : 0.35,
-                  filter: selectable ? 'none' : 'grayscale(100%)',
-                }}
-              >
-                <div style={styles.cardArt}>
-                  {card.iconUrls?.medium && (
-                    <img src={card.iconUrls.medium} alt={card.name} style={styles.cardImage} />
-                  )}
-                  {card.elixirCost != null && (
-                    <div style={styles.cardElixir}>
-                      <svg viewBox="0 0 28 30" style={styles.cardElixirDrop} aria-hidden="true">
-                        <defs>
-                          <radialGradient id="pickerElixirGrad" cx="36%" cy="62%" r="70%">
-                            <stop offset="0%" stopColor="#f6a8ff" />
-                            <stop offset="45%" stopColor="#d63bd6" />
-                            <stop offset="100%" stopColor="#a0149e" />
-                          </radialGradient>
-                        </defs>
-                        <path
-                          d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
-                          fill="url(#pickerElixirGrad)"
-                          stroke="#000000"
-                          strokeWidth="1.6"
-                        />
-                        <ellipse cx="9" cy="14" rx="2.4" ry="3.4" fill="rgba(255,255,255,0.55)" transform="rotate(-20 9 14)" />
-                      </svg>
-                      <span style={styles.cardElixirText}>{card.elixirCost}</span>
-                    </div>
-                  )}
-                  {card.owned && card.level != null && card.maxLevel != null && (
-                    <div style={styles.cardLevel}>LEVEL {getDisplayLevel(card.level, card.maxLevel)}</div>
-                  )}
-                </div>
-                <div style={{ ...styles.cardName, color: theme.text.primary }}>{card.name}</div>
-              </button>
-            );
-          })}
+        {/* One shared elixir-drop gradient for every card (avoids 121 duplicate
+            <defs>/IDs, which bloats the DOM and re-paints needlessly). */}
+        <svg width="0" height="0" style={styles.svgDefs} aria-hidden="true">
+          <defs>
+            <radialGradient id="pickerElixirGrad" cx="36%" cy="62%" r="70%">
+              <stop offset="0%" stopColor="#f6a8ff" />
+              <stop offset="45%" stopColor="#d63bd6" />
+              <stop offset="100%" stopColor="#a0149e" />
+            </radialGradient>
+          </defs>
+        </svg>
+
+        <div style={styles.scrollViewport}>
+          <div style={styles.grid}>
+            {sortedCards.map((card) => {
+              const isUsed = usedIds.has(card.id);
+              const selectable = card.owned && !isUsed;
+              return (
+                <button
+                  key={card.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(card.id, el);
+                    else cardRefs.current.delete(card.id);
+                  }}
+                  disabled={!selectable}
+                  onClick={() => selectable && onSelect(card.id)}
+                  title={
+                    !card.owned
+                      ? `${card.name} (not owned)`
+                      : isUsed
+                        ? `${card.name} (already in a deck)`
+                        : card.name
+                  }
+                  style={{
+                    ...styles.cardButton,
+                    cursor: selectable ? 'pointer' : 'default',
+                    opacity: selectable ? 1 : 0.3,
+                  }}
+                >
+                  <div style={styles.cardArt}>
+                    {card.iconUrls?.medium && (
+                      <img
+                        src={card.iconUrls.medium}
+                        alt={card.name}
+                        loading="lazy"
+                        decoding="async"
+                        style={styles.cardImage}
+                      />
+                    )}
+                    {card.elixirCost != null && (
+                      <div style={styles.cardElixir}>
+                        <svg viewBox="0 0 28 30" style={styles.cardElixirDrop} aria-hidden="true">
+                          <path
+                            d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
+                            fill="url(#pickerElixirGrad)"
+                            stroke="#000000"
+                            strokeWidth="1.6"
+                          />
+                          <ellipse cx="9" cy="14" rx="2.4" ry="3.4" fill="rgba(255,255,255,0.55)" transform="rotate(-20 9 14)" />
+                        </svg>
+                        <span style={styles.cardElixirText}>{card.elixirCost}</span>
+                      </div>
+                    )}
+                    {card.owned && card.level != null && card.maxLevel != null && (
+                      <div style={styles.cardLevel}>LEVEL {getDisplayLevel(card.level, card.maxLevel)}</div>
+                    )}
+                  </div>
+                  <div style={{ ...styles.cardName, color: theme.text.primary }}>{card.name}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -287,7 +299,6 @@ const styles = {
     lineHeight: 1.1,
   },
   foundText: {
-    color: '#e056b0',
     fontSize: '13px',
     fontWeight: 700 as const,
     marginTop: '2px',
@@ -331,12 +342,29 @@ const styles = {
     cursor: 'pointer',
     lineHeight: 1,
   },
+  svgDefs: {
+    position: 'absolute' as const,
+    width: 0,
+    height: 0,
+    pointerEvents: 'none' as const,
+  },
+  scrollViewport: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: 'auto' as const,
+    padding: '20px',
+    // The modal's rounded `overflow: hidden` clip would otherwise force this
+    // scroller onto the main thread (repainting every frame). Promote it to its
+    // own GPU layer so scrolling is a compositor translate — the same path that
+    // makes the FLIP transform animation buttery.
+    transform: 'translateZ(0)',
+    willChange: 'transform' as const,
+    contain: 'paint' as const,
+  },
   grid: {
     display: 'grid' as const,
     gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
     gap: '12px',
-    padding: '20px',
-    overflowY: 'auto' as const,
   },
   cardButton: {
     background: 'none',
@@ -344,7 +372,7 @@ const styles = {
     padding: 0,
     display: 'block',
     width: '100%',
-    transition: 'all 0.15s ease',
+    transition: 'transform 0.15s ease, opacity 0.15s ease',
   },
   cardArt: {
     position: 'relative' as const,
@@ -368,7 +396,6 @@ const styles = {
     left: '3px',
     width: '23px',
     height: '25px',
-    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5))',
   },
   cardElixirDrop: {
     position: 'absolute' as const,

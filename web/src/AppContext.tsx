@@ -21,6 +21,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    // Drive native UI (scrollbars, form controls) off the theme so nested
+    // scroll containers — e.g. the card picker grid — match the page scrollbar.
+    document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
   }, [isDarkMode]);
 
   const toggleDarkMode = () => setIsDarkMode((prev: boolean) => !prev);
