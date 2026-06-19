@@ -24,33 +24,22 @@ interface Battle {
 }
 
 export default class Meta {
-    async getTopPlayers(limit: number = 200): Promise<TopPlayer[]> {
-        const token = process.env.CLASH_ROYALE_API_KEY;
-        console.log('Token loaded:', token ? `${token.substring(0, 20)}...` : 'NOT SET');
-
-        // Test with a different endpoint first
-        const cardsResponse = await fetch(
-            `${API_BASE_URL}/cards`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-        console.log('Cards endpoint status:', cardsResponse.status);
-
+    /**
+     * Fetches the global Path of Legend leaderboard from the official Clash
+     * Royale API. PoL is the current top-ladder, so its top entries are exactly
+     * the high-skill players whose battle logs we want to sample. This endpoint
+     * returns up to 1000 entries in a single call.
+     */
+    async getTopPlayers(limit: number = 1000): Promise<TopPlayer[]> {
         const response = await fetch(
-            `${API_BASE_URL}/locations/global/rankings/players?limit=${limit}`,
+            `${API_BASE_URL}/locations/global/pathoflegend/players?limit=${limit}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${process.env.CLASH_ROYALE_API_KEY}`,
                     'Accept': 'application/json'
                 }
             }
         );
-
-        console.log('API Response status:', response.status);
 
         if (!response.ok) {
             const text = await response.text();
@@ -58,16 +47,14 @@ export default class Meta {
             throw new Error(`Failed to fetch top players: ${response.status}`);
         }
 
-        const data = await response.json() as any;
-        console.log('Full API Response:', JSON.stringify(data));
-
-        const items = data.items || data;
+        const data = await response.json() as { items?: TopPlayer[] };
+        const items = data.items ?? [];
         if (!Array.isArray(items)) {
             console.error('Unexpected API response format:', typeof items);
             return [];
         }
 
-        return items as TopPlayer[];
+        return items;
     }
 
     async getPlayerBattlelog(playerTag: string): Promise<Battle[]> {

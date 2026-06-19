@@ -29,6 +29,7 @@ interface DeckCardProps {
   players: number;
   pickRate: number;
   cardVersions?: CardVersionRef[];
+  metaCardVersions?: CardVersionRef[];
   playerScore: number;
   deckNumber: number;
   isDarkMode: boolean;
@@ -46,6 +47,7 @@ export default function DeckCard({
   players,
   pickRate,
   cardVersions,
+  metaCardVersions,
   playerScore,
   deckNumber,
   isDarkMode,
@@ -59,23 +61,27 @@ export default function DeckCard({
     return card.level + offset;
   };
 
-  // Which special version the meta (pro) deck fielded this card as. This is the
-  // real signal — not the card's slot position — so we render the exact cards
-  // the top players evolved / ran as hero.
-  const metaVersion = (cardId: number): 'normal' | 'evo' | 'hero' =>
-    cardVersions?.find(v => v.cardId === cardId)?.version ?? 'normal';
+  // Two different version signals, used for two different things:
+  //
+  // slotVersion — what the top players fielded (raw meta, legal-capped). Drives
+  // which positional evo/hero slot a card lands in, so e.g. a meta Hero Giant
+  // sits in the hero slot even when this player hasn't unlocked it.
+  //
+  // displayVersion — personalised to the player (unowned specials downgraded to
+  // normal). Drives the artwork, so we show the version they'd actually field.
+  const slotVersion = (cardId: number): 'normal' | 'evo' | 'hero' =>
+    metaCardVersions?.find(v => v.cardId === cardId)?.version
+    ?? cardVersions?.find(v => v.cardId === cardId)?.version
+    ?? 'normal';
 
-  const getRoyaleAPIUrl = (cardName: string, version: 'normal' | 'evo' | 'hero'): string => {
-    const normalizedName = cardName.toLowerCase().replace(/\s+/g, '-');
-    const suffix = version === 'hero' ? '-hero' : version === 'evo' ? '-ev1' : '';
-    return `https://royaleapi.com/card/${normalizedName}${suffix}`;
-  };
+  const displayVersion = (cardId: number): 'normal' | 'evo' | 'hero' =>
+    cardVersions?.find(v => v.cardId === cardId)?.version ?? 'normal';
 
   const getCardIcon = (card: Card): string => {
     const { medium, evolutionMedium, heroMedium } = card.iconUrls || {};
-    // Show the art for the version the meta deck actually fielded, falling back
-    // gracefully if that specific artwork isn't available.
-    const version = metaVersion(card.id);
+    // Show the art for the version this player would actually field, falling
+    // back gracefully if that specific artwork isn't available.
+    const version = displayVersion(card.id);
     if (version === 'hero') {
       return heroMedium || evolutionMedium || medium || '';
     }
@@ -131,9 +137,9 @@ export default function DeckCard({
   // sliding into the evo-only slot 1. Empty special slots are filled by normal
   // cards so the grid stays gapless (just like fielding a regular card in an
   // unused evo slot in-game).
-  const evoQueue = cards.filter(c => metaVersion(c.id) === 'evo');
-  const heroQueue = cards.filter(c => metaVersion(c.id) === 'hero');
-  const normals = cards.filter(c => metaVersion(c.id) === 'normal');
+  const evoQueue = cards.filter(c => slotVersion(c.id) === 'evo');
+  const heroQueue = cards.filter(c => slotVersion(c.id) === 'hero');
+  const normals = cards.filter(c => slotVersion(c.id) === 'normal');
 
   const slot1 = evoQueue.shift();                        // evo only
   const slot2 = heroQueue.shift();                       // hero only
@@ -192,17 +198,12 @@ export default function DeckCard({
       <div style={styles.cardsRow}>
        <div style={styles.cards}>
         {orderedCards.map((card, index) => {
-          const version = metaVersion(card.id);
           const iconUrl = getCardIcon(card);
-          const royaleAPIUrl = getRoyaleAPIUrl(card.name, version);
           // Frame the first three positions as the evo / hero / either slots.
           const kind = slotKind(index);
           return (
-            <a
+            <div
               key={card.id}
-              href={royaleAPIUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               style={styles.cardLink}
               title={`${card.name} · Level ${getDisplayLevel(card)}/16`}
             >
@@ -243,7 +244,7 @@ export default function DeckCard({
                 <div style={styles.cardLevel}>LEVEL {getDisplayLevel(card)}</div>
               </div>
               <div style={{ ...styles.cardName, color: theme.cardText }}>{card.name}</div>
-            </a>
+            </div>
           );
         })}
        </div>
@@ -394,8 +395,6 @@ const styles = {
     margin: '0 auto',
   },
   cardLink: {
-    textDecoration: 'none',
-    cursor: 'pointer',
     display: 'block',
   },
   card: {

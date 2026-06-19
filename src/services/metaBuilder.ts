@@ -1,15 +1,10 @@
 import Meta from '../api/meta';
 import { BattleRecord, CardVersion, DeckMeta, popularityWeight } from '../models/models';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-
-puppeteer.use(StealthPlugin());
 
 // How many top players to pull battle logs from. More players → larger samples
 // per deck → tighter Wilson bounds. This runs as a background job (every couple
-// of hours), so the extra scrape/API time is not on any user's critical path.
-// The RoyaleAPI leaderboard holds 1000 entries; we expand it to show all of them
-// (see scrapeTopPlayers) and use the lot.
+// of hours), so the extra API time is not on any user's critical path. The
+// official Path of Legend leaderboard returns up to 1000 entries in one call.
 const MAX_TOP_PLAYERS = 1000;
 
 /**
@@ -44,22 +39,22 @@ export default class MetaBuilder {
     }
 
     /**
-     * Collects battle records from a large pool of top players. The RoyaleAPI
-     * leaderboard page only lists ~100 players, which isn't enough sample on its
-     * own, so we snowball: process those seeds, harvest the opponents they faced
-     * in ranked/PoL (themselves high-ladder players), and process those too —
-     * up to MAX_TOP_PLAYERS. This multiplies the sample using only the battlelog
-     * endpoint, which is known to work even when the leaderboard scrape is thin.
+     * Collects battle records from a large pool of top players. The official
+     * Path of Legend leaderboard gives us up to MAX_TOP_PLAYERS seeds directly,
+     * which is normally enough sample on its own. We still snowball — harvest the
+     * opponents those seeds faced in ranked/PoL (themselves high-ladder players)
+     * and process any that fit under the cap — so the sample stays robust if the
+     * leaderboard ever returns fewer than the full 1000.
      *
      * Returns [] (rather than throwing) if no seeds are found, so a transient
-     * scrape failure leaves the existing store untouched instead of wiping it.
+     * fetch failure leaves the existing store untouched instead of wiping it.
      */
     async collectBattleRecords(): Promise<BattleRecord[]> {
         console.log('Collecting battle records...');
         const startTime = Date.now();
 
-        const seeds = await this.scrapeTopPlayers();
-        console.log(`Scraped ${seeds.length} seed players from RoyaleAPI leaderboard`);
+        const seeds = await this.fetchTopPlayers();
+        console.log(`Fetched ${seeds.length} seed players from the Path of Legend leaderboard`);
 
         if (seeds.length === 0) {
             console.warn('No seed players found.');
@@ -116,120 +111,19 @@ export default class MetaBuilder {
         return records;
     }
 
-    private async scrapeTopPlayers(): Promise<string[]> {
-        let browser;
+    /**
+     * Fetches the top players' tags from the official Path of Legend leaderboard.
+     * Returns [] on failure so a transient outage leaves the existing store
+     * untouched rather than wiping it.
+     */
+    private async fetchTopPlayers(): Promise<string[]> {
         try {
-            console.log('Launching browser to scrape RoyaleAPI leaderboard...');
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            });
-
-            const page = await browser.newPage();
-
-            // Capture browser console logs
-            page.on('console', msg => {
-                console.log(`[Browser Console] ${msg.text()}`);
-            });
-
-            await page.goto('https://royaleapi.com/players/leaderboard', {
-                waitUntil: 'networkidle2',
-                timeout: 30000
-            });
-
-            // The leaderboard is a client-side DataTable showing 100 of 1000
-            // entries per page, with no page URL to hit. A "rows per page"
-            // control lets us render all 1000 at once — click it and wait for the
-            // table to redraw before scraping. If anything here fails we fall
-            // back to whatever's loaded (the default 100).
-            console.log('Page loaded, expanding leaderboard to all 1000 rows...');
-            try {
-                const expanded = await page.evaluate(() => {
-                    const link = Array.from(document.querySelectorAll('a.rowperpage.item'))
-                        .find(a => (a.textContent || '').trim() === '1000');
-                    if (link) {
-                        (link as HTMLElement).click();
-                        return true;
-                    }
-                    return false;
-                });
-                if (expanded) {
-                    await page.waitForFunction(
-                        () => /Showing 1 to 1,?000/.test(document.querySelector('.dataTables_info')?.textContent || ''),
-                        { timeout: 15000 }
-                    );
-                    console.log('Leaderboard expanded to 1000 rows');
-                } else {
-                    console.warn('Could not find the 1000-rows control; using the default 100');
-                }
-            } catch (error) {
-                console.warn('Leaderboard did not expand to 1000 rows; using what is loaded:', error);
-            }
-
-            console.log('Extracting player links...');
-
-            const pageData = await page.evaluate(() => {
-                const tags: string[] = [];
-
-                // Log page structure
-                const title = document.title;
-                const totalLinks = document.querySelectorAll('a').length;
-
-                // Try different selectors
-                const links1 = document.querySelectorAll('a[href*="/player/"]');
-                const linksCount = links1.length;
-
-                // Log first few links to see structure
-                const sampleLinks: string[] = [];
-                const allLinks = Array.from(document.querySelectorAll('a')).slice(0, 20);
-                allLinks.forEach(link => {
-                    const href = link.getAttribute('href');
-                    const text = link.textContent?.substring(0, 30);
-                    if (href && href.includes('player')) {
-                        sampleLinks.push(`${href} | ${text}`);
-                    }
-                });
-
-                // Try to find player data in different ways
-                links1.forEach((link) => {
-                    const href = link.getAttribute('href');
-                    if (href) {
-                        const match = href.match(/\/player\/([A-Z0-9]+)/);
-                        if (match && match[1]) {
-                            const tag = `#${match[1]}`;
-                            if (!tags.includes(tag)) {
-                                tags.push(tag);
-                            }
-                        }
-                    }
-                });
-
-                return {
-                    title,
-                    totalLinks,
-                    linksCount,
-                    sampleLinks,
-                    tags
-                };
-            });
-
-            console.log('Page title:', pageData.title);
-            console.log('Total links on page:', pageData.totalLinks);
-            console.log('Links with /player/ in href:', pageData.linksCount);
-            console.log('Sample links found:', pageData.sampleLinks);
-            console.log('Extracted player tags:', pageData.tags.length);
-
-            const playerTags = pageData.tags;
-
-            console.log(`Extracted ${playerTags.length} unique player tags`);
-            return playerTags.slice(0, MAX_TOP_PLAYERS);
+            const players = await this.meta.getTopPlayers(MAX_TOP_PLAYERS);
+            const tags = players.map(p => p.tag).filter((tag): tag is string => !!tag);
+            return tags.slice(0, MAX_TOP_PLAYERS);
         } catch (error) {
-            console.error('Error scraping RoyaleAPI leaderboard:', error);
+            console.error('Error fetching Path of Legend leaderboard:', error);
             return [];
-        } finally {
-            if (browser) {
-                await browser.close();
-            }
         }
     }
 

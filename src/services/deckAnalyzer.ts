@@ -156,7 +156,8 @@ export default class DeckAnalyzer {
             pickRate: deck.pickRate ?? 0,
             playerScore: score,
             cards,
-            cardVersions: this.capEvolutions(this.personalizeVersions(deck.cardVersions, cardIdToCard))
+            cardVersions: this.capEvolutions(this.personalizeVersions(deck.cardVersions, cardIdToCard)),
+            metaCardVersions: this.capEvolutions(deck.cardVersions)
         };
     }
 

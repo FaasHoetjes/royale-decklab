@@ -27,6 +27,7 @@ interface ScoredDeckDTO {
   pickRate: number;
   playerScore: number;
   cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
+  metaCardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
   cards: Array<{
     id: number;
     name: string;

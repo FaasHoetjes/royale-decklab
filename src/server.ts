@@ -39,8 +39,8 @@ interface BattleStore {
 
 let metaCache: DeckMeta[] = [];
 let lastCacheTime = 0;
-// Guards against overlapping builds: a build takes a while (puppeteer + 200
-// battle logs), longer than nothing but we never want two running at once.
+// Guards against overlapping builds: a build takes a while (leaderboard fetch +
+// ~1000 battle logs), longer than nothing but we never want two running at once.
 let isBuilding = false;
 // Patch boundary, mirrored in memory and persisted to the battle store so it
 // survives restarts. 0 = no boundary set; only the rolling window applies.

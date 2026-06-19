@@ -20,6 +20,7 @@ interface ScoredDeck {
   pickRate: number;
   playerScore: number;
   cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
+  metaCardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
   cards: Card[];
 }
 
@@ -132,6 +133,7 @@ export default function WarDeckResult({
               players={deck.players}
               pickRate={deck.pickRate}
               cardVersions={deck.cardVersions}
+              metaCardVersions={deck.metaCardVersions}
               playerScore={deck.playerScore}
               deckNumber={slotPos + 1}
               isDarkMode={isDarkMode}

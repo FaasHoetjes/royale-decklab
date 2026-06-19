@@ -103,8 +103,18 @@ export interface ScoredDeck {
     pickRate: number;
     playerScore: number;
     cards: PlayerItemLevel[];
-    /** Which cards the meta deck fielded as evolutions, so the UI can show them. */
+    /**
+     * Card versions personalised to this player: any evo/hero they haven't
+     * unlocked is downgraded to normal, so the artwork shown is what they'd
+     * actually field.
+     */
     cardVersions?: CardVersion[];
+    /**
+     * The raw versions the top players fielded (legal-capped, NOT personalised).
+     * Drives the positional evo/hero slot layout so a card sits in the slot the
+     * meta runs it in even when the player doesn't own that special.
+     */
+    metaCardVersions?: CardVersion[];
 }
 
 export interface WarDeckResult {

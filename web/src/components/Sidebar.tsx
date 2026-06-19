@@ -12,6 +12,7 @@ export default function Sidebar() {
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true },
     { to: '/builder', label: 'War Deck Builder', end: false },
+    { to: '/draft', label: 'Mega Draft', end: false },
     { to: '/faq', label: 'FAQ', end: false },
   ];
 
