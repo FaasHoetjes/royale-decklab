@@ -83,7 +83,19 @@ export default function WarDeckBuilder() {
         owned: !!ownedCard,
         level: ownedCard?.level,
         maxLevel: ownedCard?.maxLevel ?? c.maxLevel,
-        iconUrls: { medium: c.iconUrls?.medium },
+        // Whether the card CAN be a hero — a hero icon exists, or the catalog
+        // says it reaches evolution tier 2. Used to list it under Hero & Champion.
+        isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
+        // Tiers the player actually OWNS, from evolutionLevel (>= 1 evo, >= 2
+        // hero) — matching how the backend detects ownership. Drives whether we
+        // swap in the special art; the icon merely existing is not ownership.
+        hasEvo: (ownedCard?.evolutionLevel ?? 0) >= 1,
+        ownsHero: (ownedCard?.evolutionLevel ?? 0) >= 2,
+        iconUrls: {
+          medium: c.iconUrls?.medium,
+          evolutionMedium: c.iconUrls?.evolutionMedium,
+          heroMedium: ownedCard?.iconUrls?.heroMedium,
+        },
       };
     });
   }, [catalog, owned]);
@@ -129,8 +141,7 @@ export default function WarDeckBuilder() {
       <div style={{ ...styles.header, borderBottomColor: theme.border }}>
         <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>
         <p style={{ ...styles.subtitle, color: theme.text.secondary, marginTop: '8px' }}>
-          Building decks for <strong>{activePlayerTag}</strong>. Each card can be used once
-          across all four decks. Click a slot to choose a card; click a filled card to remove it.
+          Each card can be used once across all four decks. Click a slot to choose a card; click a filled card to remove it.
         </p>
         {loading && <p style={{ color: theme.text.secondary }}>Loading cards…</p>}
       </div>

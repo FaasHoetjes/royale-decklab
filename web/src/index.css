@@ -24,6 +24,14 @@ input:disabled {
   cursor: not-allowed;
 }
 
+/* Card picker: highlight a filter option row on hover (neutral, theme-agnostic). */
+.picker-filter-option {
+  transition: background-color 0.12s ease;
+}
+.picker-filter-option:hover {
+  background-color: rgba(148, 148, 148, 0.15);
+}
+
 /* Mega Draft: lift a selectable card tile on hover. */
 .cardtile-selectable:hover {
   transform: translateY(-4px) scale(1.04);
