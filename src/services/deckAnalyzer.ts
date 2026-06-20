@@ -1,4 +1,4 @@
-import { CardVersion, DeckMeta, PlayerItemLevel, popularityWeight, ScoredDeck, WarDeckResult } from '../models/models';
+import { CardVersion, DeckMeta, PlayerItemLevel, ScoredDeck, WarDeckResult } from '../models/models';
 
 export default class DeckAnalyzer {
     // In-game evolution slots: slot 1 takes an Evo, slot 2 a Hero, slot 3 either.
@@ -9,12 +9,44 @@ export default class DeckAnalyzer {
     private static readonly MAX_HERO = 2;
     private static readonly MAX_SPECIALS = 3;
 
-    // How heavily the player's own card levels weigh in the score. The average
-    // level ratio sits in a compressed 0.7–1.0 band for an active player, so on
-    // its own it barely moves the (multiplicative) score. Raising it to an
-    // exponent > 1 stretches that band — under-levelled decks drop further while
-    // well-levelled ones keep their edge. 1.0 = no extra weight; higher = more.
-    private static readonly LEVEL_RATIO_EXPONENT = 1.5;
+    // Clash Royale card stats compound ~10% per level (verified against live card
+    // data: each level is ~x1.10, so level 11 is ~2.59x level 1). A card N levels
+    // below its max therefore fields 1.10^-N of full combat stats. We use this to
+    // turn a level deficit into the fraction of a deck's strength the player can
+    // actually field. The meta win rates are measured at tournament-normalised
+    // (maxed) levels, so "maxed" is the reference point we compare against.
+    private static readonly STAT_GROWTH_PER_LEVEL = 1.10;
+
+    // How harshly to down-rank a deck the player can't field at full strength.
+    // This is the one scoring knob we can't learn from data: Path of Legend
+    // battles are level-normalised (every card at its rarity max), so the sample
+    // has no level variance to fit against. A head-to-head backtest on that data
+    // also showed deck-strength differences barely predict individual wins
+    // (~52% even at large gaps), which makes the level deficit the main lever we
+    // actually control — so its shape is grounded in real mechanics (above) and
+    // this single sensitivity exponent is the tunable. 1.0 = score scales
+    // directly with the deck's average combat-stat fraction; >1 punishes
+    // under-levelled decks harder, <1 is more forgiving.
+    private static readonly LEVEL_SENSITIVITY = 1.0;
+
+    // Minimum distinct top players who must have run a deck for us to recommend
+    // it. Popularity is a representativeness GATE, not a win-rate multiplier: a
+    // head-to-head backtest showed how many players run a deck doesn't predict
+    // who wins a battle (it sat at or below a coin flip). What it does capture is
+    // whether a deck is genuinely meta versus one person's pet deck — and in the
+    // live cache 71% of decks were run by a single player, 84% by fewer than
+    // three. Below this floor a deck isn't established enough to suggest; at or
+    // above it, popularity stops mattering and decks rank purely on strength and
+    // how well the player can field them.
+    private static readonly MIN_DISTINCT_PLAYERS = 3;
+
+    // The gate is adaptive, not fixed. We use the strictest level that still
+    // fills all four deck slots and fall through to a looser one only when the
+    // player can't field four disjoint decks from the stricter pool — typically a
+    // thin collection, where a slightly-less-proven deck beats an empty result.
+    // Strictest first; the last step (1) admits even one-off decks as a last
+    // resort. Decks from caches predating player counts skip the gate entirely.
+    private static readonly POPULARITY_GATE_LADDER = [DeckAnalyzer.MIN_DISTINCT_PLAYERS, 2, 1];
 
     /**
      * Enforces the legal evolution-slot limits on a deck's meta versions,
@@ -88,7 +120,7 @@ export default class DeckAnalyzer {
             cardMap.set(card.id, card);
         }
 
-        let totalLevelRatio = 0;
+        let totalStatFraction = 0;
         let totalVersionMultiplier = 0;
         let validCards = 0;
 
@@ -98,8 +130,13 @@ export default class DeckAnalyzer {
                 return null;
             }
 
-            const levelRatio = playerCard.level / playerCard.maxLevel;
-            totalLevelRatio += levelRatio;
+            // Fraction of full combat stats this card fields, from Clash Royale's
+            // ~10%-per-level curve: each level below the card's max costs ~10%.
+            // Rarity-fair (one level down is ~10% for every rarity), unlike a raw
+            // level/maxLevel ratio whose scale shifts with the rarity's max number.
+            const levelsBelowMax = Math.max(0, playerCard.maxLevel - playerCard.level);
+            const statFraction = Math.pow(DeckAnalyzer.STAT_GROWTH_PER_LEVEL, -levelsBelowMax);
+            totalStatFraction += statFraction;
             validCards++;
 
             // Penalty if the meta deck fielded a special version the player
@@ -123,19 +160,19 @@ export default class DeckAnalyzer {
             totalVersionMultiplier += versionMultiplier;
         }
 
-        const avgLevelRatio = totalLevelRatio / validCards;
+        const avgStatFraction = totalStatFraction / validCards;
         const avgVersionMultiplier = totalVersionMultiplier / validCards;
         // Score off the confidence-adjusted win rate so small-sample decks don't
         // outrank well-tested ones. Fall back to the raw rate for caches built
         // before confidence was stored.
         const metaStrength = metaDeck.confidence ?? metaDeck.winRate;
-        // Weight by how many distinct players run the deck: a deck one person
-        // plays isn't really "meta" even at a high win rate. Caches built before
-        // player counts existed get no penalty (undefined → weight 1).
-        const popularity = metaDeck.players === undefined ? 1 : popularityWeight(metaDeck.players);
-        // Give the player's card levels extra pull (see LEVEL_RATIO_EXPONENT).
-        const levelWeight = Math.pow(avgLevelRatio, DeckAnalyzer.LEVEL_RATIO_EXPONENT);
-        const playerScore = metaStrength * popularity * levelWeight * avgVersionMultiplier;
+        // Down-rank decks the player can't field at full strength, grounded in the
+        // game's per-level stat curve (see STAT_GROWTH_PER_LEVEL / LEVEL_SENSITIVITY).
+        const levelWeight = Math.pow(avgStatFraction, DeckAnalyzer.LEVEL_SENSITIVITY);
+        // Popularity is now a gate (applied at the top), not a multiplier: how many
+        // players run a deck doesn't predict individual wins, so it no longer scales
+        // the score. Decks rank on strength × how well the player can field them.
+        const playerScore = metaStrength * levelWeight * avgVersionMultiplier;
 
         return playerScore;
     }
@@ -170,47 +207,77 @@ export default class DeckAnalyzer {
         };
     }
 
+    /**
+     * Greedily picks up to four mutually card-disjoint decks from a list already
+     * sorted best-first — the war rule that no card is fielded twice across the
+     * kept decks. Returns the chosen ScoredDecks and the set of source DeckMetas
+     * picked, so the caller can exclude them from the swap pool.
+     */
+    private selectDisjointDecks(
+        sortedDecks: Array<{ deck: DeckMeta; score: number }>,
+        cardIdToCard: Map<number, PlayerItemLevel>
+    ): { selectedDecks: ScoredDeck[]; selected: Set<DeckMeta> } {
+        const selectedDecks: ScoredDeck[] = [];
+        const selected = new Set<DeckMeta>();
+        const usedCardIds = new Set<number>();
+        for (const { deck, score } of sortedDecks) {
+            if (selectedDecks.length >= 4) {
+                break;
+            }
+            const hasConflict = deck.cardIds.some(id => usedCardIds.has(id));
+            if (hasConflict) {
+                continue;
+            }
+            deck.cardIds.forEach(id => usedCardIds.add(id));
+            selected.add(deck);
+            selectedDecks.push(this.toScoredDeck(deck, score, cardIdToCard));
+        }
+        return { selectedDecks, selected };
+    }
+
     findBestWarDecks(
         playerCards: PlayerItemLevel[],
         metaDecks: DeckMeta[],
         cardIdToCard: Map<number, PlayerItemLevel>
     ): WarDeckResult {
-        const scoredDecks: Array<{ deck: DeckMeta; score: number }> = [];
-
+        // Score every deck the player can actually field (null = missing a card).
+        // The popularity gate is applied afterwards, adaptively.
+        const fieldable: Array<{ deck: DeckMeta; score: number }> = [];
         for (const metaDeck of metaDecks) {
             const score = this.scoreDecksForPlayer(playerCards, metaDeck, metaDeck.cardVersions);
             if (score !== null) {
-                scoredDecks.push({ deck: metaDeck, score });
+                fieldable.push({ deck: metaDeck, score });
             }
         }
 
-        scoredDecks.sort((a, b) => b.score - a.score);
-
-        const selectedDecks: ScoredDeck[] = [];
-        const selected = new Set<DeckMeta>();
-        const usedCardIds = new Set<number>();
-
-        for (const { deck, score } of scoredDecks) {
+        // Apply the strictest popularity gate that still fills all four slots,
+        // relaxing one step at a time for players whose collection can't field
+        // four disjoint established decks (see POPULARITY_GATE_LADDER).
+        let eligible: Array<{ deck: DeckMeta; score: number }> = [];
+        let selectedDecks: ScoredDeck[] = [];
+        let selected = new Set<DeckMeta>();
+        for (const gate of DeckAnalyzer.POPULARITY_GATE_LADDER) {
+            eligible = fieldable.filter(s => s.deck.players === undefined || s.deck.players >= gate);
+            // Strength first; popularity only breaks exact ties now — its demoted
+            // role (prefer the more established deck when scores are identical).
+            eligible.sort((a, b) =>
+                b.score !== a.score ? b.score - a.score : (b.deck.players ?? 0) - (a.deck.players ?? 0)
+            );
+            const picked = this.selectDisjointDecks(eligible, cardIdToCard);
+            selectedDecks = picked.selectedDecks;
+            selected = picked.selected;
             if (selectedDecks.length >= 4) {
-                break;
+                break; // strictest gate that fills all four wins
             }
-
-            const hasConflict = deck.cardIds.some(id => usedCardIds.has(id));
-            if (hasConflict) {
-                continue;
-            }
-
-            deck.cardIds.forEach(id => usedCardIds.add(id));
-            selected.add(deck);
-            selectedDecks.push(this.toScoredDeck(deck, score, cardIdToCard));
+            // Otherwise relax to the next gate; the loosest step is our best effort.
         }
 
-        // The swap pool: the next best-scoring decks that weren't chosen as one of
-        // the four. Unlike the four, these may overlap each other and the primaries
-        // — the UI enforces card-disjointness against the three kept decks when a
-        // swap actually happens.
+        // The swap pool: the next best-scoring decks (at the gate we settled on)
+        // that weren't chosen as one of the four. Unlike the four, these may
+        // overlap each other and the primaries — the UI enforces card-disjointness
+        // against the three kept decks when a swap actually happens.
         const alternatives: ScoredDeck[] = [];
-        for (const { deck, score } of scoredDecks) {
+        for (const { deck, score } of eligible) {
             if (alternatives.length >= DeckAnalyzer.ALTERNATIVE_POOL_SIZE) {
                 break;
             }

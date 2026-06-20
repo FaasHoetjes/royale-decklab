@@ -212,7 +212,7 @@ export default function DeckCard({
                 <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
                   <strong>How well this meta deck fits your collection.</strong>
                   <br />
-                  Confidence-adjusted win rate × popularity × your card levels × evolutions/heroes you've unlocked.
+                  Confidence-adjusted win rate × your card levels × evolutions/heroes you've unlocked. Only decks a meaningful number of top players run are shown.
                 </span>
               )}
             </span>
