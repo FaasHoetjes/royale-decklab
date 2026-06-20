@@ -55,6 +55,7 @@ export default function DeckCard({
   onSwap,
 }: DeckCardProps) {
   const [showWinRateInfo, setShowWinRateInfo] = useState(false);
+  const [showPlayerScoreInfo, setShowPlayerScoreInfo] = useState(false);
 
   const getDisplayLevel = (card: Card) => {
     const offset = 16 - card.maxLevel;
@@ -196,8 +197,26 @@ export default function DeckCard({
           <span style={{ ...styles.statValue, color: theme.statsValueAccent }}>{(confidence * 100).toFixed(1)}%</span>
           <span style={{ ...styles.statSubtext, color: theme.statsLabel }}>{uses} game{uses === 1 ? '' : 's'}</span>
         </div>
-        <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}` }}>
-          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>Player Score</span>
+        <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}`, position: 'relative' as const }}>
+          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
+            Player Score
+            <span
+              style={{ ...styles.infoIcon, borderColor: theme.statsLabel, color: theme.statsLabel }}
+              onMouseEnter={() => setShowPlayerScoreInfo(true)}
+              onMouseLeave={() => setShowPlayerScoreInfo(false)}
+              role="img"
+              aria-label="How the player score is derived"
+            >
+              i
+              {showPlayerScoreInfo && (
+                <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
+                  <strong>How well this meta deck fits your collection.</strong>
+                  <br />
+                  Confidence-adjusted win rate × popularity × your card levels × evolutions/heroes you've unlocked.
+                </span>
+              )}
+            </span>
+          </span>
           <span style={{ ...styles.statValue, color: theme.statsValue }}>{playerScore.toFixed(3)}</span>
         </div>
         <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}` }}>
@@ -397,6 +416,8 @@ const styles = {
     fontSize: '11px',
     fontWeight: 'normal' as const,
     fontStyle: 'normal' as const,
+    textTransform: 'none' as const,
+    letterSpacing: 'normal' as const,
     lineHeight: 1.4,
     textAlign: 'left' as const,
     zIndex: 10,

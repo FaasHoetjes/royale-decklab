@@ -90,11 +90,9 @@ export default function WarDeckResult({
   const liveTotalScore = slots.reduce((sum, master) => sum + deckAt(master).playerScore, 0);
 
   const theme = {
-    // Dark: a quiet top-lit gradient + hairline border lifts the hero off the
-    // near-black page without any colored fill. Light: keep the blue banner.
-    headerGradient: isDarkMode
-      ? 'linear-gradient(180deg, #1e1e22 0%, #161618 100%)'
-      : 'linear-gradient(135deg, #007bff 0%, #4aa3ff 100%)',
+    // Flat fill: dark matches the deck-card background (#161618) so the hero
+    // reads as part of the same surface; light keeps the solid blue banner.
+    headerGradient: isDarkMode ? '#161618' : '#007bff',
     headerBorder: isDarkMode ? '#33333a' : 'transparent',
     headerShadow: isDarkMode
       ? '0 14px 36px rgba(0, 0, 0, 0.5)'

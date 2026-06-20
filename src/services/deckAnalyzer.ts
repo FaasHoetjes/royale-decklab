@@ -9,6 +9,13 @@ export default class DeckAnalyzer {
     private static readonly MAX_HERO = 2;
     private static readonly MAX_SPECIALS = 3;
 
+    // How heavily the player's own card levels weigh in the score. The average
+    // level ratio sits in a compressed 0.7–1.0 band for an active player, so on
+    // its own it barely moves the (multiplicative) score. Raising it to an
+    // exponent > 1 stretches that band — under-levelled decks drop further while
+    // well-levelled ones keep their edge. 1.0 = no extra weight; higher = more.
+    private static readonly LEVEL_RATIO_EXPONENT = 1.5;
+
     /**
      * Enforces the legal evolution-slot limits on a deck's meta versions,
      * downgrading any special beyond the limits back to 'normal'. Specials are
@@ -126,7 +133,9 @@ export default class DeckAnalyzer {
         // plays isn't really "meta" even at a high win rate. Caches built before
         // player counts existed get no penalty (undefined → weight 1).
         const popularity = metaDeck.players === undefined ? 1 : popularityWeight(metaDeck.players);
-        const playerScore = metaStrength * popularity * avgLevelRatio * avgVersionMultiplier;
+        // Give the player's card levels extra pull (see LEVEL_RATIO_EXPONENT).
+        const levelWeight = Math.pow(avgLevelRatio, DeckAnalyzer.LEVEL_RATIO_EXPONENT);
+        const playerScore = metaStrength * popularity * levelWeight * avgVersionMultiplier;
 
         return playerScore;
     }

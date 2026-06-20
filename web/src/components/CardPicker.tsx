@@ -217,15 +217,6 @@ export default function CardPicker({
     );
   }, [sortedCards, query, filters]);
 
-  // When the ONLY active filter is "Hero & Champion", split the grid into a
-  // Heroes section followed by a Champions section (each preserving sort order).
-  // With other filters mixed in, the section headers wouldn't make sense.
-  const sectioned = filters.size === 1 && filters.has('champion');
-  const heroCards = sectioned ? visibleCards.filter((c) => c.isHero) : [];
-  const championCards = sectioned
-    ? visibleCards.filter((c) => c.rarity === 'champion' && !c.isHero)
-    : [];
-
   const renderCard = (card: BuilderCard) => {
     const isUsed = usedIds.has(card.id);
     const selectable = card.owned && !isUsed;
@@ -296,13 +287,6 @@ export default function CardPicker({
       </button>
     );
   };
-
-  const sectionHeader = (label: string, topGap: boolean) => (
-    <div style={{ ...styles.sectionHeader, marginTop: topGap ? '10px' : 0 }}>
-      <span style={{ ...styles.sectionLabel, color: theme.text.secondary }}>{label}</span>
-      <span style={{ ...styles.sectionRule, backgroundColor: theme.border }} />
-    </div>
-  );
 
   return (
     <div style={styles.overlay} onClick={onClose}>
@@ -451,19 +435,7 @@ export default function CardPicker({
         </svg>
 
         <div style={styles.scrollViewport}>
-          <div style={styles.grid}>
-            {sectioned ? (
-              <>
-                {heroCards.length > 0 && sectionHeader('Heroes', false)}
-                {heroCards.map(renderCard)}
-                {championCards.length > 0 &&
-                  sectionHeader('Champions', heroCards.length > 0)}
-                {championCards.map(renderCard)}
-              </>
-            ) : (
-              visibleCards.map(renderCard)
-            )}
-          </div>
+          <div style={styles.grid}>{visibleCards.map(renderCard)}</div>
         </div>
       </div>
     </div>
@@ -676,25 +648,6 @@ const styles = {
     gridTemplateColumns: 'repeat(auto-fill, 110px)',
     justifyContent: 'center' as const,
     gap: '12px',
-  },
-  // Full-width section header that forces the next card onto a fresh row by
-  // spanning every grid column.
-  sectionHeader: {
-    gridColumn: '1 / -1',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '12px',
-  },
-  sectionLabel: {
-    fontSize: '13px',
-    fontWeight: 800 as const,
-    letterSpacing: '0.6px',
-    textTransform: 'uppercase' as const,
-    whiteSpace: 'nowrap' as const,
-  },
-  sectionRule: {
-    flex: 1,
-    height: '1px',
   },
   cardButton: {
     background: 'none',

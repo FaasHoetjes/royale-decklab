@@ -38,17 +38,33 @@ interface ScoredDeckDTO {
   }>;
 }
 
+// Cache fetched war decks per player tag for the session, so navigating away
+// and back to the generator doesn't re-fetch (and re-show a loader) for a
+// player we've already loaded.
+const warDeckCache = new Map<string, PlayerResponse>();
+
+// Once the backend has answered, remember it for the session. The meta status
+// doesn't change underneath us, so a remount (returning to this page) should
+// start already-ready instead of flashing the "Connecting to server…" screen.
+let metaReadyOnce = false;
+
 export default function WarDeckGenerator() {
   const { playerId } = useParams();
   const navigate = useNavigate();
   const { isDarkMode, activePlayerTag, setActivePlayerTag } = useApp();
+  // Seed from the cache so a remount for an already-loaded player paints the
+  // results immediately instead of flashing the loader.
+  const initialTag = playerId ? `#${playerId}` : activePlayerTag;
   const [isLoading, setIsLoading] = useState(!!playerId);
   const [error, setError] = useState('');
-  const [playerData, setPlayerData] = useState<PlayerResponse | null>(null);
-  const [metaReady, setMetaReady] = useState(false);
+  const [playerData, setPlayerData] = useState<PlayerResponse | null>(
+    () => (initialTag ? warDeckCache.get(initialTag) ?? null : null)
+  );
+  const [metaReady, setMetaReady] = useState(metaReadyOnce);
 
   useEffect(() => {
-    checkMetaStatus();
+    // Already confirmed this session — no need to re-check (or flash a loader).
+    if (!metaReadyOnce) checkMetaStatus();
   }, []);
 
   // Reached the generator without a tag in the URL but a player is active
@@ -68,6 +84,7 @@ export default function WarDeckGenerator() {
   const checkMetaStatus = async () => {
     try {
       await fetchMetaStatus();
+      metaReadyOnce = true;
       setMetaReady(true);
     } catch (error) {
       setError(
@@ -78,6 +95,15 @@ export default function WarDeckGenerator() {
   };
 
   const handleSearch = async (playerTag: string) => {
+    // Serve a previously loaded player instantly from the cache.
+    const cached = warDeckCache.get(playerTag);
+    if (cached) {
+      setPlayerData(cached);
+      setActivePlayerTag(playerTag);
+      navigate(`/${playerTag.replace('#', '')}`, { replace: true });
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     setPlayerData(null);
@@ -85,6 +111,7 @@ export default function WarDeckGenerator() {
     try {
       const data = await fetchPlayerWarDecks(playerTag);
       setPlayerData(data);
+      warDeckCache.set(playerTag, data);
 
       // Make this player active app-wide (used by the War Deck Builder).
       setActivePlayerTag(playerTag);
@@ -130,9 +157,7 @@ export default function WarDeckGenerator() {
 
   return (
     <>
-      {!playerData ? (
-        <PlayerSearch onSearch={handleSearch} isLoading={isLoading} isDarkMode={isDarkMode} />
-      ) : (
+      {playerData ? (
         <WarDeckResult
           playerName={playerData.player.name}
           decks={playerData.warDecks.decks}
@@ -141,6 +166,16 @@ export default function WarDeckGenerator() {
           onNewSearch={handleNewSearch}
           isDarkMode={isDarkMode}
         />
+      ) : activePlayerTag && !error ? (
+        // We already know the player and are auto-loading their decks (e.g. on
+        // returning to this page) — show a loader, not the empty search form,
+        // which would otherwise flash for a moment before results arrive.
+        <div style={styles.centerContent}>
+          <h1>Royale DeckLab</h1>
+          <p style={{ ...styles.subtitle, color: theme.text.secondary }}>Loading your war decks…</p>
+        </div>
+      ) : (
+        <PlayerSearch onSearch={handleSearch} isLoading={isLoading} isDarkMode={isDarkMode} />
       )}
       {error && <div style={{ ...styles.errorBanner, backgroundColor: '#ff6b6b' }}>{error}</div>}
     </>
@@ -152,6 +187,10 @@ const styles = {
     maxWidth: '600px',
     margin: '80px auto',
     textAlign: 'center' as const,
+  },
+  subtitle: {
+    fontSize: '16px',
+    marginTop: '12px',
   },
   button: {
     padding: '14px 32px',
