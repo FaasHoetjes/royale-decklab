@@ -140,7 +140,7 @@ async function rebuildMetaCache(reason: string): Promise<DeckMeta[]> {
     try {
         console.log(`Rebuilding meta cache (${reason})...`);
         const metaBuilder = new MetaBuilder();
-        const fresh = await metaBuilder.collectBattleRecords();
+        const fresh = await metaBuilder.collectWarBattleRecords();
 
         // An empty fetch means the scrape/API is down. Keep the existing store
         // and cache rather than wiping good data with nothing.

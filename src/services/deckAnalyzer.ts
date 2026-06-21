@@ -33,12 +33,35 @@ export default class DeckAnalyzer {
     // it. Popularity is a representativeness GATE, not a win-rate multiplier: a
     // head-to-head backtest showed how many players run a deck doesn't predict
     // who wins a battle (it sat at or below a coin flip). What it does capture is
-    // whether a deck is genuinely meta versus one person's pet deck — and in the
-    // live cache 71% of decks were run by a single player, 84% by fewer than
-    // three. Below this floor a deck isn't established enough to suggest; at or
-    // above it, popularity stops mattering and decks rank purely on strength and
-    // how well the player can field them.
-    private static readonly MIN_DISTINCT_PLAYERS = 3;
+    // whether a deck is genuinely meta versus one person's pet deck. The floor is
+    // set above the long tail of low-adoption decks; because we now record both
+    // sides of every sampled battle the per-deck player counts are roughly double
+    // what they were, so a stricter floor than the original 3 is well supported.
+    // The gate only ever relaxes downward (see the ladder), so raising the floor
+    // costs thin collections nothing — they fall through to a looser level.
+    private static readonly MIN_DISTINCT_PLAYERS = 5;
+
+    // Popularity also re-enters the score as a soft weight (above the gate). The
+    // gate alone wasn't enough: a deck just over the floor (5 players) can post a
+    // high Wilson bound on a lucky sample and top the list over a staple dozens of
+    // players field — which reads to the user as "why is my #1 deck used by 5
+    // people?". This weight pulls broadly-adopted decks up without letting
+    // popularity dominate win rate: players/(players + prior), rising with player
+    // count and saturating — same shape as the meta-cache popularityWeight, but
+    // with its own prior so tuning it here leaves that ordering untouched. Higher
+    // prior = more weight on adoption (8: 5→0.38, 20→0.71, 50→0.86, 100→0.93).
+    // Caches predating player counts skip it (factor 1), same as the gate.
+    private static readonly POPULARITY_PRIOR = 8;
+
+    private popularityFactor(players: number | undefined): number {
+        if (players === undefined) {
+            return 1;
+        }
+        if (players <= 0) {
+            return 0;
+        }
+        return players / (players + DeckAnalyzer.POPULARITY_PRIOR);
+    }
 
     // The gate is adaptive, not fixed. We use the strictest level that still
     // fills all four deck slots and fall through to a looser one only when the
@@ -46,7 +69,7 @@ export default class DeckAnalyzer {
     // thin collection, where a slightly-less-proven deck beats an empty result.
     // Strictest first; the last step (1) admits even one-off decks as a last
     // resort. Decks from caches predating player counts skip the gate entirely.
-    private static readonly POPULARITY_GATE_LADDER = [DeckAnalyzer.MIN_DISTINCT_PLAYERS, 2, 1];
+    private static readonly POPULARITY_GATE_LADDER = [DeckAnalyzer.MIN_DISTINCT_PLAYERS, 3, 2, 1];
 
     /**
      * Enforces the legal evolution-slot limits on a deck's meta versions,
@@ -169,10 +192,13 @@ export default class DeckAnalyzer {
         // Down-rank decks the player can't field at full strength, grounded in the
         // game's per-level stat curve (see STAT_GROWTH_PER_LEVEL / LEVEL_SENSITIVITY).
         const levelWeight = Math.pow(avgStatFraction, DeckAnalyzer.LEVEL_SENSITIVITY);
-        // Popularity is now a gate (applied at the top), not a multiplier: how many
-        // players run a deck doesn't predict individual wins, so it no longer scales
-        // the score. Decks rank on strength × how well the player can field them.
-        const playerScore = metaStrength * levelWeight * avgVersionMultiplier;
+        // Popularity acts at two levels: a hard gate (applied at the top) plus this
+        // soft weight. It doesn't predict who wins a single battle, but it captures
+        // whether a deck is genuinely meta versus one squad's pet deck — so it nudges
+        // proven, broadly-fielded decks above niche high-variance ones rather than
+        // scaling raw win rate. Decks rank on strength × fieldability × adoption.
+        const playerScore =
+            metaStrength * levelWeight * avgVersionMultiplier * this.popularityFactor(metaDeck.players);
 
         return playerScore;
     }
@@ -208,31 +234,31 @@ export default class DeckAnalyzer {
     }
 
     /**
-     * Greedily picks up to four mutually card-disjoint decks from a list already
-     * sorted best-first — the war rule that no card is fielded twice across the
-     * kept decks. Returns the chosen ScoredDecks and the set of source DeckMetas
-     * picked, so the caller can exclude them from the swap pool.
+     * Greedily appends up to four mutually card-disjoint decks from a list
+     * already sorted best-first — the war rule that no card is fielded twice
+     * across the kept decks. Mutates the running selection state so it can be
+     * called repeatedly with progressively looser pools: decks whose cards are
+     * already taken (including ones picked on an earlier call) simply conflict
+     * and are skipped, so proven picks are kept and only the remaining slots get
+     * topped up. Stops once four decks are held.
      */
-    private selectDisjointDecks(
+    private fillDisjointDecks(
         sortedDecks: Array<{ deck: DeckMeta; score: number }>,
-        cardIdToCard: Map<number, PlayerItemLevel>
-    ): { selectedDecks: ScoredDeck[]; selected: Set<DeckMeta> } {
-        const selectedDecks: ScoredDeck[] = [];
-        const selected = new Set<DeckMeta>();
-        const usedCardIds = new Set<number>();
+        cardIdToCard: Map<number, PlayerItemLevel>,
+        state: { selectedDecks: ScoredDeck[]; selected: Set<DeckMeta>; usedCardIds: Set<number> }
+    ): void {
         for (const { deck, score } of sortedDecks) {
-            if (selectedDecks.length >= 4) {
+            if (state.selectedDecks.length >= 4) {
                 break;
             }
-            const hasConflict = deck.cardIds.some(id => usedCardIds.has(id));
+            const hasConflict = deck.cardIds.some(id => state.usedCardIds.has(id));
             if (hasConflict) {
                 continue;
             }
-            deck.cardIds.forEach(id => usedCardIds.add(id));
-            selected.add(deck);
-            selectedDecks.push(this.toScoredDeck(deck, score, cardIdToCard));
+            deck.cardIds.forEach(id => state.usedCardIds.add(id));
+            state.selected.add(deck);
+            state.selectedDecks.push(this.toScoredDeck(deck, score, cardIdToCard));
         }
-        return { selectedDecks, selected };
     }
 
     findBestWarDecks(
@@ -250,12 +276,15 @@ export default class DeckAnalyzer {
             }
         }
 
-        // Apply the strictest popularity gate that still fills all four slots,
-        // relaxing one step at a time for players whose collection can't field
-        // four disjoint established decks (see POPULARITY_GATE_LADDER).
+        // Fill the four slots from the strictest popularity gate first, relaxing
+        // one step at a time only for the slots still open (see
+        // POPULARITY_GATE_LADDER). The selection state carries across gates, so a
+        // proven deck picked at gate 5 is kept and a looser gate is consulted only
+        // to top up the remaining slots — never to replace a stricter pick. This
+        // matters because meta decks share staple cards, so even a rich pool can
+        // fall a deck or two short of four card-disjoint decks at the strict gate.
+        const state = { selectedDecks: [] as ScoredDeck[], selected: new Set<DeckMeta>(), usedCardIds: new Set<number>() };
         let eligible: Array<{ deck: DeckMeta; score: number }> = [];
-        let selectedDecks: ScoredDeck[] = [];
-        let selected = new Set<DeckMeta>();
         for (const gate of DeckAnalyzer.POPULARITY_GATE_LADDER) {
             eligible = fieldable.filter(s => s.deck.players === undefined || s.deck.players >= gate);
             // Strength first; popularity only breaks exact ties now — its demoted
@@ -263,14 +292,15 @@ export default class DeckAnalyzer {
             eligible.sort((a, b) =>
                 b.score !== a.score ? b.score - a.score : (b.deck.players ?? 0) - (a.deck.players ?? 0)
             );
-            const picked = this.selectDisjointDecks(eligible, cardIdToCard);
-            selectedDecks = picked.selectedDecks;
-            selected = picked.selected;
-            if (selectedDecks.length >= 4) {
-                break; // strictest gate that fills all four wins
+            this.fillDisjointDecks(eligible, cardIdToCard, state);
+            if (state.selectedDecks.length >= 4) {
+                break; // all four slots filled; no need to relax further
             }
-            // Otherwise relax to the next gate; the loosest step is our best effort.
+            // Otherwise relax to the next gate to fill the remaining slots; the
+            // loosest step is our best effort.
         }
+        const selectedDecks = state.selectedDecks;
+        const selected = state.selected;
 
         // The swap pool: the next best-scoring decks (at the gate we settled on)
         // that weren't chosen as one of the four. Unlike the four, these may
