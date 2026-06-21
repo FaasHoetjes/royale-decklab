@@ -32,12 +32,6 @@ input:disabled {
   background-color: rgba(148, 148, 148, 0.15);
 }
 
-/* Mega Draft: lift a selectable card tile on hover. */
-.cardtile-selectable:hover {
-  transform: translateY(-4px) scale(1.04);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
-}
-
 /* Sidebar nav: subtle neutral hover on inactive items (the active item keeps
    its own fill + gold accent bar via inline styles, so exclude it here). */
 .nav-link {
