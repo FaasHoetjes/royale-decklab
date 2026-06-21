@@ -6,6 +6,8 @@ dotenv.config();
 interface BattleCard {
     id: number;
     evolutionLevel?: number;
+    /** "champion" marks a champion card, always fielded in the champion slot. */
+    rarity?: string;
 }
 
 /** One round of a clan-war duel: the actual 8-card deck played that game. */

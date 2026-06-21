@@ -200,8 +200,8 @@ export default class MetaBuilder {
         playerTag: string,
         opponentTag: string | undefined,
         battleTime: string,
-        teamSide: { cards?: { id: number; evolutionLevel?: number }[]; crowns: number },
-        oppSide: { cards?: { id: number; evolutionLevel?: number }[]; crowns: number },
+        teamSide: { cards?: { id: number; evolutionLevel?: number; rarity?: string }[]; crowns: number },
+        oppSide: { cards?: { id: number; evolutionLevel?: number; rarity?: string }[]; crowns: number },
         keySuffix: string = ''
     ): void {
         const isDraw = teamSide.crowns === oppSide.crowns;
@@ -231,7 +231,7 @@ export default class MetaBuilder {
     private toBattleRecord(
         tag: string,
         battleTime: string,
-        side: { cards?: { id: number; evolutionLevel?: number }[] },
+        side: { cards?: { id: number; evolutionLevel?: number; rarity?: string }[] },
         result: BattleRecord['result'],
         keySuffix: string = ''
     ): BattleRecord | null {
@@ -244,15 +244,21 @@ export default class MetaBuilder {
         // deck fragments into several keys, shrinking each sample and inflating
         // extreme win rates.
         const cardIds = cards.map(c => c.id).sort((a, b) => a - b);
-        // Which special version each card was fielded as. The battlelog encodes
-        // this in evolutionLevel: 1 = evolution, 2+ = the "hero" tier (e.g. Hero
-        // Knight; some cards like Barbarian Barrel only ever appear as hero).
-        // iconUrls only says a card *can* evolve, not that it did, so
-        // evolutionLevel is the signal to use.
+        // Which special version each card was fielded as. The champion ("hero")
+        // slot takes two kinds of card:
+        //   - A card fielded as its hero version, flagged in the battlelog by
+        //     evolutionLevel >= 2 (evolutionLevel === 1 is a plain evolution).
+        //   - A champion (rarity "champion", e.g. Mighty Miner), which the battlelog
+        //     never flags via evolutionLevel — rarity is the only signal.
+        // iconUrls only says a card *can* evolve, not that it did, so evolutionLevel
+        // is the signal there. (rarity may be absent on older cached payloads;
+        // deckAnalyzer reconciles champions from the player's own card data too.)
         const cardVersions: CardVersion[] = cards.map(card => {
             const evolutionLevel = card.evolutionLevel ?? 0;
             const version: CardVersion['version'] =
-                evolutionLevel >= 2 ? 'hero' : evolutionLevel === 1 ? 'evo' : 'normal';
+                card.rarity === 'champion' || evolutionLevel >= 2 ? 'hero'
+                    : evolutionLevel === 1 ? 'evo'
+                        : 'normal';
             return { cardId: card.id, version };
         });
 

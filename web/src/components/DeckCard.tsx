@@ -142,11 +142,12 @@ export default function DeckCard({
       : 'Control';
 
   // Order the cards like the in-game evolution slots, which are positional: slot
-  // 1 holds an evolution, slot 2 the hero, slot 3 whichever special is left. Each
-  // slot only accepts its own type — a lone hero stays in slot 2 rather than
-  // sliding into the evo-only slot 1. Empty special slots are filled by normal
-  // cards so the grid stays gapless (just like fielding a regular card in an
-  // unused evo slot in-game).
+  // 1 holds an evolution, slot 2 the champion (hero), slot 3 whichever special is
+  // left. Each slot only accepts its own type — a lone champion stays in slot 2
+  // rather than sliding into the evo-only slot 1. Empty special slots are filled
+  // by normal cards so the grid stays gapless (just like fielding a regular card
+  // in an unused evo slot in-game). The slot's colour-coded border (set below by
+  // positional index) advertises what that slot can field, the same as the builder.
   const evoQueue = cards.filter(c => slotVersion(c.id) === 'evo');
   const heroQueue = cards.filter(c => slotVersion(c.id) === 'hero');
   const normals = cards.filter(c => slotVersion(c.id) === 'normal');

@@ -1,4 +1,4 @@
-import { CardVersion, DeckMeta, PlayerItemLevel, ScoredDeck, WarDeckResult } from '../models/models';
+import { CardVersion, DeckMeta, PlayerItemLevel, Rarity, ScoredDeck, WarDeckResult } from '../models/models';
 
 export default class DeckAnalyzer {
     // In-game evolution slots: slot 1 takes an Evo, slot 2 a Hero, slot 3 either.
@@ -53,6 +53,40 @@ export default class DeckAnalyzer {
     // Caches predating player counts skip it (factor 1), same as the gate.
     private static readonly POPULARITY_PRIOR = 8;
 
+    /**
+     * Champions (Mighty Miner, Golden Knight, Archer Queen, …) are a card rarity,
+     * not an evolution: they're always fielded in the champion ("hero") slot and
+     * have no normal version. The battlelog's evolutionLevel never flags them, so
+     * card identity (rarity) is the only reliable signal. The player's own card
+     * data carries this rarity, and any deck we score is one the player can field,
+     * so the champion is always present in the map here.
+     */
+    private isChampion(cardId: number, cardMap: Map<number, PlayerItemLevel>): boolean {
+        return cardMap.get(cardId)?.rarity === Rarity.CHAMPION;
+    }
+
+    /**
+     * Adds champions to a meta deck's stored versions. Two kinds of card belong in
+     * the champion ("hero") slot: a card fielded as its hero version, which the
+     * battlelog flags via evolutionLevel >= 2 and the stored data already records
+     * as 'hero'; and a champion (e.g. Mighty Miner), which the battlelog CAN'T flag
+     * (champions carry no evolutionLevel), so we force it here by identity. Every
+     * other card keeps its stored version. Builds one entry per deck card so the
+     * result is complete and ordered by the deck's own card list.
+     */
+    private withChampionVersions(
+        cardIds: number[],
+        cardVersions: CardVersion[] | undefined,
+        cardMap: Map<number, PlayerItemLevel>
+    ): CardVersion[] {
+        const rawVersion = new Map((cardVersions ?? []).map(v => [v.cardId, v.version] as const));
+        return cardIds.map(cardId => {
+            const version: CardVersion['version'] =
+                this.isChampion(cardId, cardMap) ? 'hero' : (rawVersion.get(cardId) ?? 'normal');
+            return { cardId, version };
+        });
+    }
+
     private popularityFactor(players: number | undefined): number {
         if (players === undefined) {
             return 1;
@@ -101,14 +135,16 @@ export default class DeckAnalyzer {
     }
 
     /**
-     * Resolves a meta deck's special versions down to what THIS player can
-     * actually field for display: any evo/hero the player hasn't unlocked is
-     * shown as the normal card, because that's the version they'd play. This is
-     * purely cosmetic — scoring still uses the real meta versions (and penalises
-     * missing ones in scoreDecksForPlayer). Ownership comes from evolutionLevel:
-     * >= 1 owns the evo tier, >= 2 owns the hero tier, matching how meta versions
-     * are detected from battle logs. Returns the original array untouched when
-     * the player owns every special, so the shared meta cache is never mutated.
+     * Resolves a meta deck's special versions down to what THIS player can actually
+     * field for display: an evo/hero version the player hasn't unlocked is shown as
+     * the normal card, because that's the version they'd play. This is purely
+     * cosmetic — scoring still uses the real meta versions (and penalises missing
+     * ones in scoreDecksForPlayer). Champions are never downgraded: owning the card
+     * (a precondition of the deck being fieldable) means owning the champion, and
+     * they have no normal version. For evo/hero versions, ownership comes from
+     * evolutionLevel: >= 1 owns the evo tier, >= 2 owns the hero tier, matching how
+     * meta versions are detected from battle logs. Returns the original array
+     * untouched when nothing changes, so the shared meta cache is never mutated.
      */
     private personalizeVersions(
         cardVersions: CardVersion[] | undefined,
@@ -119,7 +155,7 @@ export default class DeckAnalyzer {
         }
         let changed = false;
         const personalized = cardVersions.map(v => {
-            if (v.version === 'normal') {
+            if (v.version === 'normal' || this.isChampion(v.cardId, cardMap)) {
                 return v;
             }
             const owned = cardMap.get(v.cardId)?.evolutionLevel ?? 0;
@@ -162,16 +198,16 @@ export default class DeckAnalyzer {
             totalStatFraction += statFraction;
             validCards++;
 
-            // Penalty if the meta deck fielded a special version the player
-            // hasn't unlocked. The player's evolutionLevel encodes how far they've
-            // unlocked the card: >= 1 owns the evolution, >= 2 owns the hero tier
-            // (matching how the meta versions are detected from battle logs).
+            // Penalty if the meta deck fielded a special version the player hasn't
+            // unlocked: a hero version needs evolutionLevel >= 2, an evolution >= 1
+            // (matching how meta versions are detected from battle logs). Champions
+            // are exempt — there's no tier to unlock, and owning the card is a
+            // precondition of fielding the deck at all.
             let versionMultiplier = 1.0;
-            if (cardVersions) {
+            if (cardVersions && !this.isChampion(cardId, cardMap)) {
                 const metaCardVersion = cardVersions.find(c => c.cardId === cardId);
                 if (metaCardVersion) {
                     const playerEvoLevel = playerCard.evolutionLevel ?? 0;
-
                     if (metaCardVersion.version === 'hero' && playerEvoLevel < 2) {
                         versionMultiplier = 0.90; // 10% penalty for missing hero
                     } else if (metaCardVersion.version === 'evo' && playerEvoLevel < 1) {
@@ -219,6 +255,11 @@ export default class DeckAnalyzer {
             .map(id => cardIdToCard.get(id))
             .filter((card): card is PlayerItemLevel => card !== undefined);
 
+        // Stored versions can't flag champions (the battlelog never does), so
+        // reconcile them with the champion rule before splitting into the meta
+        // (slot-driving) and personalised (art-driving) views.
+        const versions = this.withChampionVersions(deck.cardIds, deck.cardVersions, cardIdToCard);
+
         return {
             cardIds: deck.cardIds,
             metaWinRate: deck.winRate,
@@ -228,8 +269,8 @@ export default class DeckAnalyzer {
             pickRate: deck.pickRate ?? 0,
             playerScore: score,
             cards,
-            cardVersions: this.capEvolutions(this.personalizeVersions(deck.cardVersions, cardIdToCard)),
-            metaCardVersions: this.capEvolutions(deck.cardVersions)
+            cardVersions: this.capEvolutions(this.personalizeVersions(versions, cardIdToCard)),
+            metaCardVersions: this.capEvolutions(versions)
         };
     }
 
