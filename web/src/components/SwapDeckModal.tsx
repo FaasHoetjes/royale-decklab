@@ -154,7 +154,7 @@ export default function SwapDeckModal({
                   <span style={styles.optionStat}>
                     <span style={{ ...styles.optionStatLabel, color: theme.subtext }}>Win Rate</span>
                     <span style={{ ...styles.optionStatValue, color: theme.accent }}>
-                      {(opt.confidence * 100).toFixed(1)}%
+                      {(opt.metaWinRate * 100).toFixed(1)}%
                     </span>
                   </span>
                   <span style={styles.optionStat}>
@@ -206,6 +206,13 @@ const styles = {
     border: '1px solid',
     padding: '24px',
     boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)',
+    // Cap the panel to the viewport (matching the overlay's 40px top/bottom
+    // padding) so it never grows past the screen. The header + subtitle stay
+    // fixed and only the option list below scrolls.
+    maxHeight: 'calc(100vh - 80px)',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    overflow: 'hidden' as const,
   },
   panelHeader: {
     display: 'flex' as const,
@@ -232,6 +239,13 @@ const styles = {
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: '12px',
+    // Only the list scrolls; the header/subtitle above stay put. The negative
+    // margin + matching padding give the scrollbar room without clipping the
+    // option borders against the panel edge.
+    overflowY: 'auto' as const,
+    flex: 1,
+    margin: '0 -4px',
+    padding: '4px',
   },
   option: {
     width: '100%',

@@ -40,12 +40,19 @@ const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
  * corners (a plain border-color can't be a gradient). `innerBg` is the fill behind
  * the border: the card gradient for a filled slot, 'transparent' for an empty one.
  */
-export function slotBorderStyle(kind: SlotKind, innerBg: string = CARD_BG): CSSProperties {
+export function slotBorderStyle(
+  kind: SlotKind,
+  innerBg: string = CARD_BG,
+  glow: boolean = true,
+): CSSProperties {
   const { grad, shadow } = BORDER[kind];
   return {
     border: '3px solid transparent',
     backgroundColor: 'transparent',
     background: `${innerBg} padding-box, ${grad} border-box`,
-    boxShadow: `${shadow}, 0 3px 8px rgba(0, 0, 0, 0.25)`,
+    // The coloured halo belongs to a real, filled card. On an empty slot it
+    // reads as neon against the dark interior, so we keep only the soft drop
+    // shadow there and let the gradient outline mark the slot quietly.
+    boxShadow: glow ? `${shadow}, 0 3px 8px rgba(0, 0, 0, 0.25)` : '0 3px 8px rgba(0, 0, 0, 0.25)',
   };
 }

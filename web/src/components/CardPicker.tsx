@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
 
 export interface BuilderCard {
@@ -43,7 +43,7 @@ const FILTER_OPTIONS = [
   { key: 'building', label: 'Building' },
   { key: 'champion', label: 'Hero & Champion' },
 ] as const;
-type FilterKey = (typeof FILTER_OPTIONS)[number]['key'];
+export type FilterKey = (typeof FILTER_OPTIONS)[number]['key'];
 
 // A few cards fall outside the troop id range but are really troops.
 const TROOP_OVERRIDES = new Set<number>([
@@ -98,6 +98,15 @@ interface CardPickerProps {
   onSelect: (cardId: number) => void;
   onClose: () => void;
   isDarkMode: boolean;
+  // Sort + type filters are owned by the parent so they persist across opens —
+  // reopening the picker to add another card keeps the same filtering. (Search
+  // query and the popover-open toggle stay local and reset each time.)
+  filters: Set<FilterKey>;
+  setFilters: Dispatch<SetStateAction<Set<FilterKey>>>;
+  sortIndex: number;
+  setSortIndex: Dispatch<SetStateAction<number>>;
+  descending: boolean;
+  setDescending: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function CardPicker({
@@ -106,13 +115,16 @@ export default function CardPicker({
   onSelect,
   onClose,
   isDarkMode,
+  filters,
+  setFilters,
+  sortIndex,
+  setSortIndex,
+  descending,
+  setDescending,
 }: CardPickerProps) {
   const theme = getTheme(isDarkMode);
 
-  const [sortIndex, setSortIndex] = useState(0);
-  const [descending, setDescending] = useState(false);
   const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState<Set<FilterKey>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
   const toggleFilter = (key: FilterKey) =>
@@ -127,7 +139,10 @@ export default function CardPicker({
       }
       return next;
     });
-  const clearFilters = () => setFilters(new Set());
+  const clearFilters = () => {
+    setFilters(new Set());
+    setShowFilters(false);
+  };
   const sortType: SortType = SORT_TYPES[sortIndex]!;
   const cycleSort = () => setSortIndex((i) => (i + 1) % SORT_TYPES.length);
   const toggleDirection = () => setDescending((d) => !d);

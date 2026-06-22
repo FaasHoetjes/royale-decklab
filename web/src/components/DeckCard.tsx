@@ -186,16 +186,16 @@ export default function DeckCard({
               i
               {showWinRateInfo && (
                 <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
-                  <strong>Confidence-adjusted win rate</strong> (Wilson score).
-                  <br />
-                  Raw win rate: {(metaWinRate * 100).toFixed(1)}% over {uses} game{uses === 1 ? '' : 's'}.
+                  <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
                   <br />
                   Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
+                  <br />
+                  Ranking uses a confidence-adjusted version of this so small-sample decks don't dominate.
                 </span>
               )}
             </span>
           </span>
-          <span style={{ ...styles.statValue, color: theme.statsValueAccent }}>{(confidence * 100).toFixed(1)}%</span>
+          <span style={{ ...styles.statValue, color: theme.statsValueAccent }}>{(metaWinRate * 100).toFixed(1)}%</span>
           <span style={{ ...styles.statSubtext, color: theme.statsLabel }}>{uses} game{uses === 1 ? '' : 's'}</span>
         </div>
         <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}`, position: 'relative' as const }}>
@@ -242,8 +242,16 @@ export default function DeckCard({
                   style={{
                     ...styles.card,
                     backgroundColor: theme.cardBg,
-                    borderColor: theme.cardBorder,
-                    ...(kind ? slotBorderStyle(kind) : {}),
+                    // On special slots, slotBorderStyle draws a transparent
+                    // border + a gradient via background border-box. A
+                    // `borderColor` longhand here would be emitted after the
+                    // `border` shorthand and override that transparent border
+                    // with solid grey — hiding the gradient ring and leaving
+                    // only the glow. So set the neutral border colour on normal
+                    // slots only.
+                    ...(kind
+                      ? slotBorderStyle(kind)
+                      : { borderColor: theme.cardBorder }),
                   }}
                 >
                   {iconUrl && (

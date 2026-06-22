@@ -242,8 +242,9 @@ export default class DeckAnalyzer {
     // How many extra decks beyond the primary four to return as swap candidates.
     // The UI offers up to a few valid alternatives per slot after filtering out
     // decks that clash with the three decks being kept; meta decks share a lot of
-    // cards, so we hand over a generous pool to draw from.
-    private static readonly ALTERNATIVE_POOL_SIZE = 24;
+    // cards, so most of this pool gets filtered out per slot — hence a generous
+    // size, so enough survive the per-slot disjointness filter to be useful.
+    private static readonly ALTERNATIVE_POOL_SIZE = 60;
 
     /** Build the player-facing ScoredDeck view of a meta deck. */
     private toScoredDeck(
@@ -325,9 +326,8 @@ export default class DeckAnalyzer {
         // matters because meta decks share staple cards, so even a rich pool can
         // fall a deck or two short of four card-disjoint decks at the strict gate.
         const state = { selectedDecks: [] as ScoredDeck[], selected: new Set<DeckMeta>(), usedCardIds: new Set<number>() };
-        let eligible: Array<{ deck: DeckMeta; score: number }> = [];
         for (const gate of DeckAnalyzer.POPULARITY_GATE_LADDER) {
-            eligible = fieldable.filter(s => s.deck.players === undefined || s.deck.players >= gate);
+            const eligible = fieldable.filter(s => s.deck.players === undefined || s.deck.players >= gate);
             // Strength first; popularity only breaks exact ties now — its demoted
             // role (prefer the more established deck when scores are identical).
             eligible.sort((a, b) =>
@@ -343,12 +343,19 @@ export default class DeckAnalyzer {
         const selectedDecks = state.selectedDecks;
         const selected = state.selected;
 
-        // The swap pool: the next best-scoring decks (at the gate we settled on)
-        // that weren't chosen as one of the four. Unlike the four, these may
-        // overlap each other and the primaries — the UI enforces card-disjointness
-        // against the three kept decks when a swap actually happens.
+        // The swap pool: the next best-scoring decks that weren't chosen as one of
+        // the four. Drawn from the FULL fieldable set (every gate), not just the
+        // gate the selection settled on — the settled gate is often the strictest,
+        // most staple-heavy slice, whose decks collide most with the kept four and
+        // so survive the UI's per-slot disjointness filter the worst. Pulling from
+        // all gates gives the picker more archetype diversity to offer. Unlike the
+        // four, these may overlap each other and the primaries — the UI enforces
+        // card-disjointness against the three kept decks when a swap happens.
+        const altPool = [...fieldable].sort((a, b) =>
+            b.score !== a.score ? b.score - a.score : (b.deck.players ?? 0) - (a.deck.players ?? 0)
+        );
         const alternatives: ScoredDeck[] = [];
-        for (const { deck, score } of eligible) {
+        for (const { deck, score } of altPool) {
             if (alternatives.length >= DeckAnalyzer.ALTERNATIVE_POOL_SIZE) {
                 break;
             }
