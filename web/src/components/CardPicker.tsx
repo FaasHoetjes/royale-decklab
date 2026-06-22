@@ -108,7 +108,8 @@ interface CardPickerProps {
   descending: boolean;
   setDescending: Dispatch<SetStateAction<boolean>>;
   // Champions may only live in the hero/both slots. When the picker's deck has
-  // no free champion slot left, champions are dropped from the grid entirely.
+  // no free champion slot left, champions still show but render greyed-out and
+  // unpickable.
   allowChampions: boolean;
 }
 
@@ -233,14 +234,16 @@ export default function CardPicker({
     return sortedCards.filter(
       (c) =>
         (!q || c.name.toLowerCase().includes(q)) &&
-        matchesFilters(c, filters) &&
-        (allowChampions || c.rarity !== 'champion')
+        matchesFilters(c, filters)
     );
-  }, [sortedCards, query, filters, allowChampions]);
+  }, [sortedCards, query, filters]);
 
   const renderCard = (card: BuilderCard) => {
     const isUsed = usedIds.has(card.id);
-    const selectable = card.owned && !isUsed;
+    // A champion with no free champion slot left in this deck shows greyed-out
+    // and unpickable, rather than vanishing from the grid.
+    const championBlocked = !allowChampions && card.rarity === 'champion';
+    const selectable = card.owned && !isUsed && !championBlocked;
 
     // With the Evolution filter on, show the evo art for cards whose evo the
     // player owns; with Hero & Champion on, show the hero art for hero cards
@@ -268,7 +271,9 @@ export default function CardPicker({
             ? `${card.name} (not owned)`
             : isUsed
               ? `${card.name} (already in a deck)`
-              : card.name
+              : championBlocked
+                ? `${card.name} (no champion slot left in this deck)`
+                : card.name
         }
         style={{
           ...styles.cardButton,

@@ -278,7 +278,32 @@ export default function WarDeckBuilder() {
               borderColor: theme.border,
             }}
           >
-            <h3 style={{ ...styles.deckTitle, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
+            <div style={styles.deckHeader}>
+              <h3 style={{ ...styles.deckTitle, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
+              {(() => {
+                // Average elixir over the cards actually placed in this deck.
+                // Shown only once at least one card is in, so an empty deck
+                // doesn't read as "0.0".
+                const costs = deck
+                  .map((id) => (id != null ? cardById.get(id)?.elixirCost : null))
+                  .filter((c): c is number => c != null);
+                if (costs.length === 0) return null;
+                const avg = costs.reduce((sum, c) => sum + c, 0) / costs.length;
+                return (
+                  <span style={{ ...styles.deckAvgElixir, color: theme.text.secondary }}>
+                    <svg viewBox="0 0 28 30" style={styles.deckAvgElixirDrop} aria-hidden="true">
+                      <path
+                        d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
+                        fill="#d63bd6"
+                        stroke="#000000"
+                        strokeWidth="1.6"
+                      />
+                    </svg>
+                    Avg {avg.toFixed(1)}
+                  </span>
+                );
+              })()}
+            </div>
             <div style={styles.slotGrid}>
               {deck.map((cardId, slotIndex) => {
                 const card = cardId != null ? cardById.get(cardId) : null;
@@ -468,10 +493,27 @@ const styles = {
     borderRadius: '12px',
     padding: '20px',
   },
-  deckTitle: {
-    marginTop: 0,
+  deckHeader: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
     marginBottom: '16px',
+  },
+  deckTitle: {
+    margin: 0,
     fontSize: '16px',
+  },
+  deckAvgElixir: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '4px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+  },
+  deckAvgElixirDrop: {
+    width: '15px',
+    height: '16px',
+    filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))',
   },
   slotGrid: {
     display: 'grid' as const,
