@@ -107,6 +107,9 @@ interface CardPickerProps {
   setSortIndex: Dispatch<SetStateAction<number>>;
   descending: boolean;
   setDescending: Dispatch<SetStateAction<boolean>>;
+  // Champions may only live in the hero/both slots. When the picker's deck has
+  // no free champion slot left, champions are dropped from the grid entirely.
+  allowChampions: boolean;
 }
 
 export default function CardPicker({
@@ -121,6 +124,7 @@ export default function CardPicker({
   setSortIndex,
   descending,
   setDescending,
+  allowChampions,
 }: CardPickerProps) {
   const theme = getTheme(isDarkMode);
 
@@ -228,9 +232,11 @@ export default function CardPicker({
     const q = query.trim().toLowerCase();
     return sortedCards.filter(
       (c) =>
-        (!q || c.name.toLowerCase().includes(q)) && matchesFilters(c, filters)
+        (!q || c.name.toLowerCase().includes(q)) &&
+        matchesFilters(c, filters) &&
+        (allowChampions || c.rarity !== 'champion')
     );
-  }, [sortedCards, query, filters]);
+  }, [sortedCards, query, filters, allowChampions]);
 
   const renderCard = (card: BuilderCard) => {
     const isUsed = usedIds.has(card.id);

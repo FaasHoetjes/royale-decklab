@@ -33,6 +33,10 @@ function availableVersions(card: BuilderCard, kind: SlotKind | null): SpecialVer
 const DECK_COUNT = 4;
 const SLOTS_PER_DECK = 8;
 
+// Champions may only occupy the 2nd/3rd slots (the hero + both slots, indices
+// 1 and 2). Picking a champion routes it into the first free one of these.
+const CHAMPION_SLOTS = [1, 2];
+
 type DeckState = (number | null)[][];
 
 const emptyDecks = (): DeckState =>
@@ -169,7 +173,16 @@ export default function WarDeckBuilder() {
 
   const handleSelectCard = (cardId: number) => {
     if (!picker) return;
-    setSlot(picker.deckIndex, picker.slotIndex, cardId);
+    const card = cardById.get(cardId);
+    let target = picker.slotIndex;
+    // Champions are confined to the hero/both slots. If the clicked slot isn't
+    // one of them, route the champion into the first free champion slot instead.
+    if (card?.rarity === 'champion' && !CHAMPION_SLOTS.includes(picker.slotIndex)) {
+      const free = CHAMPION_SLOTS.find((i) => decks[picker.deckIndex]?.[i] == null);
+      if (free == null) return; // no room — picker should have hidden champions
+      target = free;
+    }
+    setSlot(picker.deckIndex, target, cardId);
     setPicker(null);
   };
 
@@ -424,6 +437,7 @@ export default function WarDeckBuilder() {
           setSortIndex={setPickerSortIndex}
           descending={pickerDescending}
           setDescending={setPickerDescending}
+          allowChampions={CHAMPION_SLOTS.some((i) => decks[picker.deckIndex]?.[i] == null)}
         />
       )}
     </div>
