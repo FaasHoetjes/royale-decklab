@@ -53,12 +53,34 @@ export default function WarDeckBuilder() {
   // matching the swap modal's win-rate accent.
   const scoreAccent = isDarkMode ? '#e8b24a' : '#007bff';
 
-  const [catalog, setCatalog] = useState<CatalogCard[]>([]);
-  const [owned, setOwned] = useState<OwnedCard[]>([]);
+  const [catalog, setCatalog] = useState<CatalogCard[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('wdb_catalog');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [owned, setOwned] = useState<OwnedCard[]>(() => {
+    try {
+      if (!activePlayerTag) return [];
+      const saved = sessionStorage.getItem(`wdb_owned_${activePlayerTag}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [decks, setDecks] = useState<DeckState>(emptyDecks);
+  const [decks, setDecks] = useState<DeckState>(() => {
+    try {
+      const saved = sessionStorage.getItem('wdb_decks');
+      return saved ? JSON.parse(saved) : emptyDecks();
+    } catch {
+      return emptyDecks();
+    }
+  });
   const [picker, setPicker] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
   // Card-picker sort + filters live here (not inside CardPicker) so they survive
   // the picker unmounting on close — reopening it to add another card keeps the
@@ -70,18 +92,43 @@ export default function WarDeckBuilder() {
   // Player score per deck + the total across all four, scored on the backend
   // (meta match → real score, otherwise a level-based fieldability score). Null
   // until the first scoring round trip returns.
-  const [scores, setScores] = useState<ScoreDecksResponse | null>(null);
+  const [scores, setScores] = useState<ScoreDecksResponse | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('wdb_scores');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Per-slot override of which special art shows, keyed by `${deck}-${slot}`.
   // Only meaningful for slots where the player owns more than one version
   // (the "both" slot with both evo + hero unlocked); otherwise the sole
   // available version is used and this stays empty.
-  const [slotVersion, setSlotVersion] = useState<Record<string, SpecialVersion>>({});
+  const [slotVersion, setSlotVersion] = useState<Record<string, SpecialVersion>>(() => {
+    try {
+      const saved = sessionStorage.getItem('wdb_slotVersion');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Drag-to-swap state: the slot a drag started from, and the slot currently
   // hovered as a drop target (for the highlight).
   const [dragSource, setDragSource] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
   const [dragOver, setDragOver] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
+
+  // Persist state across page navigations (session-scoped). Guards prevent
+  // overwriting good cache with the empty initial values before fetches return.
+  useEffect(() => { sessionStorage.setItem('wdb_decks', JSON.stringify(decks)); }, [decks]);
+  useEffect(() => { sessionStorage.setItem('wdb_slotVersion', JSON.stringify(slotVersion)); }, [slotVersion]);
+  useEffect(() => { if (catalog.length > 0) sessionStorage.setItem('wdb_catalog', JSON.stringify(catalog)); }, [catalog]);
+  useEffect(() => {
+    if (activePlayerTag && owned.length > 0)
+      sessionStorage.setItem(`wdb_owned_${activePlayerTag}`, JSON.stringify(owned));
+  }, [owned, activePlayerTag]);
+  useEffect(() => { if (scores !== null) sessionStorage.setItem('wdb_scores', JSON.stringify(scores)); }, [scores]);
 
   // Fetch the full card catalog once.
   useEffect(() => {
