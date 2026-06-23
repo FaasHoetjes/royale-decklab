@@ -213,6 +213,31 @@ function createCardIdMap(playerCards: PlayerItemLevel[]): Map<number, PlayerItem
     return map;
 }
 
+// Exact-deck lookup index for the War Deck Builder: maps a deck's sorted-card-id
+// key to its meta entry, so a hand-built deck can be matched against the meta in
+// O(1). Rebuilt lazily whenever the meta cache changes (keyed on lastCacheTime),
+// so it never goes stale after a background refresh and costs nothing until the
+// builder first asks for a score.
+let metaIndex: Map<string, DeckMeta> = new Map();
+let metaIndexTime = -1;
+
+/** The sorted-card-id key used to match a deck against the meta index. */
+function deckKey(cardIds: number[]): string {
+    return [...cardIds].sort((a, b) => a - b).join(',');
+}
+
+function getMetaIndex(): Map<string, DeckMeta> {
+    if (metaIndexTime !== lastCacheTime) {
+        const index = new Map<string, DeckMeta>();
+        for (const deck of metaCache) {
+            index.set(deckKey(deck.cardIds), deck);
+        }
+        metaIndex = index;
+        metaIndexTime = lastCacheTime;
+    }
+    return metaIndex;
+}
+
 Bun.serve({
     port: 3000,
     async fetch(req) {
@@ -298,6 +323,53 @@ Bun.serve({
                     { status: 500 }
                 );
             }
+        }
+
+        // Score the four decks a player is hand-building in the War Deck Builder.
+        // The client sends the cards it has placed (with the player's levels +
+        // owned evo/hero tier) and the four decks as card-id lists, so we never
+        // re-hit the Clash Royale API here — scoring is a pure function of the
+        // payload plus the in-memory meta cache, fast enough to call live as the
+        // user edits. A deck that exactly matches a meta deck gets the real player
+        // score (identical to the generator); any other deck gets a fieldability
+        // score (level-based only), flagged isMeta:false so the UI can mark it.
+        if (pathname === '/api/score-decks' && req.method === 'POST') {
+            let body: any = {};
+            try {
+                body = await req.json();
+            } catch {
+                return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+            }
+
+            const cards = Array.isArray(body?.cards) ? body.cards : [];
+            const decks = Array.isArray(body?.decks) ? body.decks : [];
+            const playerCards = cards as PlayerItemLevel[];
+            const analyzer = new DeckAnalyzer();
+            const index = getMetaIndex();
+
+            const scored = (decks as Array<Array<number | null>>).map((deck) => {
+                const cardIds = (deck ?? []).filter((id): id is number => id != null);
+                if (cardIds.length === 0) {
+                    return { score: null, isMeta: false } as const;
+                }
+                // Only a complete eight-card deck can match a meta deck; anything
+                // shorter scores on the neutral prior.
+                const meta = cardIds.length === 8 ? index.get(deckKey(cardIds)) : undefined;
+                const result = analyzer.scoreBuilderDeck(playerCards, cardIds, meta);
+                if (!result) {
+                    return { score: null, isMeta: false } as const;
+                }
+                return {
+                    score: result.score,
+                    isMeta: result.isMeta,
+                    winRate: result.winRate,
+                    fieldability: result.fieldability,
+                    players: result.players,
+                };
+            });
+
+            const total = scored.reduce((sum, d) => sum + (d.score ?? 0), 0);
+            return Response.json({ decks: scored, total });
         }
 
         const collectionMatch = pathname.match(/^\/api\/player\/(.+)\/collection$/);

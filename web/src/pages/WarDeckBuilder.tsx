@@ -3,8 +3,10 @@ import CardPicker, { type BuilderCard, type FilterKey } from '../components/Card
 import {
   fetchAllCards,
   fetchPlayerCollection,
+  scoreBuilderDecks,
   type CatalogCard,
   type OwnedCard,
+  type ScoreDecksResponse,
 } from '../api';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
@@ -47,6 +49,9 @@ const emptyDecks = (): DeckState =>
 export default function WarDeckBuilder() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
+  // The one accent for a meta-backed score — gold in dark, blue in light —
+  // matching the swap modal's win-rate accent.
+  const scoreAccent = isDarkMode ? '#e8b24a' : '#007bff';
 
   const [catalog, setCatalog] = useState<CatalogCard[]>([]);
   const [owned, setOwned] = useState<OwnedCard[]>([]);
@@ -61,6 +66,11 @@ export default function WarDeckBuilder() {
   const [pickerFilters, setPickerFilters] = useState<Set<FilterKey>>(new Set());
   const [pickerSortIndex, setPickerSortIndex] = useState(0);
   const [pickerDescending, setPickerDescending] = useState(false);
+
+  // Player score per deck + the total across all four, scored on the backend
+  // (meta match → real score, otherwise a level-based fieldability score). Null
+  // until the first scoring round trip returns.
+  const [scores, setScores] = useState<ScoreDecksResponse | null>(null);
 
   // Per-slot override of which special art shows, keyed by `${deck}-${slot}`.
   // Only meaningful for slots where the player owns more than one version
@@ -127,11 +137,13 @@ export default function WarDeckBuilder() {
         // Whether the card CAN be a hero — a hero icon exists, or the catalog
         // says it reaches evolution tier 2. Used to list it under Hero & Champion.
         isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
-        // Tiers the player actually OWNS, from evolutionLevel (>= 1 evo, >= 2
-        // hero) — matching how the backend detects ownership. Drives whether we
-        // swap in the special art; the icon merely existing is not ownership.
+        // Ownership signals. evolutionLevel is per-player and tracks which tier the
+        // player has unlocked: 0 = neither, >= 1 = evo tier, >= 2 = hero tier.
+        // The player API's iconUrls.evolutionMedium appears for every card that
+        // CAN evolve (not just owned ones), so it's unreliable as an ownership
+        // signal. heroMedium is only returned for owned heroes, so it's still safe.
         hasEvo: (ownedCard?.evolutionLevel ?? 0) >= 1,
-        ownsHero: (ownedCard?.evolutionLevel ?? 0) >= 2,
+        ownsHero: !!ownedCard?.iconUrls?.heroMedium,
         iconUrls: {
           medium: c.iconUrls?.medium,
           evolutionMedium: c.iconUrls?.evolutionMedium,
@@ -151,6 +163,48 @@ export default function WarDeckBuilder() {
     decks.forEach((deck) => deck.forEach((id) => id != null && set.add(id)));
     return set;
   }, [decks]);
+
+  // Score the decks on the backend whenever they change, debounced so a flurry
+  // of edits sends one request. Empty boards skip the round trip entirely and
+  // just clear the scores. We send only the cards actually placed (with the
+  // player's levels + owned evo/hero tier) so the server never re-fetches the
+  // collection — scoring is reactive without hammering the Clash Royale API.
+  useEffect(() => {
+    const placedIds = [...usedIds];
+    if (placedIds.length === 0) {
+      setScores(null);
+      return;
+    }
+    const cards = placedIds
+      .map((id) => cardById.get(id))
+      .filter((c): c is BuilderCard => c != null && c.level != null)
+      .map((c) => ({
+        id: c.id,
+        level: c.level as number,
+        maxLevel: c.maxLevel ?? 16,
+        // The scorer only needs the tier thresholds (>=1 evo, >=2 hero), which
+        // the builder tracks as the owned-version booleans.
+        evolutionLevel: c.ownsHero ? 2 : c.hasEvo ? 1 : 0,
+        rarity: c.rarity,
+      }));
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      scoreBuilderDecks(cards, decks)
+        .then((res) => {
+          if (!cancelled) setScores(res);
+        })
+        .catch(() => {
+          // A failed scoring pass shouldn't surface as a page error — the decks
+          // are still fully usable, just unscored until the next change.
+          if (!cancelled) setScores(null);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [decks, cardById, usedIds]);
 
   // Drop any version override for a slot — used whenever its card changes, so a
   // new card never inherits the previous occupant's evo/hero choice.
@@ -261,7 +315,18 @@ export default function WarDeckBuilder() {
   return (
     <div style={styles.container}>
       <div style={{ ...styles.header, borderBottomColor: theme.border }}>
-        <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>
+        <div style={styles.titleRow}>
+          <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>
+          {scores && scores.total > 0 && (
+            <span
+              style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
+              title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (win rate × fieldability × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck."
+            >
+              <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
+              <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
+            </span>
+          )}
+        </div>
         <p style={{ ...styles.subtitle, color: theme.text.secondary, marginTop: '8px' }}>
           Each card can be used once across all four decks. Click a slot to choose a card; drag a card to swap it with another slot; click a filled card to remove it.
         </p>
@@ -280,29 +345,65 @@ export default function WarDeckBuilder() {
           >
             <div style={styles.deckHeader}>
               <h3 style={{ ...styles.deckTitle, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
-              {(() => {
-                // Average elixir over the cards actually placed in this deck.
-                // Shown only once at least one card is in, so an empty deck
-                // doesn't read as "0.0".
-                const costs = deck
-                  .map((id) => (id != null ? cardById.get(id)?.elixirCost : null))
-                  .filter((c): c is number => c != null);
-                if (costs.length === 0) return null;
-                const avg = costs.reduce((sum, c) => sum + c, 0) / costs.length;
-                return (
-                  <span style={{ ...styles.deckAvgElixir, color: theme.text.secondary }}>
-                    <svg viewBox="0 0 28 30" style={styles.deckAvgElixirDrop} aria-hidden="true">
-                      <path
-                        d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
-                        fill="#d63bd6"
-                        stroke="#000000"
-                        strokeWidth="1.6"
-                      />
-                    </svg>
-                    Avg {avg.toFixed(1)}
-                  </span>
-                );
-              })()}
+              <div style={styles.deckHeaderStats}>
+                {(() => {
+                  // Average elixir over the cards actually placed in this deck.
+                  // Shown only once at least one card is in, so an empty deck
+                  // doesn't read as "0.0".
+                  const costs = deck
+                    .map((id) => (id != null ? cardById.get(id)?.elixirCost : null))
+                    .filter((c): c is number => c != null);
+                  if (costs.length === 0) return null;
+                  const avg = costs.reduce((sum, c) => sum + c, 0) / costs.length;
+                  return (
+                    <span style={{ ...styles.deckAvgElixir, color: theme.text.secondary }}>
+                      <svg viewBox="0 0 28 30" style={styles.deckAvgElixirDrop} aria-hidden="true">
+                        <path
+                          d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z"
+                          fill="#d63bd6"
+                          stroke="#000000"
+                          strokeWidth="1.6"
+                        />
+                      </svg>
+                      Avg {avg.toFixed(1)}
+                    </span>
+                  );
+                })()}
+                {(() => {
+                  // Player score for this deck. A meta-matched deck (★, accent) is
+                  // scored exactly like the auto-generated recommendations (so a
+                  // hand-built meta deck reads on the same scale and can't outrank
+                  // them); any other deck (~, muted) is an unproven estimate using a
+                  // neutral 50% prior, dampened below proven decks. Nothing shows
+                  // until a card is placed.
+                  const ds = scores?.decks[deckIndex];
+                  if (!ds || ds.score == null) return null;
+                  const filled = deck.filter((id) => id != null).length;
+                  const winPct = ((ds.winRate ?? 0) * 100).toFixed(1);
+                  const fieldPct = ((ds.fieldability ?? 0) * 100).toFixed(0);
+                  if (ds.isMeta) {
+                    return (
+                      <span
+                        style={{ ...styles.deckScore, color: scoreAccent }}
+                        title={`Meta deck — same score as the auto-generated decks: ${winPct}% win rate × ${fieldPct}% fieldability × how widely it's played (${ds.players} player${ds.players === 1 ? '' : 's'}).`}
+                      >
+                        ★ {ds.score.toFixed(3)}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span
+                      style={{ ...styles.deckScore, color: theme.text.secondary }}
+                      title={
+                        `Estimated${filled < SLOTS_PER_DECK ? ` (${filled}/${SLOTS_PER_DECK} cards)` : ''} — not a known meta deck. Assumes a 50% win rate ` +
+                        `× ${fieldPct}% fieldability (how close to maxed you can field it), then dampened for being unproven (no one on record runs it) so it ranks below any proven meta deck. Build a known meta deck to score higher.`
+                      }
+                    >
+                      ~ {ds.score.toFixed(3)}
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
             <div style={styles.slotGrid}>
               {deck.map((cardId, slotIndex) => {
@@ -483,6 +584,31 @@ const styles = {
     paddingBottom: '20px',
     borderBottom: '1px solid #e0e0e0',
   },
+  titleRow: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '16px',
+    flexWrap: 'wrap' as const,
+  },
+  totalScore: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '8px',
+    padding: '6px 14px',
+    borderRadius: '999px',
+    border: '1.5px solid',
+    fontSize: '16px',
+    fontWeight: 800 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+    cursor: 'help' as const,
+  },
+  totalScoreLabel: {
+    fontSize: '11px',
+    fontWeight: 600 as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
   deckList: {
     display: 'grid' as const,
     gridTemplateColumns: '1fr',
@@ -503,12 +629,26 @@ const styles = {
     margin: 0,
     fontSize: '16px',
   },
+  deckHeaderStats: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '14px',
+  },
   deckAvgElixir: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '4px',
     fontSize: '13px',
     fontWeight: 700 as const,
+  },
+  deckScore: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '3px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+    cursor: 'help' as const,
   },
   deckAvgElixirDrop: {
     width: '15px',

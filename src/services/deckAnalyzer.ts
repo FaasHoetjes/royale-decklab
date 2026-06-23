@@ -239,6 +239,108 @@ export default class DeckAnalyzer {
         return playerScore;
     }
 
+    /**
+     * The player-controllable strength of an ARBITRARY deck — the `levelWeight`
+     * term of the full player score on its own. It's the average fraction of full
+     * combat stats the player fields across the deck, from the same ~10%-per-level
+     * curve used in scoreDecksForPlayer (see STAT_GROWTH_PER_LEVEL). Used by the
+     * War Deck Builder for decks that aren't in the meta: with no measured win rate
+     * or popularity for a hand-built deck, fieldability is the honest signal we can
+     * give ("how close to maxed can you run this?"). There's no version penalty
+     * either — the builder fields exactly the evo/hero art the player owns, so
+     * there's no meta version to fall short of. Returns null if any card isn't in
+     * the player's collection. Kept deliberately consistent with the levelWeight
+     * computed in scoreDecksForPlayer so a deck's fieldability and its meta score
+     * agree on the level term.
+     */
+    fieldabilityScore(playerCards: PlayerItemLevel[], cardIds: number[]): number | null {
+        const cardMap = new Map<number, PlayerItemLevel>();
+        for (const card of playerCards) {
+            cardMap.set(card.id, card);
+        }
+
+        let totalStatFraction = 0;
+        let validCards = 0;
+        for (const cardId of cardIds) {
+            const playerCard = cardMap.get(cardId);
+            if (!playerCard) {
+                return null;
+            }
+            const levelsBelowMax = Math.max(0, playerCard.maxLevel - playerCard.level);
+            totalStatFraction += Math.pow(DeckAnalyzer.STAT_GROWTH_PER_LEVEL, -levelsBelowMax);
+            validCards++;
+        }
+        if (validCards === 0) {
+            return null;
+        }
+        const avgStatFraction = totalStatFraction / validCards;
+        return Math.pow(avgStatFraction, DeckAnalyzer.LEVEL_SENSITIVITY);
+    }
+
+    // The prior win rate assumed for a deck we have no meta data on. A deck the
+    // player invents has zero observed games, so the honest expectation is the
+    // population baseline: in 1v1 war/ladder every battle has one winner and one
+    // loser, so an arbitrary deck is a coin flip until evidence says otherwise.
+    // This keeps a custom deck's score on the SAME scale as a meta deck's (both
+    // are winRate × fieldability) instead of the two living in different ranges.
+    private static readonly NEUTRAL_WIN_RATE = 0.5;
+
+    /**
+     * Scores a single War Deck Builder deck on the SAME scale as the auto-generated
+     * recommendations, so a hand-built deck and a recommended deck are directly
+     * comparable.
+     *
+     *  - A deck that IS a known meta deck is scored by delegating to
+     *    scoreDecksForPlayer — the identical formula the generator uses
+     *    (metaStrength × levelWeight × avgVersionMultiplier × popularityFactor).
+     *    Rebuilding a recommended deck by hand therefore shows its exact recommended
+     *    score, and a hand-built meta deck can never outrank the optimized set on a
+     *    scale mismatch (the bug this fixes: the builder used to omit popularityFactor
+     *    and so inflated every meta deck above its real score).
+     *  - A deck that ISN'T in the meta is unproven: no measured win rate, and nobody
+     *    on record fielding it. It gets the neutral coin-flip win rate (NEUTRAL_WIN_RATE)
+     *    and the popularity treatment of a deck played by a single person —
+     *    popularityFactor(1), since the only player we know runs it is the user. That
+     *    keeps it strictly below every recommendable meta deck (whose popularity gate
+     *    floor is MIN_DISTINCT_PLAYERS) while fieldability still orders one invented
+     *    deck against another. Same winRate × fieldability × popularity shape as the
+     *    meta path, just with prior values in place of measured ones.
+     *
+     * Returns null when the deck can't be scored (empty, or a card missing from the
+     * player's collection).
+     */
+    scoreBuilderDeck(
+        playerCards: PlayerItemLevel[],
+        cardIds: number[],
+        meta?: DeckMeta
+    ): { score: number; winRate: number; fieldability: number; isMeta: boolean; players: number } | null {
+        const fieldability = this.fieldabilityScore(playerCards, cardIds);
+        if (fieldability === null) {
+            return null;
+        }
+        if (meta) {
+            const score = this.scoreDecksForPlayer(playerCards, meta, meta.cardVersions);
+            if (score === null) {
+                return null;
+            }
+            return {
+                score,
+                winRate: meta.confidence ?? meta.winRate,
+                fieldability,
+                isMeta: true,
+                players: meta.players ?? 0,
+            };
+        }
+        const score = DeckAnalyzer.NEUTRAL_WIN_RATE * fieldability * this.popularityFactor(1);
+        return {
+            score,
+            winRate: DeckAnalyzer.NEUTRAL_WIN_RATE,
+            fieldability,
+            isMeta: false,
+            players: 0,
+        };
+    }
+
     // How many extra decks beyond the primary four to return as swap candidates.
     // The UI offers up to a few valid alternatives per slot after filtering out
     // decks that clash with the three decks being kept; meta decks share a lot of

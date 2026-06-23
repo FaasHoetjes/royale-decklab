@@ -83,6 +83,49 @@ export async function fetchAllCards(): Promise<{ cards: CatalogCard[] }> {
   return response.json();
 }
 
+// One deck's score in the War Deck Builder: always `winRate × fieldability` on a
+// single comparable scale. A meta-matched deck (`isMeta: true`) uses its real
+// confidence-adjusted win rate + carries the player count; any other deck uses a
+// neutral 0.5 win-rate prior. `score` is null when the deck is empty or a card is
+// missing from the collection.
+export interface BuilderDeckScore {
+  score: number | null;
+  isMeta: boolean;
+  // The win-rate factor used (real confidence for meta decks, 0.5 prior otherwise)
+  // and the level-based fieldability factor. Present whenever score is non-null.
+  winRate?: number;
+  fieldability?: number;
+  players?: number;
+}
+
+export interface ScoreDecksResponse {
+  decks: BuilderDeckScore[];
+  total: number;
+}
+
+export interface ScoreDeckCard {
+  id: number;
+  level: number;
+  maxLevel: number;
+  evolutionLevel: number;
+  rarity?: string;
+}
+
+export async function scoreBuilderDecks(
+  cards: ScoreDeckCard[],
+  decks: (number | null)[][]
+): Promise<ScoreDecksResponse> {
+  const response = await fetch('/api/score-decks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cards, decks }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to score decks: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchPlayerCollection(
   playerTag: string
 ): Promise<{ player: { tag: string; name: string }; cards: OwnedCard[] }> {
