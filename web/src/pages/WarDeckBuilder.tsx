@@ -316,6 +316,20 @@ export default function WarDeckBuilder() {
     clearVersions(`${a.deckIndex}-${a.slotIndex}`, `${b.deckIndex}-${b.slotIndex}`);
   };
 
+  // Returns true when dropping dragSource onto target would violate the champion-slot rule.
+  const isChampionViolation = (
+    src: { deckIndex: number; slotIndex: number },
+    tgt: { deckIndex: number; slotIndex: number }
+  ): boolean => {
+    const draggedId = decks[src.deckIndex]?.[src.slotIndex];
+    const targetId = decks[tgt.deckIndex]?.[tgt.slotIndex];
+    const draggedCard = draggedId != null ? cardById.get(draggedId) : null;
+    const targetCard = targetId != null ? cardById.get(targetId) : null;
+    if (draggedCard?.rarity === 'champion' && !CHAMPION_SLOTS.includes(tgt.slotIndex)) return true;
+    if (targetCard?.rarity === 'champion' && !CHAMPION_SLOTS.includes(src.slotIndex)) return true;
+    return false;
+  };
+
   const handleDragStart = (e: DragEvent, deckIndex: number, slotIndex: number) => {
     if (decks[deckIndex]?.[slotIndex] == null) {
       e.preventDefault();
@@ -330,7 +344,7 @@ export default function WarDeckBuilder() {
   const handleDragOver = (e: DragEvent, deckIndex: number, slotIndex: number) => {
     if (!dragSource) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = isChampionViolation(dragSource, { deckIndex, slotIndex }) ? 'none' : 'move';
     if (dragOver?.deckIndex !== deckIndex || dragOver?.slotIndex !== slotIndex) {
       setDragOver({ deckIndex, slotIndex });
     }
@@ -339,6 +353,24 @@ export default function WarDeckBuilder() {
   const handleDrop = (e: DragEvent, deckIndex: number, slotIndex: number) => {
     e.preventDefault();
     if (!dragSource) return;
+
+    // Champions may only live in CHAMPION_SLOTS. If the swap would place a
+    // champion in a plain slot (or displace a champion to one), cancel the drop.
+    const draggedId = decks[dragSource.deckIndex]?.[dragSource.slotIndex];
+    const targetId = decks[deckIndex]?.[slotIndex];
+    const draggedCard = draggedId != null ? cardById.get(draggedId) : null;
+    const targetCard = targetId != null ? cardById.get(targetId) : null;
+    if (draggedCard?.rarity === 'champion' && !CHAMPION_SLOTS.includes(slotIndex)) {
+      setDragSource(null);
+      setDragOver(null);
+      return;
+    }
+    if (targetCard?.rarity === 'champion' && !CHAMPION_SLOTS.includes(dragSource.slotIndex)) {
+      setDragSource(null);
+      setDragOver(null);
+      return;
+    }
+
     swapSlots(dragSource, { deckIndex, slotIndex });
     setDragSource(null);
     setDragOver(null);
@@ -482,6 +514,9 @@ export default function WarDeckBuilder() {
                   dragSource?.deckIndex === deckIndex && dragSource?.slotIndex === slotIndex;
                 const isDropTarget =
                   dragOver?.deckIndex === deckIndex && dragOver?.slotIndex === slotIndex;
+                const isInvalidDropTarget =
+                  isDropTarget && dragSource != null &&
+                  isChampionViolation(dragSource, { deckIndex, slotIndex });
 
                 return (
                   <button
@@ -508,7 +543,7 @@ export default function WarDeckBuilder() {
                           style={{
                             ...styles.slotCard,
                             ...(kind ? slotBorderStyle(kind) : {}),
-                            ...(isDropTarget ? styles.slotDropTarget : {}),
+                            ...(isInvalidDropTarget ? styles.slotDropTargetInvalid : isDropTarget ? styles.slotDropTarget : {}),
                           }}
                         >
                           {iconUrl && (
@@ -575,7 +610,7 @@ export default function WarDeckBuilder() {
                                 false
                               )
                             : {}),
-                          ...(isDropTarget ? styles.slotDropTarget : {}),
+                          ...(isInvalidDropTarget ? styles.slotDropTargetInvalid : isDropTarget ? styles.slotDropTarget : {}),
                         }}
                       >
                         <span style={{ ...styles.plus, color: theme.text.secondary }}>+</span>
@@ -714,6 +749,7 @@ const styles = {
     cursor: 'pointer',
     display: 'block',
     width: '100%',
+    userSelect: 'none' as const,
   },
   slotCard: {
     position: 'relative' as const,
@@ -734,6 +770,10 @@ const styles = {
   // Highlight a slot while a dragged card hovers over it.
   slotDropTarget: {
     outline: '3px solid #4dabf7',
+    outlineOffset: '2px',
+  },
+  slotDropTargetInvalid: {
+    outline: '3px solid #ff6b6b',
     outlineOffset: '2px',
   },
   // Small pill, top-right of a "both" slot, to flip between owned evo/hero art.
