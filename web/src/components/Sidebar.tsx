@@ -19,6 +19,7 @@ export default function Sidebar() {
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true },
     { to: '/builder', label: 'War Deck Builder', end: false },
+    { to: '/best-decks', label: 'Best War Decks', end: false },
     { to: '/faq', label: 'FAQ', end: false },
   ];
 

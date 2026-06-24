@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { slotKind, slotBorderStyle } from '../slotStyles';
 
 interface Card {
@@ -37,6 +37,8 @@ interface DeckCardProps {
   // header shows a "Swap" button that opens a picker of alternative decks.
   canSwap?: boolean;
   onSwap?: () => void;
+  scoreLabel?: string;
+  scoreTooltip?: React.ReactNode;
 }
 
 export default function DeckCard({
@@ -53,6 +55,8 @@ export default function DeckCard({
   isDarkMode,
   canSwap,
   onSwap,
+  scoreLabel,
+  scoreTooltip,
 }: DeckCardProps) {
   const [showWinRateInfo, setShowWinRateInfo] = useState(false);
   const [showPlayerScoreInfo, setShowPlayerScoreInfo] = useState(false);
@@ -200,20 +204,24 @@ export default function DeckCard({
         </div>
         <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}`, position: 'relative' as const }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
-            Player Score
+            {scoreLabel ?? 'Player Score'}
             <span
               style={{ ...styles.infoIcon, borderColor: theme.statsLabel, color: theme.statsLabel }}
               onMouseEnter={() => setShowPlayerScoreInfo(true)}
               onMouseLeave={() => setShowPlayerScoreInfo(false)}
               role="img"
-              aria-label="How the player score is derived"
+              aria-label="How the score is derived"
             >
               i
               {showPlayerScoreInfo && (
                 <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
-                  <strong>How well this meta deck fits your collection.</strong>
-                  <br />
-                  Confidence-adjusted win rate × your card levels × evolutions/heroes you've unlocked. Only decks a meaningful number of top players run are shown.
+                  {scoreTooltip ?? (
+                    <>
+                      <strong>How well this meta deck fits your collection.</strong>
+                      <br />
+                      Confidence-adjusted win rate × your card levels × evolutions/heroes you've unlocked. Only decks a meaningful number of top players run are shown.
+                    </>
+                  )}
                 </span>
               )}
             </span>

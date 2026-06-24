@@ -126,6 +126,48 @@ export async function scoreBuilderDecks(
   return response.json();
 }
 
+export interface BestDeckCard {
+  id: number;
+  name: string;
+  maxLevel: number;
+  elixirCost?: number;
+  rarity?: string;
+  iconUrls?: {
+    medium?: string;
+    evolutionMedium?: string;
+    heroMedium?: string;
+  };
+}
+
+export interface BestDeckEntry {
+  cardIds: number[];
+  winRate: number;
+  confidence: number;
+  uses: number;
+  players: number;
+  pickRate: number;
+  metaScore: number;
+  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
+  cards: BestDeckCard[];
+}
+
+export interface BestDeckSet {
+  decks: BestDeckEntry[];
+  totalScore: number;
+}
+
+export interface BestDecksResponse {
+  sets: BestDeckSet[];
+}
+
+export async function fetchBestDecks(): Promise<BestDecksResponse> {
+  const response = await fetch('/api/best-decks');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch best decks: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchPlayerCollection(
   playerTag: string
 ): Promise<{ player: { tag: string; name: string }; cards: OwnedCard[] }> {

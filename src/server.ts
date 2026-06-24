@@ -312,6 +312,101 @@ Bun.serve({
             });
         }
 
+        if (pathname === '/api/best-decks' && req.method === 'GET') {
+            try {
+                const catalog = await getCardCatalog();
+                const cardMap = new Map<number, CatalogCard>();
+                for (const card of catalog) {
+                    cardMap.set(card.id, card);
+                }
+
+                const BEST_DECKS_POPULARITY_PRIOR = 8;
+                const BEST_DECKS_MIN_PLAYERS = 5;
+
+                const scoreMetaDeck = (deck: DeckMeta): number => {
+                    const p = deck.players;
+                    const pop = p === undefined ? 1 : (p <= 0 ? 0 : p / (p + BEST_DECKS_POPULARITY_PRIOR));
+                    return (deck.confidence ?? deck.winRate) * pop;
+                };
+
+                const eligible = metaCache
+                    .filter(d => d.players === undefined || d.players >= BEST_DECKS_MIN_PLAYERS)
+                    .map(d => ({ deck: d, score: scoreMetaDeck(d) }))
+                    .sort((a, b) => b.score - a.score);
+
+                const sets: Array<{ decks: typeof eligible[number][]; totalScore: number }> = [];
+                const seen = new Set<string>();
+
+                for (let i = 0; i < eligible.length && sets.length < 50; i++) {
+                    const seed = eligible[i];
+                    const usedCards = new Set<number>(seed.deck.cardIds);
+                    const picked = [seed];
+
+                    for (const candidate of eligible) {
+                        if (picked.length >= 4) break;
+                        if (candidate === seed) continue;
+                        if (candidate.deck.cardIds.some(id => usedCards.has(id))) continue;
+                        candidate.deck.cardIds.forEach(id => usedCards.add(id));
+                        picked.push(candidate);
+                    }
+
+                    if (picked.length < 4) continue;
+
+                    const key = picked.map(p => p.deck.cardIds.join(',')).sort().join('|');
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+
+                    sets.push({ decks: picked, totalScore: picked.reduce((s, p) => s + p.score, 0) });
+                }
+
+                sets.sort((a, b) => b.totalScore - a.totalScore);
+                const top = sets.slice(0, 10);
+
+                const result = top.map(set => ({
+                    decks: set.decks.map(s => {
+                        const rawVersions = new Map((s.deck.cardVersions ?? []).map(v => [v.cardId, v.version] as const));
+                        const cardVersions = s.deck.cardIds.map(cardId => {
+                            const catalogCard = cardMap.get(cardId);
+                            const isChampion = catalogCard?.rarity?.toLowerCase() === 'champion';
+                            const version: 'normal' | 'evo' | 'hero' =
+                                isChampion ? 'hero' : (rawVersions.get(cardId) ?? 'normal');
+                            return { cardId, version };
+                        });
+                        return {
+                            cardIds: s.deck.cardIds,
+                            winRate: s.deck.winRate,
+                            confidence: s.deck.confidence ?? s.deck.winRate,
+                            uses: s.deck.uses,
+                            players: s.deck.players ?? 0,
+                            pickRate: s.deck.pickRate ?? 0,
+                            metaScore: s.score,
+                            cardVersions,
+                            cards: s.deck.cardIds
+                                .map(id => {
+                                    const c = cardMap.get(id);
+                                    if (!c) return null;
+                                    return {
+                                        id: c.id,
+                                        name: c.name,
+                                        maxLevel: c.maxLevel,
+                                        elixirCost: c.elixirCost,
+                                        rarity: c.rarity,
+                                        iconUrls: c.iconUrls,
+                                    };
+                                })
+                                .filter((c): c is NonNullable<typeof c> => c !== null),
+                        };
+                    }),
+                    totalScore: set.totalScore,
+                }));
+
+                return Response.json({ sets: result });
+            } catch (error) {
+                console.error('Error generating best decks:', error);
+                return Response.json({ error: `Failed to generate best decks: ${error}` }, { status: 500 });
+            }
+        }
+
         if (pathname === '/api/cards' && req.method === 'GET') {
             try {
                 const catalog = await getCardCatalog();

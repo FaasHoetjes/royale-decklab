@@ -6,6 +6,7 @@ import Layout from './components/Layout'
 import WarDeckGenerator from './pages/WarDeckGenerator'
 import WarDeckBuilder from './pages/WarDeckBuilder'
 import Faq from './pages/Faq'
+import BestWarDecks from './pages/BestWarDecks'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<WarDeckGenerator />} />
             <Route path="/builder" element={<WarDeckBuilder />} />
             <Route path="/faq" element={<Faq />} />
+            <Route path="/best-decks" element={<BestWarDecks />} />
             <Route path="/:playerId" element={<WarDeckGenerator />} />
           </Route>
         </Routes>

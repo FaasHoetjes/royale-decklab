@@ -13,6 +13,7 @@ export interface CatalogCard {
     iconUrls?: {
         medium?: string;
         evolutionMedium?: string;
+        heroMedium?: string;
     };
 }
 
