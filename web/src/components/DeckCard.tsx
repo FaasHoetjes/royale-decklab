@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { slotKind, slotBorderStyle } from '../slotStyles';
+import { slotKind, slotBorderStyle, cardFrame } from '../slotStyles';
 import { buildDeckLink } from '../deckLink';
 import { useIsMobile } from '../useIsMobile';
 
@@ -102,7 +102,7 @@ export default function DeckCard({
   const theme = {
     // Container sits one level above the page; the stats strip is recessed one
     // level below it (a darker well) so the card reads as a layered object.
-    containerBg: isDarkMode ? '#161618' : '#ffffff',
+    containerBg: isDarkMode ? '#161618' : '#f6f7f9',
     containerBorder: isDarkMode ? '#2a2a2e' : '#e8ecf5',
     containerShadow: isDarkMode
       ? '0 8px 24px rgba(0, 0, 0, 0.45)'
@@ -112,7 +112,7 @@ export default function DeckCard({
     badgeBg: isDarkMode ? '#26262a' : '#f0f3ff',
     badgeText: isDarkMode ? '#c4c4cc' : '#3a6ea5',
     badgeBorder: isDarkMode ? '#34343a' : '#dbe4f5',
-    statsBg: isDarkMode ? '#101012' : '#f8f9ff',
+    statsBg: isDarkMode ? '#101012' : '#edeef2',
     statsBorder: isDarkMode ? '#2a2a2e' : '#eceef6',
     statsLabel: isDarkMode ? '#8a8a93' : '#6b7280',
     // Secondary metrics stay neutral; the headline (win rate) gets the accent.
@@ -121,10 +121,10 @@ export default function DeckCard({
     tooltipBg: isDarkMode ? '#000000' : '#1a1a1a',
     tooltipText: '#ffffff',
     tooltipBorder: isDarkMode ? '#3a3a3a' : '#1a1a1a',
-    cardBg: isDarkMode ? '#1e1e1e' : '#f8f9ff',
+    cardBg: isDarkMode ? '#1e1e1e' : '#edeef2',
     cardBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
     cardText: isDarkMode ? '#f4f4f5' : '#000000',
-    swapBg: isDarkMode ? '#26262a' : '#ffffff',
+    swapBg: isDarkMode ? '#26262a' : '#f6f7f9',
     swapIcon: isDarkMode ? '#f4f4f5' : '#007bff',
     divider: isDarkMode ? '#2a2a2e' : '#eceef6',
     // "Open in game": a clean, flat pill — quiet surface fill, accent text/icon,
@@ -270,17 +270,13 @@ export default function DeckCard({
                 <div
                   style={{
                     ...styles.card,
-                    backgroundColor: theme.cardBg,
-                    // On special slots, slotBorderStyle draws a transparent
-                    // border + a gradient via background border-box. A
-                    // `borderColor` longhand here would be emitted after the
-                    // `border` shorthand and override that transparent border
-                    // with solid grey — hiding the gradient ring and leaving
-                    // only the glow. So set the neutral border colour on normal
-                    // slots only.
+                    // Both branches set background + border + boxShadow, so the
+                    // dark backing/shadow baked into `styles.card` is fully
+                    // overridden — special slots keep their gradient ring, normal
+                    // slots get the theme-aware card frame (light mat in light mode).
                     ...(kind
-                      ? slotBorderStyle(kind)
-                      : { borderColor: theme.cardBorder }),
+                      ? slotBorderStyle(kind, isDarkMode)
+                      : cardFrame(isDarkMode)),
                   }}
                 >
                   {iconUrl && (

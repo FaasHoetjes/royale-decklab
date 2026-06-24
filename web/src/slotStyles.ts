@@ -14,6 +14,34 @@ export function slotKind(index: number): SlotKind | null {
 }
 
 const CARD_BG = 'linear-gradient(160deg, #2a3a6a 0%, #16213f 100%)';
+// Light-mode equivalent. The official card PNGs bake in a dark backdrop, but
+// their rounded corners are transparent — so this is what shows through at the
+// corners. A soft cool-grey mat lets the card read as sitting on a light page
+// instead of poking dark nubs into it.
+const CARD_BG_LIGHT = 'linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%)';
+
+// Softer, cooler drop shadow for light mode; the harsh near-black lift reads as
+// a grey halo against a light surface.
+const DROP_DARK = '0 3px 8px rgba(0, 0, 0, 0.25)';
+const DROP_LIGHT = '0 2px 8px rgba(30, 41, 59, 0.13)';
+
+/** The inner backdrop that shows through a card PNG's transparent corners. */
+export function cardBackdrop(isDark: boolean): string {
+  return isDark ? CARD_BG : CARD_BG_LIGHT;
+}
+
+/**
+ * Frame for a normal (non-special) card slot: the theme-aware backdrop plus a
+ * subtle border and a soft lift, so the dark card render looks intentional on a
+ * light page. Spread this over the static card-art style.
+ */
+export function cardFrame(isDark: boolean): CSSProperties {
+  return {
+    background: cardBackdrop(isDark),
+    border: isDark ? '2px solid rgba(0, 0, 0, 0.15)' : '1px solid rgba(30, 41, 59, 0.12)',
+    boxShadow: isDark ? DROP_DARK : DROP_LIGHT,
+  };
+}
 
 // `shadow` is the glow layer(s) of the box-shadow (the dark drop shadow is added
 // in slotBorderStyle). The 'both' slot splits its glow as well as its border —
@@ -42,17 +70,20 @@ const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
  */
 export function slotBorderStyle(
   kind: SlotKind,
-  innerBg: string = CARD_BG,
+  isDark: boolean,
+  innerBg?: string,
   glow: boolean = true,
 ): CSSProperties {
   const { grad, shadow } = BORDER[kind];
+  const fill = innerBg ?? cardBackdrop(isDark);
+  const drop = isDark ? DROP_DARK : DROP_LIGHT;
   return {
     border: '3px solid transparent',
     backgroundColor: 'transparent',
-    background: `${innerBg} padding-box, ${grad} border-box`,
+    background: `${fill} padding-box, ${grad} border-box`,
     // The coloured halo belongs to a real, filled card. On an empty slot it
     // reads as neon against the dark interior, so we keep only the soft drop
     // shadow there and let the gradient outline mark the slot quietly.
-    boxShadow: glow ? `${shadow}, 0 3px 8px rgba(0, 0, 0, 0.25)` : '0 3px 8px rgba(0, 0, 0, 0.25)',
+    boxShadow: glow ? `${shadow}, ${drop}` : drop,
   };
 }

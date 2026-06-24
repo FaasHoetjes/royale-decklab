@@ -2,10 +2,10 @@ export const getTheme = (isDark: boolean) => ({
   bg: {
     // A deliberate surface ladder so elevation reads at a glance: each level is
     // a clear step away from the page, instead of three near-identical greys.
-    primary: isDark ? '#0c0c0d' : '#f0f2f5', // page background (lowest)
-    secondary: isDark ? '#161618' : '#ffffff', // raised panels: sidebar, hero, deck cards
-    tertiary: isDark ? '#202023' : '#f8f9ff', // inset wells / nested surfaces
-    elevated: isDark ? '#26262a' : '#ffffff', // interactive surfaces sitting on top
+    primary: isDark ? '#0c0c0d' : '#e6e8ec', // page background (lowest)
+    secondary: isDark ? '#161618' : '#f6f7f9', // raised panels: sidebar, hero, deck cards
+    tertiary: isDark ? '#202023' : '#edeef2', // inset wells / nested surfaces
+    elevated: isDark ? '#26262a' : '#f6f7f9', // interactive surfaces sitting on top
   },
   text: {
     // Three roles: primary reads as the content, secondary as labels, tertiary

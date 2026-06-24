@@ -10,7 +10,7 @@ import {
 } from '../api';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { slotKind, slotBorderStyle, type SlotKind } from '../slotStyles';
+import { slotKind, slotBorderStyle, cardFrame, type SlotKind } from '../slotStyles';
 import { buildDeckLink, isCompleteDeck } from '../deckLink';
 
 type SpecialVersion = 'evo' | 'hero';
@@ -604,7 +604,7 @@ export default function WarDeckBuilder() {
                         <div
                           style={{
                             ...styles.slotCard,
-                            ...(kind ? slotBorderStyle(kind) : {}),
+                            ...(kind ? slotBorderStyle(kind, isDarkMode) : cardFrame(isDarkMode)),
                             ...(isInvalidDropTarget ? styles.slotDropTargetInvalid : isDropTarget ? styles.slotDropTarget : {}),
                           }}
                         >
@@ -660,6 +660,9 @@ export default function WarDeckBuilder() {
                       <div
                         style={{
                           ...styles.slotEmpty,
+                          // The default empty-slot border is near-black for the
+                          // dark theme; soften it to a subtle line in light mode.
+                          ...(isDarkMode ? {} : { border: `2px solid ${theme.border}` }),
                           // Fill the interior with the deck surface so an empty
                           // special slot blends in like the plain slots. Must be
                           // a gradient (image) not a bare colour: a colour in
@@ -668,6 +671,7 @@ export default function WarDeckBuilder() {
                           ...(kind
                             ? slotBorderStyle(
                                 kind,
+                                isDarkMode,
                                 `linear-gradient(${theme.bg.secondary}, ${theme.bg.secondary})`,
                                 false
                               )

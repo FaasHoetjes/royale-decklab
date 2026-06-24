@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { cardBackdrop } from '../slotStyles';
 
 interface Card {
   id: number;
@@ -172,7 +173,7 @@ export default function SwapDeckModal({
                   {opt.cards.map((card) => {
                     const icon = iconFor(opt, card);
                     return (
-                      <div key={card.id} style={styles.miniCard} title={card.name}>
+                      <div key={card.id} style={{ ...styles.miniCard, background: cardBackdrop(isDarkMode) }} title={card.name}>
                         {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
                       </div>
                     );

@@ -4,7 +4,7 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { fetchBestDecks, fetchPlayerCollection } from '../api';
 import type { BestDecksResponse, BestDeckEntry, BestDeckSet } from '../api';
-import { slotKind, slotBorderStyle } from '../slotStyles';
+import { slotKind, slotBorderStyle, cardFrame } from '../slotStyles';
 import { buildDeckLink } from '../deckLink';
 import { useIsMobile } from '../useIsMobile';
 
@@ -88,10 +88,11 @@ function CompactDeckRow({
                   aspectRatio: '0.82',
                   borderRadius: '7px',
                   overflow: 'hidden',
-                  background: 'linear-gradient(160deg, #2a3a6a 0%, #16213f 100%)',
+                  // Theme-aware backdrop + frame: light mat in light mode so the
+                  // card's transparent corners don't show the dark backing.
                   ...(kind
-                    ? slotBorderStyle(kind)
-                    : { border: '2px solid rgba(0,0,0,0.2)', boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }),
+                    ? slotBorderStyle(kind, isDarkMode)
+                    : cardFrame(isDarkMode)),
                 }}
               >
                 {icon && (

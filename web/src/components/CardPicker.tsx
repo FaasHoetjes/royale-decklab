@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
+import { cardFrame } from '../slotStyles';
 
 export interface BuilderCard {
   id: number;
@@ -281,7 +282,7 @@ export default function CardPicker({
           opacity: selectable ? 1 : 0.3,
         }}
       >
-        <div style={styles.cardArt}>
+        <div style={{ ...styles.cardArt, ...cardFrame(isDarkMode) }}>
           {iconUrl && (
             <img
               src={iconUrl}
