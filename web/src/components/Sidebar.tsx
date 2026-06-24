@@ -11,12 +11,12 @@ export default function Sidebar() {
   // The generator keys off the URL player id, so point it at the active tag.
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 
-  // Active nav item. Dark mode stays neutral grey for the fill and earns its
-  // identity from a single gold left accent bar + brighter text — no blue tint.
-  // Light mode fills with the blue accent as before.
-  const activeBg = isDarkMode ? theme.bg.elevated : theme.accent;
-  const activeText = isDarkMode ? theme.text.primary : '#ffffff';
-  const activeBar = isDarkMode ? `inset 3px 0 0 ${theme.accent}` : 'none';
+  // Active nav item. Both modes share the same shape: a neutral fill (slightly
+  // off the sidebar surface) that earns its identity from a single left accent
+  // bar + accent-colored text — gold in dark mode, blue in light mode.
+  const activeBg = isDarkMode ? theme.bg.elevated : theme.bg.tertiary;
+  const activeText = isDarkMode ? theme.text.primary : theme.accent;
+  const activeBar = `inset 3px 0 0 ${theme.accent}`;
 
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true, icon: <ZapIcon /> },
