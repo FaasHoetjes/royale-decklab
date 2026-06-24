@@ -185,12 +185,13 @@ export default function WarDeckBuilder() {
         // says it reaches evolution tier 2. Used to list it under Hero & Champion.
         isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
         // Ownership signals. evolutionLevel is per-player and tracks which tier the
-        // player has unlocked: 0 = neither, >= 1 = evo tier, >= 2 = hero tier.
-        // The player API's iconUrls.evolutionMedium appears for every card that
-        // CAN evolve (not just owned ones), so it's unreliable as an ownership
-        // signal. heroMedium is only returned for owned heroes, so it's still safe.
+        // player has unlocked: 0 = neither, >= 1 = evo tier, >= 2 = hero tier — the
+        // same signal the backend scorer uses. The iconUrls (both evolutionMedium
+        // AND heroMedium) appear for every card that CAN evolve / be a hero, not
+        // just owned ones, so they're useless as ownership signals — only the
+        // per-player evolutionLevel proves the tier is unlocked.
         hasEvo: (ownedCard?.evolutionLevel ?? 0) >= 1,
-        ownsHero: !!ownedCard?.iconUrls?.heroMedium,
+        ownsHero: (ownedCard?.evolutionLevel ?? 0) >= 2,
         iconUrls: {
           medium: c.iconUrls?.medium,
           evolutionMedium: c.iconUrls?.evolutionMedium,
@@ -381,6 +382,20 @@ export default function WarDeckBuilder() {
     setDragOver(null);
   };
 
+  // Clear every slot in a single deck (and drop that deck's version overrides).
+  const resetDeck = (deckIndex: number) => {
+    setDecks((prev) =>
+      prev.map((deck, di) => (di === deckIndex ? deck.map(() => null) : deck))
+    );
+    clearVersions(...Array.from({ length: SLOTS_PER_DECK }, (_, si) => `${deckIndex}-${si}`));
+  };
+
+  // Clear all four decks at once and wipe every version override.
+  const resetAll = () => {
+    setDecks(emptyDecks());
+    setSlotVersion({});
+  };
+
   // Flip a "both" slot between the player's owned evo and hero art.
   const toggleVersion = (deckIndex: number, slotIndex: number, versions: SpecialVersion[]) => {
     const key = `${deckIndex}-${slotIndex}`;
@@ -396,15 +411,27 @@ export default function WarDeckBuilder() {
       <div style={{ ...styles.header, borderBottomColor: theme.border }}>
         <div style={styles.titleRow}>
           <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>
-          {scores && scores.total > 0 && (
-            <span
-              style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
-              title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (win rate × fieldability × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck."
-            >
-              <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
-              <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
-            </span>
-          )}
+          <div style={styles.titleRowRight}>
+            {scores && scores.total > 0 && (
+              <span
+                style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
+                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (win rate × fieldability × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck."
+              >
+                <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
+                <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
+              </span>
+            )}
+            {usedIds.size > 0 && (
+              <button
+                onClick={resetAll}
+                aria-label="Clear all four decks"
+                style={{ ...styles.resetAllBtn, color: theme.text.secondary, borderColor: theme.border }}
+                title="Clear all four decks"
+              >
+                ⟲
+              </button>
+            )}
+          </div>
         </div>
         <p style={{ ...styles.subtitle, color: theme.text.secondary, marginTop: '8px' }}>
           Each card can be used once across all four decks. Click a slot to choose a card; drag a card to swap it with another slot; click a filled card to remove it.
@@ -425,6 +452,16 @@ export default function WarDeckBuilder() {
             <div style={styles.deckHeader}>
               <h3 style={{ ...styles.deckTitle, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
               <div style={styles.deckHeaderStats}>
+                {deck.some((id) => id != null) && (
+                  <button
+                    onClick={() => resetDeck(deckIndex)}
+                    aria-label={`Clear Deck ${deckIndex + 1}`}
+                    style={{ ...styles.resetDeckBtn, color: theme.text.secondary, borderColor: theme.border }}
+                    title={`Clear Deck ${deckIndex + 1}`}
+                  >
+                    ⟲
+                  </button>
+                )}
                 {(() => {
                   // Average elixir over the cards actually placed in this deck.
                   // Shown only once at least one card is in, so an empty deck
@@ -672,6 +709,40 @@ const styles = {
     justifyContent: 'space-between' as const,
     gap: '16px',
     flexWrap: 'wrap' as const,
+  },
+  titleRowRight: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '12px',
+    flexWrap: 'wrap' as const,
+  },
+  resetAllBtn: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    background: 'none',
+    border: '1.5px solid',
+    borderRadius: '50%',
+    width: '34px',
+    height: '34px',
+    padding: 0,
+    fontSize: '17px',
+    lineHeight: 1,
+    cursor: 'pointer',
+  },
+  resetDeckBtn: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    background: 'none',
+    border: '1px solid',
+    borderRadius: '50%',
+    width: '26px',
+    height: '26px',
+    padding: 0,
+    fontSize: '14px',
+    lineHeight: 1,
+    cursor: 'pointer',
   },
   totalScore: {
     display: 'inline-flex' as const,

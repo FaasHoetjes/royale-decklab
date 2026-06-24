@@ -329,38 +329,86 @@ Bun.serve({
                     return (deck.confidence ?? deck.winRate) * pop;
                 };
 
-                const eligible = metaCache
+                // Two near-identical decks (e.g. the same build with one card
+                // swapped) share this many or more of their 8 cards. Decks at or
+                // above this overlap are treated as the same archetype.
+                const ARCHETYPE_SHARED_CARDS = 6;
+                // A given deck (archetype) may appear in at most this many of the
+                // shown sets — stops one elite deck from dominating every set.
+                const MAX_DECK_REUSE = 2;
+                // The set search only ever pulls from the strongest decks, so cap
+                // the working pool once we have plenty of distinct archetypes.
+                const ARCHETYPE_POOL_SIZE = 150;
+
+                const scored = metaCache
                     .filter(d => d.players === undefined || d.players >= BEST_DECKS_MIN_PLAYERS)
                     .map(d => ({ deck: d, score: scoreMetaDeck(d) }))
                     .sort((a, b) => b.score - a.score);
 
-                const sets: Array<{ decks: typeof eligible[number][]; totalScore: number }> = [];
-                const seen = new Set<string>();
-
-                for (let i = 0; i < eligible.length && sets.length < 50; i++) {
-                    const seed = eligible[i];
-                    const usedCards = new Set<number>(seed.deck.cardIds);
-                    const picked = [seed];
-
-                    for (const candidate of eligible) {
-                        if (picked.length >= 4) break;
-                        if (candidate === seed) continue;
-                        if (candidate.deck.cardIds.some(id => usedCards.has(id))) continue;
-                        candidate.deck.cardIds.forEach(id => usedCards.add(id));
-                        picked.push(candidate);
-                    }
-
-                    if (picked.length < 4) continue;
-
-                    const key = picked.map(p => p.deck.cardIds.join(',')).sort().join('|');
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-
-                    sets.push({ decks: picked, totalScore: picked.reduce((s, p) => s + p.score, 0) });
+                // Collapse near-duplicate decks into archetypes: walking strongest
+                // first, keep a deck only if it shares fewer than ARCHETYPE_SHARED_CARDS
+                // cards with every deck already kept. This drops the "same deck, one
+                // card swapped" clones that otherwise flood the set list.
+                const eligible: typeof scored = [];
+                for (const cand of scored) {
+                    const cardSet = new Set<number>(cand.deck.cardIds);
+                    const isVariant = eligible.some(kept => {
+                        let shared = 0;
+                        for (const id of kept.deck.cardIds) if (cardSet.has(id)) shared++;
+                        return shared >= ARCHETYPE_SHARED_CARDS;
+                    });
+                    if (!isVariant) eligible.push(cand);
+                    if (eligible.length >= ARCHETYPE_POOL_SIZE) break;
                 }
 
-                sets.sort((a, b) => b.totalScore - a.totalScore);
-                const top = sets.slice(0, 10);
+                // Build up to 10 diverse sets in one budget-aware pass. The reuse
+                // budget must be enforced *while filling* each set, not just when
+                // selecting finished sets: every set is greedy-filled from the top
+                // of the list, so without the budget the same elite decks land in
+                // every candidate set and there's nothing diverse left to choose
+                // from. Once a deck has appeared in MAX_DECK_REUSE chosen sets it's
+                // no longer an available filler, which forces fresh decks into the
+                // later sets instead of reshuffling the same few.
+                const deckKeyOf = (p: typeof eligible[number]) => p.deck.cardIds.join(',');
+                const deckUse = new Map<string, number>();
+                const seen = new Set<string>();
+                const top: Array<{ decks: typeof eligible[number][]; totalScore: number }> = [];
+
+                const overBudget = (p: typeof eligible[number]) =>
+                    (deckUse.get(deckKeyOf(p)) ?? 0) >= MAX_DECK_REUSE;
+
+                const buildSets = (enforceBudget: boolean) => {
+                    for (let i = 0; i < eligible.length && top.length < 10; i++) {
+                        const seed = eligible[i];
+                        if (enforceBudget && overBudget(seed)) continue;
+
+                        const usedCards = new Set<number>(seed.deck.cardIds);
+                        const picked = [seed];
+                        for (const candidate of eligible) {
+                            if (picked.length >= 4) break;
+                            if (candidate === seed) continue;
+                            if (enforceBudget && overBudget(candidate)) continue;
+                            if (candidate.deck.cardIds.some(id => usedCards.has(id))) continue;
+                            candidate.deck.cardIds.forEach(id => usedCards.add(id));
+                            picked.push(candidate);
+                        }
+                        if (picked.length < 4) continue;
+
+                        const key = picked.map(deckKeyOf).sort().join('|');
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+
+                        picked.forEach(p => deckUse.set(deckKeyOf(p), (deckUse.get(deckKeyOf(p)) ?? 0) + 1));
+                        top.push({ decks: picked, totalScore: picked.reduce((s, p) => s + p.score, 0) });
+                    }
+                };
+
+                buildSets(true);
+                // Thin/narrow meta: if the reuse budget couldn't yield 10 distinct
+                // sets, relax it and top up with the best remaining disjoint sets.
+                if (top.length < 10) buildSets(false);
+
+                top.sort((a, b) => b.totalScore - a.totalScore);
 
                 const result = top.map(set => ({
                     decks: set.decks.map(s => {
