@@ -127,6 +127,11 @@ export default function DeckCard({
     swapBg: isDarkMode ? '#26262a' : '#ffffff',
     swapIcon: isDarkMode ? '#f4f4f5' : '#007bff',
     divider: isDarkMode ? '#2a2a2e' : '#eceef6',
+    // "Open in game": a clean, flat pill — quiet surface fill, accent text/icon,
+    // thin theme border. No gradient, no glow.
+    openInGameBg: isDarkMode ? '#26262a' : '#f0f3ff',
+    openInGameText: isDarkMode ? '#e8b24a' : '#007bff',
+    openInGameBorder: isDarkMode ? '#34343a' : '#dbe4f5',
   };
 
   const elixirOf = (c: Card) => (c.elixirCost ?? c.elixerCost) ?? 0;
@@ -179,7 +184,7 @@ export default function DeckCard({
             rel="noopener noreferrer"
             className="deck-swap-btn"
             title="Open this deck in Clash Royale"
-            style={{ ...styles.openInGame, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
+            style={{ ...styles.openInGame, backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }}
           >
             <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
               <path fill="currentColor" d="M8 5v14l11-7z" />
@@ -356,8 +361,8 @@ const styles = {
   openInGame: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    gap: '5px',
-    padding: '5px 10px',
+    gap: '6px',
+    padding: '5px 12px',
     borderRadius: '999px',
     border: '1px solid',
     fontSize: '11px',
@@ -365,7 +370,10 @@ const styles = {
     letterSpacing: '0.3px',
     textDecoration: 'none',
     cursor: 'pointer',
-    boxShadow: '0 2px 6px rgba(13, 27, 62, 0.12)',
+    whiteSpace: 'nowrap' as const,
+    // The title's cap height centres lower than the pill's box, so the pill reads
+    // as floating high against it — a 1px nudge down optically balances them.
+    marginTop: '2px',
   },
   openInGameIcon: {
     width: '12px',

@@ -19,10 +19,10 @@ export default function Sidebar() {
   const activeBar = isDarkMode ? `inset 3px 0 0 ${theme.accent}` : 'none';
 
   const navItems = [
-    { to: generatorTo, label: 'War Deck Generator', end: true },
-    { to: '/builder', label: 'War Deck Builder', end: false },
-    { to: '/best-decks', label: 'Best War Decks', end: false },
-    { to: '/faq', label: 'FAQ', end: false },
+    { to: generatorTo, label: 'War Deck Generator', end: true, icon: <ZapIcon /> },
+    { to: '/builder', label: 'War Deck Builder', end: false, icon: <GridIcon /> },
+    { to: '/best-decks', label: 'Best War Decks', end: false, icon: <TrophyIcon /> },
+    { to: '/faq', label: 'FAQ', end: false, icon: <HelpIcon /> },
   ];
 
   return (
@@ -55,10 +55,13 @@ export default function Sidebar() {
               ...styles.navLink,
               ...(isMobile ? styles.navLinkMobile : {}),
               color: isActive ? activeText : theme.text.secondary,
-              backgroundColor: isActive ? activeBg : 'transparent',
+              // Leave inactive items' background unset (not 'transparent') so the
+              // `.nav-link:not(.active):hover` CSS rule isn't beaten by an inline style.
+              backgroundColor: isActive ? activeBg : undefined,
               boxShadow: isActive ? activeBar : 'none',
             })}
           >
+            <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
@@ -75,16 +78,29 @@ export default function Sidebar() {
         )}
       </div>
 
-      {activePlayerTag && !isMobile && (
-        <div style={{ ...styles.playerBox, borderTopColor: theme.border }}>
-          <div style={{ ...styles.playerLabel, color: theme.text.secondary }}>Player</div>
-          <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
-          <button
-            onClick={() => setActivePlayerTag(null)}
-            style={{ ...styles.changeButton, color: isDarkMode ? '#cccccc' : theme.accent }}
+      {!isMobile && (
+        <div style={styles.footer}>
+          <a
+            href="mailto:faashoetjes+royaledecklab@gmail.com"
+            className="nav-link"
+            style={{ ...styles.contactLink, color: theme.text.secondary }}
           >
-            Change player
-          </button>
+            <span style={styles.navIcon} aria-hidden="true"><MailIcon /></span>
+            Contact
+          </a>
+
+          {activePlayerTag && (
+            <div style={{ ...styles.playerBox, borderTopColor: theme.border }}>
+              <div style={{ ...styles.playerLabel, color: theme.text.secondary }}>Player</div>
+              <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
+              <button
+                onClick={() => setActivePlayerTag(null)}
+                style={{ ...styles.changeButton, color: isDarkMode ? '#cccccc' : theme.accent }}
+              >
+                Change player
+              </button>
+            </div>
+          )}
         </div>
       )}
     </nav>
@@ -167,7 +183,9 @@ const styles = {
     gap: '6px',
   },
   navLink: {
-    display: 'block',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '11px',
     padding: '12px 14px',
     borderRadius: '8px',
     textDecoration: 'none',
@@ -175,8 +193,30 @@ const styles = {
     fontWeight: 600 as const,
     transition: 'all 0.2s ease',
   },
-  playerBox: {
+  navIcon: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+  },
+  // Pinned to the bottom of the column; holds the contact link and player box.
+  footer: {
     marginTop: 'auto',
+    paddingTop: '16px',
+  },
+  contactLink: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '11px',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: 600 as const,
+    transition: 'all 0.2s ease',
+  },
+  playerBox: {
+    marginTop: '4px',
     paddingTop: '16px',
     borderTop: '1px solid #e0e0e0',
   },
@@ -201,3 +241,76 @@ const styles = {
     cursor: 'pointer',
   },
 };
+
+// Stroke-based line icons (Lucide style) so they inherit the nav item's text
+// color via `currentColor` and stay crisp at the 18px sidebar size.
+const ICON_SIZE = 18;
+
+function iconProps() {
+  return {
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+}
+
+// War Deck Generator — a bolt for the one-tap "generate".
+function ZapIcon() {
+  return (
+    <svg {...iconProps()}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+// War Deck Builder — a card grid for hand-picking the eight slots.
+function GridIcon() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+// Best War Decks — a trophy for the top performers.
+function TrophyIcon() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" />
+      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  );
+}
+
+// FAQ — a help bubble.
+function HelpIcon() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+// Contact — an envelope.
+function MailIcon() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
+  );
+}
