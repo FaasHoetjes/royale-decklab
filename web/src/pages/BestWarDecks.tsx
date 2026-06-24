@@ -5,6 +5,8 @@ import { getTheme } from '../theme';
 import { fetchBestDecks, fetchPlayerCollection } from '../api';
 import type { BestDecksResponse, BestDeckEntry, BestDeckSet } from '../api';
 import { slotKind, slotBorderStyle } from '../slotStyles';
+import { buildDeckLink } from '../deckLink';
+import { useIsMobile } from '../useIsMobile';
 
 type Card = BestDeckEntry['cards'][0];
 
@@ -39,10 +41,12 @@ function CompactDeckRow({
   deck,
   isDarkMode,
   theme,
+  isMobile,
 }: {
   deck: BestDeckEntry;
   isDarkMode: boolean;
   theme: ReturnType<typeof getTheme>;
+  isMobile: boolean;
 }) {
   const [showMetaInfo, setShowMetaInfo] = React.useState(false);
 
@@ -60,7 +64,10 @@ function CompactDeckRow({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '14px',
+        // On phones the 8 cards and the stats can't share one line — let them
+        // wrap so the cards take the full width and the stats sit beneath.
+        flexWrap: isMobile ? 'wrap' : 'nowrap',
+        gap: isMobile ? '8px' : '14px',
         padding: '10px 14px',
         backgroundColor: rowBg,
         borderRadius: '12px',
@@ -68,7 +75,7 @@ function CompactDeckRow({
       }}
     >
       {/* 8-card row */}
-      <div style={{ display: 'flex', gap: '5px', flex: 1 }}>
+      <div style={{ display: 'flex', gap: '5px', flex: 1, flexBasis: isMobile ? '100%' : 'auto' }}>
         {cards.map((card, index) => {
           const ver = cardVersion(deck, card.id);
           const icon = cardIcon(card, ver);
@@ -200,6 +207,34 @@ function CompactDeckRow({
           <div style={{ ...statValue, color: theme.text.primary }}>{avgElixir}</div>
         </div>
       </div>
+
+      {/* Open this single deck straight in the game. */}
+      <a
+        href={buildDeckLink(cards.map((c) => c.id))}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="deck-swap-btn"
+        title="Open this deck in Clash Royale"
+        aria-label="Open this deck in Clash Royale"
+        style={{
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          border: `1px solid ${isDarkMode ? '#2a2a2e' : '#dbe4f5'}`,
+          backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
+          color: accentColor,
+          textDecoration: 'none',
+          boxShadow: '0 2px 6px rgba(13, 27, 62, 0.12)',
+        }}
+      >
+        <svg viewBox="0 0 24 24" style={{ width: '14px', height: '14px', display: 'block' }} aria-hidden="true">
+          <path fill="currentColor" d="M8 5v14l11-7z" />
+        </svg>
+      </a>
     </div>
   );
 }
@@ -225,6 +260,7 @@ const BUILDER_SLOTS = 8;
 export default function BestWarDecks() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [data, setData] = useState<BestDecksResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -317,7 +353,7 @@ export default function BestWarDecks() {
               style={{
                 border: `1px solid ${theme.border}`,
                 borderRadius: '16px',
-                padding: '20px 24px',
+                padding: isMobile ? '16px 12px' : '20px 24px',
                 backgroundColor: theme.bg.secondary,
               }}
             >
@@ -371,7 +407,7 @@ export default function BestWarDecks() {
                 </div>
               </div>
 
-              <div style={{ position: 'relative', paddingRight: '60px' }}>
+              <div style={{ position: 'relative', paddingRight: isMobile ? '46px' : '60px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {set.decks.map((deck, deckIdx) => (
                     <CompactDeckRow
@@ -379,6 +415,7 @@ export default function BestWarDecks() {
                       deck={deck}
                       isDarkMode={isDarkMode}
                       theme={theme}
+                      isMobile={isMobile}
                     />
                   ))}
                 </div>

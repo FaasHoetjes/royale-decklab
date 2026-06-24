@@ -11,6 +11,7 @@ import {
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { slotKind, slotBorderStyle, type SlotKind } from '../slotStyles';
+import { buildDeckLink, isCompleteDeck } from '../deckLink';
 
 type SpecialVersion = 'evo' | 'hero';
 
@@ -406,6 +407,16 @@ export default function WarDeckBuilder() {
     });
   };
 
+  // Is an evo/hero version toggle currently shown anywhere? Only then do we
+  // surface the footnote explaining why both versions are offered.
+  const hasVersionToggle = decks.some((deck) =>
+    deck.some((id, slotIndex) => {
+      if (id == null || slotKind(slotIndex) !== 'both') return false;
+      const card = cardById.get(id);
+      return card ? availableVersions(card, 'both').length > 1 : false;
+    })
+  );
+
   return (
     <div style={styles.container}>
       <div style={{ ...styles.header, borderBottomColor: theme.border }}>
@@ -452,6 +463,20 @@ export default function WarDeckBuilder() {
             <div style={styles.deckHeader}>
               <h3 style={{ ...styles.deckTitle, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
               <div style={styles.deckHeaderStats}>
+                {isCompleteDeck(deck) && (
+                  <a
+                    href={buildDeckLink(deck)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open Deck ${deckIndex + 1} in Clash Royale`}
+                    style={{ ...styles.openInGameBtn, color: scoreAccent, borderColor: theme.border }}
+                    title="Open this deck in Clash Royale"
+                  >
+                    <svg viewBox="0 0 24 24" style={styles.openInGameBtnIcon} aria-hidden="true">
+                      <path fill="currentColor" d="M8 5v14l11-7z" />
+                    </svg>
+                  </a>
+                )}
                 {deck.some((id) => id != null) && (
                   <button
                     onClick={() => resetDeck(deckIndex)}
@@ -601,7 +626,7 @@ export default function WarDeckBuilder() {
                                 backgroundColor:
                                   activeVersion === 'hero' ? '#f5a623' : '#a03cf0',
                               }}
-                              title={`Showing ${activeVersion === 'hero' ? 'Hero' : 'Evolution'} — click to switch`}
+                              title={`Showing ${activeVersion === 'hero' ? 'Hero' : 'Evolution'} — click to switch. The Clash Royale API can't tell Evolution-only from Hero ownership apart, so both are offered; pick the one you actually own.`}
                             >
                               ⇄ {activeVersion === 'hero' ? 'Hero' : 'Evo'}
                             </span>
@@ -666,6 +691,16 @@ export default function WarDeckBuilder() {
           </div>
         ))}
       </div>
+
+      {hasVersionToggle && (
+        <p style={{ ...styles.versionNote, color: theme.text.secondary }}>
+          <span style={{ ...styles.versionNoteIcon, borderColor: theme.text.secondary }}>i</span>
+          The <strong>⇄</strong> badge lets you switch a card's Evolution / Hero art. The Clash
+          Royale API doesn't tell us which of the two you own — it only reports one combined
+          level — so both are offered whenever the data allows. Pick the version you actually
+          have; it doesn't affect anyone else's view or the deck's score.
+        </p>
+      )}
 
       {error && <div style={styles.errorBanner}>{error}</div>}
 
@@ -743,6 +778,24 @@ const styles = {
     fontSize: '14px',
     lineHeight: 1,
     cursor: 'pointer',
+  },
+  openInGameBtn: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    background: 'none',
+    border: '1px solid',
+    borderRadius: '50%',
+    width: '26px',
+    height: '26px',
+    padding: 0,
+    cursor: 'pointer',
+    textDecoration: 'none',
+  },
+  openInGameBtnIcon: {
+    width: '13px',
+    height: '13px',
+    display: 'block' as const,
   },
   totalScore: {
     display: 'inline-flex' as const,
@@ -846,6 +899,31 @@ const styles = {
   slotDropTargetInvalid: {
     outline: '3px solid #ff6b6b',
     outlineOffset: '2px',
+  },
+  // Footnote under the decks explaining the evo/hero toggle + the API limitation.
+  versionNote: {
+    display: 'flex' as const,
+    alignItems: 'flex-start' as const,
+    gap: '8px',
+    maxWidth: '760px',
+    margin: '4px auto 0',
+    fontSize: '12px',
+    lineHeight: 1.5,
+  },
+  versionNoteIcon: {
+    flexShrink: 0,
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    width: '15px',
+    height: '15px',
+    marginTop: '1px',
+    borderRadius: '50%',
+    border: '1px solid',
+    fontSize: '10px',
+    fontStyle: 'italic' as const,
+    fontWeight: 'bold' as const,
+    lineHeight: 1,
   },
   // Small pill, top-right of a "both" slot, to flip between owned evo/hero art.
   versionToggle: {

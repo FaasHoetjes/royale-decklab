@@ -3,6 +3,7 @@ import Sidebar from './Sidebar';
 import Landing from '../pages/Landing';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
+import { useIsMobile } from '../useIsMobile';
 
 function ThemeToggle() {
   const { isDarkMode, toggleDarkMode } = useApp();
@@ -40,6 +41,7 @@ function ThemeToggle() {
 export default function Layout() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
+  const isMobile = useIsMobile();
 
   // Until a player tag is set, the app is just the landing page (no sidebar).
   if (!activePlayerTag) {
@@ -61,12 +63,14 @@ export default function Layout() {
     <div
       style={{
         ...styles.shell,
+        // On phones the side column becomes a top bar, so stack vertically.
+        flexDirection: isMobile ? 'column' : 'row',
         backgroundColor: theme.bg.primary,
         color: theme.text.primary,
       }}
     >
       <Sidebar />
-      <main style={styles.content}>
+      <main style={{ ...styles.content, padding: isMobile ? '12px' : '20px' }}>
         <ThemeToggle />
         <Outlet />
       </main>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { slotKind, slotBorderStyle } from '../slotStyles';
+import { buildDeckLink } from '../deckLink';
+import { useIsMobile } from '../useIsMobile';
 
 interface Card {
   id: number;
@@ -60,6 +62,7 @@ export default function DeckCard({
 }: DeckCardProps) {
   const [showWinRateInfo, setShowWinRateInfo] = useState(false);
   const [showPlayerScoreInfo, setShowPlayerScoreInfo] = useState(false);
+  const isMobile = useIsMobile();
 
   const getDisplayLevel = (card: Card) => {
     const offset = 16 - card.maxLevel;
@@ -166,10 +169,23 @@ export default function DeckCard({
     .concat(normals, evoQueue, heroQueue);               // rest, plus any defensive leftovers
 
   return (
-    <div className="deck-card" style={{ ...styles.container, backgroundColor: theme.containerBg, borderColor: theme.containerBorder, boxShadow: theme.containerShadow }}>
+    <div className="deck-card" style={{ ...styles.container, padding: isMobile ? '16px' : '24px', backgroundColor: theme.containerBg, borderColor: theme.containerBorder, boxShadow: theme.containerShadow }}>
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
+          <a
+            href={buildDeckLink(orderedCards.map((c) => c.id))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="deck-swap-btn"
+            title="Open this deck in Clash Royale"
+            style={{ ...styles.openInGame, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
+          >
+            <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
+              <path fill="currentColor" d="M8 5v14l11-7z" />
+            </svg>
+            Open in game
+          </a>
         </div>
         <span style={{ ...styles.archetypeBadge, backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, color: theme.badgeText }}>
           {archetype}
@@ -235,7 +251,7 @@ export default function DeckCard({
       </div>
 
       <div style={styles.cardsRow}>
-        <div style={styles.cards}>
+        <div style={{ ...styles.cards, gap: isMobile ? '10px' : '22px' }}>
           {orderedCards.map((card, index) => {
             const iconUrl = getCardIcon(card);
             // Frame the first three positions as the evo / hero / either slots.
@@ -336,6 +352,25 @@ const styles = {
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: '12px',
+  },
+  openInGame: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+    padding: '5px 10px',
+    borderRadius: '999px',
+    border: '1px solid',
+    fontSize: '11px',
+    fontWeight: 700 as const,
+    letterSpacing: '0.3px',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    boxShadow: '0 2px 6px rgba(13, 27, 62, 0.12)',
+  },
+  openInGameIcon: {
+    width: '12px',
+    height: '12px',
+    display: 'block',
   },
   headerTitle: {
     margin: 0,

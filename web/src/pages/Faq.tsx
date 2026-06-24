@@ -43,15 +43,17 @@ const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          The win rate comes from real battle data, not estimates. We collect the recent
-          ranked and Path of Legend battles of the top ~500 global players, group those
-          battles by the exact 8-card deck that was played, and tally wins and losses for
-          each deck (a draw counts as half a win). This data is refreshed in the background
-          every couple of hours and accumulated over a rolling 7-day window, so each deck's
-          sample keeps growing rather than resetting on every update — that's what makes the
-          numbers trustworthy. After a Clash Royale balance update we reset the window to that
-          patch, so buffed and nerfed cards are judged only on post-patch games (win rates show
-          lower confidence for a few days while fresh data builds up).
+          The win rate comes from real battle data, not estimates — and specifically from
+          real <strong>Clan War</strong> battles, the exact mode these decks are for. We
+          continuously sample the war battles played by the members of the top ~100 war clans
+          (around 5,000 of the most competitive war players), group those battles by the exact
+          8-card deck that was played, and tally wins and losses for each deck (a draw counts
+          as half a win). This data is refreshed in the background every couple of hours and
+          accumulated over a rolling 7-day window, so each deck's sample keeps growing rather
+          than resetting on every update — that's what makes the numbers trustworthy. After a
+          Clash Royale balance update we reset the window to that patch, so buffed and nerfed
+          cards are judged only on post-patch games (win rates show lower confidence for a few
+          days while fresh data builds up).
         </p>
         <p style={pStyle}>
           The percentage shown is <strong>not</strong> the raw win rate, though. A deck that
@@ -106,6 +108,29 @@ const faqItems: FaqItem[] = [
         <p style={pStyle}>
           Decks are then ranked by this score, and we greedily pick the four highest-scoring
           decks that share no cards with one another (war decks can't reuse cards).
+        </p>
+      </>
+    ),
+  },
+  {
+    question: 'Why does a card show both an Evolution and Hero version when I only own one?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          This is a limitation of the official Clash Royale API, not a choice on our end. The
+          API reports a single <em>evolution level</em> number per card and nothing that
+          separates Evolution ownership from Hero ownership. Because that number is cumulative
+          (Hero counts as a higher level than Evolution), owning the Hero of a card is
+          indistinguishable from also owning its Evolution — there's simply no field that says
+          "Hero only".
+        </p>
+        <p style={pStyle}>
+          So on a slot that accepts either version, we show a toggle whenever the data says you
+          could field both. If you actually own just one of them, pick that version with the
+          toggle and ignore the other — the recommendation and your collection are still
+          correct, we just can't pre-select it for you. The only way to know for certain which
+          version a player fields is their battle log, which is how we detect the versions in
+          the meta decks themselves.
         </p>
       </>
     ),
