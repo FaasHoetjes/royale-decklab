@@ -12,10 +12,12 @@ export default function Sidebar() {
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 
   // Active nav item. Both modes share the same shape: a neutral fill (slightly
-  // off the sidebar surface) that earns its identity from a single left accent
-  // bar + accent-colored text — gold in dark mode, blue in light mode.
+  // off the sidebar surface) and primary-colored text (white in dark, black in
+  // light) that earns its accent identity from a single left bar — gold in dark
+  // mode, blue in light. Keeping the text neutral in both modes makes the active
+  // item read the same way (the bar is the accent, not the label).
   const activeBg = isDarkMode ? theme.bg.elevated : theme.bg.tertiary;
-  const activeText = isDarkMode ? theme.text.primary : theme.accent;
+  const activeText = theme.accent;
   const activeBar = `inset 3px 0 0 ${theme.accent}`;
 
   const navItems = [
@@ -95,7 +97,7 @@ export default function Sidebar() {
               <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
               <button
                 onClick={() => setActivePlayerTag(null)}
-                style={{ ...styles.changeButton, color: isDarkMode ? '#cccccc' : theme.accent }}
+                style={{ ...styles.changeButton, color: theme.accent }}
               >
                 Change player
               </button>

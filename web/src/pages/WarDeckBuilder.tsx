@@ -4,6 +4,7 @@ import {
   fetchAllCards,
   fetchPlayerCollection,
   scoreBuilderDecks,
+  isAbortError,
   type CatalogCard,
   type OwnedCard,
   type ScoreDecksResponse,
@@ -133,21 +134,17 @@ export default function WarDeckBuilder() {
 
   // Fetch the full card catalog once.
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetchAllCards()
-      .then((res) => {
-        if (!cancelled) setCatalog(res.cards);
-      })
+    fetchAllCards(controller.signal)
+      .then((res) => setCatalog(res.cards))
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load cards');
+        if (!isAbortError(err)) setError(err instanceof Error ? err.message : 'Failed to load cards');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, []);
 
   // Fetch the active player's collection whenever the active player changes.
@@ -156,17 +153,13 @@ export default function WarDeckBuilder() {
       setOwned([]);
       return;
     }
-    let cancelled = false;
-    fetchPlayerCollection(activePlayerTag)
-      .then((res) => {
-        if (!cancelled) setOwned(res.cards);
-      })
+    const controller = new AbortController();
+    fetchPlayerCollection(activePlayerTag, controller.signal)
+      .then((res) => setOwned(res.cards))
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load collection');
+        if (!isAbortError(err)) setError(err instanceof Error ? err.message : 'Failed to load collection');
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [activePlayerTag]);
 
   // Merge catalog with ownership into the builder view model.
@@ -237,20 +230,21 @@ export default function WarDeckBuilder() {
         rarity: c.rarity,
       }));
 
-    let cancelled = false;
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      scoreBuilderDecks(cards, decks)
+      scoreBuilderDecks(cards, decks, controller.signal)
         .then((res) => {
-          if (!cancelled) setScores(res);
+          if (!controller.signal.aborted) setScores(res);
         })
-        .catch(() => {
+        .catch((err) => {
           // A failed scoring pass shouldn't surface as a page error — the decks
-          // are still fully usable, just unscored until the next change.
-          if (!cancelled) setScores(null);
+          // are still fully usable, just unscored until the next change. An
+          // aborted (superseded) pass leaves the prior scores in place.
+          if (!isAbortError(err)) setScores(null);
         });
     }, 300);
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(timer);
     };
   }, [decks, cardById, usedIds]);

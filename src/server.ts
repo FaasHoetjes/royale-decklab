@@ -1,15 +1,13 @@
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
 import Player from './api/player';
 import Cards, { CatalogCard } from './api/cards';
 import MetaBuilder from './services/metaBuilder';
 import DeckAnalyzer from './services/deckAnalyzer';
-import { BattleRecord, DeckMeta, PlayerItemLevel } from './models/models';
+import BattleStore from './db/battleStore';
+import { DeckMeta, PlayerItemLevel } from './models/models';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const META_CACHE_PATH = resolve('meta-cache.json');
 // Aggregated meta is considered fresh enough to serve on startup for this long.
 const CACHE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 // How often the background job rebuilds the meta database while the server is up.
@@ -18,24 +16,13 @@ const CACHE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 // faster than this just re-reads battles we already have.
 const BACKGROUND_REFRESH_INTERVAL = 2 * 60 * 60 * 1000;
 
-// Rolling store of raw battles. Each refresh merges new battles in (deduped) and
-// prunes anything older than the window, so per-deck samples accumulate over
-// time instead of resetting to one fetch's worth on every rebuild.
-const BATTLE_STORE_PATH = resolve('battle-store.json');
+// Rolling window of raw battles, persisted in SQLite. Each refresh merges new
+// battles in (deduped on the primary key) and prunes anything older than the
+// window, so per-deck samples accumulate over time instead of resetting to one
+// fetch's worth on every rebuild.
 const BATTLE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-interface CacheData {
-    timestamp: number;
-    decks: DeckMeta[];
-}
-
-interface BattleStore {
-    battles: BattleRecord[];
-    // Patch boundary (epoch ms). Battles before this are excluded from
-    // aggregation even if they fall inside the rolling window, so a balance
-    // update's pre-patch data stops skewing win rates the moment it's set.
-    epochStart?: number;
-}
+const store = new BattleStore();
 
 let metaCache: DeckMeta[] = [];
 let lastCacheTime = 0;
@@ -58,29 +45,6 @@ async function getCardCatalog(): Promise<CatalogCard[]> {
     return cardCatalog;
 }
 
-function loadBattleStore(): BattleStore {
-    try {
-        const content = readFileSync(BATTLE_STORE_PATH, 'utf-8');
-        const data = JSON.parse(content) as BattleStore;
-        return { battles: data.battles ?? [], epochStart: data.epochStart ?? 0 };
-    } catch {
-        return { battles: [], epochStart: 0 };
-    }
-}
-
-/**
- * Converts an API battleTime ("20240617T120000.000Z") to epoch ms. Returns 0 on
- * an unparseable value so such records sort as ancient and get pruned out.
- */
-function parseBattleTime(battleTime: string): number {
-    const m = battleTime.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
-    if (!m) {
-        return 0;
-    }
-    const [, year, month, day, hour, min, sec] = m;
-    return Date.UTC(+year, +month - 1, +day, +hour, +min, +sec);
-}
-
 /**
  * The oldest battleTime that still counts: the later of the rolling-window edge
  * and the patch boundary. Setting an epoch after a balance update immediately
@@ -91,41 +55,37 @@ function effectiveCutoff(): number {
 }
 
 /**
- * Prunes battles to the effective cutoff, persists the store and aggregate, and
- * atomically swaps the new decks into the in-memory cache. Shared by the full
- * rebuild (after fetching) and the epoch endpoint (which re-aggregates the
- * existing store without re-fetching). No network — safe to call synchronously.
+ * Re-aggregates the in-memory meta cache from the battles currently in the
+ * store, after pruning anything past the effective cutoff. Pure DB + CPU, no
+ * network — shared by startup-from-cache, the epoch endpoint, and the tail of a
+ * full rebuild. Because request handlers read `metaCache` at request time, any
+ * player who generates decks after this returns automatically gets the fresh
+ * data. Does NOT advance the stored last-build time (that marks the last
+ * successful *fetch*); a fetching caller sets it before calling here.
  */
-function persistAndAggregate(battles: BattleRecord[], reason: string): { decks: DeckMeta[]; kept: number } {
+function aggregateFromStore(reason: string): DeckMeta[] {
     const cutoff = effectiveCutoff();
-    const kept = battles.filter(r => parseBattleTime(r.battleTime) >= cutoff);
+    const pruned = store.prune(cutoff);
+    const battles = store.allBattles();
 
-    const store: BattleStore = { battles: kept, epochStart: metaEpochStart };
-    writeFileSync(BATTLE_STORE_PATH, JSON.stringify(store));
-
-    const decks = new MetaBuilder().aggregateBattles(kept);
-    const now = Date.now();
-    const cacheData: CacheData = { timestamp: now, decks };
-    writeFileSync(META_CACHE_PATH, JSON.stringify(cacheData, null, 2));
-
+    const decks = new MetaBuilder().aggregateBattles(battles);
     metaCache = decks;
-    lastCacheTime = now;
+    lastCacheTime = store.getLastBuild();
     console.log(
-        `Meta ${reason}: ${decks.length} decks from ${kept.length}/${battles.length} battles ` +
-        `(cutoff ${new Date(cutoff).toISOString()})`
+        `Meta ${reason}: ${decks.length} decks from ${battles.length} battles ` +
+        `(pruned ${pruned}, cutoff ${new Date(cutoff).toISOString()})`
     );
-    return { decks, kept: kept.length };
+    return decks;
 }
 
 /**
- * Rebuilds the meta database, then atomically swaps it into the in-memory cache
- * and persists it. Because request handlers read `metaCache` at request time,
- * any player who generates decks after this resolves automatically gets the
- * fresh data.
+ * Rebuilds the meta database from a fresh fetch, then swaps it into the
+ * in-memory cache.
  *
  * The rebuild fetches a new batch of battles, merges them into the rolling
- * battle store (dedup by key, prune to the effective cutoff), and re-aggregates
- * the whole store — so deck samples grow across refreshes rather than resetting.
+ * store (the store dedups on the primary key and the prune trims the window),
+ * and re-aggregates the whole store — so deck samples grow across refreshes
+ * rather than resetting.
  *
  * Returns the new deck list, or the existing cache unchanged if a build is
  * already in flight, the fetch comes back empty, or the build fails.
@@ -139,8 +99,7 @@ async function rebuildMetaCache(reason: string): Promise<DeckMeta[]> {
     isBuilding = true;
     try {
         console.log(`Rebuilding meta cache (${reason})...`);
-        const metaBuilder = new MetaBuilder();
-        const fresh = await metaBuilder.collectWarBattleRecords();
+        const fresh = await new MetaBuilder().collectWarBattleRecords();
 
         // An empty fetch means the scrape/API is down. Keep the existing store
         // and cache rather than wiping good data with nothing.
@@ -149,23 +108,13 @@ async function rebuildMetaCache(reason: string): Promise<DeckMeta[]> {
             return metaCache;
         }
 
-        // Merge fresh battles into the rolling store, deduping by key.
-        const byKey = new Map<string, BattleRecord>();
-        for (const record of loadBattleStore().battles) {
-            byKey.set(record.key, record);
-        }
-        let added = 0;
-        for (const record of fresh) {
-            if (!byKey.has(record.key)) {
-                byKey.set(record.key, record);
-                added++;
-            }
-        }
-
-        const merged = [...byKey.values()];
-        const { kept } = persistAndAggregate(merged, `rebuild (${reason})`);
-        console.log(`  └ +${added} new this fetch, ${fresh.length} fetched, ${kept} kept after cutoff`);
-        return metaCache;
+        // Merge fresh battles into the rolling store (dedup is the primary key),
+        // then mark this as the latest successful fetch before re-aggregating.
+        const added = store.mergeBattles(fresh);
+        store.setLastBuild(Date.now());
+        const decks = aggregateFromStore(`rebuild (${reason})`);
+        console.log(`  └ +${added} new this fetch, ${fresh.length} fetched, ${store.count()} kept after cutoff`);
+        return decks;
     } catch (error) {
         console.error(`Meta rebuild (${reason}) failed, keeping existing cache:`, error);
         return metaCache;
@@ -175,27 +124,25 @@ async function rebuildMetaCache(reason: string): Promise<DeckMeta[]> {
 }
 
 async function loadOrBuildMetaCache(): Promise<DeckMeta[]> {
+    const lastBuild = store.getLastBuild();
     const now = Date.now();
 
-    try {
-        const cacheContent = readFileSync(META_CACHE_PATH, 'utf-8');
-        const cacheData = JSON.parse(cacheContent) as CacheData;
-
-        if (now - cacheData.timestamp < CACHE_REFRESH_INTERVAL) {
-            console.log('Loaded meta cache from disk');
-            metaCache = cacheData.decks;
-            lastCacheTime = cacheData.timestamp;
-            return metaCache;
-        }
-    } catch (error) {
-        console.log('No valid cache found');
+    // Fresh enough and we have battles on hand — aggregate from the store
+    // without hitting the API (the background refresh keeps it current).
+    if (lastBuild > 0 && now - lastBuild < CACHE_REFRESH_INTERVAL && store.count() > 0) {
+        console.log('Meta cache fresh; aggregating from stored battles');
+        return aggregateFromStore('startup (cached)');
     }
 
-    // Stale or missing aggregate — rebuild from the rolling store plus a fresh
-    // fetch. If that comes back empty (API/scrape down), fall back to whatever
-    // we can still aggregate from the on-disk battle store.
+    // Stale or empty — rebuild from a fresh fetch. If that comes back empty
+    // (API down) but we still have stored battles, aggregate those so a player
+    // search isn't left with an empty meta.
     console.log('Meta cache stale or missing, rebuilding...');
     const decks = await rebuildMetaCache('startup');
+    if (decks.length === 0 && store.count() > 0) {
+        console.warn('Rebuild fetched nothing (API down?); aggregating from stored battles instead.');
+        return aggregateFromStore('startup (fallback)');
+    }
     if (decks.length === 0) {
         console.error('\n⚠️  Could not build meta from the API.');
         console.error('The Clash Royale API requires tokens to be bound to a specific IP address.');
@@ -303,12 +250,13 @@ Bun.serve({
             }
 
             metaEpochStart = ts;
-            const { decks, kept } = persistAndAggregate(loadBattleStore().battles, 'epoch update');
+            store.setEpochStart(ts);
+            const decks = aggregateFromStore('epoch update');
             return Response.json({
                 status: 'epoch-set',
                 epochStart: new Date(ts).toISOString(),
                 deckCount: decks.length,
-                battlesKept: kept
+                battlesKept: store.count()
             });
         }
 
@@ -605,7 +553,7 @@ Bun.serve({
 });
 
 // Restore the patch boundary from the store so it survives restarts.
-metaEpochStart = loadBattleStore().epochStart ?? 0;
+metaEpochStart = store.getEpochStart();
 if (metaEpochStart > 0) {
     console.log(`Patch boundary in effect: ${new Date(metaEpochStart).toISOString()}`);
 }

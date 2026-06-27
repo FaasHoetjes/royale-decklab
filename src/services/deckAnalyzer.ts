@@ -29,6 +29,17 @@ export default class DeckAnalyzer {
     // under-levelled decks harder, <1 is more forgiving.
     private static readonly LEVEL_SENSITIVITY = 1.0;
 
+    // How much of a deck's measured strength we assume is lost per special version
+    // (Evolution or Hero) the meta deck fielded that the player hasn't unlocked.
+    // The win rates are measured WITH those specials on the field, and an evolution
+    // is a power spike the deck is built around — not just one slightly-stronger
+    // card — so this is a deck-level multiplier, not a per-card average that would
+    // dilute a real handicap to ~1% of the score. It compounds: missing one ≈ 6%
+    // weaker, two ≈ 12%, three ≈ 17% — a rule-of-thumb range for how much an evo
+    // is worth. Like LEVEL_SENSITIVITY this is a hand-set knob: the meta sample is
+    // version-rich but has no "same deck without the evo" counterfactual to fit to.
+    private static readonly MISSING_SPECIAL_MULTIPLIER = 0.94;
+
     // Minimum distinct top players who must have run a deck for us to recommend
     // it. Popularity is a representativeness GATE, not a win-rate multiplier: a
     // head-to-head backtest showed how many players run a deck doesn't predict
@@ -180,7 +191,9 @@ export default class DeckAnalyzer {
         }
 
         let totalStatFraction = 0;
-        let totalVersionMultiplier = 0;
+        // Version fit compounds across the deck (a product), so each missing special
+        // takes a real bite out of the whole score rather than 1/8 of one card's.
+        let versionFit = 1.0;
         let validCards = 0;
 
         for (const cardId of metaDeck.cardIds) {
@@ -202,25 +215,23 @@ export default class DeckAnalyzer {
             // unlocked: a hero version needs evolutionLevel >= 2, an evolution >= 1
             // (matching how meta versions are detected from battle logs). Champions
             // are exempt — there's no tier to unlock, and owning the card is a
-            // precondition of fielding the deck at all.
-            let versionMultiplier = 1.0;
+            // precondition of fielding the deck at all. Only specials the deck
+            // actually fields count: a card recorded as 'normal' here never penalises,
+            // even if an Evolution exists for it (see MISSING_SPECIAL_MULTIPLIER).
             if (cardVersions && !this.isChampion(cardId, cardMap)) {
                 const metaCardVersion = cardVersions.find(c => c.cardId === cardId);
                 if (metaCardVersion) {
                     const playerEvoLevel = playerCard.evolutionLevel ?? 0;
-                    if (metaCardVersion.version === 'hero' && playerEvoLevel < 2) {
-                        versionMultiplier = 0.90; // 10% penalty for missing hero
-                    } else if (metaCardVersion.version === 'evo' && playerEvoLevel < 1) {
-                        versionMultiplier = 0.90; // 10% penalty for missing evo
+                    const missingHero = metaCardVersion.version === 'hero' && playerEvoLevel < 2;
+                    const missingEvo = metaCardVersion.version === 'evo' && playerEvoLevel < 1;
+                    if (missingHero || missingEvo) {
+                        versionFit *= DeckAnalyzer.MISSING_SPECIAL_MULTIPLIER;
                     }
                 }
             }
-
-            totalVersionMultiplier += versionMultiplier;
         }
 
         const avgStatFraction = totalStatFraction / validCards;
-        const avgVersionMultiplier = totalVersionMultiplier / validCards;
         // Score off the confidence-adjusted win rate so small-sample decks don't
         // outrank well-tested ones. Fall back to the raw rate for caches built
         // before confidence was stored.
@@ -234,7 +245,7 @@ export default class DeckAnalyzer {
         // proven, broadly-fielded decks above niche high-variance ones rather than
         // scaling raw win rate. Decks rank on strength × fieldability × adoption.
         const playerScore =
-            metaStrength * levelWeight * avgVersionMultiplier * this.popularityFactor(metaDeck.players);
+            metaStrength * levelWeight * versionFit * this.popularityFactor(metaDeck.players);
 
         return playerScore;
     }

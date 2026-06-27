@@ -29,6 +29,11 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 meta-cache.json
 battle-store.json
 
+# SQLite battle store (generated; rebuilt from the CR API)
+meta.db
+meta.db-wal
+meta.db-shm
+
 # IntelliJ based IDEs
 .idea
 

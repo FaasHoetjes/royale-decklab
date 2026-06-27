@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { fetchBestDecks, fetchPlayerCollection } from '../api';
+import { fetchBestDecks, fetchPlayerCollection, isAbortError } from '../api';
 import type { BestDecksResponse, BestDeckEntry, BestDeckSet } from '../api';
 import { slotKind, slotBorderStyle, cardFrame } from '../slotStyles';
 import { buildDeckLink } from '../deckLink';
@@ -270,10 +270,16 @@ export default function BestWarDecks() {
   const [hoveredCopyBtn, setHoveredCopyBtn] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchBestDecks()
+    const controller = new AbortController();
+    fetchBestDecks(controller.signal)
       .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e: Error) => {
+        if (!isAbortError(e)) setError(e.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, []);
 
   async function copySetToBuilder(set: BestDeckSet, setIdx: number) {

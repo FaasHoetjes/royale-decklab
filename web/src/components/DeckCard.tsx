@@ -125,7 +125,7 @@ export default function DeckCard({
     cardBorder: isDarkMode ? '#2c2c2c' : '#e0e0e0',
     cardText: isDarkMode ? '#f4f4f5' : '#000000',
     swapBg: isDarkMode ? '#26262a' : '#f6f7f9',
-    swapIcon: isDarkMode ? '#f4f4f5' : '#007bff',
+    swapIcon: isDarkMode ? '#e8b24a' : '#007bff',
     divider: isDarkMode ? '#2a2a2e' : '#eceef6',
     // "Open in game": a clean, flat pill — quiet surface fill, accent text/icon,
     // thin theme border. No gradient, no glow.
@@ -202,13 +202,13 @@ export default function DeckCard({
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             Win Rate
             <span
-              style={{ ...styles.infoIcon, borderColor: theme.statsLabel, color: theme.statsLabel }}
+              style={{ ...styles.infoIcon, color: theme.statsLabel }}
               onMouseEnter={() => setShowWinRateInfo(true)}
               onMouseLeave={() => setShowWinRateInfo(false)}
               role="img"
               aria-label="Win rate details"
             >
-              i
+              <InfoMark />
               {showWinRateInfo && (
                 <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
                   <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
@@ -227,13 +227,13 @@ export default function DeckCard({
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             {scoreLabel ?? 'Player Score'}
             <span
-              style={{ ...styles.infoIcon, borderColor: theme.statsLabel, color: theme.statsLabel }}
+              style={{ ...styles.infoIcon, color: theme.statsLabel }}
               onMouseEnter={() => setShowPlayerScoreInfo(true)}
               onMouseLeave={() => setShowPlayerScoreInfo(false)}
               role="img"
               aria-label="How the score is derived"
             >
-              i
+              <InfoMark />
               {showPlayerScoreInfo && (
                 <span style={{ ...styles.tooltip, backgroundColor: theme.tooltipBg, color: theme.tooltipText, borderColor: theme.tooltipBorder }}>
                   {scoreTooltip ?? (
@@ -331,6 +331,20 @@ export default function DeckCard({
         )}
       </div>
     </div>
+  );
+}
+
+// A crisp, self-contained info icon. At 9px an italic-bold text "i" collapsed
+// its dot into the stem and read as one thick line; drawing the ring, dot, and
+// stem in one SVG (all currentColor) keeps them concentric and legible at any
+// size, with no separate CSS border to drift out of alignment.
+function InfoMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+      <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1" />
+      <circle cx="8" cy="4.6" r="1.05" />
+      <rect x="7.1" y="6.9" width="1.8" height="5.2" rx="0.9" />
+    </svg>
   );
 }
 
@@ -452,11 +466,6 @@ const styles = {
     justifyContent: 'center' as const,
     width: '14px',
     height: '14px',
-    borderRadius: '50%',
-    border: '1px solid #666',
-    fontSize: '9px',
-    fontStyle: 'italic' as const,
-    fontWeight: 'bold' as const,
     cursor: 'help',
     lineHeight: 1,
   },

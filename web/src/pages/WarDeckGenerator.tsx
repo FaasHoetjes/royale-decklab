@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import WarDeckResult from '../components/WarDeckResult';
-import { fetchPlayerWarDecks, fetchMetaStatus } from '../api';
+import { fetchPlayerWarDecks, fetchMetaStatus, isAbortError } from '../api';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 
@@ -64,7 +64,10 @@ export default function WarDeckGenerator() {
 
   useEffect(() => {
     // Already confirmed this session — no need to re-check (or flash a loader).
-    if (!metaReadyOnce) checkMetaStatus();
+    if (metaReadyOnce) return;
+    const controller = new AbortController();
+    checkMetaStatus(controller.signal);
+    return () => controller.abort();
   }, []);
 
   // Reached the generator without a tag in the URL but a player is active
@@ -77,16 +80,20 @@ export default function WarDeckGenerator() {
 
   useEffect(() => {
     if (metaReady && playerId) {
-      handleSearch(`#${playerId}`);
+      const controller = new AbortController();
+      handleSearch(`#${playerId}`, controller.signal);
+      return () => controller.abort();
     }
   }, [metaReady, playerId]);
 
-  const checkMetaStatus = async () => {
+  const checkMetaStatus = async (signal?: AbortSignal) => {
     try {
-      await fetchMetaStatus();
+      await fetchMetaStatus(signal);
       metaReadyOnce = true;
       setMetaReady(true);
     } catch (error) {
+      // An aborted check (StrictMode remount / unmount) isn't a connection failure.
+      if (isAbortError(error)) return;
       setError(
         'Failed to connect to server. Make sure the backend is running on port 3000.'
       );
@@ -94,7 +101,7 @@ export default function WarDeckGenerator() {
     }
   };
 
-  const handleSearch = async (playerTag: string) => {
+  const handleSearch = async (playerTag: string, signal?: AbortSignal) => {
     // Serve a previously loaded player instantly from the cache.
     const cached = warDeckCache.get(playerTag);
     if (cached) {
@@ -109,7 +116,7 @@ export default function WarDeckGenerator() {
     setPlayerData(null);
 
     try {
-      const data = await fetchPlayerWarDecks(playerTag);
+      const data = await fetchPlayerWarDecks(playerTag, signal);
       setPlayerData(data);
       warDeckCache.set(playerTag, data);
 
@@ -120,13 +127,16 @@ export default function WarDeckGenerator() {
       const tag = playerTag.replace('#', '');
       navigate(`/${tag}`);
     } catch (err) {
+      // A superseded/unmounted request was cancelled on purpose — not an error,
+      // and we leave the loader as-is for the request that replaced it.
+      if (isAbortError(err)) return;
       setError(
         err instanceof Error
           ? err.message
           : 'Failed to fetch player data. Please try again.'
       );
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setIsLoading(false);
     }
   };
 
@@ -146,7 +156,7 @@ export default function WarDeckGenerator() {
         <h1>Royale DeckLab</h1>
         <p style={{ ...styles.error, color: '#ff6b6b' }}>{error || 'Connecting to server...'}</p>
         <button
-          onClick={checkMetaStatus}
+          onClick={() => checkMetaStatus()}
           style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}
         >
           Retry Connection

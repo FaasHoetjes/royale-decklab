@@ -29,9 +29,19 @@ interface PlayerResponse {
   };
 }
 
-export async function fetchPlayerWarDecks(playerTag: string): Promise<PlayerResponse> {
+// True for the DOMException thrown when a fetch is cancelled via AbortController.
+// Callers use it to swallow the rejection an aborted request produces (e.g. a
+// StrictMode double-mount or a superseded request) instead of showing an error.
+export function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError';
+}
+
+export async function fetchPlayerWarDecks(
+  playerTag: string,
+  signal?: AbortSignal
+): Promise<PlayerResponse> {
   const encodedTag = encodeURIComponent(playerTag);
-  const response = await fetch(`/api/player/${encodedTag}`);
+  const response = await fetch(`/api/player/${encodedTag}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch player data: ${response.status}`);
@@ -40,8 +50,8 @@ export async function fetchPlayerWarDecks(playerTag: string): Promise<PlayerResp
   return response.json();
 }
 
-export async function fetchMetaStatus() {
-  const response = await fetch('/api/meta/status');
+export async function fetchMetaStatus(signal?: AbortSignal) {
+  const response = await fetch('/api/meta/status', { signal });
   if (!response.ok) {
     throw new Error('Failed to fetch meta status');
   }
@@ -75,8 +85,8 @@ export interface OwnedCard {
   };
 }
 
-export async function fetchAllCards(): Promise<{ cards: CatalogCard[] }> {
-  const response = await fetch('/api/cards');
+export async function fetchAllCards(signal?: AbortSignal): Promise<{ cards: CatalogCard[] }> {
+  const response = await fetch('/api/cards', { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch card catalog: ${response.status}`);
   }
@@ -113,12 +123,14 @@ export interface ScoreDeckCard {
 
 export async function scoreBuilderDecks(
   cards: ScoreDeckCard[],
-  decks: (number | null)[][]
+  decks: (number | null)[][],
+  signal?: AbortSignal
 ): Promise<ScoreDecksResponse> {
   const response = await fetch('/api/score-decks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cards, decks }),
+    signal,
   });
   if (!response.ok) {
     throw new Error(`Failed to score decks: ${response.status}`);
@@ -160,8 +172,8 @@ export interface BestDecksResponse {
   sets: BestDeckSet[];
 }
 
-export async function fetchBestDecks(): Promise<BestDecksResponse> {
-  const response = await fetch('/api/best-decks');
+export async function fetchBestDecks(signal?: AbortSignal): Promise<BestDecksResponse> {
+  const response = await fetch('/api/best-decks', { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch best decks: ${response.status}`);
   }
@@ -169,10 +181,11 @@ export async function fetchBestDecks(): Promise<BestDecksResponse> {
 }
 
 export async function fetchPlayerCollection(
-  playerTag: string
+  playerTag: string,
+  signal?: AbortSignal
 ): Promise<{ player: { tag: string; name: string }; cards: OwnedCard[] }> {
   const encodedTag = encodeURIComponent(playerTag);
-  const response = await fetch(`/api/player/${encodedTag}/collection`);
+  const response = await fetch(`/api/player/${encodedTag}/collection`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch player collection: ${response.status}`);
   }
