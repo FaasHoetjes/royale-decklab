@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RoyaleDeckLab.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SQLite provider. EF Core is the data-access layer reading the existing
+         meta.db (same schema the Bun BattleStore created). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CVE-2025-6965: memory corruption in SQLite < 3.50.2, reachable only by an
+         attacker who can run a crafted SQL query (more aggregate terms than
+         columns) against the engine. This app issues only hardcoded, parameterised
+         queries against a local DB it owns — no user-supplied SQL ever reaches
+         SQLite — so the advisory is not exploitable here. No fix exists in the
+         SQLitePCLRaw 2.1.x line that Microsoft.Data.Sqlite 10 ships against.
+         Suppress this one advisory by URL; auditing stays on for everything else. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+  </ItemGroup>
+
+</Project>

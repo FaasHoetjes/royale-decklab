@@ -34,6 +34,10 @@ meta.db
 meta.db-wal
 meta.db-shm
 
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
 # IntelliJ based IDEs
 .idea
 
