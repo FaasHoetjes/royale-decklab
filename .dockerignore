@@ -2,12 +2,12 @@
 
 # Dependencies — reinstalled inside the build stages.
 node_modules
-web/node_modules
-server/**/node_modules
+client/node_modules
+src/**/node_modules
 
 # Build output — regenerated in-image.
 dist
-web/dist
+client/dist
 out
 **/bin/
 **/obj/
@@ -32,4 +32,4 @@ coverage
 .DS_Store
 
 # Test project isn't needed for the runtime image.
-server/RoyaleDeckLab.Api.Tests
+src/RoyaleDeckLab.Api.Tests

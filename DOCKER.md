@@ -12,7 +12,7 @@ docker build -t royale-decklab:local .
 ```
 
 Multi-stage:
-1. **web** (`oven/bun`) — `bun install` + `vite build` → `/web/dist`
+1. **web** (`oven/bun`) — `bun install` + `vite build` → `/client/dist`
 2. **api** (`dotnet/sdk:10.0`) — `dotnet publish -c Release`
 3. **runtime** (`dotnet/aspnet:10.0`) — API + SPA (`wwwroot`), ~268 MB
 

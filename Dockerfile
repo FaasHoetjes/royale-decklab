@@ -4,23 +4,23 @@
 # Stage 1 — build the React SPA (Vite) with Bun.
 # ---------------------------------------------------------------------------
 FROM oven/bun:1 AS web
-WORKDIR /web
+WORKDIR /client
 # Install deps first (cached until the lockfile/manifest change).
-COPY web/package.json web/bun.lock ./
+COPY client/package.json client/bun.lock ./
 RUN bun install --frozen-lockfile
-COPY web/ ./
-RUN bun run build            # -> /web/dist
+COPY client/ ./
+RUN bun run build            # -> /client/dist
 
 # ---------------------------------------------------------------------------
 # Stage 2 — publish the ASP.NET API (.NET 10).
 # ---------------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api
-WORKDIR /src
+WORKDIR /build
 # Restore against just the csproj first so the layer caches across code edits.
-COPY server/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj server/RoyaleDeckLab.Api/
-RUN dotnet restore server/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj
-COPY server/RoyaleDeckLab.Api/ server/RoyaleDeckLab.Api/
-RUN dotnet publish server/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj \
+COPY src/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj src/RoyaleDeckLab.Api/
+RUN dotnet restore src/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj
+COPY src/RoyaleDeckLab.Api/ src/RoyaleDeckLab.Api/
+RUN dotnet publish src/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj \
         -c Release -o /app/publish
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ WORKDIR /app
 # The published API...
 COPY --from=api /app/publish ./
 # ...plus the built SPA served from wwwroot (same origin, so /api calls just work).
-COPY --from=web /web/dist ./wwwroot
+COPY --from=web /client/dist ./wwwroot
 
 # Derived, regenerable battle store lives on a volume so it survives restarts.
 # Starts empty on a fresh volume and is rebuilt from the CR API by the background job.

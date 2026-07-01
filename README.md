@@ -24,7 +24,7 @@ right now.
 
 ## Tech
 
-- **`web/`** — React 18 + Vite SPA (TanStack Query for server state).
-- **`server/`** — ASP.NET Core (.NET 10) API. Serves the built SPA and exposes `/api/*`; a background job aggregates meta win-rates into SQLite (`meta.db`).
+- **`client/`** — React 18 + Vite SPA (TanStack Query for server state).
+- **`src/`** — ASP.NET Core (.NET 10) API. Serves the built SPA and exposes `/api/*`; a background job aggregates meta win-rates into SQLite (`meta.db`).
 
 See [GUIDE.MD](GUIDE.MD) for how to run it locally, and [DOCKER.md](DOCKER.md) for deployment.
