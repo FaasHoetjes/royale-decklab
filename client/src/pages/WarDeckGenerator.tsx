@@ -138,7 +138,12 @@ const styles = {
   errorBanner: {
     position: 'fixed' as const,
     bottom: '20px',
+    // Anchored to both edges with a max width so it hugs the right on desktop
+    // but never overflows a phone screen.
+    left: '20px',
     right: '20px',
+    marginLeft: 'auto' as const,
+    width: 'fit-content' as const,
     backgroundColor: '#d32f2f',
     color: 'white',
     padding: '16px 20px',

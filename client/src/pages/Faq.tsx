@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
+import { useIsMobile } from '../useIsMobile';
 
 interface FaqItem {
   question: string;
@@ -174,11 +175,19 @@ const faqItems: FaqItem[] = [
 export default function Faq() {
   const { isDarkMode } = useApp();
   const theme = getTheme(isDarkMode);
+  const isMobile = useIsMobile();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <div style={styles.container}>
-      <div style={{ ...styles.header, borderBottomColor: theme.border }}>
+    <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
+      <div
+        style={{
+          ...styles.header,
+          borderBottomColor: theme.border,
+          marginBottom: isMobile ? '20px' : '30px',
+          paddingBottom: isMobile ? '14px' : '20px',
+        }}
+      >
         <h2 style={{ color: theme.text.primary, margin: 0 }}>FAQ</h2>
         <p style={{ ...styles.subtitle, color: theme.text.secondary, marginTop: '8px' }}>
           How the War Deck Generator scores and ranks decks.
@@ -212,7 +221,7 @@ export default function Faq() {
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   onClick={() => setOpenIndex(isOpen ? null : i)}
-                  style={{ ...styles.trigger, color: theme.text.primary }}
+                  style={{ ...styles.trigger, padding: isMobile ? '15px 16px' : '18px 22px', color: theme.text.primary }}
                 >
                   <span>{item.question}</span>
                   <Chevron open={isOpen} color={theme.text.secondary} />
@@ -223,7 +232,7 @@ export default function Faq() {
                   id={panelId}
                   role="region"
                   aria-labelledby={buttonId}
-                  style={{ ...styles.panel, color: theme.text.secondary }}
+                  style={{ ...styles.panel, padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}
                 >
                   {item.answer}
                 </div>

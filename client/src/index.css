@@ -59,6 +59,24 @@ input:disabled {
   box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
 }
 
+/* Mobile menu: fade the backdrop in and slide the drawer panel in from the right. */
+.drawer-backdrop {
+  animation: drawer-fade 0.2s ease;
+}
+.drawer-panel {
+  animation: drawer-slide 0.25s cubic-bezier(0.32, 0.72, 0.35, 1);
+}
+
+@keyframes drawer-fade {
+  from { background-color: rgba(0, 0, 0, 0); }
+  to { background-color: rgba(0, 0, 0, 0.5); }
+}
+
+@keyframes drawer-slide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

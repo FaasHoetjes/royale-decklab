@@ -1,12 +1,40 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../useIsMobile';
+import ThemeToggle from './ThemeToggle';
 
 export default function Sidebar() {
   const { isDarkMode, activePlayerTag, setActivePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
   const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Leaving mobile (rotation / resize) discards the drawer state so it can't
+  // reappear open on the next shrink.
+  useEffect(() => {
+    if (!isMobile && drawerOpen) setDrawerOpen(false);
+  }, [isMobile, drawerOpen]);
+
+  // While the drawer is up, the page behind it must not scroll.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
 
   // The generator keys off the URL player id, so point it at the active tag.
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
@@ -27,84 +55,145 @@ export default function Sidebar() {
     { to: '/faq', label: 'FAQ', end: false, icon: <HelpIcon /> },
   ];
 
+  const renderNavLink = (item: (typeof navItems)[number]) => (
+    <NavLink
+      key={item.label}
+      to={item.to}
+      end={item.end}
+      className="nav-link"
+      onClick={() => setDrawerOpen(false)}
+      style={({ isActive }) => ({
+        ...styles.navLink,
+        color: isActive ? activeText : theme.text.secondary,
+        // Leave inactive items' background unset (not 'transparent') so the
+        // `.nav-link:not(.active):hover` CSS rule isn't beaten by an inline style.
+        backgroundColor: isActive ? activeBg : undefined,
+        boxShadow: isActive ? activeBar : 'none',
+      })}
+    >
+      <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
+      {item.label}
+    </NavLink>
+  );
+
+  const contactLink = (
+    <a
+      href="mailto:faashoetjes+royaledecklab@gmail.com"
+      className="nav-link"
+      style={{ ...styles.contactLink, color: theme.text.secondary }}
+    >
+      <span style={styles.navIcon} aria-hidden="true"><MailIcon /></span>
+      Contact
+    </a>
+  );
+
+  const playerBox = activePlayerTag && (
+    <div style={{ ...styles.playerBox, borderTopColor: theme.border }}>
+      <div style={{ ...styles.playerLabel, color: theme.text.secondary }}>Player</div>
+      <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
+      <button
+        onClick={() => {
+          setDrawerOpen(false);
+          setActivePlayerTag(null);
+        }}
+        style={{ ...styles.changeButton, color: theme.accent }}
+      >
+        Change player
+      </button>
+    </div>
+  );
+
+  // ---------------------------------------------------------------------------
+  // Mobile: a compact sticky top bar (brand · theme toggle · hamburger) plus a
+  // right-hand slide-in drawer holding the full nav, contact link and player box.
+  // ---------------------------------------------------------------------------
+  if (isMobile) {
+    return (
+      <>
+        <header
+          style={{ ...styles.bar, backgroundColor: theme.bg.secondary, borderBottomColor: theme.border }}
+        >
+          <div style={{ ...styles.brandMobile, color: theme.text.primary }}>
+            ROYALE<span style={styles.brandMobileBold}> DECKLAB</span>
+          </div>
+          <div style={styles.barActions}>
+            <ThemeToggle size={22} />
+            <button
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={drawerOpen}
+              className="theme-toggle-btn"
+              style={{ ...styles.menuButton, color: theme.text.primary }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        {drawerOpen && (
+          <div
+            className="drawer-backdrop"
+            style={styles.drawerBackdrop}
+            onClick={() => setDrawerOpen(false)}
+          >
+            <nav
+              className="drawer-panel"
+              style={{ ...styles.drawer, backgroundColor: theme.bg.secondary }}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Main menu"
+            >
+              <div style={styles.drawerHeader}>
+                <div style={{ ...styles.brandMobile, color: theme.text.primary }}>
+                  ROYALE<span style={styles.brandMobileBold}> DECKLAB</span>
+                </div>
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  aria-label="Close menu"
+                  className="theme-toggle-btn"
+                  style={{ ...styles.menuButton, color: theme.text.secondary }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              <div style={styles.navList}>{navItems.map(renderNavLink)}</div>
+
+              <div style={styles.footer}>
+                {contactLink}
+                {playerBox}
+              </div>
+            </nav>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Desktop: the full-height side column.
+  // ---------------------------------------------------------------------------
   return (
     <nav
-      style={
-        isMobile
-          ? { ...styles.bar, backgroundColor: theme.bg.secondary, borderBottomColor: theme.border }
-          : { ...styles.sidebar, backgroundColor: theme.bg.secondary, borderRightColor: theme.border }
-      }
+      style={{ ...styles.sidebar, backgroundColor: theme.bg.secondary, borderRightColor: theme.border }}
     >
-      {isMobile ? (
-        <div style={{ ...styles.brandMobile, color: theme.text.primary }}>
-          ROYALE<span style={styles.brandMobileBold}> DECKLAB</span>
-        </div>
-      ) : (
-        <div style={{ ...styles.brand, color: theme.text.primary }}>
-          <div style={styles.brandTop}>ROYALE</div>
-          <div style={styles.brandBottom}>DECKLAB</div>
-        </div>
-      )}
-
-      <div style={isMobile ? styles.navListMobile : styles.navList}>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.label}
-            to={item.to}
-            end={item.end}
-            className="nav-link"
-            style={({ isActive }) => ({
-              ...styles.navLink,
-              ...(isMobile ? styles.navLinkMobile : {}),
-              color: isActive ? activeText : theme.text.secondary,
-              // Leave inactive items' background unset (not 'transparent') so the
-              // `.nav-link:not(.active):hover` CSS rule isn't beaten by an inline style.
-              backgroundColor: isActive ? activeBg : undefined,
-              boxShadow: isActive ? activeBar : 'none',
-            })}
-          >
-            <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
-            {item.label}
-          </NavLink>
-        ))}
-        {/* On the mobile top bar there's no room for the player box, so the
-            "change player" action rides along at the end of the nav strip. */}
-        {isMobile && activePlayerTag && (
-          <button
-            onClick={() => setActivePlayerTag(null)}
-            className="nav-link"
-            style={{ ...styles.navLink, ...styles.navLinkMobile, background: 'none', border: 'none', cursor: 'pointer', color: theme.text.secondary }}
-          >
-            Change
-          </button>
-        )}
+      <div style={{ ...styles.brand, color: theme.text.primary }}>
+        <div style={styles.brandTop}>ROYALE</div>
+        <div style={styles.brandBottom}>DECKLAB</div>
       </div>
 
-      {!isMobile && (
-        <div style={styles.footer}>
-          <a
-            href="mailto:faashoetjes+royaledecklab@gmail.com"
-            className="nav-link"
-            style={{ ...styles.contactLink, color: theme.text.secondary }}
-          >
-            <span style={styles.navIcon} aria-hidden="true"><MailIcon /></span>
-            Contact
-          </a>
+      <div style={styles.navList}>{navItems.map(renderNavLink)}</div>
 
-          {activePlayerTag && (
-            <div style={{ ...styles.playerBox, borderTopColor: theme.border }}>
-              <div style={{ ...styles.playerLabel, color: theme.text.secondary }}>Player</div>
-              <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
-              <button
-                onClick={() => setActivePlayerTag(null)}
-                style={{ ...styles.changeButton, color: theme.accent }}
-              >
-                Change player
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <div style={styles.footer}>
+        {contactLink}
+        {playerBox}
+      </div>
     </nav>
   );
 }
@@ -124,20 +213,60 @@ const styles = {
     display: 'flex' as const,
     flexDirection: 'column' as const,
   },
-  // Mobile: a sticky horizontal top bar instead of the full-height side column.
-  // Right padding clears the fixed theme toggle in the top-right corner.
+  // Mobile: a sticky top bar — brand on the left, theme toggle + menu button on
+  // the right. Navigation itself lives in the drawer.
   bar: {
     width: '100%',
     boxSizing: 'border-box' as const,
     display: 'flex' as const,
     alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
     gap: '12px',
-    padding: '10px 56px 10px 14px',
+    padding: '8px 8px 8px 14px',
     borderBottom: '1px solid #e0e0e0',
     position: 'sticky' as const,
     top: 0,
     zIndex: 900,
     transition: 'background-color 0.3s ease',
+  },
+  barActions: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '2px',
+  },
+  menuButton: {
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    padding: '8px',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  drawerBackdrop: {
+    position: 'fixed' as const,
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1100,
+  },
+  drawer: {
+    position: 'absolute' as const,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 'min(300px, 85vw)',
+    boxSizing: 'border-box' as const,
+    padding: '12px 16px 24px',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.35)',
+    overflowY: 'auto' as const,
+  },
+  drawerHeader: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: '20px',
   },
   brand: {
     alignSelf: 'flex-start' as const,
@@ -146,7 +275,7 @@ const styles = {
     lineHeight: 1.05,
   },
   brandMobile: {
-    fontSize: '20px',
+    fontSize: '19px',
     fontWeight: 700 as const,
     letterSpacing: '0.5px',
     whiteSpace: 'nowrap' as const,
@@ -155,18 +284,6 @@ const styles = {
   },
   brandMobileBold: {
     fontWeight: 800 as const,
-  },
-  navListMobile: {
-    display: 'flex' as const,
-    flexDirection: 'row' as const,
-    gap: '4px',
-    overflowX: 'auto' as const,
-    flex: 1,
-  },
-  navLinkMobile: {
-    padding: '8px 12px',
-    fontSize: '14px',
-    whiteSpace: 'nowrap' as const,
   },
   brandTop: {
     fontSize: '28px',

@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
+import { useIsMobile } from '../useIsMobile';
 
 export default function Landing() {
   const { isDarkMode, setActivePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -36,8 +38,8 @@ export default function Landing() {
     <div style={styles.container}>
       <div style={styles.hero}>
         <div style={{ ...styles.brand, color: theme.text.primary }}>
-          <div style={styles.brandTop}>ROYALE</div>
-          <div style={styles.brandBottom}>DECKLAB</div>
+          <div style={{ ...styles.brandTop, fontSize: isMobile ? '36px' : '48px' }}>ROYALE</div>
+          <div style={{ ...styles.brandBottom, fontSize: isMobile ? '48px' : '64px' }}>DECKLAB</div>
         </div>
 
         <p style={{ ...styles.tagline, color: theme.text.secondary }}>

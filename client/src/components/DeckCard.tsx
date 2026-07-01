@@ -256,7 +256,7 @@ export default function DeckCard({
       </div>
 
       <div style={styles.cardsRow}>
-        <div style={{ ...styles.cards, gap: isMobile ? '10px' : '22px' }}>
+        <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '22px' }}>
           {orderedCards.map((card, index) => {
             const iconUrl = getCardIcon(card);
             // Frame the first three positions as the evo / hero / either slots.
@@ -312,7 +312,10 @@ export default function DeckCard({
             );
           })}
         </div>
-        {canSwap && (
+        {/* Desktop: a floating circle beside the cards. On phones the cards
+            span the full width, so the circle would sit on top of them —
+            the swap action becomes a full-width button below instead. */}
+        {canSwap && !isMobile && (
           <button
             type="button"
             onClick={onSwap}
@@ -321,16 +324,33 @@ export default function DeckCard({
             className="deck-swap-btn"
             style={{ ...styles.swapButton, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
           >
-            <svg viewBox="0 0 512 512" style={styles.swapIcon} aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M32 96l320 0 0-64c0-12.9 7.8-24.6 19.8-29.6s25.7-2.2 34.9 6.9l96 96c6 6 9.4 14.1 9.4 22.6s-3.4 16.6-9.4 22.6l-96 96c-9.2 9.2-22.9 11.9-34.9 6.9s-19.8-16.6-19.8-29.6l0-64L32 160c-17.7 0-32-14.3-32-32s14.3-32 32-32zM480 416l-320 0 0 64c0 12.9-7.8 24.6-19.8 29.6s-25.7 2.2-34.9-6.9l-96-96c-6-6-9.4-14.1-9.4-22.6s3.4-16.6 9.4-22.6l96-96c9.2-9.2 22.9-11.9 34.9-6.9s19.8 16.6 19.8 29.6l0 64 320 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"
-              />
-            </svg>
+            <SwapArrows style={styles.swapIcon} />
           </button>
         )}
       </div>
+      {canSwap && isMobile && (
+        <button
+          type="button"
+          onClick={onSwap}
+          aria-label={`Swap deck ${deckNumber}`}
+          style={{ ...styles.swapButtonMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
+        >
+          <SwapArrows style={styles.swapIconMobile} />
+          Swap this deck
+        </button>
+      )}
     </div>
+  );
+}
+
+function SwapArrows({ style }: { style: React.CSSProperties }) {
+  return (
+    <svg viewBox="0 0 512 512" style={style} aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M32 96l320 0 0-64c0-12.9 7.8-24.6 19.8-29.6s25.7-2.2 34.9 6.9l96 96c6 6 9.4 14.1 9.4 22.6s-3.4 16.6-9.4 22.6l-96 96c-9.2 9.2-22.9 11.9-34.9 6.9s-19.8-16.6-19.8-29.6l0-64L32 160c-17.7 0-32-14.3-32-32s14.3-32 32-32zM480 416l-320 0 0 64c0 12.9-7.8 24.6-19.8 29.6s-25.7 2.2-34.9-6.9l-96-96c-6-6-9.4-14.1-9.4-22.6s3.4-16.6 9.4-22.6l96-96c9.2-9.2 22.9-11.9 34.9-6.9s19.8 16.6 19.8 29.6l0 64 320 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"
+      />
+    </svg>
   );
 }
 
@@ -361,7 +381,8 @@ const styles = {
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
-    gap: '12px',
+    flexWrap: 'wrap' as const,
+    gap: '10px 12px',
   },
   headerLeft: {
     display: 'flex' as const,
@@ -419,6 +440,27 @@ const styles = {
   swapIcon: {
     width: '20px',
     height: '20px',
+    display: 'block',
+  },
+  // Mobile replacement for the floating circle: a quiet full-width action
+  // under the cards, matching the card's inset-surface styling.
+  swapButtonMobile: {
+    width: '100%',
+    marginTop: '14px',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '8px',
+    padding: '11px',
+    border: '1px solid',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+    cursor: 'pointer',
+  },
+  swapIconMobile: {
+    width: '15px',
+    height: '15px',
     display: 'block',
   },
   archetypeBadge: {

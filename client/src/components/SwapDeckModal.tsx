@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { cardBackdrop } from '../slotStyles';
+import { useIsMobile } from '../useIsMobile';
 
 interface Card {
   id: number;
@@ -66,6 +67,7 @@ export default function SwapDeckModal({
   onSelect,
   onClose,
 }: SwapDeckModalProps) {
+  const isMobile = useIsMobile();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -104,14 +106,20 @@ export default function SwapDeckModal({
 
   return (
     <div
-      style={styles.overlay}
+      style={{ ...styles.overlay, padding: isMobile ? '14px 10px' : '40px 20px' }}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Choose a deck for slot ${slotNumber}`}
     >
       <div
-        style={{ ...styles.panel, backgroundColor: theme.panelBg, borderColor: theme.panelBorder }}
+        style={{
+          ...styles.panel,
+          padding: isMobile ? '16px 14px' : '24px',
+          maxHeight: isMobile ? 'calc(100dvh - 28px)' : 'calc(100vh - 80px)',
+          backgroundColor: theme.panelBg,
+          borderColor: theme.panelBorder,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={styles.panelHeader}>
@@ -263,7 +271,10 @@ const styles = {
   optionStats: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: '16px',
+    // Lets the stats drop to their own line on narrow screens instead of
+    // squeezing against the archetype pill.
+    flexWrap: 'wrap' as const,
+    gap: '8px 14px',
   },
   optionArchetype: {
     fontSize: '11px',

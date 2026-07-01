@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import DeckCard from './DeckCard';
 import SwapDeckModal from './SwapDeckModal';
+import { useIsMobile } from '../useIsMobile';
 
 interface Card {
   id: number;
@@ -40,6 +41,7 @@ export default function WarDeckResult({
   onNewSearch,
   isDarkMode,
 }: WarDeckResultProps) {
+  const isMobile = useIsMobile();
   // One flat list the slots index into: the four primary decks first (master
   // indices 0..3), then the swap pool. A slot's "own" primary deck is the deck
   // at its own position, so primary index === slot position.
@@ -117,20 +119,29 @@ export default function WarDeckResult({
   }
 
   return (
-    <div style={styles.container}>
-      <div style={{ ...styles.header, background: theme.headerGradient, border: `1px solid ${theme.headerBorder}`, boxShadow: theme.headerShadow }}>
+    <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
+      <div
+        style={{
+          ...styles.header,
+          padding: isMobile ? '18px 20px' : '28px 32px',
+          marginBottom: isMobile ? '20px' : '40px',
+          background: theme.headerGradient,
+          border: `1px solid ${theme.headerBorder}`,
+          boxShadow: theme.headerShadow,
+        }}
+      >
         <div style={styles.headerInfo}>
           <span style={{ ...styles.eyebrow, color: theme.muted, opacity: 1 }}>WAR DECKS</span>
-          <h2 style={styles.title}>{playerName}</h2>
+          <h2 style={{ ...styles.title, fontSize: isMobile ? '24px' : '32px' }}>{playerName}</h2>
           <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>4 battle-ready decks · no shared cards</span>
         </div>
         <div style={styles.scoreBlock}>
           <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>Total Score</span>
-          <span style={styles.scoreValue}>{liveTotalScore.toFixed(3)}</span>
+          <span style={{ ...styles.scoreValue, fontSize: isMobile ? '24px' : '32px' }}>{liveTotalScore.toFixed(3)}</span>
         </div>
       </div>
 
-      <div style={styles.decksGrid}>
+      <div style={{ ...styles.decksGrid, gap: isMobile ? '16px' : '30px' }}>
         {slots.map((master, slotPos) => {
           const deck = deckAt(master);
           const options = candidatesForSlot(slotPos);

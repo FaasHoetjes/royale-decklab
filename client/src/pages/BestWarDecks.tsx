@@ -69,14 +69,21 @@ function CompactDeckRow({
         // wrap so the cards take the full width and the stats sit beneath.
         flexWrap: isMobile ? 'wrap' : 'nowrap',
         gap: isMobile ? '8px' : '14px',
-        padding: '10px 14px',
+        padding: isMobile ? '10px' : '10px 14px',
         backgroundColor: rowBg,
         borderRadius: '12px',
         border: `1px solid ${rowBorder}`,
       }}
     >
-      {/* 8-card row */}
-      <div style={{ display: 'flex', gap: '5px', flex: 1, flexBasis: isMobile ? '100%' : 'auto' }}>
+      {/* 8-card row — folded into two rows of four on phones so each card
+          stays big enough for its art and elixir badge. */}
+      <div
+        style={
+          isMobile
+            ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', flexBasis: '100%' }
+            : { display: 'flex', gap: '5px', flex: 1 }
+        }
+      >
         {cards.map((card, index) => {
           const ver = cardVersion(deck, card.id);
           const icon = cardIcon(card, ver);
@@ -142,8 +149,9 @@ function CompactDeckRow({
         })}
       </div>
 
-      {/* Inline stats */}
-      <div style={{ display: 'flex', gap: '18px', flexShrink: 0 }}>
+      {/* Inline stats — on phones they share the second line with the play
+          button, spread across the full width. */}
+      <div style={{ display: 'flex', gap: '18px', flexShrink: 0, ...(isMobile ? { flex: 1, justifyContent: 'space-around' } : {}) }}>
         <div style={{ textAlign: 'center' }}>
           <div style={statLabel(theme)}>Win Rate</div>
           <div style={{ ...statValue, color: accentColor }}>{(deck.winRate * 100).toFixed(1)}%</div>
@@ -321,8 +329,8 @@ export default function BestWarDecks() {
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 0' }}>
-      <div style={{ marginBottom: '30px', paddingBottom: '20px', borderBottom: `1px solid ${theme.border}` }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '4px 0' : '20px 0' }}>
+      <div style={{ marginBottom: isMobile ? '20px' : '30px', paddingBottom: isMobile ? '14px' : '20px', borderBottom: `1px solid ${theme.border}` }}>
         <h2 style={{ color: theme.text.primary, margin: 0 }}>Best War Deck Sets</h2>
         <p style={{ fontSize: '15px', margin: '8px 0 0', color: theme.text.secondary }}>
           The strongest 4-deck combinations for war, ranked by meta performance. Assumes all cards are owned, max level, with all evolutions and heroes.
@@ -337,7 +345,7 @@ export default function BestWarDecks() {
       )}
 
       {data && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '24px' }}>
           {data.sets.map((set, setIdx) => {
             const medalColor = theme.accent;
             return (
@@ -400,7 +408,7 @@ export default function BestWarDecks() {
                 </div>
               </div>
 
-              <div style={{ position: 'relative', paddingRight: isMobile ? '46px' : '60px' }}>
+              <div style={{ position: 'relative', paddingRight: isMobile ? 0 : '60px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {set.decks.map((deck, deckIdx) => (
                     <CompactDeckRow
@@ -412,7 +420,44 @@ export default function BestWarDecks() {
                     />
                   ))}
                 </div>
+                {/* On phones the side gutter would squeeze the cards, so the
+                    copy action becomes a full-width button under the rows. */}
+                {isMobile && (
+                  <button
+                    onClick={() => copySetToBuilder(set, setIdx)}
+                    disabled={copyingSetIdx !== null}
+                    style={{
+                      width: '100%',
+                      marginTop: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '11px',
+                      borderRadius: '10px',
+                      border: `1px solid ${medalColor}`,
+                      backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
+                      color: medalColor,
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
+                      opacity: copyingSetIdx !== null ? 0.6 : 1,
+                    }}
+                  >
+                    {copyingSetIdx === setIdx ? (
+                      <svg viewBox="0 0 24 24" style={{ width: '16px', height: '16px', display: 'block', animation: 'spin 1s linear infinite' }} aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20" strokeLinecap="round" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 512 512" style={{ width: '16px', height: '16px', display: 'block' }} aria-hidden="true">
+                        <path fill="currentColor" d="M217.9 105.9L340.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L217.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1L32 320c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM352 416l64 0c17.7 0 32-14.3 32-32l0-256c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32-14.3-32-32s14.3-32 32-32l64 0c53 0 96 43 96 96l0 256c0 53-43 96-96 96l-64 0c-17.7 0-32-14.3-32-32s14.3-32 32-32z" />
+                      </svg>
+                    )}
+                    Use in Builder
+                  </button>
+                )}
                 {/* Copy-to-builder icon button, vertically centered on the 4 rows */}
+                {!isMobile && (
                 <div style={{
                   position: 'absolute',
                   right: 0,
@@ -481,6 +526,7 @@ export default function BestWarDecks() {
                     )}
                   </div>
                 </div>
+                )}
               </div>
             </section>
           );

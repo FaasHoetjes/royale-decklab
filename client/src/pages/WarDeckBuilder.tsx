@@ -7,6 +7,7 @@ import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
 import { useDebouncedValue } from '../useDebouncedValue';
 import { slotKind, slotBorderStyle, cardFrame, type SlotKind } from '../slotStyles';
 import { buildDeckLink, isCompleteDeck } from '../deckLink';
+import { useIsMobile } from '../useIsMobile';
 
 type SpecialVersion = 'evo' | 'hero';
 
@@ -45,6 +46,7 @@ const emptyDecks = (): DeckState =>
 export default function WarDeckBuilder() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
+  const isMobile = useIsMobile();
   // The one accent for a meta-backed score — gold in dark, blue in light —
   // matching the swap modal's win-rate accent.
   const scoreAccent = isDarkMode ? '#e8b24a' : '#007bff';
@@ -342,8 +344,15 @@ export default function WarDeckBuilder() {
   );
 
   return (
-    <div style={styles.container}>
-      <div style={{ ...styles.header, borderBottomColor: theme.border }}>
+    <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
+      <div
+        style={{
+          ...styles.header,
+          borderBottomColor: theme.border,
+          marginBottom: isMobile ? '20px' : '30px',
+          paddingBottom: isMobile ? '14px' : '20px',
+        }}
+      >
         <div style={styles.titleRow}>
           <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>
           <div style={styles.titleRowRight}>
@@ -374,19 +383,20 @@ export default function WarDeckBuilder() {
         {loading && <p style={{ color: theme.text.secondary }}>Loading cards…</p>}
       </div>
 
-      <div style={styles.deckList}>
+      <div style={{ ...styles.deckList, gap: isMobile ? '14px' : '24px' }}>
         {decks.map((deck, deckIndex) => (
           <div
             key={deckIndex}
             style={{
               ...styles.deck,
+              padding: isMobile ? '14px 12px' : '20px',
               backgroundColor: theme.bg.secondary,
               borderColor: theme.border,
             }}
           >
-            <div style={styles.deckHeader}>
+            <div style={{ ...styles.deckHeader, gap: isMobile ? '8px' : '14px' }}>
               <h3 style={{ ...styles.deckTitle, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
-              <div style={styles.deckHeaderStats}>
+              <div style={{ ...styles.deckHeaderStats, gap: isMobile ? '10px' : '14px' }}>
                 {isCompleteDeck(deck) && (
                   <a
                     href={buildDeckLink(deck)}
@@ -470,7 +480,15 @@ export default function WarDeckBuilder() {
                 })()}
               </div>
             </div>
-            <div style={styles.slotGrid}>
+            <div
+              style={{
+                ...styles.slotGrid,
+                // Phones can't fit 8 readable cards on one line — fold each deck
+                // into two rows of four, like the in-game deck screen.
+                gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
+                gap: isMobile ? '8px' : '10px',
+              }}
+            >
               {deck.map((cardId, slotIndex) => {
                 const card = cardId != null ? cardById.get(cardId) : null;
                 const displayLevel =
@@ -757,6 +775,7 @@ const styles = {
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
+    flexWrap: 'wrap' as const,
     marginBottom: '16px',
   },
   deckTitle: {

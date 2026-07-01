@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
 import { cardFrame } from '../slotStyles';
+import { useIsMobile } from '../useIsMobile';
 
 export interface BuilderCard {
   id: number;
@@ -129,6 +130,7 @@ export default function CardPicker({
   allowChampions,
 }: CardPickerProps) {
   const theme = getTheme(isDarkMode);
+  const isMobile = useIsMobile();
 
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -315,21 +317,47 @@ export default function CardPicker({
     );
   };
 
+  const closeButton = (
+    <button
+      onClick={onClose}
+      style={{ ...styles.closeButton, color: theme.text.secondary }}
+      aria-label="Close card picker"
+    >
+      ✕
+    </button>
+  );
+
   return (
-    <div style={styles.overlay} onClick={onClose}>
+    <div style={{ ...styles.overlay, padding: isMobile ? '10px' : '20px' }} onClick={onClose}>
       <div
-        style={{ ...styles.modal, backgroundColor: theme.bg.secondary, borderColor: theme.border }}
+        style={{
+          ...styles.modal,
+          height: isMobile ? '94dvh' : '85vh',
+          backgroundColor: theme.bg.secondary,
+          borderColor: theme.border,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ ...styles.header, borderBottomColor: theme.border }}>
-          <div style={styles.titleBlock}>
-            <div style={{ ...styles.title, color: theme.text.primary }}>Card Collection</div>
-            <div style={{ ...styles.foundText, color: theme.accent }}>
-              Found: {ownedCount}/{cards.length}
+        {/* On phones the header stacks: title row (with close) above a
+            full-width controls row, instead of one long overflowing line. */}
+        <div
+          style={{
+            ...styles.header,
+            ...(isMobile ? { flexDirection: 'column' as const, alignItems: 'stretch' as const, gap: '12px', padding: '14px' } : {}),
+            borderBottomColor: theme.border,
+          }}
+        >
+          <div style={styles.titleRow}>
+            <div style={styles.titleBlock}>
+              <div style={{ ...styles.title, color: theme.text.primary }}>Card Collection</div>
+              <div style={{ ...styles.foundText, color: theme.accent }}>
+                Found: {ownedCount}/{cards.length}
+              </div>
             </div>
+            {isMobile && closeButton}
           </div>
 
-          <div style={styles.controls}>
+          <div style={{ ...styles.controls, ...(isMobile ? { gap: '8px' } : {}) }}>
             <input
               type="text"
               value={query}
@@ -338,6 +366,7 @@ export default function CardPicker({
               aria-label="Search cards by name"
               style={{
                 ...styles.searchInput,
+                ...(isMobile ? { flex: 1, width: 'auto', minWidth: 0 } : {}),
                 backgroundColor: theme.control.bg,
                 color: theme.control.text,
                 border: `1px solid ${theme.control.border}`,
@@ -434,18 +463,12 @@ export default function CardPicker({
             </button>
             <button
               onClick={cycleSort}
-              style={{ ...styles.sortButton, backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
+              style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px' } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
               title="Click to change sort order"
             >
               By {sortType}
             </button>
-            <button
-              onClick={onClose}
-              style={{ ...styles.closeButton, color: theme.text.secondary }}
-              aria-label="Close card picker"
-            >
-              ✕
-            </button>
+            {!isMobile && closeButton}
           </div>
         </div>
 
@@ -461,8 +484,19 @@ export default function CardPicker({
           </defs>
         </svg>
 
-        <div style={styles.scrollViewport}>
-          <div style={styles.grid}>{visibleCards.map(renderCard)}</div>
+        <div style={{ ...styles.scrollViewport, padding: isMobile ? '12px' : '20px' }}>
+          <div
+            style={{
+              ...styles.grid,
+              // Four fluid columns on phones (the fixed 110px tracks would only
+              // fit two, wasting half the screen); fixed tracks on desktop so
+              // cards never resize as results are filtered.
+              gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(auto-fill, 110px)',
+              gap: isMobile ? '8px' : '12px',
+            }}
+          >
+            {visibleCards.map(renderCard)}
+          </div>
         </div>
       </div>
     </div>
@@ -500,6 +534,12 @@ const styles = {
     justifyContent: 'space-between' as const,
     padding: '16px 20px',
     borderBottom: '1px solid #e0e0e0',
+  },
+  // Wraps the title block (and, on mobile, the close button opposite it).
+  titleRow: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
   },
   titleBlock: {
     display: 'flex' as const,
