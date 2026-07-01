@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="RoyaleDeckLab.Api.Tests/RoyaleDeckLab.Api.Tests.csproj" />
+  <Project Path="RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj" />
+</Solution>

@@ -140,7 +140,10 @@ public sealed partial class BattleRepository(MetaDbContext db)
         db.SaveChanges();
     }
 
+    // The meta_state table holds exactly one row, keyed Id = 1 (seeded at startup).
+    // A primary-key lookup is both the correct access and avoids EF's
+    // "FirstOrDefault without OrderBy" ambiguity warning.
     private MetaStateEntity State()
-        => db.MetaState.FirstOrDefault()
+        => db.MetaState.Find(1)
            ?? throw new InvalidOperationException("meta_state row missing — was the DB initialised?");
 }

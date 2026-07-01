@@ -15,8 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 DotEnv.Load(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env")));
 
 // Listen on 3000 so the existing Vite proxy (/api -> localhost:3000) and React
-// app need no changes.
-builder.WebHost.UseUrls("http://localhost:3000");
+// app need no changes. In a container ASPNETCORE_URLS is set (to bind 0.0.0.0);
+// honour it when present rather than forcing localhost.
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    builder.WebHost.UseUrls("http://localhost:3000");
+}
 
 // --- Options ---------------------------------------------------------------
 builder.Services.Configure<MetaOptions>(builder.Configuration.GetSection(MetaOptions.SectionName));
@@ -63,6 +67,10 @@ builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 
+// Scoring domain services are stateless — a single shared instance is fine.
+builder.Services.AddSingleton<DeckAnalyzer>();
+builder.Services.AddSingleton<BestDecksBuilder>();
+
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
@@ -84,11 +92,27 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors();
 
+// Serve the built React SPA from wwwroot when it's present (production image).
+// In local dev there's no wwwroot — Vite serves the app and proxies /api here,
+// so this is a no-op and behaviour is unchanged.
+app.UseStaticFiles();
+
 // --- Endpoints -------------------------------------------------------------
 app.MapControllers();
 
-// Match the Bun server's 404 body shape.
-app.MapFallback(() => Results.Json(new { error = "Not found" }, statusCode: 404));
+var spaIndex = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
+if (File.Exists(spaIndex))
+{
+    // Unmatched /api/* stays a JSON 404 (matches the Bun server); every other
+    // unmatched path serves the SPA shell so client-side routing works on reload.
+    app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
+    app.MapFallbackToFile("index.html");
+}
+else
+{
+    // Match the Bun server's 404 body shape.
+    app.MapFallback(() => Results.Json(new { error = "Not found" }, statusCode: 404));
+}
 
 app.Logger.LogInformation("Royale DeckLab API running on http://localhost:3000");
 app.Run();
