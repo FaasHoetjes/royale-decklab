@@ -1,74 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import WarDeckResult from '../components/WarDeckResult';
-import { fetchPlayerWarDecks, fetchMetaStatus, isAbortError } from '../api';
+import { useMetaStatus, usePlayerWarDecks } from '../queries';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-
-interface PlayerResponse {
-  player: {
-    tag: string;
-    name: string;
-  };
-  warDecks: {
-    decks: ScoredDeckDTO[];
-    totalScore: number;
-    alternatives: ScoredDeckDTO[];
-  };
-}
-
-interface ScoredDeckDTO {
-  cardIds: number[];
-  metaWinRate: number;
-  confidence: number;
-  uses: number;
-  players: number;
-  pickRate: number;
-  playerScore: number;
-  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  metaCardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  cards: Array<{
-    id: number;
-    name: string;
-    level: number;
-    maxLevel: number;
-    elixirCost?: number;
-    elixerCost?: number;
-  }>;
-}
-
-// Cache fetched war decks per player tag for the session, so navigating away
-// and back to the generator doesn't re-fetch (and re-show a loader) for a
-// player we've already loaded.
-const warDeckCache = new Map<string, PlayerResponse>();
-
-// Once the backend has answered, remember it for the session. The meta status
-// doesn't change underneath us, so a remount (returning to this page) should
-// start already-ready instead of flashing the "Connecting to server…" screen.
-let metaReadyOnce = false;
 
 export default function WarDeckGenerator() {
   const { playerId } = useParams();
   const navigate = useNavigate();
   const { isDarkMode, activePlayerTag, setActivePlayerTag } = useApp();
-  // Seed from the cache so a remount for an already-loaded player paints the
-  // results immediately instead of flashing the loader.
-  const initialTag = playerId ? `#${playerId}` : activePlayerTag;
-  const [isLoading, setIsLoading] = useState(!!playerId);
-  const [error, setError] = useState('');
-  const [playerData, setPlayerData] = useState<PlayerResponse | null>(
-    () => (initialTag ? warDeckCache.get(initialTag) ?? null : null)
-  );
-  const [metaReady, setMetaReady] = useState(metaReadyOnce);
 
-  useEffect(() => {
-    // Already confirmed this session — no need to re-check (or flash a loader).
-    if (metaReadyOnce) return;
-    const controller = new AbortController();
-    checkMetaStatus(controller.signal);
-    return () => controller.abort();
-  }, []);
+  // The URL is the source of truth for which player to show; searching just
+  // navigates and lets the query below react to the new tag.
+  const tag = playerId ? `#${playerId}` : null;
+
+  // Backend readiness. staleTime:Infinity means a remount won't re-flash the
+  // "connecting" screen once it has answered this session.
+  const meta = useMetaStatus();
+  const metaReady = meta.isSuccess;
+
+  // The player's war decks, keyed by tag — the query cache replaces the old
+  // per-tag Map, so revisiting a loaded player paints instantly. Held off until
+  // the backend is confirmed up.
+  const warDecks = usePlayerWarDecks(tag, metaReady);
+  const playerData = warDecks.data ?? null;
 
   // Reached the generator without a tag in the URL but a player is active
   // (e.g. landed on '/') — load that player's page.
@@ -78,71 +34,20 @@ export default function WarDeckGenerator() {
     }
   }, [playerId, activePlayerTag]);
 
+  // Once a tag's decks load successfully, make that player active app-wide
+  // (used by the Builder + Best Decks). Only on success so a bad tag doesn't
+  // poison the active player.
   useEffect(() => {
-    if (metaReady && playerId) {
-      const controller = new AbortController();
-      handleSearch(`#${playerId}`, controller.signal);
-      return () => controller.abort();
-    }
-  }, [metaReady, playerId]);
+    if (warDecks.isSuccess && tag) setActivePlayerTag(tag);
+  }, [warDecks.isSuccess, tag]);
 
-  const checkMetaStatus = async (signal?: AbortSignal) => {
-    try {
-      await fetchMetaStatus(signal);
-      metaReadyOnce = true;
-      setMetaReady(true);
-    } catch (error) {
-      // An aborted check (StrictMode remount / unmount) isn't a connection failure.
-      if (isAbortError(error)) return;
-      setError(
-        'Failed to connect to server. Make sure the backend is running on port 3000.'
-      );
-      setMetaReady(false);
-    }
-  };
-
-  const handleSearch = async (playerTag: string, signal?: AbortSignal) => {
-    // Serve a previously loaded player instantly from the cache.
-    const cached = warDeckCache.get(playerTag);
-    if (cached) {
-      setPlayerData(cached);
-      setActivePlayerTag(playerTag);
-      navigate(`/${playerTag.replace('#', '')}`, { replace: true });
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setPlayerData(null);
-
-    try {
-      const data = await fetchPlayerWarDecks(playerTag, signal);
-      setPlayerData(data);
-      warDeckCache.set(playerTag, data);
-
-      // Make this player active app-wide (used by the War Deck Builder).
-      setActivePlayerTag(playerTag);
-
-      // Update URL
-      const tag = playerTag.replace('#', '');
-      navigate(`/${tag}`);
-    } catch (err) {
-      // A superseded/unmounted request was cancelled on purpose — not an error,
-      // and we leave the loader as-is for the request that replaced it.
-      if (isAbortError(err)) return;
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to fetch player data. Please try again.'
-      );
-    } finally {
-      if (!signal?.aborted) setIsLoading(false);
-    }
+  const handleSearch = (playerTag: string) => {
+    // Navigate; the query re-keys on the new tag and (cache permitting) may
+    // resolve instantly.
+    navigate(`/${playerTag.replace('#', '')}`);
   };
 
   const handleNewSearch = () => {
-    setPlayerData(null);
-    setError('');
     // Clearing the active player returns the app to the landing page.
     setActivePlayerTag(null);
     navigate('/');
@@ -154,9 +59,13 @@ export default function WarDeckGenerator() {
     return (
       <div style={styles.centerContent}>
         <h1>Royale DeckLab</h1>
-        <p style={{ ...styles.error, color: '#ff6b6b' }}>{error || 'Connecting to server...'}</p>
+        <p style={{ ...styles.error, color: '#ff6b6b' }}>
+          {meta.isError
+            ? 'Failed to connect to server. Make sure the backend is running on port 3000.'
+            : 'Connecting to server...'}
+        </p>
         <button
-          onClick={() => checkMetaStatus()}
+          onClick={() => meta.refetch()}
           style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}
         >
           Retry Connection
@@ -164,6 +73,12 @@ export default function WarDeckGenerator() {
       </div>
     );
   }
+
+  const searchError = warDecks.isError
+    ? warDecks.error instanceof Error
+      ? warDecks.error.message
+      : 'Failed to fetch player data. Please try again.'
+    : '';
 
   return (
     <>
@@ -176,18 +91,18 @@ export default function WarDeckGenerator() {
           onNewSearch={handleNewSearch}
           isDarkMode={isDarkMode}
         />
-      ) : activePlayerTag && !error ? (
-        // We already know the player and are auto-loading their decks (e.g. on
-        // returning to this page) — show a loader, not the empty search form,
-        // which would otherwise flash for a moment before results arrive.
+      ) : (tag || activePlayerTag) && !searchError ? (
+        // A player is being loaded (from the URL, or the redirect above is
+        // about to fire) — show a loader, not the empty search form, which
+        // would otherwise flash for a moment before results arrive.
         <div style={styles.centerContent}>
           <h1>Royale DeckLab</h1>
           <p style={{ ...styles.subtitle, color: theme.text.secondary }}>Loading your war decks…</p>
         </div>
       ) : (
-        <PlayerSearch onSearch={handleSearch} isLoading={isLoading} isDarkMode={isDarkMode} />
+        <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} isDarkMode={isDarkMode} />
       )}
-      {error && <div style={{ ...styles.errorBanner, backgroundColor: '#ff6b6b' }}>{error}</div>}
+      {searchError && <div style={{ ...styles.errorBanner, backgroundColor: '#ff6b6b' }}>{searchError}</div>}
     </>
   );
 }

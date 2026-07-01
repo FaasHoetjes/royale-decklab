@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { fetchBestDecks, fetchPlayerCollection, isAbortError } from '../api';
-import type { BestDecksResponse, BestDeckEntry, BestDeckSet } from '../api';
+import { useBestDecks, fetchCollectionOnce } from '../queries';
+import type { BestDeckEntry, BestDeckSet } from '../api';
 import { slotKind, slotBorderStyle, cardFrame } from '../slotStyles';
 import { buildDeckLink } from '../deckLink';
 import { useIsMobile } from '../useIsMobile';
@@ -263,41 +264,21 @@ export default function BestWarDecks() {
   const theme = getTheme(isDarkMode);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const [data, setData] = useState<BestDecksResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data, isLoading: loading, isError, error } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
   const [hoveredCopyBtn, setHoveredCopyBtn] = useState<number | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchBestDecks(controller.signal)
-      .then(setData)
-      .catch((e: Error) => {
-        if (!isAbortError(e)) setError(e.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, []);
 
   async function copySetToBuilder(set: BestDeckSet, setIdx: number) {
     setCopyingSetIdx(setIdx);
     try {
-      // Resolve owned card IDs: try the builder's sessionStorage cache first,
-      // then fall back to a fresh fetch. Skip ownership filtering when no player.
+      // Resolve owned card IDs through the shared collection query (deduped and
+      // cached alongside the builder's own read). Skip ownership filtering when
+      // no player is active.
       const ownedIds = new Set<number>();
       if (activePlayerTag) {
-        const cacheKey = `wdb_owned_${activePlayerTag}`;
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-          (JSON.parse(cached) as Array<{ id: number }>).forEach(c => ownedIds.add(c.id));
-        } else {
-          const res = await fetchPlayerCollection(activePlayerTag);
-          res.cards.forEach(c => ownedIds.add(c.id));
-          sessionStorage.setItem(cacheKey, JSON.stringify(res.cards));
-        }
+        const res = await fetchCollectionOnce(queryClient, activePlayerTag);
+        res.cards.forEach(c => ownedIds.add(c.id));
       }
       const filterByOwnership = activePlayerTag && ownedIds.size > 0;
 
@@ -327,9 +308,10 @@ export default function BestWarDecks() {
         }
       });
 
+      // Hand the decks + art choices to the builder via sessionStorage; it
+      // re-scores them itself (React Query) once mounted, so no scores to pass.
       sessionStorage.setItem('wdb_decks', JSON.stringify(newDecks));
       sessionStorage.setItem('wdb_slotVersion', JSON.stringify(newSlotVersion));
-      sessionStorage.removeItem('wdb_scores');
       navigate('/builder');
     } catch {
       // silently bail — user stays on the page
@@ -348,7 +330,11 @@ export default function BestWarDecks() {
       </div>
 
       {loading && <p style={{ color: theme.text.secondary, marginTop: '32px' }}>Loading best decks…</p>}
-      {error && <p style={{ color: '#e05c5c', marginTop: '32px' }}>Failed to load: {error}</p>}
+      {isError && (
+        <p style={{ color: '#e05c5c', marginTop: '32px' }}>
+          Failed to load: {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
+      )}
 
       {data && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

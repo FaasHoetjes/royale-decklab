@@ -1,16 +1,10 @@
 import { useState, useEffect, useMemo, type DragEvent } from 'react';
 import CardPicker, { type BuilderCard, type FilterKey } from '../components/CardPicker';
-import {
-  fetchAllCards,
-  fetchPlayerCollection,
-  scoreBuilderDecks,
-  isAbortError,
-  type CatalogCard,
-  type OwnedCard,
-  type ScoreDecksResponse,
-} from '../api';
+import type { ScoreDeckCard } from '../api';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
+import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
+import { useDebouncedValue } from '../useDebouncedValue';
 import { slotKind, slotBorderStyle, cardFrame, type SlotKind } from '../slotStyles';
 import { buildDeckLink, isCompleteDeck } from '../deckLink';
 
@@ -55,25 +49,18 @@ export default function WarDeckBuilder() {
   // matching the swap modal's win-rate accent.
   const scoreAccent = isDarkMode ? '#e8b24a' : '#007bff';
 
-  const [catalog, setCatalog] = useState<CatalogCard[]>(() => {
-    try {
-      const saved = sessionStorage.getItem('wdb_catalog');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [owned, setOwned] = useState<OwnedCard[]>(() => {
-    try {
-      if (!activePlayerTag) return [];
-      const saved = sessionStorage.getItem(`wdb_owned_${activePlayerTag}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  // Server data via React Query — the catalog is effectively static and the
+  // collection is keyed by the active player. Both are cached and shared with
+  // the rest of the app (e.g. Best Decks' copy-to-builder), so revisiting the
+  // builder paints from cache instead of re-fetching.
+  const cardsQuery = useAllCards();
+  const catalog = cardsQuery.data ?? [];
+  const collectionQuery = usePlayerCollection(activePlayerTag);
+  const owned = collectionQuery.data ?? [];
+
+  const loading = cardsQuery.isLoading;
+  const loadError = cardsQuery.error ?? collectionQuery.error;
+  const error = loadError instanceof Error ? loadError.message : '';
 
   const [decks, setDecks] = useState<DeckState>(() => {
     try {
@@ -90,18 +77,6 @@ export default function WarDeckBuilder() {
   const [pickerFilters, setPickerFilters] = useState<Set<FilterKey>>(new Set());
   const [pickerSortIndex, setPickerSortIndex] = useState(0);
   const [pickerDescending, setPickerDescending] = useState(false);
-
-  // Player score per deck + the total across all four, scored on the backend
-  // (meta match → real score, otherwise a level-based fieldability score). Null
-  // until the first scoring round trip returns.
-  const [scores, setScores] = useState<ScoreDecksResponse | null>(() => {
-    try {
-      const saved = sessionStorage.getItem('wdb_scores');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
 
   // Per-slot override of which special art shows, keyed by `${deck}-${slot}`.
   // Only meaningful for slots where the player owns more than one version
@@ -121,46 +96,11 @@ export default function WarDeckBuilder() {
   const [dragSource, setDragSource] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
   const [dragOver, setDragOver] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
 
-  // Persist state across page navigations (session-scoped). Guards prevent
-  // overwriting good cache with the empty initial values before fetches return.
+  // Persist only the user's actual work — the decks they're building and their
+  // per-slot art choices — across navigations. Server data (catalog, owned,
+  // scores) is owned by React Query, not sessionStorage.
   useEffect(() => { sessionStorage.setItem('wdb_decks', JSON.stringify(decks)); }, [decks]);
   useEffect(() => { sessionStorage.setItem('wdb_slotVersion', JSON.stringify(slotVersion)); }, [slotVersion]);
-  useEffect(() => { if (catalog.length > 0) sessionStorage.setItem('wdb_catalog', JSON.stringify(catalog)); }, [catalog]);
-  useEffect(() => {
-    if (activePlayerTag && owned.length > 0)
-      sessionStorage.setItem(`wdb_owned_${activePlayerTag}`, JSON.stringify(owned));
-  }, [owned, activePlayerTag]);
-  useEffect(() => { if (scores !== null) sessionStorage.setItem('wdb_scores', JSON.stringify(scores)); }, [scores]);
-
-  // Fetch the full card catalog once.
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    fetchAllCards(controller.signal)
-      .then((res) => setCatalog(res.cards))
-      .catch((err) => {
-        if (!isAbortError(err)) setError(err instanceof Error ? err.message : 'Failed to load cards');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, []);
-
-  // Fetch the active player's collection whenever the active player changes.
-  useEffect(() => {
-    if (!activePlayerTag) {
-      setOwned([]);
-      return;
-    }
-    const controller = new AbortController();
-    fetchPlayerCollection(activePlayerTag, controller.signal)
-      .then((res) => setOwned(res.cards))
-      .catch((err) => {
-        if (!isAbortError(err)) setError(err instanceof Error ? err.message : 'Failed to load collection');
-      });
-    return () => controller.abort();
-  }, [activePlayerTag]);
 
   // Merge catalog with ownership into the builder view model.
   const builderCards = useMemo<BuilderCard[]>(() => {
@@ -206,18 +146,11 @@ export default function WarDeckBuilder() {
     return set;
   }, [decks]);
 
-  // Score the decks on the backend whenever they change, debounced so a flurry
-  // of edits sends one request. Empty boards skip the round trip entirely and
-  // just clear the scores. We send only the cards actually placed (with the
-  // player's levels + owned evo/hero tier) so the server never re-fetches the
-  // collection — scoring is reactive without hammering the Clash Royale API.
-  useEffect(() => {
-    const placedIds = [...usedIds];
-    if (placedIds.length === 0) {
-      setScores(null);
-      return;
-    }
-    const cards = placedIds
+  // The cards actually placed on the board, with the player's levels + owned
+  // evo/hero tier. Sending only these means the server never re-fetches the
+  // collection — scoring stays reactive without hammering the Clash Royale API.
+  const scoreCards = useMemo<ScoreDeckCard[]>(() => {
+    return [...usedIds]
       .map((id) => cardById.get(id))
       .filter((c): c is BuilderCard => c != null && c.level != null)
       .map((c) => ({
@@ -229,25 +162,22 @@ export default function WarDeckBuilder() {
         evolutionLevel: c.ownsHero ? 2 : c.hasEvo ? 1 : 0,
         rarity: c.rarity,
       }));
+  }, [usedIds, cardById]);
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      scoreBuilderDecks(cards, decks, controller.signal)
-        .then((res) => {
-          if (!controller.signal.aborted) setScores(res);
-        })
-        .catch((err) => {
-          // A failed scoring pass shouldn't surface as a page error — the decks
-          // are still fully usable, just unscored until the next change. An
-          // aborted (superseded) pass leaves the prior scores in place.
-          if (!isAbortError(err)) setScores(null);
-        });
-    }, 300);
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [decks, cardById, usedIds]);
+  // Debounce the scoring inputs together so a flurry of edits scores once.
+  // useDeckScores dedupes identical arrangements (same key → cached) and keeps
+  // the previous scores on-screen while a new arrangement is scored.
+  const scoreInput = useMemo(() => ({ cards: scoreCards, decks }), [scoreCards, decks]);
+  const debouncedInput = useDebouncedValue(scoreInput, 300);
+  const scoreQuery = useDeckScores(
+    debouncedInput.cards,
+    debouncedInput.decks,
+    debouncedInput.cards.length > 0
+  );
+  // An empty board has no score. Gating on the (undebounced) placed count drops
+  // the score the instant the board is cleared, rather than lingering on the
+  // last arrangement's result until the query settles.
+  const scores = usedIds.size > 0 ? scoreQuery.data ?? null : null;
 
   // Drop any version override for a slot — used whenever its card changes, so a
   // new card never inherits the previous occupant's evo/hero choice.
