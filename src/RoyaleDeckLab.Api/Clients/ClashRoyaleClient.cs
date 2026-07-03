@@ -6,9 +6,8 @@ namespace RoyaleDeckLab.Api.Clients;
 
 /// <summary>
 /// Typed HttpClient for the official Clash Royale API. The Bearer token and base
-/// address are configured once on the client in Program.cs (AddHttpClient), so
-/// each call here is just the path. Replaces the three Bun api/* classes
-/// (cards.ts, meta.ts, player.ts). Wire shapes live in <c>Dtos/</c>.
+/// address are configured once in Program.cs (AddHttpClient), so each call here
+/// is just the path. Wire shapes live in <c>Dtos/</c>.
 /// </summary>
 public sealed class ClashRoyaleClient(HttpClient http)
 {

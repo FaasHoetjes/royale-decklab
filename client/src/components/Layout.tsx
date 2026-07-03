@@ -1,10 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
+import { ElixirGradientDefs } from './ElixirBadge';
 import Landing from '../pages/Landing';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { useIsMobile } from '../useIsMobile';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 function CornerThemeToggle() {
   return (
@@ -47,9 +48,9 @@ export default function Layout() {
     >
       <Sidebar />
       <main style={{ ...styles.content, padding: isMobile ? '12px' : '20px' }}>
-        {/* On mobile the toggle lives inside the top bar (next to the menu
-            button), so the floating corner button would double up. */}
+        {/* On mobile the toggle lives inside the top bar instead. */}
         {!isMobile && <CornerThemeToggle />}
+        <ElixirGradientDefs />
         <Outlet />
       </main>
     </div>

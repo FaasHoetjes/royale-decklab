@@ -1,9 +1,6 @@
 namespace RoyaleDeckLab.Api.Options;
 
-/// <summary>
-/// Tuning for the rolling battle store and meta-refresh loop. Mirrors the
-/// constants that were inline in the Bun server / MetaBuilder.
-/// </summary>
+/// <summary>Tuning for the rolling battle store and meta-refresh loop.</summary>
 public sealed class MetaOptions
 {
     public const string SectionName = "Meta";

@@ -5,9 +5,8 @@ namespace RoyaleDeckLab.Api.Data;
 
 /// <summary>
 /// JSON options used by the EF value converters that persist card ids / card
-/// versions as text columns. Must produce output compatible with what the Bun
-/// BattleStore wrote (compact camelCase, enums as lowercase strings) so the
-/// existing meta.db rows round-trip.
+/// versions as text columns (compact camelCase, enums as lowercase strings),
+/// keeping the stored format stable so existing meta.db rows round-trip.
 /// </summary>
 internal static class StorageJson
 {

@@ -6,17 +6,14 @@ using RoyaleDeckLab.Api.Options;
 namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
-/// Holds the aggregated meta in memory and owns the build/refresh lifecycle —
-/// the port of the module-level state and functions that were inline at the top
-/// of <c>server.ts</c> (metaCache, lastCacheTime, isBuilding, metaEpochStart,
-/// aggregateFromStore, rebuildMetaCache, loadOrBuildMetaCache).
+/// Holds the aggregated meta in memory and owns the build/refresh lifecycle.
 ///
-/// Registered as a singleton. Unlike Bun's single-threaded event loop, ASP.NET
-/// serves requests on many threads while the background service refreshes, so:
-/// the deck list is swapped by atomic reference assignment (readers see either
-/// the whole old list or the whole new one), and the "a build is in flight" guard
-/// is a lock. Scoped DB work (BattleRepository/MetaBuilder) is resolved per operation
-/// through the scope factory, since a singleton can't hold a scoped DbContext.
+/// Registered as a singleton. Requests are served on many threads while the
+/// background service refreshes, so: the deck list is swapped by atomic
+/// reference assignment (readers see either the whole old list or the whole new
+/// one), and the "a build is in flight" guard is a lock. Scoped DB work
+/// (BattleRepository/MetaBuilder) is resolved per operation through the scope
+/// factory, since a singleton can't hold a scoped DbContext.
 /// </summary>
 public sealed class MetaCache(
     IServiceScopeFactory scopeFactory,

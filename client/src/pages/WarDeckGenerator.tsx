@@ -87,7 +87,6 @@ export default function WarDeckGenerator() {
           playerName={playerData.player.name}
           decks={playerData.warDecks.decks}
           alternatives={playerData.warDecks.alternatives}
-          totalScore={playerData.warDecks.totalScore}
           onNewSearch={handleNewSearch}
           isDarkMode={isDarkMode}
         />

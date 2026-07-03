@@ -1,32 +1,14 @@
 import { useEffect } from 'react';
-import { cardBackdrop } from '../slotStyles';
-import { useIsMobile } from '../useIsMobile';
-
-interface Card {
-  id: number;
-  name: string;
-  level: number;
-  maxLevel: number;
-  elixirCost?: number;
-  elixerCost?: number;
-  iconUrls?: {
-    medium?: string;
-    evolutionMedium?: string;
-    heroMedium?: string;
-  };
-}
-
-interface CardVersionRef {
-  cardId: number;
-  version: 'normal' | 'evo' | 'hero';
-}
+import type { DeckCardData } from '../api';
+import { versionOf, cardIconUrl, avgElixir, deckArchetype, type CardVersionRef } from '../lib/cardDisplay';
+import { cardBackdrop } from '../lib/slotStyles';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export interface SwapOption {
   // Stable identity used to mark the active deck and to report the choice back.
   master: number;
-  cards: Card[];
+  cards: DeckCardData[];
   metaWinRate: number;
-  confidence: number;
   playerScore: number;
   cardVersions?: CardVersionRef[];
 }
@@ -38,25 +20,6 @@ interface SwapDeckModalProps {
   isDarkMode: boolean;
   onSelect: (master: number) => void;
   onClose: () => void;
-}
-
-const BEATDOWN_TANKS = ['Golem', 'Lava Hound', 'Electro Giant', 'Giant', 'Goblin Giant'];
-
-const elixirOf = (c: Card) => (c.elixirCost ?? c.elixerCost) ?? 0;
-
-// Same at-a-glance heuristic as DeckCard, kept in sync intentionally: a heavy
-// tank with high average elixir reads as Beatdown, a very cheap deck as Cycle.
-function describeDeck(cards: Card[]): { avgElixir: string; archetype: string } {
-  const avg = cards.length > 0
-    ? cards.reduce((sum, c) => sum + elixirOf(c), 0) / cards.length
-    : 0;
-  const hasBeatdownTank = cards.some(c => BEATDOWN_TANKS.includes(c.name));
-  const archetype = hasBeatdownTank && avg >= 3.8
-    ? 'Beatdown'
-    : avg <= 3.2
-      ? 'Cycle'
-      : 'Control';
-  return { avgElixir: avg.toFixed(1), archetype };
 }
 
 export default function SwapDeckModal({
@@ -77,31 +40,16 @@ export default function SwapDeckModal({
   }, [onClose]);
 
   const theme = {
-    overlay: 'rgba(0, 0, 0, 0.65)',
     panelBg: isDarkMode ? '#161618' : '#ffffff',
     panelBorder: isDarkMode ? '#2a2a2e' : '#e0e0e0',
     text: isDarkMode ? '#f4f4f5' : '#000000',
     subtext: isDarkMode ? '#a1a1aa' : '#666',
-    // Gold in dark mode, blue in light — the one accent, kept to the win rate
-    // and the active marker so the picker matches the deck cards.
+    // The one accent, kept to the win rate and the active marker.
     accent: isDarkMode ? '#e8b24a' : '#007bff',
     rowBg: isDarkMode ? '#1c1c1f' : '#f8f9ff',
     rowBorder: isDarkMode ? '#2a2a2e' : '#e0e0e0',
-    // The selected deck reads from a neutral elevated fill + a gold border,
-    // never a blue-tinted surface.
     activeBorder: isDarkMode ? '#e8b24a' : '#007bff',
     activeBg: isDarkMode ? '#26262a' : '#eaf3ff',
-  };
-
-  const versionOf = (opt: SwapOption, cardId: number): 'normal' | 'evo' | 'hero' =>
-    opt.cardVersions?.find(v => v.cardId === cardId)?.version ?? 'normal';
-
-  const iconFor = (opt: SwapOption, card: Card): string => {
-    const { medium, evolutionMedium, heroMedium } = card.iconUrls || {};
-    const version = versionOf(opt, card.id);
-    if (version === 'hero') return heroMedium || evolutionMedium || medium || '';
-    if (version === 'evo') return evolutionMedium || medium || '';
-    return medium || '';
   };
 
   return (
@@ -139,7 +87,6 @@ export default function SwapDeckModal({
 
         <div style={styles.optionList}>
           {options.map((opt) => {
-            const { avgElixir, archetype } = describeDeck(opt.cards);
             const isActive = opt.master === currentMaster;
             return (
               <button
@@ -154,32 +101,19 @@ export default function SwapDeckModal({
               >
                 <div style={styles.optionStats}>
                   <span style={{ ...styles.optionArchetype, borderColor: theme.rowBorder, color: theme.subtext }}>
-                    {archetype}
+                    {deckArchetype(opt.cards)}
                   </span>
                   {isActive && (
                     <span style={{ ...styles.activeTag, color: theme.accent }}>● Current</span>
                   )}
                   <span style={styles.statSpacer} />
-                  <span style={styles.optionStat}>
-                    <span style={{ ...styles.optionStatLabel, color: theme.subtext }}>Win Rate</span>
-                    <span style={{ ...styles.optionStatValue, color: theme.accent }}>
-                      {(opt.metaWinRate * 100).toFixed(1)}%
-                    </span>
-                  </span>
-                  <span style={styles.optionStat}>
-                    <span style={{ ...styles.optionStatLabel, color: theme.subtext }}>Score</span>
-                    <span style={{ ...styles.optionStatValue, color: theme.text }}>
-                      {opt.playerScore.toFixed(3)}
-                    </span>
-                  </span>
-                  <span style={styles.optionStat}>
-                    <span style={{ ...styles.optionStatLabel, color: theme.subtext }}>Avg Elixir</span>
-                    <span style={{ ...styles.optionStatValue, color: theme.text }}>{avgElixir}</span>
-                  </span>
+                  <OptionStat label="Win Rate" value={`${(opt.metaWinRate * 100).toFixed(1)}%`} labelColor={theme.subtext} valueColor={theme.accent} />
+                  <OptionStat label="Score" value={opt.playerScore.toFixed(3)} labelColor={theme.subtext} valueColor={theme.text} />
+                  <OptionStat label="Avg Elixir" value={avgElixir(opt.cards).toFixed(1)} labelColor={theme.subtext} valueColor={theme.text} />
                 </div>
                 <div style={styles.optionCards}>
                   {opt.cards.map((card) => {
-                    const icon = iconFor(opt, card);
+                    const icon = cardIconUrl(card.iconUrls, versionOf(opt.cardVersions, card.id));
                     return (
                       <div key={card.id} style={{ ...styles.miniCard, background: cardBackdrop(isDarkMode) }} title={card.name}>
                         {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
@@ -196,6 +130,15 @@ export default function SwapDeckModal({
   );
 }
 
+function OptionStat({ label, value, labelColor, valueColor }: { label: string; value: string; labelColor: string; valueColor: string }) {
+  return (
+    <span style={styles.optionStat}>
+      <span style={{ ...styles.optionStatLabel, color: labelColor }}>{label}</span>
+      <span style={{ ...styles.optionStatValue, color: valueColor }}>{value}</span>
+    </span>
+  );
+}
+
 const styles = {
   overlay: {
     position: 'fixed' as const,
@@ -204,21 +147,17 @@ const styles = {
     display: 'flex' as const,
     alignItems: 'flex-start' as const,
     justifyContent: 'center' as const,
-    padding: '40px 20px',
     overflowY: 'auto' as const,
     zIndex: 100,
   },
+  // Capped to the viewport; the header + subtitle stay fixed and only the
+  // option list below scrolls.
   panel: {
     width: '100%',
     maxWidth: '640px',
     borderRadius: '12px',
     border: '1px solid',
-    padding: '24px',
     boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)',
-    // Cap the panel to the viewport (matching the overlay's 40px top/bottom
-    // padding) so it never grows past the screen. The header + subtitle stay
-    // fixed and only the option list below scrolls.
-    maxHeight: 'calc(100vh - 80px)',
     display: 'flex' as const,
     flexDirection: 'column' as const,
     overflow: 'hidden' as const,
@@ -244,13 +183,12 @@ const styles = {
     margin: '6px 0 20px',
     fontSize: '13px',
   },
+  // The negative margin + matching padding give the scrollbar room without
+  // clipping the option borders against the panel edge.
   optionList: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: '12px',
-    // Only the list scrolls; the header/subtitle above stay put. The negative
-    // margin + matching padding give the scrollbar room without clipping the
-    // option borders against the panel edge.
     overflowY: 'auto' as const,
     flex: 1,
     margin: '0 -4px',
@@ -271,8 +209,7 @@ const styles = {
   optionStats: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    // Lets the stats drop to their own line on narrow screens instead of
-    // squeezing against the archetype pill.
+    // Lets the stats drop to their own line on narrow screens.
     flexWrap: 'wrap' as const,
     gap: '8px 14px',
   },
@@ -314,7 +251,6 @@ const styles = {
     aspectRatio: '0.82',
     borderRadius: '6px',
     overflow: 'hidden' as const,
-    background: 'linear-gradient(160deg, #2a3a6a 0%, #16213f 100%)',
   },
   miniCardImage: {
     width: '100%',

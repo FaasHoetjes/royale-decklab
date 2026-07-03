@@ -1,4 +1,26 @@
-interface ScoredDeckDTO {
+// Typed fetch helpers for the backend API. Components consume these through
+// the React Query hooks in queries.ts.
+import type { CardVersionRef, CardIconUrls } from './lib/cardDisplay';
+
+async function getJson<T>(url: string, label: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    throw new Error(`${label}: ${response.status}`);
+  }
+  return response.json();
+}
+
+/** A card as it appears inside a scored deck's card list. */
+export interface DeckCardData {
+  id: number;
+  name: string;
+  level: number;
+  maxLevel: number;
+  elixirCost?: number;
+  iconUrls?: CardIconUrls;
+}
+
+export interface ScoredDeck {
   cardIds: number[];
   metaWinRate: number;
   confidence: number;
@@ -6,56 +28,20 @@ interface ScoredDeckDTO {
   players: number;
   pickRate: number;
   playerScore: number;
-  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  metaCardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  cards: Array<{
-    id: number;
-    name: string;
-    level: number;
-    maxLevel: number;
-    elixerCost: number;
-  }>;
+  // cardVersions is personalised to the player (unowned specials downgraded);
+  // metaCardVersions is what top players actually fielded.
+  cardVersions?: CardVersionRef[];
+  metaCardVersions?: CardVersionRef[];
+  cards: DeckCardData[];
 }
 
-interface PlayerResponse {
-  player: {
-    tag: string;
-    name: string;
-  };
+export interface PlayerResponse {
+  player: { tag: string; name: string };
   warDecks: {
-    decks: ScoredDeckDTO[];
+    decks: ScoredDeck[];
     totalScore: number;
-    alternatives: ScoredDeckDTO[];
+    alternatives: ScoredDeck[];
   };
-}
-
-// True for the DOMException thrown when a fetch is cancelled via AbortController.
-// Callers use it to swallow the rejection an aborted request produces (e.g. a
-// StrictMode double-mount or a superseded request) instead of showing an error.
-export function isAbortError(err: unknown): boolean {
-  return err instanceof DOMException && err.name === 'AbortError';
-}
-
-export async function fetchPlayerWarDecks(
-  playerTag: string,
-  signal?: AbortSignal
-): Promise<PlayerResponse> {
-  const encodedTag = encodeURIComponent(playerTag);
-  const response = await fetch(`/api/player/${encodedTag}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch player data: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-export async function fetchMetaStatus(signal?: AbortSignal) {
-  const response = await fetch('/api/meta/status', { signal });
-  if (!response.ok) {
-    throw new Error('Failed to fetch meta status');
-  }
-  return response.json();
 }
 
 export interface CatalogCard {
@@ -65,10 +51,7 @@ export interface CatalogCard {
   maxEvolutionLevel?: number;
   elixirCost?: number;
   rarity?: string;
-  iconUrls?: {
-    medium?: string;
-    evolutionMedium?: string;
-  };
+  iconUrls?: CardIconUrls;
 }
 
 export interface OwnedCard {
@@ -78,31 +61,18 @@ export interface OwnedCard {
   maxLevel: number;
   evolutionLevel?: number;
   elixirCost?: number;
-  iconUrls?: {
-    medium?: string;
-    evolutionMedium?: string;
-    heroMedium?: string;
-  };
+  iconUrls?: CardIconUrls;
 }
 
-export async function fetchAllCards(signal?: AbortSignal): Promise<{ cards: CatalogCard[] }> {
-  const response = await fetch('/api/cards', { signal });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch card catalog: ${response.status}`);
-  }
-  return response.json();
-}
-
-// One deck's score in the War Deck Builder: always `winRate × fieldability` on a
-// single comparable scale. A meta-matched deck (`isMeta: true`) uses its real
-// confidence-adjusted win rate + carries the player count; any other deck uses a
-// neutral 0.5 win-rate prior. `score` is null when the deck is empty or a card is
-// missing from the collection.
+/**
+ * One deck's score in the War Deck Builder: always `winRate × fieldability` on
+ * a single comparable scale. A meta-matched deck (`isMeta`) uses its real
+ * confidence-adjusted win rate; any other deck uses a neutral 0.5 prior.
+ * `score` is null when the deck is empty or a card is missing.
+ */
 export interface BuilderDeckScore {
   score: number | null;
   isMeta: boolean;
-  // The win-rate factor used (real confidence for meta decks, 0.5 prior otherwise)
-  // and the level-based fieldability factor. Present whenever score is non-null.
   winRate?: number;
   fieldability?: number;
   players?: number;
@@ -121,6 +91,46 @@ export interface ScoreDeckCard {
   rarity?: string;
 }
 
+export interface BestDeckEntry {
+  cardIds: number[];
+  winRate: number;
+  confidence: number;
+  uses: number;
+  players: number;
+  pickRate: number;
+  metaScore: number;
+  cardVersions?: CardVersionRef[];
+  cards: Array<Omit<CatalogCard, 'maxEvolutionLevel'>>;
+}
+
+export interface BestDeckSet {
+  decks: BestDeckEntry[];
+  totalScore: number;
+}
+
+export function fetchPlayerWarDecks(playerTag: string, signal?: AbortSignal): Promise<PlayerResponse> {
+  return getJson(`/api/player/${encodeURIComponent(playerTag)}`, 'Failed to fetch player data', signal);
+}
+
+export function fetchPlayerCollection(
+  playerTag: string,
+  signal?: AbortSignal
+): Promise<{ player: { tag: string; name: string }; cards: OwnedCard[] }> {
+  return getJson(`/api/player/${encodeURIComponent(playerTag)}/collection`, 'Failed to fetch player collection', signal);
+}
+
+export function fetchMetaStatus(signal?: AbortSignal): Promise<{ status: string }> {
+  return getJson('/api/meta/status', 'Failed to fetch meta status', signal);
+}
+
+export function fetchAllCards(signal?: AbortSignal): Promise<{ cards: CatalogCard[] }> {
+  return getJson('/api/cards', 'Failed to fetch card catalog', signal);
+}
+
+export function fetchBestDecks(signal?: AbortSignal): Promise<{ sets: BestDeckSet[] }> {
+  return getJson('/api/best-decks', 'Failed to fetch best decks', signal);
+}
+
 export async function scoreBuilderDecks(
   cards: ScoreDeckCard[],
   decks: (number | null)[][],
@@ -134,60 +144,6 @@ export async function scoreBuilderDecks(
   });
   if (!response.ok) {
     throw new Error(`Failed to score decks: ${response.status}`);
-  }
-  return response.json();
-}
-
-export interface BestDeckCard {
-  id: number;
-  name: string;
-  maxLevel: number;
-  elixirCost?: number;
-  rarity?: string;
-  iconUrls?: {
-    medium?: string;
-    evolutionMedium?: string;
-    heroMedium?: string;
-  };
-}
-
-export interface BestDeckEntry {
-  cardIds: number[];
-  winRate: number;
-  confidence: number;
-  uses: number;
-  players: number;
-  pickRate: number;
-  metaScore: number;
-  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  cards: BestDeckCard[];
-}
-
-export interface BestDeckSet {
-  decks: BestDeckEntry[];
-  totalScore: number;
-}
-
-export interface BestDecksResponse {
-  sets: BestDeckSet[];
-}
-
-export async function fetchBestDecks(signal?: AbortSignal): Promise<BestDecksResponse> {
-  const response = await fetch('/api/best-decks', { signal });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch best decks: ${response.status}`);
-  }
-  return response.json();
-}
-
-export async function fetchPlayerCollection(
-  playerTag: string,
-  signal?: AbortSignal
-): Promise<{ player: { tag: string; name: string }; cards: OwnedCard[] }> {
-  const encodedTag = encodeURIComponent(playerTag);
-  const response = await fetch(`/api/player/${encodedTag}/collection`, { signal });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch player collection: ${response.status}`);
   }
   return response.json();
 }

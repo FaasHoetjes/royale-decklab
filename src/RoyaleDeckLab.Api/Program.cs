@@ -10,8 +10,7 @@ using RoyaleDeckLab.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load the repo-root .env (two levels up from this project) so CLASH_ROYALE_API_KEY
-// and friends work exactly as they do for the Bun server.
+// Load CLASH_ROYALE_API_KEY and friends from the repo-root .env (two levels up).
 DotEnv.Load(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env")));
 
 // Listen on 3000 so the existing Vite proxy (/api -> localhost:3000) and React
@@ -76,9 +75,8 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAn
 var app = builder.Build();
 
 // --- Database init ---------------------------------------------------------
-// EnsureCreated builds the schema only when the DB doesn't exist yet (an existing
-// Bun-created meta.db is left exactly as-is). The data is derived/regenerable, so
-// there's no migration history to maintain.
+// EnsureCreated builds the schema only when the DB doesn't exist yet. The data
+// is derived/regenerable, so there's no migration history to maintain.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MetaDbContext>();
@@ -103,14 +101,13 @@ app.MapControllers();
 var spaIndex = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
 if (File.Exists(spaIndex))
 {
-    // Unmatched /api/* stays a JSON 404 (matches the Bun server); every other
-    // unmatched path serves the SPA shell so client-side routing works on reload.
+    // Unmatched /api/* stays a JSON 404; every other unmatched path serves the
+    // SPA shell so client-side routing works on reload.
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
     app.MapFallbackToFile("index.html");
 }
 else
 {
-    // Match the Bun server's 404 body shape.
     app.MapFallback(() => Results.Json(new { error = "Not found" }, statusCode: 404));
 }
 

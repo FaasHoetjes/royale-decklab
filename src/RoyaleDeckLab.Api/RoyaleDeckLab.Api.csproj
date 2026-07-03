@@ -8,8 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- SQLite provider. EF Core is the data-access layer reading the existing
-         meta.db (same schema the Bun BattleStore created). -->
+    <!-- SQLite provider. EF Core is the data-access layer over meta.db. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
   </ItemGroup>
 

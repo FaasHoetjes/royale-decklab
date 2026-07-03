@@ -2,8 +2,7 @@ namespace RoyaleDeckLab.Api.Models;
 
 /// <summary>
 /// The player-facing view of a meta deck: its meta stats plus this player's fit
-/// score, the player's own card objects, and two version lists. Port of the TS
-/// <c>ScoredDeck</c>.
+/// score, the player's own card objects, and two version lists.
 /// </summary>
 public sealed record ScoredDeck
 {

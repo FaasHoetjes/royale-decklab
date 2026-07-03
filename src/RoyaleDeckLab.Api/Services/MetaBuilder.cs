@@ -10,7 +10,6 @@ namespace RoyaleDeckLab.Api.Services;
 /// Builds the meta from real Clan War battles. Walks the top war clans
 /// strongest-first, samples their members' battle logs into BattleRecords, then
 /// aggregates the rolling store into ranked DeckMeta via the Wilson lower bound.
-/// Port of the Bun <c>metaBuilder.ts</c>.
 /// </summary>
 public sealed class MetaBuilder(
     ClashRoyaleClient client,

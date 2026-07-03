@@ -1,35 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ScoredDeck } from '../api';
 import DeckCard from './DeckCard';
 import SwapDeckModal from './SwapDeckModal';
-import { useIsMobile } from '../useIsMobile';
-
-interface Card {
-  id: number;
-  name: string;
-  level: number;
-  maxLevel: number;
-  elixirCost?: number;
-  elixerCost?: number;
-}
-
-interface ScoredDeck {
-  cardIds: number[];
-  metaWinRate: number;
-  confidence: number;
-  uses: number;
-  players: number;
-  pickRate: number;
-  playerScore: number;
-  cardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  metaCardVersions?: Array<{ cardId: number; version: 'normal' | 'evo' | 'hero' }>;
-  cards: Card[];
-}
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface WarDeckResultProps {
   playerName: string;
   decks: ScoredDeck[];
   alternatives: ScoredDeck[];
-  totalScore: number;
   onNewSearch: () => void;
   isDarkMode: boolean;
 }
@@ -150,7 +128,6 @@ export default function WarDeckResult({
               key={slotPos}
               cards={deck.cards}
               metaWinRate={deck.metaWinRate}
-              confidence={deck.confidence}
               uses={deck.uses}
               players={deck.players}
               pickRate={deck.pickRate}
@@ -177,7 +154,6 @@ export default function WarDeckResult({
               master,
               cards: d.cards,
               metaWinRate: d.metaWinRate,
-              confidence: d.confidence,
               playerScore: d.playerScore,
               cardVersions: d.cardVersions,
             };

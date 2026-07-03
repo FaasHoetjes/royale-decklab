@@ -30,19 +30,19 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-    <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<WarDeckGenerator />} />
-            <Route path="/builder" element={<WarDeckBuilder />} />
-            <Route path="/faq" element={<Faq />} />
-            <Route path="/best-decks" element={<BestWarDecks />} />
-            <Route path="/:playerId" element={<WarDeckGenerator />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AppProvider>
+      <AppProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<WarDeckGenerator />} />
+              <Route path="/builder" element={<WarDeckBuilder />} />
+              <Route path="/faq" element={<Faq />} />
+              <Route path="/best-decks" element={<BestWarDecks />} />
+              <Route path="/:playerId" element={<WarDeckGenerator />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AppProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 )

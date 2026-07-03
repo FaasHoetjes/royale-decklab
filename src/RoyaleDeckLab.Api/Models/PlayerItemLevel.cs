@@ -7,7 +7,6 @@ namespace RoyaleDeckLab.Api.Models;
 /// as it's echoed back inside a <see cref="ScoredDeck"/>'s card list. Level and
 /// evolution drive fieldability scoring; <see cref="Rarity"/> flags champions.
 /// The remaining fields (name, elixir, icons) are display passthrough for the UI.
-/// Port of the TS <c>PlayerItemLevel</c>.
 /// </summary>
 public sealed record PlayerItemLevel
 {

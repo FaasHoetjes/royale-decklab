@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { useIsMobile } from '../useIsMobile';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function Landing() {
   const { isDarkMode, setActivePlayerTag } = useApp();

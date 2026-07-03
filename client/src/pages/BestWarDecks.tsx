@@ -1,271 +1,23 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useBestDecks, fetchCollectionOnce } from '../queries';
-import type { BestDeckEntry, BestDeckSet } from '../api';
-import { slotKind, slotBorderStyle, cardFrame } from '../slotStyles';
-import { buildDeckLink } from '../deckLink';
-import { useIsMobile } from '../useIsMobile';
-
-type Card = BestDeckEntry['cards'][0];
-
-function cardVersion(deck: BestDeckEntry, cardId: number): 'normal' | 'evo' | 'hero' {
-  return deck.cardVersions?.find(v => v.cardId === cardId)?.version ?? 'normal';
-}
-
-function orderedCards(deck: BestDeckEntry): Card[] {
-  const ver = (id: number) => cardVersion(deck, id);
-  const evoQ = deck.cards.filter(c => ver(c.id) === 'evo').slice();
-  const heroQ = deck.cards.filter(c => ver(c.id) === 'hero').slice();
-  const norms = deck.cards.filter(c => ver(c.id) === 'normal').slice();
-
-  const slot1 = evoQ.shift();
-  const slot2 = heroQ.shift();
-  const slot3 = evoQ.shift() ?? heroQ.shift();
-
-  return [slot1, slot2, slot3]
-    .map(s => s ?? norms.shift())
-    .filter((c): c is Card => c !== undefined)
-    .concat(norms, evoQ, heroQ);
-}
-
-function cardIcon(card: Card, version: 'normal' | 'evo' | 'hero'): string {
-  const { medium, evolutionMedium, heroMedium } = card.iconUrls ?? {};
-  if (version === 'hero') return heroMedium || evolutionMedium || medium || '';
-  if (version === 'evo') return evolutionMedium || medium || '';
-  return medium || '';
-}
-
-function CompactDeckRow({
-  deck,
-  isDarkMode,
-  theme,
-  isMobile,
-}: {
-  deck: BestDeckEntry;
-  isDarkMode: boolean;
-  theme: ReturnType<typeof getTheme>;
-  isMobile: boolean;
-}) {
-  const [showMetaInfo, setShowMetaInfo] = React.useState(false);
-
-  const cards = orderedCards(deck);
-  const avgElixir = deck.cards.length
-    ? (deck.cards.reduce((s, c) => s + (c.elixirCost ?? 0), 0) / deck.cards.length).toFixed(1)
-    : '—';
-
-  const rowBg = isDarkMode ? '#1a1a1e' : '#f8f9ff';
-  const rowBorder = isDarkMode ? '#2a2a2e' : '#eceef6';
-  const accentColor = isDarkMode ? '#e8b24a' : '#007bff';
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        // On phones the 8 cards and the stats can't share one line — let them
-        // wrap so the cards take the full width and the stats sit beneath.
-        flexWrap: isMobile ? 'wrap' : 'nowrap',
-        gap: isMobile ? '8px' : '14px',
-        padding: isMobile ? '10px' : '10px 14px',
-        backgroundColor: rowBg,
-        borderRadius: '12px',
-        border: `1px solid ${rowBorder}`,
-      }}
-    >
-      {/* 8-card row — folded into two rows of four on phones so each card
-          stays big enough for its art and elixir badge. */}
-      <div
-        style={
-          isMobile
-            ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', flexBasis: '100%' }
-            : { display: 'flex', gap: '5px', flex: 1 }
-        }
-      >
-        {cards.map((card, index) => {
-          const ver = cardVersion(deck, card.id);
-          const icon = cardIcon(card, ver);
-          const kind = slotKind(index);
-          return (
-            <div key={card.id} style={{ flex: 1, minWidth: 0 }} title={card.name}>
-              <div
-                style={{
-                  position: 'relative',
-                  aspectRatio: '0.82',
-                  borderRadius: '7px',
-                  overflow: 'hidden',
-                  // Theme-aware backdrop + frame: light mat in light mode so the
-                  // card's transparent corners don't show the dark backing.
-                  ...(kind
-                    ? slotBorderStyle(kind, isDarkMode)
-                    : cardFrame(isDarkMode)),
-                }}
-              >
-                {icon && (
-                  <img
-                    src={icon}
-                    alt={card.name}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                )}
-                {/* Elixir drop */}
-                {card.elixirCost != null && (
-                  <div style={{ position: 'absolute', top: '3px', left: '3px', width: '23px', height: '25px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
-                    <svg viewBox="0 0 28 30" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden="true">
-                      <defs>
-                        <radialGradient id="elixirGradBwd" cx="36%" cy="62%" r="70%">
-                          <stop offset="0%" stopColor="#f6a8ff" />
-                          <stop offset="45%" stopColor="#d63bd6" />
-                          <stop offset="100%" stopColor="#a0149e" />
-                        </radialGradient>
-                      </defs>
-                      <path d="M24 5 Q24 18 22.8 24.9 A12 12 0 0 1 1.7 13.9 Q6 6 24 5 Z" fill="url(#elixirGradBwd)" stroke="#000000" strokeWidth="1.6" />
-                      <ellipse cx="9" cy="14" rx="2.4" ry="3.4" fill="rgba(255,255,255,0.55)" transform="rotate(-20 9 14)" />
-                    </svg>
-                    <span style={{ position: 'absolute', left: 0, right: '8%', top: '60%', transform: 'translateY(-50%)', textAlign: 'center', color: 'white', fontWeight: 'bold', fontSize: '11px', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-                      {card.elixirCost}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div
-                style={{
-                  fontWeight: 600,
-                  fontSize: '10px',
-                  textAlign: 'center',
-                  marginTop: '5px',
-                  color: isDarkMode ? '#f4f4f5' : '#000000',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {card.name}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Inline stats — on phones they share the second line with the play
-          button, spread across the full width. */}
-      <div style={{ display: 'flex', gap: '18px', flexShrink: 0, ...(isMobile ? { flex: 1, justifyContent: 'space-around' } : {}) }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={statLabel(theme)}>Win Rate</div>
-          <div style={{ ...statValue, color: accentColor }}>{(deck.winRate * 100).toFixed(1)}%</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ ...statLabel(theme), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-            Meta Score
-            <span
-              style={{
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '13px',
-                height: '13px',
-                borderRadius: '50%',
-                border: `1px solid ${theme.text.secondary}`,
-                fontSize: '8px',
-                fontStyle: 'italic',
-                fontWeight: 'bold',
-                cursor: 'help',
-                lineHeight: 1,
-                color: theme.text.secondary,
-                flexShrink: 0,
-              }}
-              onMouseEnter={() => setShowMetaInfo(true)}
-              onMouseLeave={() => setShowMetaInfo(false)}
-            >
-              i
-              {showMetaInfo && (
-                <span style={{
-                  position: 'absolute',
-                  bottom: 'calc(100% + 8px)',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '210px',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: `1px solid ${isDarkMode ? '#3a3a3a' : '#1a1a1a'}`,
-                  backgroundColor: isDarkMode ? '#000000' : '#1a1a1a',
-                  color: '#ffffff',
-                  fontSize: '11px',
-                  fontWeight: 'normal',
-                  fontStyle: 'normal',
-                  textTransform: 'none',
-                  letterSpacing: 'normal',
-                  lineHeight: 1.4,
-                  textAlign: 'left',
-                  zIndex: 10,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                  pointerEvents: 'none',
-                  whiteSpace: 'normal',
-                }}>
-                  Confidence-adjusted win rate × popularity weight. Higher means this deck both wins more <em>and</em> is run by more top war players.
-                </span>
-              )}
-            </span>
-          </div>
-          <div style={{ ...statValue, color: theme.text.primary }}>{deck.metaScore.toFixed(3)}</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={statLabel(theme)}>Avg Elixir</div>
-          <div style={{ ...statValue, color: theme.text.primary }}>{avgElixir}</div>
-        </div>
-      </div>
-
-      {/* Open this single deck straight in the game. */}
-      <a
-        href={buildDeckLink(cards.map((c) => c.id))}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="deck-swap-btn"
-        title="Open this deck in Clash Royale"
-        aria-label="Open this deck in Clash Royale"
-        style={{
-          flexShrink: 0,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '32px',
-          height: '32px',
-          borderRadius: '50%',
-          border: `1px solid ${isDarkMode ? '#2a2a2e' : '#dbe4f5'}`,
-          backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
-          color: accentColor,
-          textDecoration: 'none',
-          boxShadow: '0 2px 6px rgba(13, 27, 62, 0.12)',
-        }}
-      >
-        <svg viewBox="0 0 24 24" style={{ width: '14px', height: '14px', display: 'block' }} aria-hidden="true">
-          <path fill="currentColor" d="M8 5v14l11-7z" />
-        </svg>
-      </a>
-    </div>
-  );
-}
-
-const statLabel = (theme: ReturnType<typeof getTheme>) => ({
-  fontSize: '10px',
-  fontWeight: 600 as const,
-  letterSpacing: '0.4px',
-  textTransform: 'uppercase' as const,
-  color: theme.text.secondary,
-  marginBottom: '3px',
-});
-
-const statValue = {
-  fontSize: '15px',
-  fontWeight: 800 as const,
-  lineHeight: 1.1,
-};
-
-const BUILDER_DECK_COUNT = 4;
-const BUILDER_SLOTS = 8;
+import type { BestDeckSet } from '../api';
+import { versionOf, orderBySlots } from '../lib/cardDisplay';
+import { useIsMobile } from '../hooks/useIsMobile';
+import CompactDeckRow from '../components/CompactDeckRow';
+import UseInBuilderButton from '../components/UseInBuilderButton';
+import {
+  DECK_COUNT,
+  SLOTS_PER_DECK,
+  slotKey,
+  saveDecks,
+  saveSlotVersions,
+  type DeckState,
+  type SlotVersionMap,
+} from '../lib/deckBoard';
 
 export default function BestWarDecks() {
   const { isDarkMode, activePlayerTag } = useApp();
@@ -273,143 +25,106 @@ export default function BestWarDecks() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data, isLoading: loading, isError, error } = useBestDecks();
+  const { data, isLoading, isError, error } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
-  const [hoveredCopyBtn, setHoveredCopyBtn] = useState<number | null>(null);
 
+  // Copies a set into the builder via the shared sessionStorage board. Cards
+  // the active player doesn't own are left as empty slots; the builder
+  // re-scores the board itself once mounted.
   async function copySetToBuilder(set: BestDeckSet, setIdx: number) {
     setCopyingSetIdx(setIdx);
     try {
-      // Resolve owned card IDs through the shared collection query (deduped and
-      // cached alongside the builder's own read). Skip ownership filtering when
-      // no player is active.
       const ownedIds = new Set<number>();
       if (activePlayerTag) {
         const res = await fetchCollectionOnce(queryClient, activePlayerTag);
-        res.cards.forEach(c => ownedIds.add(c.id));
+        res.cards.forEach((c) => ownedIds.add(c.id));
       }
-      const filterByOwnership = activePlayerTag && ownedIds.size > 0;
+      const filterByOwnership = !!activePlayerTag && ownedIds.size > 0;
 
-      // Build 4×8 deck array. Slots follow orderedCards ordering (evo→hero→both→normals).
-      const newDecks = Array.from({ length: BUILDER_DECK_COUNT }, (_, deckIdx): (number | null)[] => {
+      const orderedFor = (deckIdx: number) => {
         const deck = set.decks[deckIdx];
-        if (!deck) return Array(BUILDER_SLOTS).fill(null);
-        const ordered = orderedCards(deck);
-        return Array.from({ length: BUILDER_SLOTS }, (__, slotIdx) => {
+        return deck ? orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id)) : [];
+      };
+
+      const newDecks: DeckState = Array.from({ length: DECK_COUNT }, (_, deckIdx) => {
+        const ordered = orderedFor(deckIdx);
+        return Array.from({ length: SLOTS_PER_DECK }, (__, slotIdx) => {
           const card = ordered[slotIdx];
-          if (!card) return null;
-          if (filterByOwnership && !ownedIds.has(card.id)) return null;
+          if (!card || (filterByOwnership && !ownedIds.has(card.id))) return null;
           return card.id;
         });
       });
 
-      // Set slotVersion for the 'both' slot (index 2) in each deck.
-      const newSlotVersion: Record<string, 'evo' | 'hero'> = {};
+      // Preserve which special art the "both" slot (index 2) shows per deck.
+      const slotVersions: SlotVersionMap = {};
       set.decks.forEach((deck, deckIdx) => {
-        const ordered = orderedCards(deck);
-        const spillCard = ordered[2];
-        if (spillCard) {
-          const ver = cardVersion(deck, spillCard.id);
-          if (ver === 'evo' || ver === 'hero') {
-            newSlotVersion[`${deckIdx}-2`] = ver;
-          }
+        const spill = orderedFor(deckIdx)[2];
+        const version = spill ? versionOf(deck.cardVersions, spill.id) : 'normal';
+        if (version === 'evo' || version === 'hero') {
+          slotVersions[slotKey(deckIdx, 2)] = version;
         }
       });
 
-      // Hand the decks + art choices to the builder via sessionStorage; it
-      // re-scores them itself (React Query) once mounted, so no scores to pass.
-      sessionStorage.setItem('wdb_decks', JSON.stringify(newDecks));
-      sessionStorage.setItem('wdb_slotVersion', JSON.stringify(newSlotVersion));
+      saveDecks(newDecks);
+      saveSlotVersions(slotVersions);
       navigate('/builder');
     } catch {
-      // silently bail — user stays on the page
+      // Collection fetch failed — stay on the page.
     } finally {
       setCopyingSetIdx(null);
     }
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div style={{ marginBottom: isMobile ? '20px' : '30px', paddingBottom: isMobile ? '14px' : '20px', borderBottom: `1px solid ${theme.border}` }}>
+    <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
+      <div
+        style={{
+          ...styles.header,
+          marginBottom: isMobile ? '20px' : '30px',
+          paddingBottom: isMobile ? '14px' : '20px',
+          borderBottomColor: theme.border,
+        }}
+      >
         <h2 style={{ color: theme.text.primary, margin: 0 }}>Best War Deck Sets</h2>
-        <p style={{ fontSize: '15px', margin: '8px 0 0', color: theme.text.secondary }}>
+        <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
           The strongest 4-deck combinations for war, ranked by meta performance. Assumes all cards are owned, max level, with all evolutions and heroes.
         </p>
       </div>
 
-      {loading && <p style={{ color: theme.text.secondary, marginTop: '32px' }}>Loading best decks…</p>}
+      {isLoading && <p style={{ ...styles.message, color: theme.text.secondary }}>Loading best decks…</p>}
       {isError && (
-        <p style={{ color: '#e05c5c', marginTop: '32px' }}>
+        <p style={{ ...styles.message, color: '#e05c5c' }}>
           Failed to load: {error instanceof Error ? error.message : 'Unknown error'}
         </p>
       )}
 
       {data && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '24px' }}>
-          {data.sets.map((set, setIdx) => {
-            const medalColor = theme.accent;
-            return (
+        <div style={{ ...styles.setList, gap: isMobile ? '16px' : '24px' }}>
+          {data.sets.map((set, setIdx) => (
             <section
               key={setIdx}
               style={{
-                border: `1px solid ${theme.border}`,
-                borderRadius: '16px',
+                ...styles.setCard,
                 padding: isMobile ? '16px 12px' : '20px 24px',
+                borderColor: theme.border,
                 backgroundColor: theme.bg.secondary,
               }}
             >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '16px',
-                paddingBottom: '14px',
-                borderBottom: `1px solid ${theme.border}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <span style={{
-                    fontSize: '28px',
-                    fontWeight: 900,
-                    color: medalColor,
-                    lineHeight: 1,
-                    letterSpacing: '-0.5px',
-                  }}>
-                    #{setIdx + 1}
-                  </span>
-                  <span style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: theme.text.secondary,
-                    letterSpacing: '0.8px',
-                    textTransform: 'uppercase',
-                  }}>
-                    War Deck Set
-                  </span>
+              <div style={{ ...styles.setHeader, borderBottomColor: theme.border }}>
+                <div style={styles.setRank}>
+                  <span style={{ ...styles.setRankNumber, color: theme.accent }}>#{setIdx + 1}</span>
+                  <span style={{ ...styles.setRankLabel, color: theme.text.secondary }}>War Deck Set</span>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.5px',
-                    textTransform: 'uppercase',
-                    color: theme.text.secondary,
-                    marginBottom: '2px',
-                  }}>
-                    Total Score
-                  </div>
-                  <div style={{
-                    fontSize: '20px',
-                    fontWeight: 800,
-                    color: medalColor,
-                    lineHeight: 1,
-                  }}>
-                    {set.totalScore.toFixed(3)}
-                  </div>
+                <div style={styles.setScore}>
+                  <div style={{ ...styles.setScoreLabel, color: theme.text.secondary }}>Total Score</div>
+                  <div style={{ ...styles.setScoreValue, color: theme.accent }}>{set.totalScore.toFixed(3)}</div>
                 </div>
               </div>
 
+              {/* Desktop reserves a right gutter for the floating copy button;
+                  on phones it becomes a full-width button under the rows. */}
               <div style={{ position: 'relative', paddingRight: isMobile ? 0 : '60px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={styles.rowList}>
                   {set.decks.map((deck, deckIdx) => (
                     <CompactDeckRow
                       key={deckIdx}
@@ -420,119 +135,113 @@ export default function BestWarDecks() {
                     />
                   ))}
                 </div>
-                {/* On phones the side gutter would squeeze the cards, so the
-                    copy action becomes a full-width button under the rows. */}
-                {isMobile && (
-                  <button
+                {isMobile ? (
+                  <UseInBuilderButton
                     onClick={() => copySetToBuilder(set, setIdx)}
-                    disabled={copyingSetIdx !== null}
-                    style={{
-                      width: '100%',
-                      marginTop: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '11px',
-                      borderRadius: '10px',
-                      border: `1px solid ${medalColor}`,
-                      backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
-                      color: medalColor,
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
-                      opacity: copyingSetIdx !== null ? 0.6 : 1,
-                    }}
-                  >
-                    {copyingSetIdx === setIdx ? (
-                      <svg viewBox="0 0 24 24" style={{ width: '16px', height: '16px', display: 'block', animation: 'spin 1s linear infinite' }} aria-hidden="true">
-                        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20" strokeLinecap="round" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 512 512" style={{ width: '16px', height: '16px', display: 'block' }} aria-hidden="true">
-                        <path fill="currentColor" d="M217.9 105.9L340.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L217.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1L32 320c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM352 416l64 0c17.7 0 32-14.3 32-32l0-256c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32-14.3-32-32s14.3-32 32-32l64 0c53 0 96 43 96 96l0 256c0 53-43 96-96 96l-64 0c-17.7 0-32-14.3-32-32s14.3-32 32-32z" />
-                      </svg>
-                    )}
-                    Use in Builder
-                  </button>
-                )}
-                {/* Copy-to-builder icon button, vertically centered on the 4 rows */}
-                {!isMobile && (
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '52px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <div style={{ position: 'relative' }}>
-                    <button
+                    busy={copyingSetIdx !== null}
+                    spinning={copyingSetIdx === setIdx}
+                    isDarkMode={isDarkMode}
+                    accent={theme.accent}
+                    variant="full"
+                  />
+                ) : (
+                  <div style={styles.gutter}>
+                    <UseInBuilderButton
                       onClick={() => copySetToBuilder(set, setIdx)}
-                      disabled={copyingSetIdx !== null}
-                      aria-label="Use in Builder"
-                      className="deck-swap-btn"
-                      onMouseEnter={() => setHoveredCopyBtn(setIdx)}
-                      onMouseLeave={() => setHoveredCopyBtn(null)}
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '50%',
-                        border: `1px solid ${medalColor}`,
-                        backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
-                        color: medalColor,
-                        cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 0,
-                        boxShadow: '0 3px 10px rgba(13, 27, 62, 0.18)',
-                        opacity: copyingSetIdx !== null ? 0.6 : 1,
-                      }}
-                    >
-                      {copyingSetIdx === setIdx ? (
-                        /* Spinning dots to indicate in-progress */
-                        <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px', display: 'block', animation: 'spin 1s linear infinite' }} aria-hidden="true">
-                          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20" strokeLinecap="round" />
-                        </svg>
-                      ) : (
-                        /* Arrow-into-bracket: "send to builder" */
-                        <svg viewBox="0 0 512 512" style={{ width: '20px', height: '20px', display: 'block' }} aria-hidden="true">
-                          <path fill="currentColor" d="M217.9 105.9L340.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L217.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1L32 320c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM352 416l64 0c17.7 0 32-14.3 32-32l0-256c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32-14.3-32-32s14.3-32 32-32l64 0c53 0 96 43 96 96l0 256c0 53-43 96-96 96l-64 0c-17.7 0-32-14.3-32-32s14.3-32 32-32z" />
-                        </svg>
-                      )}
-                    </button>
-                    {hoveredCopyBtn === setIdx && copyingSetIdx === null && (
-                      <div style={{
-                        position: 'absolute',
-                        right: 'calc(100% + 10px)',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        whiteSpace: 'nowrap',
-                        backgroundColor: isDarkMode ? '#000000' : '#1a1a1a',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        pointerEvents: 'none',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                        zIndex: 10,
-                      }}>
-                        Use in Builder
-                      </div>
-                    )}
+                      busy={copyingSetIdx !== null}
+                      spinning={copyingSetIdx === setIdx}
+                      isDarkMode={isDarkMode}
+                      accent={theme.accent}
+                      variant="circle"
+                    />
                   </div>
-                </div>
                 )}
               </div>
             </section>
-          );
-          })}
+          ))}
         </div>
       )}
     </div>
   );
 }
+
+const styles = {
+  container: {
+    maxWidth: '1100px',
+    margin: '0 auto',
+  },
+  header: {
+    borderBottom: '1px solid',
+  },
+  subtitle: {
+    fontSize: '15px',
+    margin: '8px 0 0',
+  },
+  message: {
+    marginTop: '32px',
+  },
+  setList: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+  },
+  setCard: {
+    border: '1px solid',
+    borderRadius: '16px',
+  },
+  setHeader: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: '16px',
+    paddingBottom: '14px',
+    borderBottom: '1px solid',
+  },
+  setRank: {
+    display: 'flex' as const,
+    alignItems: 'baseline' as const,
+    gap: '10px',
+  },
+  setRankNumber: {
+    fontSize: '28px',
+    fontWeight: 900 as const,
+    lineHeight: 1,
+    letterSpacing: '-0.5px',
+  },
+  setRankLabel: {
+    fontSize: '12px',
+    fontWeight: 700 as const,
+    letterSpacing: '0.8px',
+    textTransform: 'uppercase' as const,
+  },
+  setScore: {
+    textAlign: 'right' as const,
+  },
+  setScoreLabel: {
+    fontSize: '10px',
+    fontWeight: 600 as const,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
+    marginBottom: '2px',
+  },
+  setScoreValue: {
+    fontSize: '20px',
+    fontWeight: 800 as const,
+    lineHeight: 1,
+  },
+  rowList: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    gap: '8px',
+  },
+  // Vertically centers the circle button on the 4 rows.
+  gutter: {
+    position: 'absolute' as const,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '52px',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+};

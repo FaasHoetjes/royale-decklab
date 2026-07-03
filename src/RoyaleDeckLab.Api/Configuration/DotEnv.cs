@@ -1,9 +1,9 @@
 namespace RoyaleDeckLab.Api.Configuration;
 
 /// <summary>
-/// Minimal .env loader so the same repo-root .env the Bun server uses (notably
-/// CLASH_ROYALE_API_KEY) works here too, without an extra dependency. Sets each
-/// KEY=VALUE into the process environment unless already set.
+/// Minimal .env loader for the repo-root .env (notably CLASH_ROYALE_API_KEY),
+/// without an extra dependency. Sets each KEY=VALUE into the process
+/// environment unless already set.
 /// </summary>
 public static class DotEnv
 {

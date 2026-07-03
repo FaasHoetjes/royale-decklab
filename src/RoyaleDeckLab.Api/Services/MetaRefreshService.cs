@@ -4,10 +4,9 @@ using RoyaleDeckLab.Api.Options;
 namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
-/// Loads the meta cache on startup, then keeps it fresh on a timer — the port of
-/// the startup <c>await loadOrBuildMetaCache()</c> plus the <c>setInterval</c>
-/// background refresh in server.ts. Players who generate decks after each refresh
-/// pick up the new data automatically (handlers read MetaCache live).
+/// Loads the meta cache on startup, then keeps it fresh on a timer. Players who
+/// generate decks after each refresh pick up the new data automatically
+/// (handlers read MetaCache live).
 /// </summary>
 public sealed class MetaRefreshService(
     MetaCache cache,

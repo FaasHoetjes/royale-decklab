@@ -1,0 +1,84 @@
+import { useState, type ReactNode } from 'react';
+
+interface InfoTipProps {
+  isDarkMode: boolean;
+  ariaLabel: string;
+  color?: string;
+  width?: number;
+  children: ReactNode;
+}
+
+/** A small hover "i" icon that reveals a dark tooltip above itself. */
+export default function InfoTip({ isDarkMode, ariaLabel, color, width = 220, children }: InfoTipProps) {
+  const [show, setShow] = useState(false);
+  return (
+    <span
+      style={{ ...styles.icon, color }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+      role="img"
+      aria-label={ariaLabel}
+    >
+      <InfoMark />
+      {show && (
+        <span
+          style={{
+            ...styles.tooltip,
+            width: `${width}px`,
+            backgroundColor: isDarkMode ? '#000000' : '#1a1a1a',
+            borderColor: isDarkMode ? '#3a3a3a' : '#1a1a1a',
+          }}
+        >
+          {children}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Ring, dot, and stem drawn in one SVG (all currentColor) so they stay
+// concentric and legible at any size — a text "i" blurs at this scale.
+function InfoMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+      <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1" />
+      <circle cx="8" cy="4.6" r="1.05" />
+      <rect x="7.1" y="6.9" width="1.8" height="5.2" rx="0.9" />
+    </svg>
+  );
+}
+
+const styles = {
+  icon: {
+    position: 'relative' as const,
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    width: '14px',
+    height: '14px',
+    cursor: 'help',
+    lineHeight: 1,
+    flexShrink: 0,
+  },
+  tooltip: {
+    position: 'absolute' as const,
+    bottom: 'calc(100% + 8px)',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '10px 12px',
+    borderRadius: '6px',
+    border: '1px solid',
+    color: '#ffffff',
+    fontSize: '11px',
+    fontWeight: 'normal' as const,
+    fontStyle: 'normal' as const,
+    textTransform: 'none' as const,
+    letterSpacing: 'normal' as const,
+    lineHeight: 1.4,
+    textAlign: 'left' as const,
+    whiteSpace: 'normal' as const,
+    zIndex: 10,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    pointerEvents: 'none' as const,
+  },
+};

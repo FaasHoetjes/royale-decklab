@@ -4,10 +4,9 @@ namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
 /// Scores meta decks against a player's collection and assembles the four
-/// card-disjoint war decks. Stateless (registered as a singleton). Port of the
-/// Bun <c>deckAnalyzer.ts</c> — the constants and their rationale are carried over
-/// verbatim because they're the one part of the scoring that isn't learned from
-/// data.
+/// card-disjoint war decks. Stateless (registered as a singleton). The tuning
+/// constants below carry their rationale in comments — they're the one part of
+/// the scoring that isn't learned from data.
 /// </summary>
 public sealed class DeckAnalyzer
 {

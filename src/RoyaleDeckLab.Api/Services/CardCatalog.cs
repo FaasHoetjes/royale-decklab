@@ -4,9 +4,9 @@ using RoyaleDeckLab.Api.Dtos;
 namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
-/// Lazily-fetched, in-memory cache of the full card catalog (port of the
-/// getCardCatalog() memo in server.ts). Singleton; the one-time fetch is resolved
-/// through a scope since the CR client is registered as a typed HttpClient.
+/// Lazily-fetched, in-memory cache of the full card catalog. Singleton; the
+/// one-time fetch is resolved through a scope since the CR client is registered
+/// as a typed HttpClient.
 /// </summary>
 public sealed class CardCatalog(IServiceScopeFactory scopeFactory)
 {

@@ -4,8 +4,7 @@ namespace RoyaleDeckLab.Api.Data;
 
 /// <summary>
 /// A row in the <c>battles</c> table. Card ids and versions are stored as JSON
-/// text columns (configured via value converters in <see cref="MetaDbContext"/>),
-/// matching the schema the Bun BattleStore created.
+/// text columns (via value converters in <see cref="MetaDbContext"/>).
 /// </summary>
 public sealed class BattleEntity
 {
@@ -28,7 +27,7 @@ public sealed class BattleEntity
 
 /// <summary>
 /// The single-row <c>meta_state</c> table holding the patch boundary and last
-/// successful fetch time (what used to live in the JSON files' headers).
+/// successful fetch time.
 /// </summary>
 public sealed class MetaStateEntity
 {

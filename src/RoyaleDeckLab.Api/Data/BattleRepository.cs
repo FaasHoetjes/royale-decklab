@@ -7,11 +7,10 @@ using RoyaleDeckLab.Api.Models;
 namespace RoyaleDeckLab.Api.Data;
 
 /// <summary>
-/// SQLite-backed persistence for the rolling battle store and meta state — the
-/// EF Core port of the Bun <c>battleStore.ts</c>. Battles live in one indexed
-/// table: dedup is the primary key, pruning the window is one indexed DELETE, and
-/// the aggregated meta is NOT persisted (it's rebuilt from the battles on demand,
-/// so battles are the single source of truth).
+/// SQLite-backed persistence for the rolling battle store and meta state.
+/// Battles live in one indexed table: dedup is the primary key, pruning the
+/// window is one indexed DELETE, and the aggregated meta is NOT persisted (it's
+/// rebuilt from the battles on demand, so battles are the single source of truth).
 ///
 /// Reads go through EF (AsNoTracking); the bulk merge uses raw INSERT OR IGNORE
 /// because EF has no native upsert and war battles are full of cross-perspective

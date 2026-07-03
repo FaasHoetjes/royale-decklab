@@ -6,8 +6,7 @@ namespace RoyaleDeckLab.Api.Services;
 /// <summary>
 /// Builds up to ten diverse sets of four card-disjoint meta decks for the "Best
 /// War Decks" page — the collection-independent counterpart to
-/// <see cref="DeckAnalyzer.FindBestWarDecks"/>. Stateless (singleton). Port of the
-/// inline best-decks logic that lived in <c>server.ts</c>.
+/// <see cref="DeckAnalyzer.FindBestWarDecks"/>. Stateless (singleton).
 /// </summary>
 public sealed class BestDecksBuilder
 {
