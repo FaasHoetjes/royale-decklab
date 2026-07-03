@@ -8,6 +8,7 @@ import WarDeckGenerator from './pages/WarDeckGenerator'
 import WarDeckBuilder from './pages/WarDeckBuilder'
 import Faq from './pages/Faq'
 import BestWarDecks from './pages/BestWarDecks'
+import UpgradeAdvisor from './pages/UpgradeAdvisor'
 import './index.css'
 
 // One client for the app's lifetime. Server data (meta status, player decks,
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/builder" element={<WarDeckBuilder />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/best-decks" element={<BestWarDecks />} />
+              <Route path="/upgrades" element={<UpgradeAdvisor />} />
               <Route path="/:playerId" element={<WarDeckGenerator />} />
             </Route>
           </Routes>

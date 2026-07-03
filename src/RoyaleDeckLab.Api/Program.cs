@@ -69,6 +69,7 @@ builder.Services.AddHostedService<MetaRefreshService>();
 // Scoring domain services are stateless — a single shared instance is fine.
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<BestDecksBuilder>();
+builder.Services.AddSingleton<UpgradeAdvisor>();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 

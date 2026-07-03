@@ -108,6 +108,31 @@ export interface BestDeckSet {
   totalScore: number;
 }
 
+/**
+ * One recommended card upgrade. `affectedDeckIndexes` are the current lineup
+ * decks (0-3) fielding the card; empty with `changesLineup` true means the
+ * upgrade promotes a deck that isn't in the lineup yet.
+ */
+export interface UpgradeSuggestion {
+  cardId: number;
+  name?: string;
+  fromLevel: number;
+  toLevel: number;
+  maxLevel: number;
+  elixirCost?: number;
+  iconUrls?: CardIconUrls;
+  scoreDelta: number;
+  newTotalScore: number;
+  changesLineup: boolean;
+  affectedDeckIndexes: number[];
+}
+
+export interface UpgradeAdviceResponse {
+  player: { tag: string; name: string };
+  baselineScore: number;
+  suggestions: UpgradeSuggestion[];
+}
+
 export function fetchPlayerWarDecks(playerTag: string, signal?: AbortSignal): Promise<PlayerResponse> {
   return getJson(`/api/player/${encodeURIComponent(playerTag)}`, 'Failed to fetch player data', signal);
 }
@@ -117,6 +142,10 @@ export function fetchPlayerCollection(
   signal?: AbortSignal
 ): Promise<{ player: { tag: string; name: string }; cards: OwnedCard[] }> {
   return getJson(`/api/player/${encodeURIComponent(playerTag)}/collection`, 'Failed to fetch player collection', signal);
+}
+
+export function fetchUpgradeAdvice(playerTag: string, signal?: AbortSignal): Promise<UpgradeAdviceResponse> {
+  return getJson(`/api/player/${encodeURIComponent(playerTag)}/upgrades`, 'Failed to fetch upgrade advice', signal);
 }
 
 export function fetchMetaStatus(signal?: AbortSignal): Promise<{ status: string }> {

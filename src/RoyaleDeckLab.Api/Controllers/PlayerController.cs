@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using RoyaleDeckLab.Api.Clients;
-using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Services;
 
@@ -62,7 +61,7 @@ public sealed class PlayerController(
                 return BadRequest(new { error = "Player cards data not found in API response" });
             }
 
-            var playerCards = player.Cards.Select(ToPlayerItemLevel).ToList();
+            var playerCards = player.Cards.Select(c => c.ToPlayerItemLevel()).ToList();
             var cardMap = new Dictionary<int, PlayerItemLevel>(playerCards.Count);
             foreach (var card in playerCards)
             {
@@ -83,16 +82,4 @@ public sealed class PlayerController(
             return StatusCode(500, new { error = $"Failed to fetch player data: {ex.Message}" });
         }
     }
-
-    private static PlayerItemLevel ToPlayerItemLevel(CrPlayerCard c) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Level = c.Level,
-        MaxLevel = c.MaxLevel,
-        EvolutionLevel = c.EvolutionLevel ?? 0,
-        ElixirCost = c.ElixirCost,
-        Rarity = RarityExtensions.ParseRarity(c.Rarity),
-        IconUrls = c.IconUrls,
-    };
 }

@@ -13,6 +13,7 @@ import {
   fetchAllCards,
   fetchPlayerCollection,
   fetchBestDecks,
+  fetchUpgradeAdvice,
   scoreBuilderDecks,
   type ScoreDeckCard,
 } from './api';
@@ -26,6 +27,7 @@ export const queryKeys = {
   bestDecks: ['best-decks'] as const,
   playerWarDecks: (tag: string) => ['player', tag, 'war-decks'] as const,
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
+  playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
     ['score-decks', cards, decks] as const,
 };
@@ -78,6 +80,17 @@ export function usePlayerCollection(tag: string | null) {
     ...playerCollectionOptions(tag ?? ''),
     enabled: !!tag,
     select: (res) => res.cards,
+  });
+}
+
+// The active player's ranked upgrade suggestions. Only moves when the player's
+// collection or the meta changes, so a revisit within the session reuses cache.
+export function useUpgradeAdvice(tag: string | null) {
+  return useQuery({
+    queryKey: queryKeys.playerUpgrades(tag ?? ''),
+    queryFn: ({ signal }) => fetchUpgradeAdvice(tag!, signal),
+    enabled: !!tag,
+    staleTime: 5 * 60_000,
   });
 }
 

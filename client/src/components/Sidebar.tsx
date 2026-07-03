@@ -4,7 +4,7 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import ThemeToggle from './ThemeToggle';
-import { ZapIcon, GridIcon, TrophyIcon, HelpIcon, MailIcon, MenuIcon, CloseIcon } from './navIcons';
+import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, MenuIcon, CloseIcon } from './navIcons';
 
 export default function Sidebar() {
   const { isDarkMode, activePlayerTag, setActivePlayerTag } = useApp();
@@ -46,6 +46,7 @@ export default function Sidebar() {
     { to: generatorTo, label: 'War Deck Generator', end: true, icon: <ZapIcon /> },
     { to: '/builder', label: 'War Deck Builder', end: false, icon: <GridIcon /> },
     { to: '/best-decks', label: 'Best War Decks', end: false, icon: <TrophyIcon /> },
+    { to: '/upgrades', label: 'Upgrade Advisor', end: false, icon: <TrendingUpIcon /> },
     { to: '/faq', label: 'FAQ', end: false, icon: <HelpIcon /> },
   ];
 

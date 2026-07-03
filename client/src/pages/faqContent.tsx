@@ -149,6 +149,24 @@ export const faqItems: FaqItem[] = [
     ),
   },
   {
+    question: 'How does the Upgrade Advisor pick cards?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          By simulation, not a fixed rule: for every card you could level up, we pretend it's one
+          level higher, rebuild your best four war decks from scratch, and measure how much your
+          lineup's total score rises. The list is those gains, ranked.
+        </p>
+        <p style={pLast}>
+          Because the whole recommendation is re-run, an upgrade can win in two ways: making a deck
+          you already field stronger, or pushing a <em>different</em> deck into your top four —
+          those are marked <strong>Unlocks a new deck</strong>. Cards that appear in no current
+          meta deck can't move your score, so they never show up.
+        </p>
+      </>
+    ),
+  },
+  {
     question: 'How fresh is the data?',
     answer: (
       <p style={pLast}>
