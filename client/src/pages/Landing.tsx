@@ -70,7 +70,9 @@ export default function Landing() {
               ...styles.field,
               backgroundColor: theme.bg.secondary,
               borderColor: focused ? theme.accent : theme.border,
-              boxShadow: focused ? `0 0 0 3px ${theme.accent}33` : 'none',
+              // --accent-a20 is the accent at 20% alpha (was `${accent}33`); a
+              // var() can't carry the inline hex-alpha suffix.
+              boxShadow: focused ? '0 0 0 3px var(--accent-a20)' : 'none',
             }}
           >
             <span style={{ ...styles.prefix, color: theme.text.secondary }}>#</span>

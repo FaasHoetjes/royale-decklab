@@ -249,7 +249,8 @@ export default function CardPicker({
                 viewBox="0 0 24 24"
                 style={{ transform: descending ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}
               >
-                <path d="M12 4 L21 19 L3 19 Z" fill={theme.control.text} />
+                {/* fill via CSS, not the attribute — var() only resolves in a CSS property. */}
+                <path d="M12 4 L21 19 L3 19 Z" style={{ fill: theme.control.text }} />
               </svg>
             </button>
             <button

@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Royale DeckLab - War Deck Builder</title>
+    <script>
+      // Set the theme before first paint so dark-mode users never see a flash of
+      // the light palette. Mirrors the effect in AppContext; same localStorage key.
+      (function () {
+        try {
+          var dark = JSON.parse(localStorage.getItem('darkMode') || 'false');
+          var mode = dark ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', mode);
+          document.documentElement.style.colorScheme = mode;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

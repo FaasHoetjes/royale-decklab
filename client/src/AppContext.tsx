@@ -21,6 +21,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    // The whole palette hangs off this one attribute (see index.css): flipping it
+    // recolors every var(--x) natively in a single pass. index.html sets it before
+    // first paint from the same localStorage key, so this only handles toggles.
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
     // Drive native UI (scrollbars, form controls) off the theme so nested
     // scroll containers — e.g. the card picker grid — match the page scrollbar.
     document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';

@@ -76,12 +76,13 @@ function Chevron({ open, color }: { open: boolean; color: string }) {
       height="18"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       style={{
+        // stroke via CSS, not the attribute — var() only resolves in a CSS property.
+        stroke: color,
         flexShrink: 0,
         marginLeft: '12px',
         transition: 'transform 0.2s ease',

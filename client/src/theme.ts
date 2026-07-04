@@ -1,31 +1,32 @@
-export const getTheme = (isDark: boolean) => ({
+// The theme object components style against. The actual color values live as CSS
+// custom properties in index.css (light on :root, dark on :root[data-theme]);
+// these are just the var(--x) references, identical in both modes. That's what
+// makes a light/dark toggle a single native repaint (flip data-theme on <html>)
+// rather than React re-computing and re-applying inline styles across the tree.
+//
+// The parameter is kept for call-site compatibility but is unused: the mode is
+// resolved by CSS now, not here.
+export const getTheme = (_isDark?: boolean) => ({
   bg: {
-    // A deliberate surface ladder so elevation reads at a glance: each level is
-    // a clear step away from the page, instead of three near-identical greys.
-    primary: isDark ? '#0c0c0d' : '#e6e8ec', // page background (lowest)
-    secondary: isDark ? '#161618' : '#f6f7f9', // raised panels: sidebar, hero, deck cards
-    tertiary: isDark ? '#202023' : '#edeef2', // inset wells / nested surfaces
-    elevated: isDark ? '#26262a' : '#f6f7f9', // interactive surfaces sitting on top
+    primary: 'var(--bg-primary)',
+    secondary: 'var(--bg-secondary)',
+    tertiary: 'var(--bg-tertiary)',
+    elevated: 'var(--bg-elevated)',
   },
   text: {
-    // Three roles: primary reads as the content, secondary as labels, tertiary
-    // as the faintest metadata. Softened off-white in dark mode reads cleaner
-    // than pure #fff against near-black.
-    primary: isDark ? '#f4f4f5' : '#000000',
-    secondary: isDark ? '#a1a1aa' : '#666666',
-    tertiary: isDark ? '#71717a' : '#9aa0ab',
+    primary: 'var(--text-primary)',
+    secondary: 'var(--text-secondary)',
+    tertiary: 'var(--text-tertiary)',
   },
-  border: isDark ? '#2a2a2e' : '#e0e0e0',
-  borderStrong: isDark ? '#3a3a40' : '#cdd3df',
-  // The single accent: blue in light mode, gold in dark mode. It is a FILL color
-  // — always pair it with `onAccent` for legible text, never white-on-gold.
-  accent: isDark ? '#e8b24a' : '#007bff',
-  accentBright: isDark ? '#f3c468' : '#3393ff',
-  onAccent: isDark ? '#1a1407' : '#ffffff',
+  border: 'var(--border)',
+  borderStrong: 'var(--border-strong)',
+  accent: 'var(--accent)',
+  accentBright: 'var(--accent-bright)',
+  onAccent: 'var(--on-accent)',
   control: {
-    bg: isDark ? '#161618' : '#ffffff',
-    text: isDark ? '#f4f4f5' : '#1a1a1a',
-    border: isDark ? '#2a2a2e' : '#d0d0d0',
+    bg: 'var(--control-bg)',
+    text: 'var(--control-text)',
+    border: 'var(--control-border)',
   },
 });
 

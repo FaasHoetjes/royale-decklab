@@ -4,6 +4,57 @@
   box-sizing: border-box;
 }
 
+/* ── Theme palette ───────────────────────────────────────────────────────────
+   The single source of truth for every color. Components read these via var(--x)
+   (see theme.ts), so switching light/dark only flips the data-theme attribute on
+   <html> — the browser recolors natively in one pass, instead of React
+   re-applying inline styles across the whole tree (which was the toggle lag). */
+:root {
+  /* A deliberate surface ladder so elevation reads at a glance: each level is a
+     clear step away from the page, instead of three near-identical greys. */
+  --bg-primary: #e6e8ec; /* page background (lowest) */
+  --bg-secondary: #f6f7f9; /* raised panels: sidebar, hero, deck cards */
+  --bg-tertiary: #edeef2; /* inset wells / nested surfaces */
+  --bg-elevated: #f6f7f9; /* interactive surfaces sitting on top */
+  /* Three text roles: primary is the content, secondary labels, tertiary the
+     faintest metadata. */
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --text-tertiary: #9aa0ab;
+  --border: #e0e0e0;
+  --border-strong: #cdd3df;
+  /* The single accent: blue in light mode, gold in dark. It is a FILL color —
+     always pair it with --on-accent for legible text, never white-on-gold. */
+  --accent: #007bff;
+  --accent-bright: #3393ff;
+  --on-accent: #ffffff;
+  /* --accent at 20% alpha (0x33), for the tag-search focus ring. */
+  --accent-a20: rgba(0, 123, 255, 0.2);
+  --control-bg: #ffffff;
+  --control-text: #1a1a1a;
+  --control-border: #d0d0d0;
+}
+
+:root[data-theme='dark'] {
+  --bg-primary: #0c0c0d;
+  --bg-secondary: #161618;
+  --bg-tertiary: #202023;
+  --bg-elevated: #26262a;
+  /* Softened off-white reads cleaner than pure #fff against near-black. */
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --border: #2a2a2e;
+  --border-strong: #3a3a40;
+  --accent: #e8b24a;
+  --accent-bright: #f3c468;
+  --on-accent: #1a1407;
+  --accent-a20: rgba(232, 178, 74, 0.2);
+  --control-bg: #161618;
+  --control-text: #f4f4f5;
+  --control-border: #2a2a2e;
+}
+
 body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
