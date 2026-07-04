@@ -62,6 +62,30 @@ public sealed class UpgradeAdvisorTests
     }
 
     [Fact]
+    public void StaysFast_WithAMetaSizedPool_AndAFullyUpgradeableCollection()
+    {
+        // The advisor re-runs the exact lineup search once per upgradeable card —
+        // here ~110 searches over 1500 near-tied decks, the worst realistic load.
+        // The generous ceiling only catches pathological regressions.
+        var rng = new Random(7);
+        var cards = Enumerable.Range(1, 110).Select(id => Build.Card(id, level: 13)).ToList();
+        var meta = Enumerable.Range(0, 1500)
+            .Select(_ => Build.Deck(
+                Enumerable.Range(1, 110).OrderBy(_ => rng.Next()).Take(8).ToArray(),
+                confidence: 0.40 + 0.15 * rng.NextDouble(),
+                players: 5 + rng.Next(200)))
+            .ToList();
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var advice = _advisor.Advise(cards, meta);
+        watch.Stop();
+
+        Assert.NotEmpty(advice.Suggestions);
+        Assert.True(watch.ElapsedMilliseconds < 5000,
+            $"Advise took {watch.ElapsedMilliseconds} ms; expected well under 5000 ms");
+    }
+
+    [Fact]
     public void FlagsALineupChange_WhenAnUpgradePromotesADifferentDeck()
     {
         // Decks X (cards 1-8) and Y (cards 1-7 + 9) overlap, so only one is picked.

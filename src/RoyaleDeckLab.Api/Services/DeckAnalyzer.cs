@@ -54,6 +54,16 @@ public sealed class DeckAnalyzer
     // even one-off decks as a last resort.
     private static readonly int[] PopularityGateLadder = [MinDistinctPlayers, 3, 2, 1];
 
+    // A war lineup fields four decks.
+    private const int DecksPerLineup = 4;
+
+    // Safety valve for the exact lineup search: a pathological pool (thousands of
+    // decks with near-identical scores and dense overlaps) could make the
+    // branch-and-bound crawl, so past this many visited nodes it returns the best
+    // lineup found so far — never worse than the greedy seed. Realistic pools
+    // finish in a few thousand nodes.
+    private const long SearchNodeBudget = 2_000_000;
+
     /// <summary>The score + factors for one War Deck Builder deck (see <see cref="ScoreBuilderDeck"/>).</summary>
     public sealed record BuilderScore(double Score, double WinRate, double Fieldability, bool IsMeta, int Players);
 
@@ -345,33 +355,166 @@ public sealed class DeckAnalyzer
     }
 
     /// <summary>
-    /// Greedily appends up to four mutually card-disjoint decks from a best-first
-    /// list. Mutates the running selection so it can be called repeatedly with
-    /// progressively looser pools — proven picks are kept and only the remaining
-    /// slots get topped up. Stops once four decks are held.
+    /// The provably best lineup in a pool (pre-sorted by score descending): most
+    /// decks first — a war wants every slot filled — then highest total score.
+    /// Branch-and-bound: a branch's upper bound takes the next-best remaining
+    /// scores wholesale (a prefix-sum lookup thanks to the sort), and since that
+    /// bound only shrinks further down the list, the first failing candidate cuts
+    /// off the rest of its level. A greedy pass seeds the incumbent so pruning
+    /// bites from the first node, and card sets are bitmasks so a disjointness
+    /// check is a couple of word ANDs.
     /// </summary>
-    private static void FillDisjointDecks(
-        IEnumerable<(DeckMeta deck, double score)> sortedDecks,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
-        SelectionState state)
+    private static List<(DeckMeta deck, double score)> FindOptimalLineup(
+        IReadOnlyList<(DeckMeta deck, double score)> pool)
     {
-        foreach (var (deck, score) in sortedDecks)
+        var n = pool.Count;
+        if (n == 0)
         {
-            if (state.SelectedDecks.Count >= 4)
+            return [];
+        }
+
+        // Bitmask per deck over the distinct card ids present in this pool.
+        var bitOf = new Dictionary<int, int>();
+        foreach (var (deck, _) in pool)
+        {
+            foreach (var id in deck.CardIds)
             {
-                break;
+                if (!bitOf.ContainsKey(id))
+                {
+                    bitOf[id] = bitOf.Count;
+                }
             }
-            if (deck.CardIds.Any(state.UsedCardIds.Contains))
+        }
+        var words = (bitOf.Count + 63) >> 6;
+        var masks = new ulong[n][];
+        for (var i = 0; i < n; i++)
+        {
+            var mask = new ulong[words];
+            foreach (var id in pool[i].deck.CardIds)
+            {
+                var bit = bitOf[id];
+                mask[bit >> 6] |= 1UL << (bit & 63);
+            }
+            masks[i] = mask;
+        }
+
+        // prefix[i] = sum of the i highest scores. The best k decks from position
+        // i onward are simply the next k, so a bound is prefix[i+k] - prefix[i].
+        var prefix = new double[n + 1];
+        for (var i = 0; i < n; i++)
+        {
+            prefix[i + 1] = prefix[i] + pool[i].score;
+        }
+
+        var bestPicks = GreedyPicks(pool, masks, words);
+        var bestCount = bestPicks.Length;
+        var bestScore = 0.0;
+        foreach (var p in bestPicks)
+        {
+            bestScore += pool[p].score;
+        }
+
+        // One reusable used-cards mask per depth instead of allocating per node.
+        var usedAt = new ulong[DecksPerLineup + 1][];
+        for (var d = 0; d <= DecksPerLineup; d++)
+        {
+            usedAt[d] = new ulong[words];
+        }
+        var picks = new int[DecksPerLineup];
+        var nodes = 0L;
+
+        void Search(int start, int depth, double score)
+        {
+            var used = usedAt[depth];
+            for (var i = start; i < n; i++)
+            {
+                // Upper bound if the best remaining decks were all disjoint. Count
+                // outranks score: fewer filled slots can never win on points.
+                var take = Math.Min(DecksPerLineup - depth, n - i);
+                var boundCount = depth + take;
+                var boundScore = score + prefix[i + take] - prefix[i];
+                if (boundCount < bestCount || (boundCount == bestCount && boundScore <= bestScore))
+                {
+                    return;
+                }
+                if (++nodes > SearchNodeBudget)
+                {
+                    return;
+                }
+
+                var mask = masks[i];
+                var overlaps = false;
+                for (var w = 0; w < words; w++)
+                {
+                    if ((used[w] & mask[w]) != 0)
+                    {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (overlaps)
+                {
+                    continue;
+                }
+
+                picks[depth] = i;
+                var newScore = score + pool[i].score;
+                if (depth + 1 > bestCount || (depth + 1 == bestCount && newScore > bestScore))
+                {
+                    bestCount = depth + 1;
+                    bestScore = newScore;
+                    bestPicks = picks[..(depth + 1)];
+                }
+                if (depth + 1 < DecksPerLineup)
+                {
+                    var next = usedAt[depth + 1];
+                    for (var w = 0; w < words; w++)
+                    {
+                        next[w] = used[w] | mask[w];
+                    }
+                    Search(i + 1, depth + 1, newScore);
+                }
+            }
+        }
+        Search(0, 0, 0);
+
+        var lineup = new List<(DeckMeta deck, double score)>(bestCount);
+        foreach (var p in bestPicks)
+        {
+            lineup.Add(pool[p]);
+        }
+        return lineup;
+    }
+
+    /// <summary>Best-first greedy fill — the incumbent that seeds the exact search.</summary>
+    private static int[] GreedyPicks(
+        IReadOnlyList<(DeckMeta deck, double score)> pool, ulong[][] masks, int words)
+    {
+        var used = new ulong[words];
+        var picks = new List<int>(DecksPerLineup);
+        for (var i = 0; i < pool.Count && picks.Count < DecksPerLineup; i++)
+        {
+            var mask = masks[i];
+            var overlaps = false;
+            for (var w = 0; w < words; w++)
+            {
+                if ((used[w] & mask[w]) != 0)
+                {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (overlaps)
             {
                 continue;
             }
-            foreach (var id in deck.CardIds)
+            for (var w = 0; w < words; w++)
             {
-                state.UsedCardIds.Add(id);
+                used[w] |= mask[w];
             }
-            state.Selected.Add(deck);
-            state.SelectedDecks.Add(ToScoredDeck(deck, score, cardMap));
+            picks.Add(i);
         }
+        return [.. picks];
     }
 
     /// <summary>
@@ -402,9 +545,13 @@ public sealed class DeckAnalyzer
     }
 
     /// <summary>
-    /// Picks the four best card-disjoint decks from a pre-scored pool, filling
-    /// slots from the strictest popularity gate down and carrying the selection
-    /// across gates so a looser gate only tops up open slots. The swap pool is
+    /// Picks the best four card-disjoint decks from a pre-scored pool — exactly,
+    /// not greedily: the single strongest deck often hogs staple cards that two
+    /// other strong decks both want, and the best TOTAL then skips it (see
+    /// <see cref="FindOptimalLineup"/>). The popularity-gate ladder still applies:
+    /// the strictest gate whose pool can fill all four slots wins, and only when
+    /// four disjoint decks don't exist do looser pools (which are supersets, so
+    /// the last search subsumes the earlier ones) get a say. The swap pool is
     /// optional: callers that only read the total score skip building it.
     /// </summary>
     public WarDeckResult SelectLineup(
@@ -412,21 +559,37 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         bool includeAlternatives)
     {
-        var state = new SelectionState();
+        // Strength first; player count only breaks exact ties. OrderBy is stable,
+        // so equal-score/equal-player decks keep their meta ranking order.
+        var sorted = fieldable
+            .OrderByDescending(s => s.score)
+            .ThenByDescending(s => s.deck.Players ?? 0)
+            .ToList();
+
+        var lineup = new List<(DeckMeta deck, double score)>();
+        var lastPoolCount = -1;
         foreach (var gate in PopularityGateLadder)
         {
-            // Strength first; player count only breaks exact ties. OrderBy is stable,
-            // so equal-score/equal-player decks keep their meta ranking order.
-            var eligible = fieldable
-                .Where(s => s.deck.Players is null || s.deck.Players >= gate)
-                .OrderByDescending(s => s.score)
-                .ThenByDescending(s => s.deck.Players ?? 0)
-                .ToList();
-            FillDisjointDecks(eligible, cardMap, state);
-            if (state.SelectedDecks.Count >= 4)
+            var pool = sorted.Where(s => s.deck.Players is null || s.deck.Players >= gate).ToList();
+            // Gates nest, so an unchanged size means the identical pool — skip it.
+            if (pool.Count == lastPoolCount)
+            {
+                continue;
+            }
+            lastPoolCount = pool.Count;
+            lineup = FindOptimalLineup(pool);
+            if (lineup.Count >= DecksPerLineup)
             {
                 break;
             }
+        }
+
+        var selected = new HashSet<DeckMeta>();
+        var selectedDecks = new List<ScoredDeck>(lineup.Count);
+        foreach (var (deck, score) in lineup)
+        {
+            selected.Add(deck);
+            selectedDecks.Add(ToScoredDeck(deck, score, cardMap));
         }
 
         // The swap pool: next best-scoring decks not among the four, drawn from the
@@ -435,16 +598,13 @@ public sealed class DeckAnalyzer
         var alternatives = new List<ScoredDeck>();
         if (includeAlternatives)
         {
-            var altPool = fieldable
-                .OrderByDescending(s => s.score)
-                .ThenByDescending(s => s.deck.Players ?? 0);
-            foreach (var (deck, score) in altPool)
+            foreach (var (deck, score) in sorted)
             {
                 if (alternatives.Count >= AlternativePoolSize)
                 {
                     break;
                 }
-                if (state.Selected.Contains(deck))
+                if (selected.Contains(deck))
                 {
                     continue;
                 }
@@ -454,8 +614,8 @@ public sealed class DeckAnalyzer
 
         return new WarDeckResult
         {
-            Decks = state.SelectedDecks,
-            TotalScore = state.SelectedDecks.Sum(d => d.PlayerScore),
+            Decks = selectedDecks,
+            TotalScore = selectedDecks.Sum(d => d.PlayerScore),
             Alternatives = alternatives,
         };
     }
@@ -468,15 +628,5 @@ public sealed class DeckAnalyzer
             map[card.Id] = card;
         }
         return map;
-    }
-
-    /// <summary>Running state threaded through the adaptive-gate deck selection.</summary>
-    private sealed class SelectionState
-    {
-        public List<ScoredDeck> SelectedDecks { get; } = [];
-
-        // Reference identity: the same DeckMeta instance shouldn't be picked twice.
-        public HashSet<DeckMeta> Selected { get; } = [];
-        public HashSet<int> UsedCardIds { get; } = [];
     }
 }
