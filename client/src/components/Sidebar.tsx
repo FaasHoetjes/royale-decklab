@@ -44,8 +44,8 @@ export default function Sidebar() {
 
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true, icon: <ZapIcon /> },
-    { to: '/builder', label: 'War Deck Builder', end: false, icon: <GridIcon /> },
     { to: '/best-decks', label: 'Best War Decks', end: false, icon: <TrophyIcon /> },
+    { to: '/builder', label: 'War Deck Builder', end: false, icon: <GridIcon /> },
     { to: '/upgrades', label: 'Upgrade Advisor', end: false, icon: <TrendingUpIcon /> },
     { to: '/faq', label: 'FAQ', end: false, icon: <HelpIcon /> },
   ];
