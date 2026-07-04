@@ -89,14 +89,15 @@ public sealed class UpgradeAdvisorTests
     public void FlagsALineupChange_WhenAnUpgradePromotesADifferentDeck()
     {
         // Decks X (cards 1-8) and Y (cards 1-7 + 9) overlap, so only one is picked.
-        // With card 9 two levels short, X edges out Y; one upgrade flips the pick:
-        //   Y before: 0.60 × (7 + 1.1^-2)/8 ≈ 0.5870 < X's 0.59
-        //   Y after:  0.60 × (7 + 1.1^-1)/8 ≈ 0.5932 > X's 0.59
+        // With card 9 two levels short, X edges out Y; one upgrade flips the pick.
+        // Odds-space level adjustment (exponent 4), odds = 0.60/0.40 = 1.5:
+        //   Y before: S = (7 + 1.1^-2)/8 → w' = 1.5S⁴/(1+1.5S⁴) ≈ 0.5788 < X's 0.58
+        //   Y after:  S = (7 + 1.1^-1)/8 → w' ≈ 0.5890 > X's 0.58
         var cards = Build.Collection(1, 2, 3, 4, 5, 6, 7, 8)
             .Concat([Build.Card(9, level: 12)]).ToList();
         var meta = new[]
         {
-            Build.Deck(Build.Eight(1), confidence: 0.59),
+            Build.Deck(Build.Eight(1), confidence: 0.58),
             Build.Deck([1, 2, 3, 4, 5, 6, 7, 9], confidence: 0.60),
         };
 

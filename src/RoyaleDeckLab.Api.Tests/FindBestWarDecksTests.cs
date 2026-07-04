@@ -219,6 +219,68 @@ public sealed class FindBestWarDecksTests
     }
 
     [Fact]
+    public void UpgradesAMetaNormalCard_ToAnOwnedHero_WhenTheHeroSlotIsFree()
+    {
+        // The meta deck fields two evos and no hero; the player owns card 1's hero
+        // (evolutionLevel 2). In game the hero slot is positional, so fielding
+        // card 1 there is a free upgrade — the personalised view must show it.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion> { new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo) };
+        var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
+
+        var deck = Assert.Single(Run(cards, meta).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, deck.MetaCardVersions!.Single(v => v.CardId == 1).Version);
+        Assert.Equal(CardVersionKind.Hero, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
+    public void UpgradesAMetaNormalCard_ToAnOwnedEvo_WhenAnEvoSlotIsFree()
+    {
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 1) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var meta = new[] { Build.Deck(Build.Eight(1)) }; // all-normal meta deck
+
+        var deck = Assert.Single(Run(cards, meta).Decks);
+
+        Assert.Equal(CardVersionKind.Evo, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
+    public void NeverUpgrades_WhenTheMetaSpecialsAlreadyFillTheSlots()
+    {
+        // Three meta specials use all slot capacity — even unowned ones keep
+        // their slots on screen, so the owned hero of card 1 has nowhere to go.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion>
+        {
+            new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo), new(4, CardVersionKind.Hero),
+        };
+        var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
+
+        var deck = Assert.Single(Run(cards, meta).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
+    public void AHeroOwner_NeverClaimsAnEvoSlot()
+    {
+        // Both hero slots are taken; evo slots are free. evolutionLevel 2 proves
+        // the hero but leaves evo ownership ambiguous, so no evo is claimed.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion> { new(2, CardVersionKind.Hero), new(3, CardVersionKind.Hero) };
+        var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
+
+        var deck = Assert.Single(Run(cards, meta).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
     public void ForcesChampionsIntoTheHeroSlot_EvenWithoutAStoredVersion()
     {
         // Card 1 is a champion; the battlelog can't flag it, so version reconciliation

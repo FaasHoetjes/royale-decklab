@@ -253,7 +253,7 @@ public sealed class MetaBuilder(
             var deckKey = string.Join(',', record.CardIds);
             if (!byDeck.TryGetValue(deckKey, out var agg))
             {
-                agg = new DeckAgg { CardIds = record.CardIds, CardVersions = record.CardVersions };
+                agg = new DeckAgg { CardIds = record.CardIds };
                 byDeck[deckKey] = agg;
             }
 
@@ -265,12 +265,24 @@ public sealed class MetaBuilder(
             }
             agg.Players.Add(record.PlayerTag);
 
-            // Track card versions from the most recent battle. battleTime strings
-            // share a fixed format, so ordinal comparison is chronological.
-            if (string.CompareOrdinal(record.BattleTime, agg.LatestTime) > 0)
+            // Tally the exact version loadout (which cards were evo/hero) this
+            // battle fielded. The deck's stored versions become the most common
+            // loadout, not the latest battle's: a single battle can be an outlier
+            // (one player without the hero fields the same deck plain), and it
+            // once relabeled a top deck's hero Knight as normal.
+            var comboKey = string.Join(',',
+                record.CardVersions.OrderBy(v => v.CardId).Select(v => $"{v.CardId}:{(int)v.Version}"));
+            if (!agg.Loadouts.TryGetValue(comboKey, out var loadout))
             {
-                agg.LatestTime = record.BattleTime;
-                agg.CardVersions = record.CardVersions;
+                loadout = new LoadoutAgg { Versions = record.CardVersions };
+                agg.Loadouts[comboKey] = loadout;
+            }
+            loadout.Count++;
+            // battleTime strings share a fixed format, so ordinal comparison is
+            // chronological; recency only breaks count ties.
+            if (string.CompareOrdinal(record.BattleTime, loadout.LatestTime) > 0)
+            {
+                loadout.LatestTime = record.BattleTime;
             }
         }
 
@@ -298,7 +310,10 @@ public sealed class MetaBuilder(
                 Uses = total,
                 Players = agg.Players.Count,
                 PickRate = sampledPlayers > 0 ? (double)agg.Players.Count / sampledPlayers : 0,
-                CardVersions = agg.CardVersions,
+                CardVersions = agg.Loadouts.Values
+                    .OrderByDescending(l => l.Count)
+                    .ThenByDescending(l => l.LatestTime, StringComparer.Ordinal)
+                    .First().Versions,
             });
         }
 
@@ -314,8 +329,15 @@ public sealed class MetaBuilder(
         public int Losses;
         public int Draws;
         public HashSet<string> Players { get; } = [];
-        public string LatestTime = "";
         public required int[] CardIds { get; init; }
-        public required IReadOnlyList<CardVersion> CardVersions { get; set; }
+        public Dictionary<string, LoadoutAgg> Loadouts { get; } = [];
+    }
+
+    /// <summary>One distinct version loadout of a deck (which cards were fielded as evo/hero).</summary>
+    private sealed class LoadoutAgg
+    {
+        public int Count;
+        public string LatestTime = "";
+        public required IReadOnlyList<CardVersion> Versions { get; init; }
     }
 }

@@ -90,6 +90,40 @@ public sealed class DeckAnalyzerScoringTests
     }
 
     [Fact]
+    public void PlayerScore_CompoundsLevelDeficits_InOddsSpace()
+    {
+        // All 8 cards one level short: stat fraction S = 1.1^-1. The deficit
+        // multiplies the win ODDS by S^4 (interactions compound over a battle),
+        // rather than scaling the score linearly.
+        var cards = Enumerable.Range(1, 8).Select(id => Build.Card(id, level: 13)).ToList();
+        var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20);
+
+        var odds = 0.55 / 0.45 * Math.Pow(1.10, -4);
+        var expected = odds / (1 + odds) * (20.0 / 28.0);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
+    }
+
+    [Fact]
+    public void PlayerScore_PrefersANearMaxedDeck_OverAnUnderleveledStrongerDeck()
+    {
+        // The complaint the odds model fixes: a 60% meta deck fielded ~2.5 levels
+        // down must lose to a 51% deck fielded 1 level down. The old linear
+        // scaling ranked them the other way (0.60×0.789 ≈ 0.473 vs 0.51×0.909 ≈ 0.464).
+        var cards = Enumerable.Range(1, 4).Select(id => Build.Card(id, level: 12))
+            .Concat(Enumerable.Range(5, 4).Select(id => Build.Card(id, level: 11)))
+            .Concat(Enumerable.Range(9, 8).Select(id => Build.Card(id, level: 13)))
+            .ToList();
+        var strongButUnderleveled = Build.Deck(Build.Eight(1), confidence: 0.60);
+        var modestButNearMaxed = Build.Deck(Build.Eight(9), confidence: 0.51);
+
+        var strongScore = _analyzer.ScoreDeckForPlayer(cards, strongButUnderleveled, null)!.Value;
+        var modestScore = _analyzer.ScoreDeckForPlayer(cards, modestButNearMaxed, null)!.Value;
+
+        Assert.True(modestScore > strongScore,
+            $"Expected the near-maxed 51% deck ({modestScore:F4}) to outrank the 2.5-levels-down 60% deck ({strongScore:F4})");
+    }
+
+    [Fact]
     public void PlayerScore_TreatsMissingPlayerCount_AsFullPopularity()
     {
         var cards = Build.Collection(Build.Eight(1));

@@ -91,7 +91,27 @@ public sealed class AggregateBattlesTests
     }
 
     [Fact]
-    public void TracksVersionsFromTheMostRecentBattle()
+    public void TracksTheMostCommonVersionLoadout_NotTheLatestBattles()
+    {
+        // Two battles field the hero, one later battle (a player without it)
+        // fields the plain card: the majority loadout must win, or one outlier
+        // relabels the deck.
+        var deck = Build.Eight(1);
+        var hero = new List<CardVersion> { new(1, CardVersionKind.Hero) };
+        var plain = new List<CardVersion> { new(1, CardVersionKind.Normal) };
+        var battles = new[]
+        {
+            Build.Battle("#P1", deck, BattleResult.Win, "20260101T120000.000Z", hero),
+            Build.Battle("#P2", deck, BattleResult.Win, "20260102T120000.000Z", hero),
+            Build.Battle("#P3", deck, BattleResult.Win, "20260115T120000.000Z", plain),
+        };
+
+        var result = Assert.Single(NewBuilder().AggregateBattles(battles));
+        Assert.Equal(CardVersionKind.Hero, result.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
+    public void BreaksVersionLoadoutTies_ByRecency()
     {
         var deck = Build.Eight(1);
         var older = new List<CardVersion> { new(1, CardVersionKind.Normal) };

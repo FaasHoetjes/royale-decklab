@@ -64,25 +64,29 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          It adapts a deck's meta strength to <em>your</em> collection by multiplying four
+          It adapts a deck's meta strength to <em>your</em> collection by multiplying three
           factors:
         </p>
         <p style={{ ...pStyle, fontFamily: 'monospace', fontSize: '14px' }}>
-          score = adjusted win rate × popularity × avg card level × version fit
+          score = expected win rate × popularity × version fit
         </p>
         <ul style={ulStyle}>
           <li style={liStyle}>
-            <strong>Adjusted win rate</strong> — a confidence-adjusted version of the meta win
-            rate (the Wilson lower bound): decks with few games are pulled toward 50%, so a strong
-            record over many games outranks a perfect record over a few.
+            <strong>Expected win rate</strong> — the win rate <em>you</em> can expect fielding the
+            deck at your card levels. It starts from a confidence-adjusted meta win rate (the
+            Wilson lower bound: decks with few games are pulled toward 50%, so a strong record
+            over many games outranks a perfect record over a few), then adjusts for your levels.
+            Card stats grow ~10% per level, and a stat deficit doesn't cost win rate gently — it
+            flips interaction breakpoints (the Fireball that no longer kills the Musketeer, the
+            unit that survives one extra hit), and a battle chains many such interactions. So the
+            deficit shifts the win <em>odds</em>, compounded, rather than shaving the score
+            linearly: a 54% deck fielded one full level below max plays like a ~45% deck; two
+            levels down, more like ~36%. Levels matter a lot in this game, and the score treats
+            them that way.
           </li>
           <li style={liStyle}>
             <strong>Popularity</strong> — how many top players run the deck (a one-person pet deck
             is discounted).
-          </li>
-          <li style={liStyle}>
-            <strong>Avg card level</strong> — the average of your level ÷ max level across all 8
-            cards.
           </li>
           <li style={{ ...liStyle, marginBottom: '12px' }}>
             <strong>Version fit</strong> — a ~6% penalty for each Evolution or Hero version the deck

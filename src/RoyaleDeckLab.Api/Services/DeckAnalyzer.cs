@@ -22,9 +22,14 @@ public sealed class DeckAnalyzer
     // tournament-normalised (maxed) levels, so "maxed" is the reference point.
     private const double StatGrowthPerLevel = 1.10;
 
-    // How harshly to down-rank a deck the player can't field at full strength.
-    // 1.0 = score scales directly with the deck's average combat-stat fraction.
-    private const double LevelSensitivity = 1.0;
+    // A stat deficit doesn't cost win rate linearly: it flips interaction
+    // breakpoints (the Fireball that no longer kills the Musketeer, the unit that
+    // survives one extra hit), and a battle chains many such interactions. So the
+    // deck's stat fraction enters the win ODDS raised to this exponent — roughly
+    // "how many level-sensitive interactions decide a battle". A reasoned default,
+    // deliberately not data-fitted: the battle store keeps only 7 days and drops
+    // card levels, so fitting would first require logging levels at collection time.
+    private const double BattleCompoundingExponent = 4.0;
 
     // Strength lost per special version (Evo/Hero) the meta deck fielded that the
     // player hasn't unlocked. Compounds across the deck: one ≈ 6% weaker, two ≈ 12%.
@@ -192,9 +197,74 @@ public sealed class DeckAnalyzer
     }
 
     /// <summary>
-    /// This player's fit for a meta deck: confidence-adjusted win rate × how close
-    /// to maxed they can field it × unlocked specials × adoption. Returns null if a
-    /// card is missing from their collection.
+    /// Fills special-slot capacity the meta deck leaves unused with versions the
+    /// player owns: the in-game slots are positional, so a meta-normal card placed
+    /// in a free hero/evo slot fields as that version automatically — a free
+    /// upgrade the meta record simply never exercised. Ownership comes from the
+    /// cumulative evolutionLevel (2 = hero unlocked, 1 = evo unlocked; at 2 the
+    /// evo tier is ambiguous, so a hero owner never claims an evo slot).
+    /// Capacity counts the META specials, not the personalised ones, because a
+    /// downgraded special keeps its on-screen slot. Cosmetic, like
+    /// <see cref="PersonalizeVersions"/> — scoring still uses the meta versions.
+    /// Both lists come from <see cref="WithChampionVersions"/>, one entry per
+    /// deck card in deck order, so they pair up by index.
+    /// </summary>
+    private static IReadOnlyList<CardVersion>? UpgradeIntoFreeSlots(
+        IReadOnlyList<CardVersion>? personalized,
+        IReadOnlyList<CardVersion>? metaVersions,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        if (personalized is null || metaVersions is null)
+        {
+            return personalized;
+        }
+
+        int evo = 0, hero = 0, total = 0;
+        foreach (var v in metaVersions)
+        {
+            if (v.Version == CardVersionKind.Evo) { evo++; total++; }
+            else if (v.Version == CardVersionKind.Hero) { hero++; total++; }
+        }
+
+        var changed = false;
+        var upgraded = new List<CardVersion>(personalized.Count);
+        for (var i = 0; i < personalized.Count; i++)
+        {
+            var v = personalized[i];
+            // Only a card the meta fielded as normal can claim a free slot; a meta
+            // special keeps its slot even when downgraded for this player.
+            if (v.Version != CardVersionKind.Normal || metaVersions[i].Version != CardVersionKind.Normal)
+            {
+                upgraded.Add(v);
+                continue;
+            }
+            var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
+            if (owned >= 2 && hero < MaxHero && total < MaxSpecials)
+            {
+                hero++;
+                total++;
+                changed = true;
+                upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Hero));
+            }
+            else if (owned == 1 && evo < MaxEvo && total < MaxSpecials)
+            {
+                evo++;
+                total++;
+                changed = true;
+                upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Evo));
+            }
+            else
+            {
+                upgraded.Add(v);
+            }
+        }
+        return changed ? upgraded : personalized;
+    }
+
+    /// <summary>
+    /// This player's fit for a meta deck: the win rate they can expect fielding it
+    /// at their card levels (see <see cref="LevelAdjustedWinRate"/>) × unlocked
+    /// specials × adoption. Returns null if a card is missing from their collection.
     /// </summary>
     public double? ScoreDeckForPlayer(
         IReadOnlyList<PlayerItemLevel> playerCards,
@@ -251,18 +321,43 @@ public sealed class DeckAnalyzer
         }
 
         var avgStatFraction = totalStatFraction / validCards;
-        // Confidence-adjusted win rate (always stored in this port) so small-sample
-        // decks don't outrank well-tested ones.
-        var metaStrength = metaDeck.Confidence;
-        var levelWeight = Math.Pow(avgStatFraction, LevelSensitivity);
-        return metaStrength * levelWeight * versionFit * PopularityFactor(metaDeck.Players);
+        // Confidence is the confidence-adjusted win rate (always stored in this
+        // port), so small-sample decks don't outrank well-tested ones.
+        var expectedWinRate = LevelAdjustedWinRate(metaDeck.Confidence, avgStatFraction);
+        return expectedWinRate * versionFit * PopularityFactor(metaDeck.Players);
     }
 
     /// <summary>
-    /// The player-controllable strength of an ARBITRARY deck — the level-weight term
-    /// on its own (average combat-stat fraction across the deck). No version penalty:
-    /// the builder fields exactly the art the player owns. Returns null if a card
-    /// isn't in the collection.
+    /// The win rate the player can expect fielding a deck at
+    /// <paramref name="statFraction"/> of full combat stats, given its meta win
+    /// rate at maxed levels. Works in odds space (Bradley–Terry): the stat ratio
+    /// multiplies the win odds raised to <see cref="BattleCompoundingExponent"/>,
+    /// because a per-interaction stat edge compounds over a battle. Maxed decks
+    /// (fraction 1) keep the meta win rate exactly; underleveled decks fall off
+    /// much faster than the old linear score scaling — e.g. a 54% deck one full
+    /// level down plays like ~45%, two levels down like ~36%.
+    /// </summary>
+    private static double LevelAdjustedWinRate(double winRate, double statFraction)
+    {
+        if (winRate <= 0)
+        {
+            return 0;
+        }
+        if (winRate >= 1)
+        {
+            return 1;
+        }
+        var odds = winRate / (1 - winRate) * Math.Pow(statFraction, BattleCompoundingExponent);
+        return odds / (1 + odds);
+    }
+
+    /// <summary>
+    /// The player-controllable strength of an ARBITRARY deck: the average combat-stat
+    /// fraction across its cards (1 = fully maxed). This is the raw fraction for
+    /// display — the win-rate impact of a deficit is applied by
+    /// <see cref="LevelAdjustedWinRate"/>, not here. No version penalty: the builder
+    /// fields exactly the art the player owns. Returns null if a card isn't in the
+    /// collection.
     /// </summary>
     public double? FieldabilityScore(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<int> cardIds)
     {
@@ -284,8 +379,7 @@ public sealed class DeckAnalyzer
         {
             return null;
         }
-        var avgStatFraction = totalStatFraction / validCards;
-        return Math.Pow(avgStatFraction, LevelSensitivity);
+        return totalStatFraction / validCards;
     }
 
     /// <summary>
@@ -316,7 +410,8 @@ public sealed class DeckAnalyzer
             return new BuilderScore(score.Value, meta.Confidence, fieldability.Value, IsMeta: true, meta.Players ?? 0);
         }
 
-        var neutral = NeutralWinRate * fieldability.Value * PopularityFactor(1);
+        // Same odds-space level adjustment as a meta deck, so the scales compare.
+        var neutral = LevelAdjustedWinRate(NeutralWinRate, fieldability.Value) * PopularityFactor(1);
         return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0);
     }
 
@@ -338,6 +433,9 @@ public sealed class DeckAnalyzer
         // Stored versions can't flag champions, so reconcile them before splitting
         // into the meta (slot-driving) and personalised (art-driving) views.
         var versions = WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
+        var metaVersions = CapEvolutions(versions);
+        var personalized = UpgradeIntoFreeSlots(
+            CapEvolutions(PersonalizeVersions(versions, cardMap)), metaVersions, cardMap);
 
         return new ScoredDeck
         {
@@ -349,8 +447,8 @@ public sealed class DeckAnalyzer
             PickRate = deck.PickRate ?? 0,
             PlayerScore = score,
             Cards = cards,
-            CardVersions = CapEvolutions(PersonalizeVersions(versions, cardMap)),
-            MetaCardVersions = CapEvolutions(versions),
+            CardVersions = personalized,
+            MetaCardVersions = metaVersions,
         };
     }
 
