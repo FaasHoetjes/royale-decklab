@@ -12,8 +12,6 @@ namespace RoyaleDeckLab.Api.Services;
 /// </summary>
 public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 {
-    private const int MaxSuggestions = 10;
-
     // Deltas at or below this are float noise, not a real improvement.
     private const double MinDelta = 1e-9;
 
@@ -77,10 +75,13 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
                 AffectedDeckIndexes: AffectedIndexes(baseline, card.Id)));
         }
 
+        // Every positive suggestion is returned (the pool is bounded by the
+        // player's upgradeable meta cards); the client decides how many to show
+        // and can filter for lineup-changing upgrades that rank below the
+        // incremental boosts to the current decks.
         var ranked = suggestions
             .OrderByDescending(s => s.ScoreDelta)
             .ThenBy(s => s.Name)
-            .Take(MaxSuggestions)
             .ToList();
         return new UpgradeAdvice(baseline.TotalScore, ranked);
     }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
@@ -9,7 +9,7 @@ import { CHAMPION_SLOTS, SLOTS_PER_DECK } from '../lib/deckBoard';
 import { availableVersions, type BuilderCard } from '../lib/builderCards';
 import { slotKind } from '../lib/slotStyles';
 import type { ScoreDeckCard } from '../api';
-import type { FilterKey } from '../lib/pickerData';
+import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from '../components/CardPicker';
 import DeckPanel from '../components/DeckPanel';
 
@@ -68,11 +68,22 @@ export default function WarDeckBuilder() {
   const board = useDeckBoard(cardById);
 
   const [picker, setPicker] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
-  // Picker sort + filters live here so they survive the picker unmounting on
-  // close — reopening it keeps the same filtering.
-  const [pickerFilters, setPickerFilters] = useState<Set<FilterKey>>(new Set());
-  const [pickerSortIndex, setPickerSortIndex] = useState(0);
-  const [pickerDescending, setPickerDescending] = useState(false);
+  // Picker sort + filters live here (not in the picker, which unmounts on
+  // close) and persist to sessionStorage like the board, so they also survive
+  // navigating to another page and back.
+  const [initialPrefs] = useState(loadPickerPrefs);
+  const [pickerFilters, setPickerFilters] = useState<Set<FilterKey>>(
+    () => new Set(initialPrefs.filters)
+  );
+  const [pickerSortIndex, setPickerSortIndex] = useState(initialPrefs.sortIndex);
+  const [pickerDescending, setPickerDescending] = useState(initialPrefs.descending);
+  useEffect(() => {
+    savePickerPrefs({
+      filters: [...pickerFilters],
+      sortIndex: pickerSortIndex,
+      descending: pickerDescending,
+    });
+  }, [pickerFilters, pickerSortIndex, pickerDescending]);
 
   // The placed cards with the player's levels + owned tiers. Sending only
   // these means the server never re-fetches the collection while scoring.

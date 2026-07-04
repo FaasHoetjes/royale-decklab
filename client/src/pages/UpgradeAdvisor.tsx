@@ -1,19 +1,51 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useUpgradeAdvice } from '../queries';
 import UpgradeRow from '../components/UpgradeRow';
+import type { UpgradeSuggestion } from '../api';
+
+const INITIAL_ROWS = 10;
+
+type Filter = 'all' | 'lineup' | 'new';
+
+const FILTERS: { key: Filter; label: string; empty: string }[] = [
+  { key: 'all', label: 'All', empty: '' },
+  {
+    key: 'lineup',
+    label: 'Current decks',
+    empty: 'No upgrade improves a deck in your current lineup — those cards are already maxed.',
+  },
+  {
+    key: 'new',
+    label: 'Unlocks new deck',
+    empty:
+      'No single-level upgrade pulls a new deck into your lineup right now. The closest contenders need more than one level, or your top four are simply that far ahead.',
+  },
+];
+
+function matches(s: UpgradeSuggestion, filter: Filter): boolean {
+  if (filter === 'lineup') return s.affectedDeckIndexes.length > 0;
+  if (filter === 'new') return s.changesLineup;
+  return true;
+}
 
 export default function UpgradeAdvisor() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
   const isMobile = useIsMobile();
+  const [filter, setFilter] = useState<Filter>('all');
+  const [expanded, setExpanded] = useState(false);
 
   const advice = useUpgradeAdvice(activePlayerTag);
   const data = advice.data;
-  // The top suggestion anchors the relative-gain bars.
-  const maxDelta = data?.suggestions[0]?.scoreDelta ?? 0;
+  const filtered = data?.suggestions.filter((s) => matches(s, filter)) ?? [];
+  const visible = expanded ? filtered : filtered.slice(0, INITIAL_ROWS);
+  // The top visible suggestion anchors the relative-gain bars.
+  const maxDelta = filtered[0]?.scoreDelta ?? 0;
+  const countFor = (f: Filter) => data?.suggestions.filter((s) => matches(s, f)).length ?? 0;
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -72,24 +104,79 @@ export default function UpgradeAdvisor() {
       ) : data ? (
         <>
           <div style={{ ...styles.list, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
-            {data.suggestions.map((s, i) => (
-              <div
-                key={s.cardId}
-                style={{
-                  borderBottom: i === data.suggestions.length - 1 ? 'none' : `1px solid ${theme.border}`,
-                }}
-              >
-                <UpgradeRow
-                  rank={i + 1}
-                  suggestion={s}
-                  relativeGain={maxDelta > 0 ? s.scoreDelta / maxDelta : 0}
-                  baselineScore={data.baselineScore}
-                  isDarkMode={isDarkMode}
-                  theme={theme}
-                  isMobile={isMobile}
-                />
-              </div>
-            ))}
+            <div style={{ ...styles.tabRow, borderBottomColor: theme.border }}>
+              {FILTERS.map((f) => {
+                const active = filter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => {
+                      setFilter(f.key);
+                      setExpanded(false);
+                    }}
+                    style={{
+                      ...styles.tab,
+                      padding: isMobile ? '12px 6px' : '13px 12px',
+                      fontSize: isMobile ? '12px' : '13px',
+                      color: active ? theme.accent : theme.text.secondary,
+                      borderBottomColor: active ? theme.accent : 'transparent',
+                      fontWeight: active ? 700 : 600,
+                    }}
+                  >
+                    {f.label}
+                    <span
+                      style={{
+                        ...styles.tabCount,
+                        backgroundColor: active ? theme.accent : theme.bg.tertiary,
+                        color: active ? theme.onAccent : theme.text.secondary,
+                      }}
+                    >
+                      {countFor(f.key)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filtered.length === 0 ? (
+              <p style={{ ...styles.emptyTab, color: theme.text.secondary }}>
+                {FILTERS.find((f) => f.key === filter)?.empty}
+              </p>
+            ) : (
+              <>
+                {visible.map((s, i) => (
+                  <div
+                    key={s.cardId}
+                    style={{
+                      borderBottom:
+                        i === visible.length - 1 ? 'none' : `1px solid ${theme.border}`,
+                    }}
+                  >
+                    <UpgradeRow
+                      rank={i + 1}
+                      suggestion={s}
+                      relativeGain={maxDelta > 0 ? s.scoreDelta / maxDelta : 0}
+                      baselineScore={data.baselineScore}
+                      isDarkMode={isDarkMode}
+                      theme={theme}
+                      isMobile={isMobile}
+                    />
+                  </div>
+                ))}
+                {filtered.length > INITIAL_ROWS && (
+                  <button
+                    onClick={() => setExpanded((e) => !e)}
+                    style={{
+                      ...styles.showMore,
+                      color: theme.accent,
+                      borderTopColor: theme.border,
+                    }}
+                  >
+                    {expanded ? 'Show fewer' : `Show all ${filtered.length}`}
+                  </button>
+                )}
+              </>
+            )}
           </div>
           <p style={{ ...styles.footnote, color: theme.text.secondary }}>
             Each suggestion is a simulation: that one card is raised a level, your best four war
@@ -163,10 +250,54 @@ const styles = {
     fontSize: '14px',
     fontWeight: 700 as const,
   },
+  tabRow: {
+    display: 'flex' as const,
+    borderBottom: '1px solid',
+  },
+  tab: {
+    flex: 1,
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '6px',
+    border: 'none',
+    // The active tab's accent underline sits on top of the header's border.
+    borderBottom: '2px solid transparent',
+    marginBottom: '-1px',
+    background: 'none',
+    cursor: 'pointer' as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  tabCount: {
+    fontSize: '11px',
+    fontWeight: 700 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+    padding: '1px 7px',
+    borderRadius: '999px',
+    lineHeight: 1.5,
+  },
+  emptyTab: {
+    fontSize: '14px',
+    lineHeight: 1.6,
+    margin: 0,
+    padding: '24px 20px',
+    textAlign: 'center' as const,
+  },
   list: {
     border: '1px solid',
     borderRadius: '12px',
     overflow: 'hidden' as const,
+  },
+  showMore: {
+    display: 'block' as const,
+    width: '100%',
+    padding: '12px',
+    border: 'none',
+    borderTop: '1px solid',
+    background: 'none',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+    cursor: 'pointer' as const,
   },
   footnote: {
     fontSize: '12px',

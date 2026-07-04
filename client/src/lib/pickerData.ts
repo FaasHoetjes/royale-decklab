@@ -25,6 +25,46 @@ export type FilterKey = (typeof FILTER_OPTIONS)[number]['key'];
 /** Type filters that can't co-exist — a card has exactly one of these types. */
 export const EXCLUSIVE_TYPES: FilterKey[] = ['troop', 'spell', 'building'];
 
+// The picker's filters + sort persist in sessionStorage (like the board in
+// deckBoard.ts), so reopening the picker after navigating away keeps them.
+const PREFS_KEY = 'wdb_pickerPrefs';
+
+export interface PickerPrefs {
+  filters: FilterKey[];
+  sortIndex: number;
+  descending: boolean;
+}
+
+const DEFAULT_PREFS: PickerPrefs = { filters: [], sortIndex: 0, descending: false };
+
+export function loadPickerPrefs(): PickerPrefs {
+  try {
+    const saved = sessionStorage.getItem(PREFS_KEY);
+    if (!saved) return DEFAULT_PREFS;
+    const parsed = JSON.parse(saved) as Partial<PickerPrefs>;
+    const validKeys = new Set<string>(FILTER_OPTIONS.map((o) => o.key));
+    return {
+      filters: Array.isArray(parsed.filters)
+        ? parsed.filters.filter((k): k is FilterKey => typeof k === 'string' && validKeys.has(k))
+        : [],
+      sortIndex:
+        typeof parsed.sortIndex === 'number' &&
+        Number.isInteger(parsed.sortIndex) &&
+        parsed.sortIndex >= 0 &&
+        parsed.sortIndex < SORT_TYPES.length
+          ? parsed.sortIndex
+          : 0,
+      descending: parsed.descending === true,
+    };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+export function savePickerPrefs(prefs: PickerPrefs): void {
+  sessionStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
 // A few cards fall outside the troop id range but are really troops.
 const TROOP_OVERRIDES = new Set<number>([
   27000010, // Furnace

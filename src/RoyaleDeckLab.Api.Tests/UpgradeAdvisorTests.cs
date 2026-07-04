@@ -62,6 +62,24 @@ public sealed class UpgradeAdvisorTests
     }
 
     [Fact]
+    public void ReturnsEveryPositiveSuggestion_NotJustTheTopTen()
+    {
+        // Two disjoint picked decks, all 16 cards a level short: each card is a
+        // distinct positive suggestion and none may be cut off by a result cap —
+        // the client filters and paginates, the advisor must not truncate.
+        var cards = Enumerable.Range(1, 16).Select(id => Build.Card(id, level: 13)).ToList();
+        var meta = new[]
+        {
+            Build.Deck(Build.Eight(1), confidence: 0.60),
+            Build.Deck(Build.Eight(9), confidence: 0.55),
+        };
+
+        var advice = _advisor.Advise(cards, meta);
+
+        Assert.Equal(16, advice.Suggestions.Count);
+    }
+
+    [Fact]
     public void StaysFast_WithAMetaSizedPool_AndAFullyUpgradeableCollection()
     {
         // The advisor re-runs the exact lineup search once per upgradeable card —
