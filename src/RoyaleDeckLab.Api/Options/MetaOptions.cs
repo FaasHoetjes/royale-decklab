@@ -8,8 +8,13 @@ public sealed class MetaOptions
     /// <summary>Path to the SQLite battle store. Relative to the app's working dir.</summary>
     public string DbPath { get; set; } = "../../meta.db";
 
-    /// <summary>Rolling window of raw battles kept in the store (default 7 days).</summary>
-    public long BattleWindowMs { get; set; } = 7L * 24 * 60 * 60 * 1000;
+    /// <summary>
+    /// Rolling window of raw battles kept in the store (default 30 days). Clan war
+    /// runs on weekends, so 7 days captured only a single war; 30 days keeps roughly
+    /// four war weekends. If a balance patch lands mid-window, POST /meta/epoch to
+    /// floor the cutoff at the patch time and drop the stale pre-patch battles.
+    /// </summary>
+    public long BattleWindowMs { get; set; } = 30L * 24 * 60 * 60 * 1000;
 
     /// <summary>Aggregated meta is fresh enough to serve on startup for this long (24h).</summary>
     public long CacheRefreshIntervalMs { get; set; } = 24L * 60 * 60 * 1000;
