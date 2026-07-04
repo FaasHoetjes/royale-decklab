@@ -8,7 +8,7 @@ public sealed class FindBestWarDecksTests
     private readonly DeckAnalyzer _analyzer = new();
 
     private WarDeckResult Run(IReadOnlyList<PlayerItemLevel> cards, IReadOnlyList<DeckMeta> meta)
-        => _analyzer.FindBestWarDecks(cards, meta, Build.CardMap(cards));
+        => _analyzer.FindBestWarDecks(meta, Build.CardMap(cards));
 
     [Fact]
     public void ReturnsFourDecks_ThatShareNoCards()

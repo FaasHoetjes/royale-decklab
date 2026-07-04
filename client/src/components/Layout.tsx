@@ -6,6 +6,7 @@ import Landing from '../pages/Landing';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { usePrefetchAppData } from '../queries';
 
 function CornerThemeToggle() {
   return (
@@ -19,6 +20,11 @@ export default function Layout() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
   const isMobile = useIsMobile();
+
+  // Warm every page's cache (upgrade advice, collection, card catalog, best
+  // decks) the moment a tag is active, so navigating opens pages instantly
+  // instead of fetching on click.
+  usePrefetchAppData(activePlayerTag);
 
   // Until a player tag is set, the app is just the landing page (no sidebar).
   if (!activePlayerTag) {

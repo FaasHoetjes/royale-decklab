@@ -41,6 +41,10 @@ builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase)));
 
+// Brotli/gzip the JSON payloads — the player profile and best-decks responses
+// are 100-200 kB raw and compress ~85%, which is what mobile users feel.
+builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
+
 // --- Data ------------------------------------------------------------------
 var contentRoot = builder.Environment.ContentRootPath;
 builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
@@ -59,6 +63,11 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
     http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
     http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 });
+
+// Player-profile cache: coalesces the burst of per-tag requests the SPA fires
+// (war decks + collection + upgrades) into one upstream CR API call.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<PlayerProfileCache>();
 
 // --- Domain services -------------------------------------------------------
 builder.Services.AddScoped<MetaBuilder>();
@@ -89,6 +98,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
 }
 
+app.UseResponseCompression();
 app.UseCors();
 
 // Serve the built React SPA from wwwroot when it's present (production image).

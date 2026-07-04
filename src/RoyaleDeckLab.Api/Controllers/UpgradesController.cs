@@ -12,7 +12,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 /// </summary>
 [ApiController]
 public sealed class UpgradesController(
-    ClashRoyaleClient client,
+    PlayerProfileCache players,
     MetaCache cache,
     UpgradeAdvisor advisor,
     ILogger<UpgradesController> logger) : ControllerBase
@@ -22,7 +22,7 @@ public sealed class UpgradesController(
     {
         try
         {
-            var player = await client.GetPlayerDataAsync(tag, ct);
+            var player = await players.GetPlayerDataAsync(tag, ct);
             if (player.Cards is null)
             {
                 return BadRequest(new { error = "Player cards data not found in API response" });

@@ -20,7 +20,11 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
     public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks)
     {
         var cardMap = playerCards.ToDictionary(c => c.Id);
-        var baseline = analyzer.FindBestWarDecks(playerCards, metaDecks, cardMap);
+        // Score the whole pool ONCE; each simulation below reuses these scores for
+        // every deck the upgraded card isn't in, and skips the swap-alternatives
+        // pool it never reads — together that turns seconds into milliseconds.
+        var fieldable = analyzer.ScoreFieldableDecks(metaDecks, cardMap);
+        var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false);
         var baselineKeys = LineupKeys(baseline);
 
         // A card in no meta deck can't move any deck's score — skip it up front.
@@ -39,9 +43,19 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             }
 
             var upgraded = card with { Level = card.Level + 1 };
-            var simulatedCards = playerCards.Select(c => c.Id == card.Id ? upgraded : c).ToList();
             var simulatedMap = new Dictionary<int, PlayerItemLevel>(cardMap) { [card.Id] = upgraded };
-            var result = analyzer.FindBestWarDecks(simulatedCards, metaDecks, simulatedMap);
+
+            // Only decks fielding this card can change score; every other deck
+            // keeps its baseline score. (The rescore can't be null: the deck was
+            // fieldable before and the simulated collection has the same cards.)
+            var adjusted = new List<(DeckMeta deck, double score)>(fieldable.Count);
+            foreach (var (deck, score) in fieldable)
+            {
+                adjusted.Add(deck.CardIds.Contains(card.Id)
+                    ? (deck, analyzer.ScoreDeckForPlayer(simulatedMap, deck, deck.CardVersions) ?? score)
+                    : (deck, score));
+            }
+            var result = analyzer.SelectLineup(adjusted, simulatedMap, includeAlternatives: false);
 
             var delta = result.TotalScore - baseline.TotalScore;
             if (delta <= MinDelta)

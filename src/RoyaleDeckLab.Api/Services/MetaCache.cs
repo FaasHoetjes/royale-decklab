@@ -166,14 +166,21 @@ public sealed class MetaCache(
             return;
         }
 
-        logger.LogInformation("Meta cache stale or missing, rebuilding...");
-        var decks = await RebuildAsync("startup", ct);
-        if (decks.Count == 0 && count > 0)
+        // Stale but non-empty: serve the slightly-stale aggregate right away so
+        // meta-dependent endpoints aren't empty for the minutes the crawl below
+        // takes. The rebuild swaps in fresh data when it lands (and on failure
+        // this stale meta simply stays in place).
+        if (count > 0)
         {
-            logger.LogWarning("Rebuild fetched nothing (API down?); aggregating from stored battles instead.");
-            AggregateFromStore("startup (fallback)");
-            return;
+            logger.LogInformation("Meta cache stale; serving stored battles while a fresh crawl runs...");
+            AggregateFromStore("startup (stale)");
         }
+        else
+        {
+            logger.LogInformation("Meta store empty, building from scratch...");
+        }
+
+        var decks = await RebuildAsync("startup", ct);
         if (decks.Count == 0)
         {
             logger.LogError("Could not build meta from the API. Player searches still work; " +

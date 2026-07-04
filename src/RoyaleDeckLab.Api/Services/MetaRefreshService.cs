@@ -19,8 +19,10 @@ public sealed class MetaRefreshService(
     {
         try
         {
-            // Initial load/build. The server is already accepting requests; until
-            // this finishes, meta-dependent responses just return an empty meta.
+            // Initial load/build. The server is already accepting requests; the
+            // cache serves stored (possibly stale) battles immediately and only
+            // an empty store leaves meta-dependent responses without scores
+            // until the first crawl lands.
             await cache.InitializeAsync(stoppingToken);
 
             var interval = TimeSpan.FromMilliseconds(_opt.BackgroundRefreshIntervalMs);

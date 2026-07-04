@@ -2,8 +2,10 @@
 // server data through these instead of hand-rolling fetch/loading/error/abort
 // and per-page caches — the query client handles caching, dedup, retries, and
 // keeping previous data on-screen while re-fetching.
+import { useEffect } from 'react';
 import {
   useQuery,
+  useQueryClient,
   keepPreviousData,
   type QueryClient,
 } from '@tanstack/react-query';
@@ -52,23 +54,39 @@ export function useMetaStatus() {
   });
 }
 
+// The war-decks options live here so the hook below and the Landing page's
+// pre-navigation tag check stay on the same key + fetcher: a successful check
+// warms this cache, so navigating to the player then paints from it instantly.
+export function playerWarDecksOptions(tag: string) {
+  return {
+    queryKey: queryKeys.playerWarDecks(tag),
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchPlayerWarDecks(tag, signal),
+  };
+}
+
 // A player's recommended war decks. Disabled until there's a tag and the
 // backend is confirmed up, so we don't fire a request that's bound to fail.
 export function usePlayerWarDecks(tag: string | null, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.playerWarDecks(tag ?? ''),
-    queryFn: ({ signal }) => fetchPlayerWarDecks(tag!, signal),
+    ...playerWarDecksOptions(tag ?? ''),
     enabled: !!tag && enabled,
   });
 }
 
-// The full card catalog — effectively static, so never goes stale in-session.
-// `select` unwraps to the card array so callers don't repeat `.cards`.
+// The card catalog is effectively static, so it never goes stale in-session.
+function allCardsOptions() {
+  return {
+    queryKey: queryKeys.cards,
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchAllCards(signal),
+    staleTime: Infinity,
+  };
+}
+
+// The full card catalog. `select` unwraps to the card array so callers don't
+// repeat `.cards`.
 export function useAllCards() {
   return useQuery({
-    queryKey: queryKeys.cards,
-    queryFn: ({ signal }) => fetchAllCards(signal),
-    staleTime: Infinity,
+    ...allCardsOptions(),
     select: (res) => res.cards,
   });
 }
@@ -83,24 +101,53 @@ export function usePlayerCollection(tag: string | null) {
   });
 }
 
+// The upgrade advice's options live here (like the collection's above) so the
+// hook and the tag-change prefetch below stay on the same key + fetcher.
+export function upgradeAdviceOptions(tag: string) {
+  return {
+    queryKey: queryKeys.playerUpgrades(tag),
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchUpgradeAdvice(tag, signal),
+    staleTime: 5 * 60_000,
+  };
+}
+
 // The active player's ranked upgrade suggestions. Only moves when the player's
 // collection or the meta changes, so a revisit within the session reuses cache.
 export function useUpgradeAdvice(tag: string | null) {
   return useQuery({
-    queryKey: queryKeys.playerUpgrades(tag ?? ''),
-    queryFn: ({ signal }) => fetchUpgradeAdvice(tag!, signal),
+    ...upgradeAdviceOptions(tag ?? ''),
     enabled: !!tag,
-    staleTime: 5 * 60_000,
   });
 }
 
-// The top ranked 4-deck war sets. Stable enough to reuse across visits.
-export function useBestDecks() {
-  return useQuery({
+// Warms every page's cache as soon as a tag is active, instead of waiting for
+// the user to open each one: the Upgrade Advisor, the builder (collection +
+// catalog) and Best War Decks then render instantly from cache. All of these
+// are cheap on the backend. Best-effort — a failed prefetch is swallowed and
+// the page's own query retries on visit; a still-fresh entry isn't re-fetched.
+export function usePrefetchAppData(tag: string | null) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!tag) return;
+    qc.prefetchQuery(upgradeAdviceOptions(tag));
+    qc.prefetchQuery(playerCollectionOptions(tag));
+    qc.prefetchQuery(allCardsOptions());
+    qc.prefetchQuery(bestDecksOptions());
+  }, [qc, tag]);
+}
+
+// The top ranked 4-deck war sets are stable enough to reuse across visits.
+function bestDecksOptions() {
+  return {
     queryKey: queryKeys.bestDecks,
-    queryFn: ({ signal }) => fetchBestDecks(signal),
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchBestDecks(signal),
     staleTime: 5 * 60_000,
-  });
+  };
+}
+
+// The top ranked 4-deck war sets.
+export function useBestDecks() {
+  return useQuery(bestDecksOptions());
 }
 
 // Score the builder's current decks on the backend. The result is a pure

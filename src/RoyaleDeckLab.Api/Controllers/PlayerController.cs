@@ -7,12 +7,13 @@ namespace RoyaleDeckLab.Api.Controllers;
 
 /// <summary>
 /// Player-facing endpoints: the recommended war decks for a player and their raw
-/// card collection. Both fetch the player from the CR API and map its cards into
-/// the domain <see cref="PlayerItemLevel"/> shape.
+/// card collection. Both fetch the player through the short-lived profile cache
+/// (the SPA hits several player endpoints per tag) and map its cards into the
+/// domain <see cref="PlayerItemLevel"/> shape.
 /// </summary>
 [ApiController]
 public sealed class PlayerController(
-    ClashRoyaleClient client,
+    PlayerProfileCache players,
     MetaCache cache,
     DeckAnalyzer analyzer,
     ILogger<PlayerController> logger) : ControllerBase
@@ -23,7 +24,7 @@ public sealed class PlayerController(
     {
         try
         {
-            var player = await client.GetPlayerDataAsync(tag, ct);
+            var player = await players.GetPlayerDataAsync(tag, ct);
             if (player.Cards is null)
             {
                 return BadRequest(new { error = "Player cards data not found in API response" });
@@ -55,7 +56,7 @@ public sealed class PlayerController(
     {
         try
         {
-            var player = await client.GetPlayerDataAsync(tag, ct);
+            var player = await players.GetPlayerDataAsync(tag, ct);
             if (player.Cards is null)
             {
                 return BadRequest(new { error = "Player cards data not found in API response" });
@@ -68,7 +69,7 @@ public sealed class PlayerController(
                 cardMap[card.Id] = card;
             }
 
-            var warDecks = analyzer.FindBestWarDecks(playerCards, cache.Meta, cardMap);
+            var warDecks = analyzer.FindBestWarDecks(cache.Meta, cardMap);
 
             return Ok(new
             {

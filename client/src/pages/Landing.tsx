@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
+import { playerWarDecksOptions } from '../queries';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -8,11 +10,13 @@ export default function Landing() {
   const { isDarkMode, setActivePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // The '#' is shown as a fixed prefix, so strip it (and stray whitespace)
   // from whatever the user types or pastes.
@@ -20,7 +24,7 @@ export default function Landing() {
     setValue(e.target.value.replace(/[#\s]/g, '').toUpperCase());
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -30,8 +34,22 @@ export default function Landing() {
       return;
     }
 
-    setActivePlayerTag(`#${code}`);
-    navigate(`/${code}`);
+    // Validate the tag here rather than navigating optimistically: a bad tag
+    // used to land the user on the generator page with an error toast. Instead
+    // fetch the player's war decks first — on success we've also warmed the
+    // cache, so the generator paints instantly; on failure we stay put and show
+    // the message inline.
+    const tag = `#${code}`;
+    setLoading(true);
+    try {
+      await queryClient.fetchQuery(playerWarDecksOptions(tag));
+      setActivePlayerTag(tag);
+      navigate(`/${code}`);
+    } catch {
+      setError('Couldn\'t load that player. Check your tag or try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,14 +81,25 @@ export default function Landing() {
               onChange={handleChange}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
+              disabled={loading}
               autoFocus
               spellCheck={false}
               autoCapitalize="characters"
               style={{ ...styles.input, color: theme.text.primary }}
             />
           </div>
-          <button type="submit" style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}>
-            Continue
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              ...styles.button,
+              backgroundColor: theme.accent,
+              color: theme.onAccent,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'default' : 'pointer',
+            }}
+          >
+            {loading ? 'Checking…' : 'Continue'}
           </button>
         </form>
 

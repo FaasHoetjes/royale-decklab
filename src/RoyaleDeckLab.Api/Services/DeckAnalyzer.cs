@@ -190,9 +190,18 @@ public sealed class DeckAnalyzer
         IReadOnlyList<PlayerItemLevel> playerCards,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions)
-    {
-        var cardMap = BuildCardMap(playerCards);
+        => ScoreDeckForPlayer(BuildCardMap(playerCards), metaDeck, cardVersions);
 
+    /// <summary>
+    /// Map-based core of ScoreDeckForPlayer, for hot paths that score many decks
+    /// against one collection — building the map per deck used to dominate the
+    /// Upgrade Advisor's runtime.
+    /// </summary>
+    public double? ScoreDeckForPlayer(
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        DeckMeta metaDeck,
+        IReadOnlyList<CardVersion>? cardVersions)
+    {
         double totalStatFraction = 0;
         // Version fit compounds across the deck (a product), so each missing special
         // takes a real bite out of the whole score rather than 1/8 of one card's.
@@ -367,25 +376,42 @@ public sealed class DeckAnalyzer
 
     /// <summary>
     /// The four best card-disjoint war decks the player can field, plus a ranked
-    /// swap pool. Fills slots from the strictest popularity gate down, carrying the
-    /// selection across gates so a looser gate only tops up open slots.
+    /// swap pool. Composed of the two halves below so the Upgrade Advisor can
+    /// score the pool once and re-run only the (cheap) selection per simulation.
     /// </summary>
     public WarDeckResult FindBestWarDecks(
-        IReadOnlyList<PlayerItemLevel> playerCards,
+        IReadOnlyList<DeckMeta> metaDecks,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        => SelectLineup(ScoreFieldableDecks(metaDecks, cardMap), cardMap, includeAlternatives: true);
+
+    /// <summary>Scores every meta deck the player can actually field (a missing card disqualifies).</summary>
+    public List<(DeckMeta deck, double score)> ScoreFieldableDecks(
         IReadOnlyList<DeckMeta> metaDecks,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
     {
-        // Score every deck the player can actually field (null = missing a card).
         var fieldable = new List<(DeckMeta deck, double score)>();
         foreach (var metaDeck in metaDecks)
         {
-            var score = ScoreDeckForPlayer(playerCards, metaDeck, metaDeck.CardVersions);
+            var score = ScoreDeckForPlayer(cardMap, metaDeck, metaDeck.CardVersions);
             if (score is not null)
             {
                 fieldable.Add((metaDeck, score.Value));
             }
         }
+        return fieldable;
+    }
 
+    /// <summary>
+    /// Picks the four best card-disjoint decks from a pre-scored pool, filling
+    /// slots from the strictest popularity gate down and carrying the selection
+    /// across gates so a looser gate only tops up open slots. The swap pool is
+    /// optional: callers that only read the total score skip building it.
+    /// </summary>
+    public WarDeckResult SelectLineup(
+        IReadOnlyList<(DeckMeta deck, double score)> fieldable,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        bool includeAlternatives)
+    {
         var state = new SelectionState();
         foreach (var gate in PopularityGateLadder)
         {
@@ -406,21 +432,24 @@ public sealed class DeckAnalyzer
         // The swap pool: next best-scoring decks not among the four, drawn from the
         // FULL fieldable set (every gate) for archetype diversity. These may overlap
         // each other and the primaries — the UI enforces disjointness at swap time.
-        var altPool = fieldable
-            .OrderByDescending(s => s.score)
-            .ThenByDescending(s => s.deck.Players ?? 0);
         var alternatives = new List<ScoredDeck>();
-        foreach (var (deck, score) in altPool)
+        if (includeAlternatives)
         {
-            if (alternatives.Count >= AlternativePoolSize)
+            var altPool = fieldable
+                .OrderByDescending(s => s.score)
+                .ThenByDescending(s => s.deck.Players ?? 0);
+            foreach (var (deck, score) in altPool)
             {
-                break;
+                if (alternatives.Count >= AlternativePoolSize)
+                {
+                    break;
+                }
+                if (state.Selected.Contains(deck))
+                {
+                    continue;
+                }
+                alternatives.Add(ToScoredDeck(deck, score, cardMap));
             }
-            if (state.Selected.Contains(deck))
-            {
-                continue;
-            }
-            alternatives.Add(ToScoredDeck(deck, score, cardMap));
         }
 
         return new WarDeckResult
