@@ -19,7 +19,7 @@ public sealed class CardsController(CardCatalog catalog, ILogger<CardsController
         catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching card catalog");
-            return StatusCode(500, new { error = $"Failed to fetch card catalog: {ex.Message}" });
+            return StatusCode(500, new { error = "Failed to fetch card catalog" });
         }
     }
 }

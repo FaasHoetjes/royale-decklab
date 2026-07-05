@@ -1,6 +1,9 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Models;
+using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
@@ -11,6 +14,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 /// player from the CR API and delegates the simulation to <see cref="UpgradeAdvisor"/>.
 /// </summary>
 [ApiController]
+[EnableRateLimiting(RateLimitPolicies.Player)]
 public sealed class UpgradesController(
     PlayerProfileCache players,
     MetaCache cache,
@@ -38,10 +42,14 @@ public sealed class UpgradesController(
                 suggestions = advice.Suggestions,
             });
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return NotFound(new { error = "Player not found" });
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error generating upgrade advice for {Tag}", tag);
-            return StatusCode(500, new { error = $"Failed to generate upgrade advice: {ex.Message}" });
+            return StatusCode(500, new { error = "Failed to generate upgrade advice" });
         }
     }
 }

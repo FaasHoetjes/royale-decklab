@@ -1,11 +1,15 @@
 using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Configuration;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Options;
+using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,6 +86,32 @@ builder.Services.AddSingleton<UpgradeAdvisor>();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
+// Unhandled exceptions become a bare ProblemDetails 500 via UseExceptionHandler
+// below — exception messages can carry upstream URIs and file paths, which
+// don't belong in a public response.
+builder.Services.AddProblemDetails();
+
+// The /api/player/* endpoints spend the rate-limited CR API key on the caller's
+// behalf. The profile cache coalesces repeat lookups of the same tag, but only a
+// per-IP cap stops a tag-enumeration loop from burning the upstream quota. The
+// SPA fires at most three player calls per tag viewed, so 30/min is ample.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.OnRejected = static async (ctx, ct) =>
+    {
+        ctx.HttpContext.Response.ContentType = "application/json";
+        await ctx.HttpContext.Response.WriteAsync("""{"error":"Too many requests. Try again in a minute."}""", ct);
+    };
+    o.AddPolicy(RateLimitPolicies.Player, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        static _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+});
+
 var app = builder.Build();
 
 // --- Database init ---------------------------------------------------------
@@ -98,8 +128,33 @@ using (var scope = app.Services.CreateScope())
     db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
 }
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler();
+}
+
+// In production TLS terminates at a reverse proxy and the real client address
+// arrives in X-Forwarded-For; it must replace the proxy's address before the
+// per-IP rate limiter runs. Trust exactly one hop — the entry appended by our
+// own proxy — so clients can't spoof an arbitrary IP past the limiter. Leave
+// unset when :3000 is reached directly (local dev).
+if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
+{
+    var forwarded = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 1,
+    };
+    // The proxy's address is deployment-specific, so the default loopback-only
+    // allowlist can't name it; ForwardLimit=1 is the spoofing guard instead.
+    forwarded.KnownIPNetworks.Clear();
+    forwarded.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwarded);
+}
+
 app.UseResponseCompression();
 app.UseCors();
+app.UseRateLimiter();
 
 // Serve the built React SPA from wwwroot when it's present (production image).
 // In local dev there's no wwwroot — Vite serves the app and proxies /api here,

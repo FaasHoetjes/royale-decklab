@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
@@ -25,7 +26,10 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
         });
     }
 
+    // Admin-gated: one call fans out into thousands of upstream CR API fetches,
+    // so an open endpoint would let anyone keep the key pinned at its rate limit.
     [HttpPost("refresh")]
+    [RequireAdminToken]
     public async Task<IActionResult> Refresh()
     {
         if (cache.IsBuilding)
@@ -38,8 +42,10 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
 
     // Set the patch boundary after a balance update. Body: { "timestamp":
     // <ISO string | epoch ms | "now"> }, defaulting to now. Drops pre-boundary
-    // battles and re-aggregates immediately (no re-fetch).
+    // battles and re-aggregates immediately (no re-fetch). Admin-gated: this
+    // permanently deletes stored battles that can't be re-collected.
     [HttpPost("epoch")]
+    [RequireAdminToken]
     public async Task<IActionResult> SetEpoch()
     {
         if (cache.IsBuilding)
@@ -85,6 +91,14 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
                     new { status = "error", message = "Invalid timestamp. Use an ISO date, epoch ms, or \"now\"." });
             }
             ts = parsed.ToUnixTimeMilliseconds();
+        }
+
+        // A future boundary would persist and then prune every battle collected
+        // until that date arrives, leaving the meta permanently empty. Nothing
+        // legitimate sets a patch time ahead of the clock (5 min skew allowed).
+        if (ts > now + 5 * 60_000)
+        {
+            return StatusCode(400, new { status = "error", message = "Timestamp is in the future." });
         }
 
         var decks = cache.SetEpoch(ts);

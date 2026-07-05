@@ -1,6 +1,9 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Models;
+using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
@@ -12,6 +15,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 /// domain <see cref="PlayerItemLevel"/> shape.
 /// </summary>
 [ApiController]
+[EnableRateLimiting(RateLimitPolicies.Player)]
 public sealed class PlayerController(
     PlayerProfileCache players,
     MetaCache cache,
@@ -43,10 +47,16 @@ public sealed class PlayerController(
 
             return Ok(new { player = new { tag = player.Tag, name = player.Name }, cards });
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return NotFound(new { error = "Player not found" });
+        }
         catch (Exception ex)
         {
+            // Detail stays in the log — an HttpRequestException message carries
+            // the full upstream URI, which doesn't belong in a public response.
             logger.LogError(ex, "Error fetching player collection for {Tag}", tag);
-            return StatusCode(500, new { error = $"Failed to fetch player collection: {ex.Message}" });
+            return StatusCode(500, new { error = "Failed to fetch player collection" });
         }
     }
 
@@ -77,10 +87,14 @@ public sealed class PlayerController(
                 warDecks,
             });
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return NotFound(new { error = "Player not found" });
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching player data for {Tag}", tag);
-            return StatusCode(500, new { error = $"Failed to fetch player data: {ex.Message}" });
+            return StatusCode(500, new { error = "Failed to fetch player data" });
         }
     }
 }

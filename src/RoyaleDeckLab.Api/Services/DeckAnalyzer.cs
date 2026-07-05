@@ -360,9 +360,14 @@ public sealed class DeckAnalyzer
     /// collection.
     /// </summary>
     public double? FieldabilityScore(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<int> cardIds)
-    {
-        var cardMap = BuildCardMap(playerCards);
+        => FieldabilityScore(BuildCardMap(playerCards), cardIds);
 
+    /// <summary>
+    /// Map-based overload for callers scoring many decks against one collection
+    /// (the deck builder): build the map once instead of per deck.
+    /// </summary>
+    public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
+    {
         double totalStatFraction = 0;
         var validCards = 0;
         foreach (var cardId in cardIds)
@@ -393,8 +398,18 @@ public sealed class DeckAnalyzer
         IReadOnlyList<PlayerItemLevel> playerCards,
         IReadOnlyList<int> cardIds,
         DeckMeta? meta)
+        => ScoreBuilderDeck(BuildCardMap(playerCards), cardIds, meta);
+
+    /// <summary>
+    /// Map-based overload for callers scoring many decks against one collection
+    /// (the deck builder): build the map once instead of per deck.
+    /// </summary>
+    public BuilderScore? ScoreBuilderDeck(
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        IReadOnlyList<int> cardIds,
+        DeckMeta? meta)
     {
-        var fieldability = FieldabilityScore(playerCards, cardIds);
+        var fieldability = FieldabilityScore(cardMap, cardIds);
         if (fieldability is null)
         {
             return null;
@@ -402,7 +417,7 @@ public sealed class DeckAnalyzer
 
         if (meta is not null)
         {
-            var score = ScoreDeckForPlayer(playerCards, meta, meta.CardVersions);
+            var score = ScoreDeckForPlayer(cardMap, meta, meta.CardVersions);
             if (score is null)
             {
                 return null;

@@ -44,5 +44,7 @@ VOLUME /data
 ENV ASPNETCORE_URLS=http://0.0.0.0:3000
 EXPOSE 3000
 
-# CLASH_ROYALE_API_KEY must be supplied at run time (-e / secret), never baked in.
+# Runtime-only secrets/config, never baked in: CLASH_ROYALE_API_KEY (upstream
+# API), ADMIN_TOKEN (gates POST /api/meta/*), TRUST_PROXY_HEADERS=true when
+# behind a reverse proxy (see DOCKER.md).
 ENTRYPOINT ["dotnet", "RoyaleDeckLab.Api.dll"]

@@ -30,7 +30,7 @@ public sealed class BestDecksController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error generating best decks");
-            return StatusCode(500, new { error = $"Failed to generate best decks: {ex.Message}" });
+            return StatusCode(500, new { error = "Failed to generate best decks" });
         }
     }
 }

@@ -33,10 +33,22 @@ Then open http://localhost:3000.
 | Env var                  | Purpose                                             | Default            |
 |--------------------------|-----------------------------------------------------|--------------------|
 | `CLASH_ROYALE_API_KEY`   | CR API token (see IP note below). **Never baked in.** | — (required for live meta) |
+| `ADMIN_TOKEN`            | Shared secret for the admin endpoints (`POST /api/meta/refresh`, `POST /api/meta/epoch`), sent as the `X-Admin-Token` header. Unset ⇒ those endpoints are disabled (403). | — (admin endpoints disabled) |
+| `TRUST_PROXY_HEADERS`    | Set to `true` when running behind a reverse proxy so `X-Forwarded-For` (one hop) supplies the client IP for per-IP rate limiting. Leave unset if :3000 is reached directly. | unset |
 | `ASPNETCORE_URLS`        | Bind address. Set to `http://0.0.0.0:3000` in-image. | `http://0.0.0.0:3000` |
 | `Meta__DbPath`           | SQLite battle store path.                            | `/data/meta.db`    |
 
 Locally you can pass the token with `--env-file .env` instead of `-e`.
+
+### Admin endpoints
+
+Force a meta rebuild or set a balance-patch boundary (both require `ADMIN_TOKEN`):
+
+```bash
+curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" http://localhost:3000/api/meta/refresh
+curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"timestamp":"now"}' http://localhost:3000/api/meta/epoch
+```
 
 ### The `meta.db` volume
 
