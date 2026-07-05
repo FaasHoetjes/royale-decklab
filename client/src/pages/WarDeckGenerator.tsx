@@ -30,7 +30,7 @@ export default function WarDeckGenerator() {
   // (e.g. landed on '/') — load that player's page.
   useEffect(() => {
     if (!playerId && activePlayerTag) {
-      navigate(`/${activePlayerTag.replace('#', '')}`, { replace: true });
+      navigate(`/${activePlayerTag.replace(/#/g, '')}`, { replace: true });
     }
   }, [playerId, activePlayerTag]);
 
@@ -43,8 +43,9 @@ export default function WarDeckGenerator() {
 
   const handleSearch = (playerTag: string) => {
     // Navigate; the query re-keys on the new tag and (cache permitting) may
-    // resolve instantly.
-    navigate(`/${playerTag.replace('#', '')}`);
+    // resolve instantly. Strip every '#' — a mid-string one would become a URL
+    // fragment and route to a truncated tag.
+    navigate(`/${playerTag.replace(/#/g, '')}`);
   };
 
   const handleNewSearch = () => {

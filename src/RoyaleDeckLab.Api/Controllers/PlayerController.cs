@@ -26,6 +26,11 @@ public sealed class PlayerController(
     [HttpGet("api/player/{tag}/collection")]
     public async Task<IActionResult> Collection(string tag, CancellationToken ct)
     {
+        if (!PlayerTag.IsValid(tag))
+        {
+            return BadRequest(new { error = "Invalid player tag" });
+        }
+
         try
         {
             var player = await players.GetPlayerDataAsync(tag, ct);
@@ -64,6 +69,11 @@ public sealed class PlayerController(
     [HttpGet("api/player/{tag}")]
     public async Task<IActionResult> WarDecks(string tag, CancellationToken ct)
     {
+        if (!PlayerTag.IsValid(tag))
+        {
+            return BadRequest(new { error = "Invalid player tag" });
+        }
+
         try
         {
             var player = await players.GetPlayerDataAsync(tag, ct);

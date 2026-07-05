@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Data;
@@ -18,6 +19,13 @@ namespace RoyaleDeckLab.Api.Data;
 /// </summary>
 public sealed partial class BattleRepository(MetaDbContext db)
 {
+    // SQLite allows a single writer at a time, and the background crawl's merge
+    // and an admin /meta/epoch prune run on separate scopes (= separate
+    // connections). Serialise every write through one process-wide gate rather
+    // than relying on busy-timeout retries under contention. NOT reentrant —
+    // a write method must never call another write method while holding it.
+    private static readonly SemaphoreSlim WriteGate = new(1, 1);
+
     [GeneratedRegex(@"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})")]
     private static partial Regex BattleTimeRegex();
 
@@ -51,15 +59,26 @@ public sealed partial class BattleRepository(MetaDbContext db)
             return 0;
         }
 
-        var conn = (SqliteConnection)db.Database.GetDbConnection();
-        if (conn.State != System.Data.ConnectionState.Open)
+        WriteGate.Wait();
+        try
         {
-            conn.Open();
+            return MergeBattlesCore(records);
         }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
 
-        using var tx = conn.BeginTransaction();
+    private int MergeBattlesCore(IReadOnlyCollection<BattleRecord> records)
+    {
+        // EF's transaction owns the connection lifetime: it opens on Begin and
+        // closes on dispose (the previous manual Open left it open for the rest
+        // of the scope).
+        using var tx = db.Database.BeginTransaction();
+        var conn = (SqliteConnection)db.Database.GetDbConnection();
         using var cmd = conn.CreateCommand();
-        cmd.Transaction = tx;
+        cmd.Transaction = (SqliteTransaction)tx.GetDbTransaction();
         cmd.CommandText =
             """
             INSERT OR IGNORE INTO battles
@@ -92,13 +111,34 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     /// <summary>Deletes battles older than the cutoff (epoch ms). Returns rows removed.</summary>
     public int Prune(long cutoffMs)
-        => db.Battles.Where(b => b.BattleTimeMs < cutoffMs).ExecuteDelete();
+    {
+        WriteGate.Wait();
+        try
+        {
+            return db.Battles.Where(b => b.BattleTimeMs < cutoffMs).ExecuteDelete();
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
 
     /// <summary>Removes every battle and resets the patch boundary — for a clean rebuild.</summary>
     public void Clear()
     {
-        db.Battles.ExecuteDelete();
-        SetEpochStart(0);
+        WriteGate.Wait();
+        try
+        {
+            db.Battles.ExecuteDelete();
+            // Inline rather than via SetEpochStart — the gate is not reentrant.
+            var s = State();
+            s.EpochStartMs = 0;
+            db.SaveChanges();
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
     }
 
     /// <summary>All stored battles, mapped to BattleRecord for aggregation.</summary>
@@ -125,18 +165,34 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public void SetEpochStart(long ms)
     {
-        var s = State();
-        s.EpochStartMs = ms;
-        db.SaveChanges();
+        WriteGate.Wait();
+        try
+        {
+            var s = State();
+            s.EpochStartMs = ms;
+            db.SaveChanges();
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
     }
 
     public long GetLastBuild() => State().LastBuildMs;
 
     public void SetLastBuild(long ms)
     {
-        var s = State();
-        s.LastBuildMs = ms;
-        db.SaveChanges();
+        WriteGate.Wait();
+        try
+        {
+            var s = State();
+            s.LastBuildMs = ms;
+            db.SaveChanges();
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
     }
 
     // The meta_state table holds exactly one row, keyed Id = 1 (seeded at startup).

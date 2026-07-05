@@ -24,6 +24,11 @@ public sealed class UpgradesController(
     [HttpGet("api/player/{tag}/upgrades")]
     public async Task<IActionResult> Get(string tag, CancellationToken ct)
     {
+        if (!PlayerTag.IsValid(tag))
+        {
+            return BadRequest(new { error = "Invalid player tag" });
+        }
+
         try
         {
             var player = await players.GetPlayerDataAsync(tag, ct);

@@ -5,6 +5,7 @@ import { useApp } from '../AppContext';
 import { playerWarDecksOptions } from '../queries';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { isValidTag } from '../lib/playerTag';
 
 export default function Landing() {
   const { isDarkMode, setActivePlayerTag } = useApp();
@@ -31,6 +32,10 @@ export default function Landing() {
     const code = value.trim();
     if (!code) {
       setError('Please enter your player tag');
+      return;
+    }
+    if (!isValidTag(code)) {
+      setError("That doesn't look like a valid player tag — check it on your in-game profile.");
       return;
     }
 

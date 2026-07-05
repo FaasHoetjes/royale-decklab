@@ -36,13 +36,18 @@ COPY --from=web /client/dist ./wwwroot
 
 # Derived, regenerable battle store lives on a volume so it survives restarts.
 # Starts empty on a fresh volume and is rebuilt from the CR API by the background job.
-RUN mkdir -p /data
+# Chowned to the non-root app user below so SQLite can write it.
+RUN mkdir -p /data && chown $APP_UID /data
 ENV Meta__DbPath=/data/meta.db
 VOLUME /data
 
 # Bind all interfaces inside the container; Program.cs honours ASPNETCORE_URLS.
 ENV ASPNETCORE_URLS=http://0.0.0.0:3000
 EXPOSE 3000
+
+# Drop root: the aspnet base image ships a dedicated app user (uid $APP_UID).
+# Port 3000 is unprivileged and /data is chowned above, so nothing else changes.
+USER $APP_UID
 
 # Runtime-only secrets/config, never baked in: CLASH_ROYALE_API_KEY (upstream
 # API), ADMIN_TOKEN (gates POST /api/meta/*), TRUST_PROXY_HEADERS=true when

@@ -11,8 +11,14 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
+    // Guarded like the pre-paint script in index.html: this runs inside the
+    // provider's initializer, so an unparseable stored value must fall back to
+    // light mode, not white-screen the whole app.
+    try {
+      return JSON.parse(localStorage.getItem('darkMode') ?? 'false') === true;
+    } catch {
+      return false;
+    }
   });
 
   const [activePlayerTag, setActivePlayerTagState] = useState<string | null>(() => {

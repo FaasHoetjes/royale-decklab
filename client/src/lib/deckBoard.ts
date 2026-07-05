@@ -23,17 +23,43 @@ export const emptyDecks = (): DeckState =>
 const DECKS_KEY = 'wdb_decks';
 const VERSIONS_KEY = 'wdb_slotVersion';
 
-function load<T>(key: string, fallback: T): T {
+function load(key: string): unknown {
   try {
     const saved = sessionStorage.getItem(key);
-    return saved ? JSON.parse(saved) : fallback;
+    return saved ? JSON.parse(saved) : null;
   } catch {
-    return fallback;
+    return null;
   }
 }
 
-export const loadDecks = (): DeckState => load(DECKS_KEY, emptyDecks());
-export const loadSlotVersions = (): SlotVersionMap => load(VERSIONS_KEY, {});
+// Stored values are typed on write but not on read: a stale format from an
+// older version (or a tampered value) parses fine as JSON and then crashes the
+// Builder's .map() calls, so validate the shape before trusting it.
+const isDeckState = (v: unknown): v is DeckState =>
+  Array.isArray(v) &&
+  v.length === DECK_COUNT &&
+  v.every(
+    (deck) =>
+      Array.isArray(deck) &&
+      deck.length === SLOTS_PER_DECK &&
+      deck.every((slot) => slot === null || typeof slot === 'number')
+  );
+
+const isSlotVersionMap = (v: unknown): v is SlotVersionMap =>
+  typeof v === 'object' &&
+  v !== null &&
+  !Array.isArray(v) &&
+  Object.values(v).every((x) => x === 'evo' || x === 'hero');
+
+export const loadDecks = (): DeckState => {
+  const saved = load(DECKS_KEY);
+  return isDeckState(saved) ? saved : emptyDecks();
+};
+
+export const loadSlotVersions = (): SlotVersionMap => {
+  const saved = load(VERSIONS_KEY);
+  return isSlotVersionMap(saved) ? saved : {};
+};
 
 export const saveDecks = (decks: DeckState) =>
   sessionStorage.setItem(DECKS_KEY, JSON.stringify(decks));

@@ -61,12 +61,18 @@ builder.Services.AddScoped<BattleRepository>();
 
 // --- Clash Royale API client (typed HttpClient) ----------------------------
 builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
-{
-    var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
-    http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
-    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
-    http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-});
+    {
+        var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
+        http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
+        http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    })
+    // Standard resilience pipeline: 10s per-attempt timeout (vs the 100s
+    // HttpClient default that ties up a request thread when the CR API stalls),
+    // up to 3 retries with exponential backoff on 408/429/5xx/timeouts —
+    // honouring Retry-After on 429 — and a circuit breaker so a dead upstream
+    // fails fast. Hard errors like the IP-mismatch 403 are not retried.
+    .AddStandardResilienceHandler();
 
 // Player-profile cache: coalesces the burst of per-tag requests the SPA fires
 // (war decks + collection + upgrades) into one upstream CR API call.
@@ -84,7 +90,14 @@ builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
 
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+// CORS exists only for local dev (the Vite server on 5173 hitting :3000
+// directly). In production the SPA is served same-origin from wwwroot, so no
+// cross-origin access is needed — and none is granted.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+        p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
+}
 
 // Unhandled exceptions become a bare ProblemDetails 500 via UseExceptionHandler
 // below — exception messages can carry upstream URIs and file paths, which
@@ -153,7 +166,10 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
 }
 
 app.UseResponseCompression();
-app.UseCors();
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors();
+}
 app.UseRateLimiter();
 
 // Serve the built React SPA from wwwroot when it's present (production image).

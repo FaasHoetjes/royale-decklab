@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isValidTag, normalizeTag } from '../lib/playerTag';
 
 interface PlayerSearchProps {
   onSearch: (playerTag: string) => void;
@@ -14,18 +15,18 @@ export default function PlayerSearch({ onSearch, isLoading, isDarkMode }: Player
     e.preventDefault();
     setError('');
 
-    const tag = playerTag.trim();
+    const tag = normalizeTag(playerTag);
     if (!tag) {
       setError('Please enter a player tag');
       return;
     }
 
-    if (!tag.startsWith('#')) {
-      setError('Player tag must start with #');
+    if (!isValidTag(tag)) {
+      setError("That doesn't look like a valid player tag — check it on your in-game profile.");
       return;
     }
 
-    onSearch(tag);
+    onSearch(`#${tag}`);
   };
 
   const theme = {
