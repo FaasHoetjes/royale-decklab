@@ -22,7 +22,7 @@ const FILTERS: { key: Filter; label: string; empty: string }[] = [
     key: 'new',
     label: 'Unlocks new deck',
     empty:
-      'No single-level upgrade pulls a new deck into your lineup right now. The closest contenders need more than one level, or your top four are simply that far ahead.',
+      'No single-card upgrade pulls a new deck into your lineup right now — not even taken all the way to max level, and no Evolution or Hero unlock does it either. Your top four are simply that far ahead.',
   },
 ];
 
@@ -70,8 +70,8 @@ export default function UpgradeAdvisor() {
           )}
         </div>
         <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
-          Where your next upgrade earns the most: card levels ranked by how much they raise your
-          recommended war lineup's total score.
+          Where your next upgrade earns the most: card levels and Evolution / Hero unlocks ranked
+          by how much they raise your recommended war lineup's total score.
         </p>
       </div>
 
@@ -96,10 +96,22 @@ export default function UpgradeAdvisor() {
         </p>
       ) : data && data.suggestions.length === 0 ? (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
-          <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-            No single card upgrade moves your recommended lineup right now — the cards it relies on
-            are already maxed. Check back after the meta shifts.
-          </p>
+          {data.collectionMaxed ? (
+            // Nothing was even simulatable — congratulate, don't console.
+            <>
+              <p style={{ ...styles.panelTitle, color: theme.text.primary }}>👑 Nothing left to upgrade</p>
+              <p style={{ ...styles.panelText, color: theme.text.secondary }}>
+                Every card the current meta uses is at max level, and every Evolution and Hero it
+                fields is unlocked. Your lineup is as strong as your collection allows — check back
+                when the meta shifts or new cards arrive.
+              </p>
+            </>
+          ) : (
+            <p style={{ ...styles.panelText, color: theme.text.secondary }}>
+              No upgrade to a single card moves your recommended lineup right now — levels, jumps
+              and Evolution / Hero unlocks included. Check back after the meta shifts.
+            </p>
+          )}
         </div>
       ) : data ? (
         <>
@@ -146,7 +158,9 @@ export default function UpgradeAdvisor() {
               <>
                 {visible.map((s, i) => (
                   <div
-                    key={s.cardId}
+                    // A card can carry several suggestions (a level, a bigger
+                    // jump, an unlock), so the id alone isn't unique.
+                    key={`${s.cardId}-${s.kind}-${s.toLevel}`}
                     style={{
                       borderBottom:
                         i === visible.length - 1 ? 'none' : `1px solid ${theme.border}`,
@@ -179,8 +193,10 @@ export default function UpgradeAdvisor() {
             )}
           </div>
           <p style={{ ...styles.footnote, color: theme.text.secondary }}>
-            Each suggestion is a simulation: that one card is raised a level, your best four war
-            decks are rebuilt from scratch, and the change in total score is measured. An upgrade
+            Each suggestion is a simulation: that one change is applied — a card level, a bigger
+            level jump, or an Evolution / Hero unlock — your best four war decks are rebuilt from
+            scratch, and the change in total score is measured. When one level isn't enough, the
+            advisor also reports the smallest jump that would change your lineup. An upgrade
             marked <strong>Unlocks a new deck</strong> would pull a stronger deck into your lineup,
             not just improve a current one.
           </p>
@@ -235,6 +251,11 @@ const styles = {
     borderRadius: '12px',
     padding: '28px 24px',
     textAlign: 'center' as const,
+  },
+  panelTitle: {
+    fontSize: '17px',
+    fontWeight: 800 as const,
+    margin: '0 0 8px',
   },
   panelText: {
     fontSize: '15px',

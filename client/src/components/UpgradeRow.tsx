@@ -14,7 +14,14 @@ interface UpgradeRowProps {
   isMobile: boolean;
 }
 
-/** One ranked upgrade: card art, the level step, and its score gain. */
+// The evo/hero unlock rows reuse the purple/gold color language of the special
+// deck slots (see slotStyles.ts / DeckSlot's version toggle).
+const UNLOCK_LABEL = {
+  evo: { text: 'Unlock Evolution', color: '#a03cf0' },
+  hero: { text: 'Unlock Hero', color: '#f5a623' },
+} as const;
+
+/** One ranked upgrade: card art, the level step or unlock, and its score gain. */
 export default function UpgradeRow({
   rank,
   suggestion: s,
@@ -26,6 +33,7 @@ export default function UpgradeRow({
 }: UpgradeRowProps) {
   const gainPct = baselineScore > 0 ? (s.scoreDelta / baselineScore) * 100 : 0;
   const decksLabel = s.affectedDeckIndexes.map((i) => `Deck ${i + 1}`).join(' · ');
+  const unlock = s.kind === 'evo' || s.kind === 'hero' ? UNLOCK_LABEL[s.kind] : null;
 
   return (
     <div style={{ ...styles.row, padding: isMobile ? '12px 12px' : '14px 18px' }}>
@@ -33,7 +41,9 @@ export default function UpgradeRow({
       <div style={{ width: isMobile ? '44px' : '54px', flexShrink: 0 }}>
         <CardTile
           name={s.name ?? ''}
-          iconUrl={cardIconUrl(s.iconUrls, 'normal')}
+          // Unlock rows show the art being unlocked (falls back to normal art
+          // when the CDN has none).
+          iconUrl={cardIconUrl(s.iconUrls, s.kind === 'level' ? 'normal' : s.kind)}
           isDarkMode={isDarkMode}
           showName={false}
         />
@@ -41,9 +51,13 @@ export default function UpgradeRow({
 
       <div style={styles.info}>
         <div style={{ ...styles.name, color: theme.text.primary }}>{s.name}</div>
-        <div style={{ ...styles.levels, color: theme.text.secondary }}>
-          Level {displayLevel(s.fromLevel, s.maxLevel)} → {displayLevel(s.toLevel, s.maxLevel)}
-        </div>
+        {unlock ? (
+          <div style={{ ...styles.levels, color: unlock.color, fontWeight: 700 }}>{unlock.text}</div>
+        ) : (
+          <div style={{ ...styles.levels, color: theme.text.secondary }}>
+            Level {displayLevel(s.fromLevel, s.maxLevel)} → {displayLevel(s.toLevel, s.maxLevel)}
+          </div>
+        )}
         {(decksLabel || s.changesLineup) && (
           <div style={styles.context}>
             {decksLabel && <span style={{ color: theme.text.tertiary }}>In {decksLabel}</span>}

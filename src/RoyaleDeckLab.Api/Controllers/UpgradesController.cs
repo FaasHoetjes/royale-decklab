@@ -44,6 +44,7 @@ public sealed class UpgradesController(
             {
                 player = new { tag = player.Tag, name = player.Name },
                 baselineScore = advice.BaselineScore,
+                collectionMaxed = advice.CollectionMaxed,
                 suggestions = advice.Suggestions,
             });
         }

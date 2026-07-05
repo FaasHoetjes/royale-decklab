@@ -109,13 +109,17 @@ export interface BestDeckSet {
 }
 
 /**
- * One recommended card upgrade. `affectedDeckIndexes` are the current lineup
- * decks (0-3) fielding the card; empty with `changesLineup` true means the
- * upgrade promotes a deck that isn't in the lineup yet.
+ * One recommended upgrade. Kind 'level' raises the card from `fromLevel` to
+ * `toLevel` (more than one level when that's the cheapest jump that changes the
+ * lineup); 'evo'/'hero' unlock that special version (levels unchanged).
+ * `affectedDeckIndexes` are the current lineup decks (0-3) the change can move;
+ * empty with `changesLineup` true means the upgrade promotes a deck that isn't
+ * in the lineup yet.
  */
 export interface UpgradeSuggestion {
   cardId: number;
   name?: string;
+  kind: 'level' | 'evo' | 'hero';
   fromLevel: number;
   toLevel: number;
   maxLevel: number;
@@ -130,6 +134,8 @@ export interface UpgradeSuggestion {
 export interface UpgradeAdviceResponse {
   player: { tag: string; name: string };
   baselineScore: number;
+  /** True when nothing was even simulatable: every meta card maxed, every fielded evo/hero owned. */
+  collectionMaxed: boolean;
   suggestions: UpgradeSuggestion[];
 }
 
