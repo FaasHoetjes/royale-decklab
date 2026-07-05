@@ -59,6 +59,7 @@ export default function DeckSlot({
 
   return (
     <button
+      className="deck-slot-btn"
       onClick={onClick}
       draggable={card != null}
       onDragStart={onDragStart}
@@ -96,6 +97,16 @@ export default function DeckSlot({
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleVersion(versions);
+              }}
+              // A span (not a real <button>) because it sits inside the slot's
+              // <button> — so Enter/Space need wiring by hand. stopPropagation
+              // keeps the keypress from also triggering the slot's own action.
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleVersion(versions);
+                }
               }}
               style={{
                 ...styles.versionToggle,

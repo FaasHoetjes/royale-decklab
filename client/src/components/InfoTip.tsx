@@ -16,6 +16,15 @@ export default function InfoTip({ isDarkMode, ariaLabel, color, width = 220, chi
       style={{ ...styles.icon, color }}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
+      // Hover alone excludes keyboard and touch users (i.e. all mobile users):
+      // focus shows it, click/tap toggles it, Escape dismisses it.
+      tabIndex={0}
+      onFocus={() => setShow(true)}
+      onBlur={() => setShow(false)}
+      onClick={() => setShow((prev) => !prev)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setShow(false);
+      }}
       role="img"
       aria-label={ariaLabel}
     >

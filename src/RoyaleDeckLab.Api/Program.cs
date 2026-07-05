@@ -165,6 +165,30 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
     app.UseForwardedHeaders(forwarded);
 }
 
+// Baseline security headers on every response. The CSP allows only same-origin
+// assets — the SPA bundles everything, the theme-init script is an external file
+// (so no inline-script hash to maintain), and the one external source is card
+// art from Supercell's CDN. style-src needs 'unsafe-inline' because React sets
+// styles via the style attribute; that does not enable <script> injection.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers.ContentSecurityPolicy =
+        "default-src 'self'; " +
+        "script-src 'self'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: https://api-assets.clashroyale.com; " +
+        "connect-src 'self'; " +
+        "frame-ancestors 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self'";
+    headers.XContentTypeOptions = "nosniff";
+    headers.XFrameOptions = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
+
 app.UseResponseCompression();
 if (app.Environment.IsDevelopment())
 {

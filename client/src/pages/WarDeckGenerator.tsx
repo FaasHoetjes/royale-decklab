@@ -62,7 +62,7 @@ export default function WarDeckGenerator() {
         <h1>Royale DeckLab</h1>
         <p style={{ ...styles.error, color: '#ff6b6b' }}>
           {meta.isError
-            ? 'Failed to connect to server. Make sure the backend is running on port 3000.'
+            ? "Can't reach the server right now — please try again in a moment."
             : 'Connecting to server...'}
         </p>
         <button

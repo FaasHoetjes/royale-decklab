@@ -23,7 +23,18 @@ public sealed class MetaRefreshService(
             // cache serves stored (possibly stale) battles immediately and only
             // an empty store leaves meta-dependent responses without scores
             // until the first crawl lands.
-            await cache.InitializeAsync(stoppingToken);
+            try
+            {
+                await cache.InitializeAsync(stoppingToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // An unhandled exception escaping ExecuteAsync stops the whole
+                // host (BackgroundServiceExceptionBehavior.StopHost), so a
+                // transient startup failure (e.g. a briefly locked DB) must not
+                // bubble — the timer loop below retries on the next tick.
+                logger.LogError(ex, "Initial meta load failed; retrying on the refresh interval");
+            }
 
             var interval = TimeSpan.FromMilliseconds(_opt.BackgroundRefreshIntervalMs);
             logger.LogInformation("Background meta refresh scheduled every {Minutes} min", interval.TotalMinutes);

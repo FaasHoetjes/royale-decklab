@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { BuilderCard } from '../lib/builderCards';
@@ -43,6 +43,15 @@ export default function CardPicker({
 
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Same Escape-to-close behavior as SwapDeckModal.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const toggleFilter = (key: FilterKey) =>
     setFilters((prev) => {
@@ -164,7 +173,13 @@ export default function CardPicker({
   );
 
   return (
-    <div style={{ ...styles.overlay, padding: isMobile ? '10px' : '20px' }} onClick={onClose}>
+    <div
+      style={{ ...styles.overlay, padding: isMobile ? '10px' : '20px' }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Card collection picker"
+    >
       <div
         style={{
           ...styles.modal,

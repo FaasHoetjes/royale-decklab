@@ -9,6 +9,7 @@ import WarDeckBuilder from './pages/WarDeckBuilder'
 import Faq from './pages/Faq'
 import BestWarDecks from './pages/BestWarDecks'
 import UpgradeAdvisor from './pages/UpgradeAdvisor'
+import NotFound from './pages/NotFound'
 import './index.css'
 
 // One client for the app's lifetime. Server data (meta status, player decks,
@@ -41,6 +42,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/best-decks" element={<BestWarDecks />} />
               <Route path="/upgrades" element={<UpgradeAdvisor />} />
               <Route path="/:playerId" element={<WarDeckGenerator />} />
+              {/* Anything deeper than one segment matches nothing above and
+                  would otherwise render a blank page without even the Layout. */}
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
         </BrowserRouter>

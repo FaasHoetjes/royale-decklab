@@ -101,6 +101,19 @@ input:disabled {
   opacity: 1 !important;
 }
 
+/* Builder deck slots: the slot button keeps focus after its picker closes, and
+   closing with Escape (a key press) makes the browser paint its default
+   focus-visible ring — a stark white box that ignores the card's rounded shape.
+   Keep the indicator (keyboard users need to see where focus landed) but draw
+   it as a themed ring that follows the slot's radius. */
+.deck-slot-btn {
+  border-radius: 12px;
+}
+.deck-slot-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* War Deck Generator: swap button hover. */
 .deck-swap-btn {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
