@@ -58,7 +58,10 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
 
         var scored = decks.Select(deck =>
         {
-            var cardIds = (deck ?? []).Where(id => id.HasValue).Select(id => id!.Value).ToList();
+            // Keep the positional slot array too: which slot an owned evo/hero
+            // sits in decides whether it actually fields (see PlacementFit).
+            var slots = deck ?? [];
+            var cardIds = slots.Where(id => id.HasValue).Select(id => id!.Value).ToList();
             if (cardIds.Count == 0)
             {
                 return new BuilderDeckScore(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
@@ -67,7 +70,7 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
             // Only a complete eight-card deck can match a meta deck; anything shorter
             // scores on the neutral prior.
             DeckMeta? meta = cardIds.Count == 8 && index.TryGetValue(MetaCache.DeckKey(cardIds), out var m) ? m : null;
-            var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta);
+            var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta, slots);
             if (result is null)
             {
                 return new BuilderDeckScore(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);

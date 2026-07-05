@@ -7,6 +7,7 @@ import { buildDeckLink, isCompleteDeck } from '../lib/deckLink';
 import type { DeckBoard } from '../hooks/useDeckBoard';
 import DeckSlot from './DeckSlot';
 import { ElixirDropIcon } from './ElixirBadge';
+import TrashIcon from './TrashIcon';
 
 interface DeckPanelProps {
   deckIndex: number;
@@ -79,7 +80,7 @@ export default function DeckPanel({
               title={`Clear Deck ${deckIndex + 1}`}
               style={{ ...styles.resetBtn, color: theme.text.secondary, borderColor: theme.border }}
             >
-              ⟲
+              <TrashIcon size={13} />
             </button>
           )}
           {placedCards.length > 0 && (
@@ -228,8 +229,6 @@ const styles = {
     width: '26px',
     height: '26px',
     padding: 0,
-    fontSize: '14px',
-    lineHeight: 1,
     cursor: 'pointer',
   },
   avgElixir: {

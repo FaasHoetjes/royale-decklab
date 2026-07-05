@@ -12,6 +12,7 @@ import type { ScoreDeckCard } from '../api';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from '../components/CardPicker';
 import DeckPanel from '../components/DeckPanel';
+import TrashIcon from '../components/TrashIcon';
 
 export default function WarDeckBuilder() {
   const { isDarkMode, activePlayerTag } = useApp();
@@ -145,7 +146,7 @@ export default function WarDeckBuilder() {
             {scores && scores.total > 0 && (
               <span
                 style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
-                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (the win rate you can expect at your card levels × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck."
+                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (the win rate you can expect at your card levels × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty — the game would field it as the normal version there."
               >
                 <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
                 <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
@@ -158,7 +159,7 @@ export default function WarDeckBuilder() {
                 title="Clear all four decks"
                 style={{ ...styles.resetAllBtn, color: theme.text.secondary, borderColor: theme.border }}
               >
-                ⟲
+                <TrashIcon size={16} />
               </button>
             )}
           </div>
@@ -271,8 +272,6 @@ const styles = {
     width: '34px',
     height: '34px',
     padding: 0,
-    fontSize: '17px',
-    lineHeight: 1,
     cursor: 'pointer',
   },
   deckList: {

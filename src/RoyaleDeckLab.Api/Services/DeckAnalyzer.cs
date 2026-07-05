@@ -388,17 +388,84 @@ public sealed class DeckAnalyzer
     }
 
     /// <summary>
+    /// Whether the builder slot at <paramref name="slotIndex"/> can field a card's
+    /// special version. The in-game special slots are positional — slot 1 takes an
+    /// Evo, slot 2 a Hero, slot 3 either — and the builder mirrors that layout
+    /// (client/src/lib/slotStyles.ts), so a special outside its slot plays as the
+    /// normal version.
+    /// </summary>
+    private static bool SlotCanField(CardVersionKind version, int slotIndex)
+        => version == CardVersionKind.Hero ? slotIndex is 1 or 2 : slotIndex is 0 or 2;
+
+    /// <summary>
+    /// The version-fit penalty for owned specials the board placement doesn't
+    /// field. Complements the ownership penalty inside
+    /// <see cref="ScoreDeckForPlayer"/>: that one prices meta specials the player
+    /// can't field at all, this one prices specials they own but parked in a
+    /// normal slot — so each meta special is penalized at most once, by the same
+    /// <see cref="MissingSpecialMultiplier"/>.
+    /// </summary>
+    private static double PlacementFit(
+        IReadOnlyList<int?> slots,
+        IReadOnlyList<CardVersion>? metaVersions,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        if (metaVersions is null)
+        {
+            return 1;
+        }
+
+        var fit = 1.0;
+        foreach (var v in metaVersions)
+        {
+            // Champions field as themselves wherever the (client-restricted)
+            // board allows them, and normal versions have nothing to lose.
+            if (v.Version == CardVersionKind.Normal || IsChampion(v.CardId, cardMap))
+            {
+                continue;
+            }
+            // An unowned special is already penalized by the ownership check —
+            // placement can't make it any less fielded.
+            var owned = cardMap.TryGetValue(v.CardId, out var card) ? card.EvolutionLevel : 0;
+            var ownsVersion = v.Version == CardVersionKind.Hero ? owned >= 2 : owned >= 1;
+            if (!ownsVersion)
+            {
+                continue;
+            }
+
+            var fielded = false;
+            for (var i = 0; i < slots.Count; i++)
+            {
+                if (slots[i] == v.CardId)
+                {
+                    fielded = SlotCanField(v.Version, i);
+                    break;
+                }
+            }
+            if (!fielded)
+            {
+                fit *= MissingSpecialMultiplier;
+            }
+        }
+        return fit;
+    }
+
+    /// <summary>
     /// Scores a single War Deck Builder deck on the same scale as the recommendations.
     /// A known meta deck delegates to <see cref="ScoreDeckForPlayer"/> (identical
-    /// formula); an unproven deck gets the neutral win rate and single-player
+    /// formula), then applies <see cref="PlacementFit"/> when the positional
+    /// <paramref name="slots"/> are given: an owned special sitting outside its
+    /// special slot fields as normal in-game, so it costs the same multiplier as
+    /// not owning it. An unproven deck gets the neutral win rate and single-player
     /// popularity, keeping it strictly below any recommendable meta deck. Returns
     /// null when the deck is empty or a card isn't in the player's collection.
     /// </summary>
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyList<PlayerItemLevel> playerCards,
         IReadOnlyList<int> cardIds,
-        DeckMeta? meta)
-        => ScoreBuilderDeck(BuildCardMap(playerCards), cardIds, meta);
+        DeckMeta? meta,
+        IReadOnlyList<int?>? slots = null)
+        => ScoreBuilderDeck(BuildCardMap(playerCards), cardIds, meta, slots);
 
     /// <summary>
     /// Map-based overload for callers scoring many decks against one collection
@@ -407,7 +474,8 @@ public sealed class DeckAnalyzer
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         IReadOnlyList<int> cardIds,
-        DeckMeta? meta)
+        DeckMeta? meta,
+        IReadOnlyList<int?>? slots = null)
     {
         var fieldability = FieldabilityScore(cardMap, cardIds);
         if (fieldability is null)
@@ -422,7 +490,8 @@ public sealed class DeckAnalyzer
             {
                 return null;
             }
-            return new BuilderScore(score.Value, meta.Confidence, fieldability.Value, IsMeta: true, meta.Players ?? 0);
+            var placementFit = slots is null ? 1.0 : PlacementFit(slots, meta.CardVersions, cardMap);
+            return new BuilderScore(score.Value * placementFit, meta.Confidence, fieldability.Value, IsMeta: true, meta.Players ?? 0);
         }
 
         // Same odds-space level adjustment as a meta deck, so the scales compare.
