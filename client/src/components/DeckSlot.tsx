@@ -92,14 +92,14 @@ export default function DeckSlot({
             <span
               role="button"
               tabIndex={0}
-              aria-label={`Showing ${activeVersion} art — switch version`}
+              aria-label={`Showing ${activeVersion} art, switch version`}
               draggable={false}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleVersion(versions);
               }}
               // A span (not a real <button>) because it sits inside the slot's
-              // <button> — so Enter/Space need wiring by hand. stopPropagation
+              // <button>, so Enter/Space need wiring by hand. stopPropagation
               // keeps the keypress from also triggering the slot's own action.
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -112,7 +112,7 @@ export default function DeckSlot({
                 ...styles.versionToggle,
                 backgroundColor: activeVersion === 'hero' ? '#f5a623' : '#a03cf0',
               }}
-              title={`Showing ${activeVersion === 'hero' ? 'Hero' : 'Evolution'} — click to switch. The Clash Royale API can't tell Evolution-only from Hero ownership apart, so both are offered; pick the one you actually own.`}
+              title={`Showing ${activeVersion === 'hero' ? 'Hero' : 'Evolution'}. Click to switch. The Clash Royale API can't tell Evolution-only from Hero ownership apart, so both are offered; pick the one you actually own.`}
             >
               ⇄ {activeVersion === 'hero' ? 'Hero' : 'Evo'}
             </span>

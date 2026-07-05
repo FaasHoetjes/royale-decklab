@@ -7,12 +7,12 @@ namespace RoyaleDeckLab.Api.Tests;
 /// The builder's placement penalty: the in-game special slots are positional
 /// (slot 1 fields an Evo, slot 2 a Hero, slot 3 either), so a meta special the
 /// player OWNS but parks in a normal slot fields as the normal version and costs
-/// the same multiplier as not owning it — while an UNOWNED special is priced by
+/// the same multiplier as not owning it, while an UNOWNED special is priced by
 /// the ownership check alone and never penalized twice.
 /// </summary>
 public sealed class BuilderPlacementPenaltyTests
 {
-    // DeckAnalyzer.MissingSpecialMultiplier — one special not fielded ≈ 6% weaker.
+    // DeckAnalyzer.MissingSpecialMultiplier: one special not fielded ≈ 6% weaker.
     private const double MissingSpecial = 0.94;
 
     private readonly DeckAnalyzer _analyzer = new();
@@ -93,7 +93,7 @@ public sealed class BuilderPlacementPenaltyTests
     public void UnownedSpecial_MisplacementAddsNoSecondPenalty()
     {
         // The player doesn't own the evo, so the ownership check inside
-        // ScoreDeckForPlayer already applied the multiplier — placement must not
+        // ScoreDeckForPlayer already applied the multiplier; placement must not
         // stack another one on top.
         var cards = Build.Collection(Ids);
         var map = Build.CardMap(cards);

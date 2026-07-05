@@ -22,7 +22,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
     // SQLite allows a single writer at a time, and the background crawl's merge
     // and an admin /meta/epoch prune run on separate scopes (= separate
     // connections). Serialise every write through one process-wide gate rather
-    // than relying on busy-timeout retries under contention. NOT reentrant —
+    // than relying on busy-timeout retries under contention. NOT reentrant:
     // a write method must never call another write method while holding it.
     private static readonly SemaphoreSlim WriteGate = new(1, 1);
 
@@ -49,7 +49,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     /// <summary>
     /// Merges battle records, deduping on the primary key. Returns how many rows
-    /// were newly inserted (duplicates are ignored and don't count) — the
+    /// were newly inserted (duplicates are ignored and don't count): the
     /// "+N new this fetch" figure.
     /// </summary>
     public int MergeBattles(IReadOnlyCollection<BattleRecord> records)
@@ -123,14 +123,14 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    /// <summary>Removes every battle and resets the patch boundary — for a clean rebuild.</summary>
+    /// <summary>Removes every battle and resets the patch boundary, for a clean rebuild.</summary>
     public void Clear()
     {
         WriteGate.Wait();
         try
         {
             db.Battles.ExecuteDelete();
-            // Inline rather than via SetEpochStart — the gate is not reentrant.
+            // Inline rather than via SetEpochStart because the gate is not reentrant.
             var s = State();
             s.EpochStartMs = 0;
             db.SaveChanges();
@@ -144,7 +144,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
     /// <summary>All stored battles, mapped to BattleRecord for aggregation.</summary>
     public List<BattleRecord> AllBattles()
         // Materialise the entities first (EF applies the JSON value converters on
-        // read), THEN map in memory — a LINQ projection over the converted
+        // read), THEN map in memory. A LINQ projection over the converted
         // collection columns can't be translated to SQL.
         => db.Battles.AsNoTracking()
             .ToList()
@@ -200,5 +200,5 @@ public sealed partial class BattleRepository(MetaDbContext db)
     // "FirstOrDefault without OrderBy" ambiguity warning.
     private MetaStateEntity State()
         => db.MetaState.Find(1)
-           ?? throw new InvalidOperationException("meta_state row missing — was the DB initialised?");
+           ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");
 }

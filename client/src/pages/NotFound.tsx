@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 
-/** Catch-all for unmatched routes (only multi-segment paths — `/:playerId` claims single segments). */
+/** Catch-all for unmatched routes (only multi-segment paths, since `/:playerId` claims single segments). */
 export default function NotFound() {
   const { isDarkMode } = useApp();
   const theme = getTheme(isDarkMode);
@@ -11,7 +11,7 @@ export default function NotFound() {
     <div style={styles.container}>
       <h2 style={{ color: theme.text.primary, margin: 0 }}>Page not found</h2>
       <p style={{ color: theme.text.secondary }}>
-        That link doesn't match anything here — it may be mistyped or outdated.
+        That link doesn't match anything here; it may be mistyped or outdated.
       </p>
       <Link to="/" style={{ ...styles.homeLink, backgroundColor: theme.accent, color: theme.onAccent }}>
         Back to the generator

@@ -101,7 +101,7 @@ export default function DeckPanel({
       <div
         style={{
           ...styles.slotGrid,
-          // Phones can't fit 8 readable cards on one line — fold each deck
+          // Phones can't fit 8 readable cards on one line, so fold each deck
           // into two rows of four, like the in-game deck screen.
           gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
           gap: isMobile ? '8px' : '10px',
@@ -162,7 +162,7 @@ function DeckScore({
     return (
       <span
         style={{ ...styles.score, color: scoreAccent }}
-        title={`Meta deck — same score as the auto-generated decks: ${winPct}% win rate × ${fieldPct}% fieldability × how widely it's played (${score.players} player${score.players === 1 ? '' : 's'}).`}
+        title={`Meta deck: same score as the auto-generated decks. ${winPct}% win rate × ${fieldPct}% fieldability × how widely it's played (${score.players} player${score.players === 1 ? '' : 's'}).`}
       >
         ★ {score.score.toFixed(3)}
       </span>
@@ -172,7 +172,7 @@ function DeckScore({
     <span
       style={{ ...styles.score, color: mutedColor }}
       title={
-        `Estimated${filled < SLOTS_PER_DECK ? ` (${filled}/${SLOTS_PER_DECK} cards)` : ''} — not a known meta deck. Assumes a 50% win rate ` +
+        `Estimated${filled < SLOTS_PER_DECK ? ` (${filled}/${SLOTS_PER_DECK} cards)` : ''}: not a known meta deck. Assumes a 50% win rate ` +
         `× ${fieldPct}% fieldability (how close to maxed you can field it), then dampened for being unproven (no one on record runs it) so it ranks below any proven meta deck. Build a known meta deck to score higher.`
       }
     >

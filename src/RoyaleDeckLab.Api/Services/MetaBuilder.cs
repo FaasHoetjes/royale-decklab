@@ -23,7 +23,7 @@ public sealed class MetaBuilder(
     private const string WarBattleMode = "CW_Battle_1v1";
 
     /// <summary>
-    /// Wilson score lower bound for a binomial proportion — a conservative win-rate
+    /// Wilson score lower bound for a binomial proportion: a conservative win-rate
     /// estimate that pulls small samples far below their observed rate and leaves
     /// large samples near it, so "60% over 300 games" outranks "100% over 3".
     /// </summary>

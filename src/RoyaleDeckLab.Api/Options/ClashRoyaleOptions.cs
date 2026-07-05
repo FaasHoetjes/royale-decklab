@@ -9,7 +9,7 @@ public sealed class ClashRoyaleOptions
 
     /// <summary>
     /// Bearer token from https://developer.clashroyale.com, bound to the server's
-    /// outbound IP. Read from config/env (CLASH_ROYALE_API_KEY) — never committed.
+    /// outbound IP. Read from config/env (CLASH_ROYALE_API_KEY), never committed.
     /// </summary>
     public string ApiKey { get; set; } = "";
 }

@@ -32,7 +32,7 @@ public sealed class MetaRefreshService(
                 // An unhandled exception escaping ExecuteAsync stops the whole
                 // host (BackgroundServiceExceptionBehavior.StopHost), so a
                 // transient startup failure (e.g. a briefly locked DB) must not
-                // bubble — the timer loop below retries on the next tick.
+                // bubble. The timer loop below retries on the next tick.
                 logger.LogError(ex, "Initial meta load failed; retrying on the refresh interval");
             }
 

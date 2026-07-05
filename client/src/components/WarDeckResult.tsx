@@ -47,7 +47,7 @@ export default function WarDeckResult({
   // pool, dropping any deck that shares a card with the three decks the other
   // slots currently show, best score first. Because every option is disjoint
   // from the other three, swapping keeps all four shown decks mutually
-  // card-disjoint — the war rule that each card is fielded only once.
+  // card-disjoint, the war rule that each card is fielded only once.
   const candidatesForSlot = (slotPos: number): number[] => {
     const otherCards = new Set<number>();
     slots.forEach((master, pos) => {

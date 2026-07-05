@@ -22,7 +22,7 @@ export const FILTER_OPTIONS = [
 ] as const;
 export type FilterKey = (typeof FILTER_OPTIONS)[number]['key'];
 
-/** Type filters that can't co-exist — a card has exactly one of these types. */
+/** Type filters that can't co-exist: a card has exactly one of these types. */
 export const EXCLUSIVE_TYPES: FilterKey[] = ['troop', 'spell', 'building'];
 
 // The picker's filters + sort persist in sessionStorage (like the board in
@@ -83,7 +83,7 @@ function cardType(card: BuilderCard): 'troop' | 'building' | 'spell' | 'other' {
 }
 
 /**
- * Every active filter must apply (intersection) — "Evolution + Building" means
+ * Every active filter must apply (intersection): "Evolution + Building" means
  * buildings that have an evolution. Heroes still count as troops; champions
  * are their own rarity and live only under "Hero & Champion".
  */

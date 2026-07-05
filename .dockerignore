@@ -1,23 +1,23 @@
 # Keep the build context small and the image clean.
 
-# Dependencies — reinstalled inside the build stages.
+# Dependencies, reinstalled inside the build stages.
 node_modules
 client/node_modules
 src/**/node_modules
 
-# Build output — regenerated in-image.
+# Build output, regenerated in-image.
 dist
 client/dist
 out
 **/bin/
 **/obj/
 
-# The 80 MB derived SQLite store — rebuilt from the CR API at runtime.
+# The 80 MB derived SQLite store, rebuilt from the CR API at runtime.
 meta.db
 meta.db-wal
 meta.db-shm
 
-# Secrets — the API key is passed at run time, never copied in.
+# Secrets: the API key is passed at run time, never copied in.
 .env
 .env.*
 

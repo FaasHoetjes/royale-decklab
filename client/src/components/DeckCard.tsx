@@ -46,7 +46,7 @@ export default function DeckCard({
   // which positional slot a card lands in; the personalised versions (unowned
   // specials downgraded, owned specials upgraded into free slots) drive the
   // artwork the player would actually field. A meta special keeps its slot even
-  // when downgraded, but a personalised upgrade must claim its slot too — the
+  // when downgraded, but a personalised upgrade must claim its slot too. The
   // server caps the combined set to the legal slot limits.
   const slotVersion = (cardId: number) => {
     const meta = metaCardVersions?.find((v) => v.cardId === cardId)?.version;

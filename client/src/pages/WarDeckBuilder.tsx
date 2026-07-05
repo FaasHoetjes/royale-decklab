@@ -18,10 +18,10 @@ export default function WarDeckBuilder() {
   const { isDarkMode, activePlayerTag } = useApp();
   const theme = getTheme(isDarkMode);
   const isMobile = useIsMobile();
-  // The one accent for a meta-backed score — matches the generator's accent.
+  // The one accent for a meta-backed score; matches the generator's accent.
   const scoreAccent = isDarkMode ? '#e8b24a' : '#007bff';
 
-  // Server data via React Query — cached and shared with the rest of the app
+  // Server data via React Query, cached and shared with the rest of the app
   // (e.g. Best Decks' copy-to-builder), so revisiting paints from cache.
   const cardsQuery = useAllCards();
   const catalog = cardsQuery.data ?? [];
@@ -146,7 +146,7 @@ export default function WarDeckBuilder() {
             {scores && scores.total > 0 && (
               <span
                 style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
-                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (the win rate you can expect at your card levels × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty — the game would field it as the normal version there."
+                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (the win rate you can expect at your card levels × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
               >
                 <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
                 <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
@@ -191,8 +191,8 @@ export default function WarDeckBuilder() {
         <p style={{ ...styles.versionNote, color: theme.text.secondary }}>
           <span style={{ ...styles.versionNoteIcon, borderColor: theme.text.secondary }}>i</span>
           The <strong>⇄</strong> badge lets you switch a card's Evolution / Hero art. The Clash
-          Royale API doesn't tell us which of the two you own — it only reports one combined
-          level — so both are offered whenever the data allows. Pick the version you actually
+          Royale API doesn't tell us which of the two you own (it only reports one combined
+          level), so both are offered whenever the data allows. Pick the version you actually
           have; it doesn't affect anyone else's view or the deck's score.
         </p>
       )}

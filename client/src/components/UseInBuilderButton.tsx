@@ -2,9 +2,9 @@ import { useState } from 'react';
 
 interface UseInBuilderButtonProps {
   onClick: () => void;
-  /** Any copy is in flight — disables the button. */
+  /** Any copy is in flight, disabling the button. */
   busy: boolean;
-  /** This button's copy is in flight — shows the spinner. */
+  /** This button's copy is in flight, showing the spinner. */
   spinning: boolean;
   isDarkMode: boolean;
   accent: string;

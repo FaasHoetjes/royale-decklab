@@ -5,7 +5,7 @@ namespace RoyaleDeckLab.Api.Services;
 /// <summary>
 /// Scores meta decks against a player's collection and assembles the four
 /// card-disjoint war decks. Stateless (registered as a singleton). The tuning
-/// constants below carry their rationale in comments — they're the one part of
+/// constants below carry their rationale in comments: they're the one part of
 /// the scoring that isn't learned from data.
 /// </summary>
 public sealed class DeckAnalyzer
@@ -25,7 +25,7 @@ public sealed class DeckAnalyzer
     // A stat deficit doesn't cost win rate linearly: it flips interaction
     // breakpoints (the Fireball that no longer kills the Musketeer, the unit that
     // survives one extra hit), and a battle chains many such interactions. So the
-    // deck's stat fraction enters the win ODDS raised to this exponent — roughly
+    // deck's stat fraction enters the win ODDS raised to this exponent, roughly
     // "how many level-sensitive interactions decide a battle". A reasoned default,
     // deliberately not data-fitted: the battle store keeps only 7 days and drops
     // card levels, so fitting would first require logging levels at collection time.
@@ -35,7 +35,7 @@ public sealed class DeckAnalyzer
     // player hasn't unlocked. Compounds across the deck: one ≈ 6% weaker, two ≈ 12%.
     private const double MissingSpecialMultiplier = 0.94;
 
-    // Minimum distinct top players who must have run a deck for us to recommend it —
+    // Minimum distinct top players who must have run a deck for us to recommend it:
     // a representativeness gate, not a win-rate multiplier. Relaxes downward only
     // (see the ladder), so raising the floor costs thin collections nothing.
     private const int MinDistinctPlayers = 5;
@@ -50,7 +50,7 @@ public sealed class DeckAnalyzer
     private const double NeutralWinRate = 0.5;
 
     // Extra decks beyond the primary four to return as swap candidates. Meta decks
-    // share staples, so most of this pool gets filtered per slot by the UI — hence
+    // share staples, so most of this pool gets filtered per slot by the UI, hence
     // a generous size so enough survive the per-slot disjointness filter.
     private const int AlternativePoolSize = 60;
 
@@ -65,7 +65,7 @@ public sealed class DeckAnalyzer
     // Safety valve for the exact lineup search: a pathological pool (thousands of
     // decks with near-identical scores and dense overlaps) could make the
     // branch-and-bound crawl, so past this many visited nodes it returns the best
-    // lineup found so far — never worse than the greedy seed. Realistic pools
+    // lineup found so far, never worse than the greedy seed. Realistic pools
     // finish in a few thousand nodes.
     private const long SearchNodeBudget = 2_000_000;
 
@@ -161,7 +161,7 @@ public sealed class DeckAnalyzer
     /// <summary>
     /// Resolves a meta deck's specials down to what THIS player can field for
     /// display: an evo/hero they haven't unlocked is shown as normal. Purely
-    /// cosmetic — scoring still uses the real meta versions. Champions are never
+    /// cosmetic: scoring still uses the real meta versions. Champions are never
     /// downgraded (owning the card means owning the champion). Returns the original
     /// list untouched when nothing changes.
     /// </summary>
@@ -199,13 +199,13 @@ public sealed class DeckAnalyzer
     /// <summary>
     /// Fills special-slot capacity the meta deck leaves unused with versions the
     /// player owns: the in-game slots are positional, so a meta-normal card placed
-    /// in a free hero/evo slot fields as that version automatically — a free
+    /// in a free hero/evo slot fields as that version automatically, a free
     /// upgrade the meta record simply never exercised. Ownership comes from the
     /// cumulative evolutionLevel (2 = hero unlocked, 1 = evo unlocked; at 2 the
     /// evo tier is ambiguous, so a hero owner never claims an evo slot).
     /// Capacity counts the META specials, not the personalised ones, because a
     /// downgraded special keeps its on-screen slot. Cosmetic, like
-    /// <see cref="PersonalizeVersions"/> — scoring still uses the meta versions.
+    /// <see cref="PersonalizeVersions"/>: scoring still uses the meta versions.
     /// Both lists come from <see cref="WithChampionVersions"/>, one entry per
     /// deck card in deck order, so they pair up by index.
     /// </summary>
@@ -274,7 +274,7 @@ public sealed class DeckAnalyzer
 
     /// <summary>
     /// Map-based core of ScoreDeckForPlayer, for hot paths that score many decks
-    /// against one collection — building the map per deck used to dominate the
+    /// against one collection: building the map per deck used to dominate the
     /// Upgrade Advisor's runtime.
     /// </summary>
     public double? ScoreDeckForPlayer(
@@ -330,11 +330,11 @@ public sealed class DeckAnalyzer
     /// <summary>
     /// The win rate the player can expect fielding a deck at
     /// <paramref name="statFraction"/> of full combat stats, given its meta win
-    /// rate at maxed levels. Works in odds space (Bradley–Terry): the stat ratio
+    /// rate at maxed levels. Works in odds space (Bradley-Terry): the stat ratio
     /// multiplies the win odds raised to <see cref="BattleCompoundingExponent"/>,
     /// because a per-interaction stat edge compounds over a battle. Maxed decks
     /// (fraction 1) keep the meta win rate exactly; underleveled decks fall off
-    /// much faster than the old linear score scaling — e.g. a 54% deck one full
+    /// much faster than the old linear score scaling: e.g. a 54% deck one full
     /// level down plays like ~45%, two levels down like ~36%.
     /// </summary>
     private static double LevelAdjustedWinRate(double winRate, double statFraction)
@@ -354,7 +354,7 @@ public sealed class DeckAnalyzer
     /// <summary>
     /// The player-controllable strength of an ARBITRARY deck: the average combat-stat
     /// fraction across its cards (1 = fully maxed). This is the raw fraction for
-    /// display — the win-rate impact of a deficit is applied by
+    /// display: the win-rate impact of a deficit is applied by
     /// <see cref="LevelAdjustedWinRate"/>, not here. No version penalty: the builder
     /// fields exactly the art the player owns. Returns null if a card isn't in the
     /// collection.
@@ -389,8 +389,8 @@ public sealed class DeckAnalyzer
 
     /// <summary>
     /// Whether the builder slot at <paramref name="slotIndex"/> can field a card's
-    /// special version. The in-game special slots are positional — slot 1 takes an
-    /// Evo, slot 2 a Hero, slot 3 either — and the builder mirrors that layout
+    /// special version. The in-game special slots are positional (slot 1 takes an
+    /// Evo, slot 2 a Hero, slot 3 either), and the builder mirrors that layout
     /// (client/src/lib/slotStyles.ts), so a special outside its slot plays as the
     /// normal version.
     /// </summary>
@@ -402,7 +402,7 @@ public sealed class DeckAnalyzer
     /// field. Complements the ownership penalty inside
     /// <see cref="ScoreDeckForPlayer"/>: that one prices meta specials the player
     /// can't field at all, this one prices specials they own but parked in a
-    /// normal slot — so each meta special is penalized at most once, by the same
+    /// normal slot, so each meta special is penalized at most once, by the same
     /// <see cref="MissingSpecialMultiplier"/>.
     /// </summary>
     private static double PlacementFit(
@@ -424,7 +424,7 @@ public sealed class DeckAnalyzer
             {
                 continue;
             }
-            // An unowned special is already penalized by the ownership check —
+            // An unowned special is already penalized by the ownership check;
             // placement can't make it any less fielded.
             var owned = cardMap.TryGetValue(v.CardId, out var card) ? card.EvolutionLevel : 0;
             var ownsVersion = v.Version == CardVersionKind.Hero ? owned >= 2 : owned >= 1;
@@ -538,7 +538,7 @@ public sealed class DeckAnalyzer
 
     /// <summary>
     /// The provably best lineup in a pool (pre-sorted by score descending): most
-    /// decks first — a war wants every slot filled — then highest total score.
+    /// decks first (a war wants every slot filled), then highest total score.
     /// Branch-and-bound: a branch's upper bound takes the next-best remaining
     /// scores wholesale (a prefix-sum lookup thanks to the sort), and since that
     /// bound only shrinks further down the list, the first failing candidate cuts
@@ -668,7 +668,7 @@ public sealed class DeckAnalyzer
         return lineup;
     }
 
-    /// <summary>Best-first greedy fill — the incumbent that seeds the exact search.</summary>
+    /// <summary>Best-first greedy fill: the incumbent that seeds the exact search.</summary>
     private static int[] GreedyPicks(
         IReadOnlyList<(DeckMeta deck, double score)> pool, ulong[][] masks, int words)
     {
@@ -727,7 +727,7 @@ public sealed class DeckAnalyzer
     }
 
     /// <summary>
-    /// Picks the best four card-disjoint decks from a pre-scored pool — exactly,
+    /// Picks the best four card-disjoint decks from a pre-scored pool, exactly,
     /// not greedily: the single strongest deck often hogs staple cards that two
     /// other strong decks both want, and the best TOTAL then skips it (see
     /// <see cref="FindOptimalLineup"/>). The popularity-gate ladder still applies:
@@ -753,7 +753,7 @@ public sealed class DeckAnalyzer
         foreach (var gate in PopularityGateLadder)
         {
             var pool = sorted.Where(s => s.deck.Players is null || s.deck.Players >= gate).ToList();
-            // Gates nest, so an unchanged size means the identical pool — skip it.
+            // Gates nest, so an unchanged size means the identical pool, so skip it.
             if (pool.Count == lastPoolCount)
             {
                 continue;
@@ -776,7 +776,7 @@ public sealed class DeckAnalyzer
 
         // The swap pool: next best-scoring decks not among the four, drawn from the
         // FULL fieldable set (every gate) for archetype diversity. These may overlap
-        // each other and the primaries — the UI enforces disjointness at swap time.
+        // each other and the primaries; the UI enforces disjointness at swap time.
         var alternatives = new List<ScoredDeck>();
         if (includeAlternatives)
         {

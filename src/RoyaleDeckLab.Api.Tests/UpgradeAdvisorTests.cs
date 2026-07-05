@@ -66,8 +66,8 @@ public sealed class UpgradeAdvisorTests
     public void ReturnsEveryPositiveSuggestion_NotJustTheTopTen()
     {
         // Two disjoint picked decks, all 16 cards a level short: each card is a
-        // distinct positive suggestion and none may be cut off by a result cap —
-        // the client filters and paginates, the advisor must not truncate.
+        // distinct positive suggestion and none may be cut off by a result cap.
+        // The client filters and paginates, the advisor must not truncate.
         var cards = Enumerable.Range(1, 16).Select(id => Build.Card(id, level: 13)).ToList();
         var meta = new[]
         {
@@ -85,7 +85,7 @@ public sealed class UpgradeAdvisorTests
     {
         // The advisor runs the exact lineup search a few times per upgradeable
         // card (one level, the max-level probe, and a short jump scan when the
-        // probe hits) — here ~110 cards two levels below max over 1500 near-tied
+        // probe hits). Here ~110 cards two levels below max over 1500 near-tied
         // decks, the worst realistic load. The generous ceiling only catches
         // pathological regressions.
         var rng = new Random(7);
@@ -127,7 +127,7 @@ public sealed class UpgradeAdvisorTests
         var suggestion = Assert.Single(advice.Suggestions);
         Assert.Equal(9, suggestion.CardId);
         Assert.True(suggestion.ChangesLineup);
-        // Card 9 isn't in the baseline lineup — the upgrade earns a new deck instead.
+        // Card 9 isn't in the baseline lineup, so the upgrade earns a new deck instead.
         Assert.Empty(suggestion.AffectedDeckIndexes);
     }
 
@@ -166,7 +166,7 @@ public sealed class UpgradeAdvisorTests
     {
         // Card 1 is four levels short with no competing deck to promote: only the
         // one-level suggestion appears, never a deeper jump (a jump that doesn't
-        // change the lineup is just "+1 several times" — no new information).
+        // change the lineup is just "+1 several times", no new information).
         var cards = new List<PlayerItemLevel> { Build.Card(1, level: 10) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var meta = new[] { Build.Deck(Build.Eight(1)) };
@@ -182,7 +182,7 @@ public sealed class UpgradeAdvisorTests
     public void SuggestsAnEvoUnlock_WhenTheMetaFieldsIt()
     {
         // Everything maxed, but the meta deck fields card 1's Evolution and the
-        // player hasn't unlocked it — the ×0.94 penalty is the entire headroom.
+        // player hasn't unlocked it, the ×0.94 penalty is the entire headroom.
         var cards = Build.Collection(Build.Eight(1));
         var meta = new[]
         {
@@ -207,7 +207,7 @@ public sealed class UpgradeAdvisorTests
     public void SuggestsAHeroUnlock_WhenOnlyTheEvoIsOwned()
     {
         // Card 2 has its Evolution (evolutionLevel 1) but not the Hero the meta
-        // deck fields — only the hero unlock is suggested, not a re-unlock of
+        // deck fields: only the hero unlock is suggested, not a re-unlock of
         // the evo the player already owns.
         var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 1) }
             .Concat(Build.Collection(1, 3, 4, 5, 6, 7, 8)).ToList();
@@ -243,7 +243,7 @@ public sealed class UpgradeAdvisorTests
     [Fact]
     public void DoesNotReportMaxed_WhenAnUpgradeExistsButNoneHelps()
     {
-        // Card 9 is upgradeable, but its deck loses to the incumbent even maxed —
+        // Card 9 is upgradeable, but its deck loses to the incumbent even maxed:
         // no suggestion, yet the collection is NOT maxed. This is the case the
         // client's generic "nothing moves your lineup" copy is for.
         var cards = Build.Collection(1, 2, 3, 4, 5, 6, 7, 8)

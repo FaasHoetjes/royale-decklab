@@ -14,10 +14,9 @@ export function slotKind(index: number): SlotKind | null {
 }
 
 const CARD_BG = 'linear-gradient(160deg, #2a3a6a 0%, #16213f 100%)';
-// Light-mode equivalent. The official card PNGs bake in a dark backdrop, but
-// their rounded corners are transparent — so this is what shows through at the
-// corners. A soft cool-grey mat lets the card read as sitting on a light page
-// instead of poking dark nubs into it.
+// Light-mode equivalent. The official card PNGs bake in a dark backdrop but have
+// transparent rounded corners, so this is what shows through there. A soft
+// cool-grey mat lets the card read as sitting on a light page.
 const CARD_BG_LIGHT = 'linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%)';
 
 // Softer, cooler drop shadow for light mode; the harsh near-black lift reads as
@@ -44,9 +43,9 @@ export function cardFrame(isDark: boolean): CSSProperties {
 }
 
 // `shadow` is the glow layer(s) of the box-shadow (the dark drop shadow is added
-// in slotBorderStyle). The 'both' slot splits its glow as well as its border —
-// purple bleeding off the left edge, gold off the right — so the two-tone split
-// reads clearly instead of blending into one muddy colour.
+// in slotBorderStyle). The 'both' slot splits its glow as well as its border
+// (purple off the left edge, gold off the right) so the two-tone split reads
+// clearly instead of blending into one muddy colour.
 const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
   evo: {
     grad: 'linear-gradient(135deg, #d486ff, #8a2be2)',

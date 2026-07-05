@@ -46,7 +46,7 @@ export default function InfoTip({ isDarkMode, ariaLabel, color, width = 220, chi
 }
 
 // Ring, dot, and stem drawn in one SVG (all currentColor) so they stay
-// concentric and legible at any size — a text "i" blurs at this scale.
+// concentric and legible at any size. A text "i" blurs at this scale.
 function InfoMark() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>

@@ -44,7 +44,7 @@ public sealed class FindBestWarDecksTests
 
         var pickedKeys = result.Decks.Select(d => string.Join(',', d.CardIds)).ToHashSet();
         Assert.All(result.Alternatives, alt => Assert.DoesNotContain(string.Join(',', alt.CardIds), pickedKeys));
-        Assert.Single(result.Alternatives); // 5 fieldable - 4 picked
+        Assert.Single(result.Alternatives); // 5 fieldable minus 4 picked
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class FindBestWarDecksTests
     public void HandlesAMetaSizedPool()
     {
         // A pool the size of a real meta: 1500 random decks over the full card
-        // roster, with near-tied scores — the worst case for the exact search's
+        // roster, with near-tied scores, the worst case for the exact search's
         // pruning. Must still produce four disjoint decks (and finish promptly).
         var rng = new Random(7);
         var cards = Build.Collection(Enumerable.Range(1, 110).ToArray());
@@ -223,7 +223,7 @@ public sealed class FindBestWarDecksTests
     {
         // The meta deck fields two evos and no hero; the player owns card 1's hero
         // (evolutionLevel 2). In game the hero slot is positional, so fielding
-        // card 1 there is a free upgrade — the personalised view must show it.
+        // card 1 there is a free upgrade, the personalised view must show it.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo) };
@@ -250,7 +250,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void NeverUpgrades_WhenTheMetaSpecialsAlreadyFillTheSlots()
     {
-        // Three meta specials use all slot capacity — even unowned ones keep
+        // Three meta specials use all slot capacity: even unowned ones keep
         // their slots on screen, so the owned hero of card 1 has nowhere to go.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();

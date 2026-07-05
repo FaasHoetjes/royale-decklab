@@ -1,6 +1,6 @@
 // React Query hooks wrapping the raw fetch helpers in api.ts. Components read
 // server data through these instead of hand-rolling fetch/loading/error/abort
-// and per-page caches — the query client handles caching, dedup, retries, and
+// and per-page caches. The query client handles caching, dedup, retries, and
 // keeping previous data on-screen while re-fetching.
 import { useEffect } from 'react';
 import {
@@ -45,7 +45,7 @@ export function playerCollectionOptions(tag: string) {
 }
 
 // Meta/backend readiness. Doesn't change under us during a session, so once it
-// resolves it stays fresh — a page remount won't flash the "connecting" screen.
+// resolves it stays fresh: a page remount won't flash the "connecting" screen.
 export function useMetaStatus() {
   return useQuery({
     queryKey: queryKeys.metaStatus,
@@ -123,8 +123,8 @@ export function useUpgradeAdvice(tag: string | null) {
 // Warms every page's cache as soon as a tag is active, instead of waiting for
 // the user to open each one: the Upgrade Advisor, the builder (collection +
 // catalog) and Best War Decks then render instantly from cache. All of these
-// are cheap on the backend. Best-effort — a failed prefetch is swallowed and
-// the page's own query retries on visit; a still-fresh entry isn't re-fetched.
+// are cheap on the backend. Best-effort: a failed prefetch is swallowed and
+// the page's own query retries on visit. A still-fresh entry isn't re-fetched.
 export function usePrefetchAppData(tag: string | null) {
   const qc = useQueryClient();
   useEffect(() => {
@@ -136,7 +136,7 @@ export function usePrefetchAppData(tag: string | null) {
   }, [qc, tag]);
 }
 
-// The top ranked 4-deck war sets are stable enough to reuse across visits.
+// The top ranked 4-deck war sets. Stable enough to reuse across visits.
 function bestDecksOptions() {
   return {
     queryKey: queryKeys.bestDecks,
@@ -145,7 +145,6 @@ function bestDecksOptions() {
   };
 }
 
-// The top ranked 4-deck war sets.
 export function useBestDecks() {
   return useQuery(bestDecksOptions());
 }
@@ -169,7 +168,7 @@ export function useDeckScores(
   });
 }
 
-// Imperatively load (and cache) a player's collection outside of render — used
+// Imperatively load (and cache) a player's collection outside of render, used
 // by the "copy set to builder" hand-off, which needs the owned-card list once,
 // not reactively.
 export function fetchCollectionOnce(qc: QueryClient, tag: string) {

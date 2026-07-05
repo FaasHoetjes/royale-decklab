@@ -47,7 +47,7 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          From real <strong>Clan War</strong> battles — the exact mode these decks are for. We
+          From real <strong>Clan War</strong> battles, the exact mode these decks are for. We
           sample the war battles of the top ~100 war clans (~5,000 players), group them by the
           exact 8-card deck, and tally wins/losses (a draw = half a win) over a rolling 7-day
           window, refreshed every few hours. The window resets after each balance patch.
@@ -72,11 +72,11 @@ export const faqItems: FaqItem[] = [
         </p>
         <ul style={ulStyle}>
           <li style={liStyle}>
-            <strong>Expected win rate</strong> — the win rate <em>you</em> can expect fielding the
+            <strong>Expected win rate</strong>: the win rate <em>you</em> can expect fielding the
             deck at your card levels. It starts from a confidence-adjusted meta win rate (the
             Wilson lower bound: decks with few games are pulled toward 50%, so a strong record
             over many games outranks a perfect record over a few), then adjusts for your levels.
-            Card stats grow ~10% per level, and a stat deficit doesn't cost win rate gently — it
+            Card stats grow ~10% per level, and a stat deficit doesn't cost win rate gently: it
             flips interaction breakpoints (the Fireball that no longer kills the Musketeer, the
             unit that survives one extra hit), and a battle chains many such interactions. So the
             deficit shifts the win <em>odds</em>, compounded, rather than shaving the score
@@ -85,17 +85,17 @@ export const faqItems: FaqItem[] = [
             them that way.
           </li>
           <li style={liStyle}>
-            <strong>Popularity</strong> — how many top players run the deck (a one-person pet deck
+            <strong>Popularity</strong>: how many top players run the deck (a one-person pet deck
             is discounted).
           </li>
           <li style={{ ...liStyle, marginBottom: '12px' }}>
-            <strong>Version fit</strong> — a ~6% penalty for each Evolution or Hero version the deck
+            <strong>Version fit</strong>: a ~6% penalty for each Evolution or Hero version the deck
             actually fields that you don't own (so missing two compounds to ~12%). Only the specials
-            the deck really uses count — a deck fields at most two Evos and/or two Heroes — so a card
+            the deck really uses count (a deck fields at most two Evos and/or two Heroes), so a card
             that merely <em>has</em> an Evolution but is played as its normal version never counts
             against you. The win rate is measured with those Evos on the field, so missing one means
             you're fielding a genuinely weaker deck than the meta record reflects. Unlike the card
-            levels — where the game's known ~10%-per-level curve lets us compute the exact effect —
+            levels (where the game's known ~10%-per-level curve lets us compute the exact effect),
             this penalty can't be derived from data: top players always field their Evos and Heroes,
             so there's no "same deck without it" to measure against. It's a deliberately modest,
             honest estimate rather than a precise figure.
@@ -112,7 +112,7 @@ export const faqItems: FaqItem[] = [
     question: 'What does the Swap button do?',
     answer: (
       <p style={pLast}>
-        It opens alternatives for that one war slot — other high-scoring decks that{' '}
+        It opens alternatives for that one war slot: other high-scoring decks that{' '}
         <strong>don't share any cards</strong> with your other three, so your four-deck lineup
         stays valid. Each option shows its win rate, your player score, and average elixir; click
         one to drop it into that slot. Use it to dodge a deck you dislike or to try a different
@@ -127,7 +127,7 @@ export const faqItems: FaqItem[] = [
         It's a limitation of the official Clash Royale API: it reports one cumulative{' '}
         <em>evolution level</em> per card and nothing that separates Evolution from Hero
         ownership, so the two are indistinguishable. When the data says you could field either, we
-        show a toggle — pick the one you actually own and ignore the other. (The only sure signal
+        show a toggle: pick the one you actually own and ignore the other. (The only sure signal
         is a battle log, which is how we detect versions in the meta decks themselves.)
       </p>
     ),
@@ -147,7 +147,7 @@ export const faqItems: FaqItem[] = [
     answer: (
       <p style={pLast}>
         The score balances meta strength against your card levels. A top meta deck can still come
-        out ahead even with one slightly under-leveled card — but leveling it will push that
+        out ahead even with one slightly under-leveled card, but leveling it will push that
         deck's score higher.
       </p>
     ),
@@ -163,8 +163,8 @@ export const faqItems: FaqItem[] = [
         </p>
         <p style={pLast}>
           Because the whole recommendation is re-run, an upgrade can win in two ways: making a deck
-          you already field stronger, or pushing a <em>different</em> deck into your top four —
-          those are marked <strong>Unlocks a new deck</strong>. Cards that appear in no current
+          you already field stronger, or pushing a <em>different</em> deck into your top four.
+          Those are marked <strong>Unlocks a new deck</strong>. Cards that appear in no current
           meta deck can't move your score, so they never show up.
         </p>
       </>

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 
 // Tracks whether the viewport is phone-sized. The app's styles are inline
-// (CSS-in-JS), so plain CSS media queries can't reach them — branching on this
-// flag is the idiomatic way to make a component responsive here. Used to swap
-// the desktop side column for a top bar and to tighten paddings on small screens.
+// (CSS-in-JS), so plain CSS media queries can't reach them; branching on this
+// flag is how components go responsive here.
 export function useIsMobile(breakpoint = 768): boolean {
   const query = `(max-width: ${breakpoint}px)`;
   const [isMobile, setIsMobile] = useState(

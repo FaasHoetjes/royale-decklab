@@ -32,7 +32,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // first paint from the same localStorage key, so this only handles toggles.
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
     // Drive native UI (scrollbars, form controls) off the theme so nested
-    // scroll containers — e.g. the card picker grid — match the page scrollbar.
+    // scroll containers (e.g. the card picker grid) match the page scrollbar.
     document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
   }, [isDarkMode]);
 

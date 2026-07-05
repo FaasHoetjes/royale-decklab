@@ -66,7 +66,7 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
         }
         catch
         {
-            // No / invalid body — fall through to "now".
+            // No / invalid body: fall through to "now".
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

@@ -7,7 +7,7 @@
 /* ── Theme palette ───────────────────────────────────────────────────────────
    The single source of truth for every color. Components read these via var(--x)
    (see theme.ts), so switching light/dark only flips the data-theme attribute on
-   <html> — the browser recolors natively in one pass, instead of React
+   <html>: the browser recolors natively in one pass, instead of React
    re-applying inline styles across the whole tree (which was the toggle lag). */
 :root {
   /* A deliberate surface ladder so elevation reads at a glance: each level is a
@@ -23,7 +23,7 @@
   --text-tertiary: #9aa0ab;
   --border: #e0e0e0;
   --border-strong: #cdd3df;
-  /* The single accent: blue in light mode, gold in dark. It is a FILL color —
+  /* The single accent: blue in light mode, gold in dark. It is a FILL color:
      always pair it with --on-accent for legible text, never white-on-gold. */
   --accent: #007bff;
   --accent-bright: #3393ff;
@@ -103,7 +103,7 @@ input:disabled {
 
 /* Builder deck slots: the slot button keeps focus after its picker closes, and
    closing with Escape (a key press) makes the browser paint its default
-   focus-visible ring — a stark white box that ignores the card's rounded shape.
+   focus-visible ring, a stark white box that ignores the card's rounded shape.
    Keep the indicator (keyboard users need to see where focus landed) but draw
    it as a themed ring that follows the slot's radius. */
 .deck-slot-btn {

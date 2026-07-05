@@ -79,7 +79,7 @@ public sealed class DeckAnalyzerScoringTests
     public void PlayerScore_ExemptsChampions_FromTheVersionPenalty()
     {
         // Card 1 is a champion at evo level 0; a "hero" meta version must NOT penalise
-        // (owning the card means owning the champion — there's no tier to unlock).
+        // (owning the card means owning the champion, there's no tier to unlock).
         var cards = new List<PlayerItemLevel> { Build.Card(1, rarity: Rarity.Champion) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(1, CardVersionKind.Hero) };

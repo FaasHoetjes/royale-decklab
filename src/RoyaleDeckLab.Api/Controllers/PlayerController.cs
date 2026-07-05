@@ -58,7 +58,7 @@ public sealed class PlayerController(
         }
         catch (Exception ex)
         {
-            // Detail stays in the log — an HttpRequestException message carries
+            // Detail stays in the log; an HttpRequestException message carries
             // the full upstream URI, which doesn't belong in a public response.
             logger.LogError(ex, "Error fetching player collection for {Tag}", tag);
             return StatusCode(500, new { error = "Failed to fetch player collection" });

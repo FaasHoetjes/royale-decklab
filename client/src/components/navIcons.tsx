@@ -16,7 +16,7 @@ function iconProps() {
   };
 }
 
-/** War Deck Generator — a bolt for the one-tap "generate". */
+/** War Deck Generator: a bolt for the one-tap "generate". */
 export function ZapIcon() {
   return (
     <svg {...iconProps()}>
@@ -25,7 +25,7 @@ export function ZapIcon() {
   );
 }
 
-/** War Deck Builder — a card grid for hand-picking the eight slots. */
+/** War Deck Builder: a card grid for hand-picking the eight slots. */
 export function GridIcon() {
   return (
     <svg {...iconProps()}>
@@ -37,7 +37,7 @@ export function GridIcon() {
   );
 }
 
-/** Best War Decks — a trophy. */
+/** Best War Decks: a trophy. */
 export function TrophyIcon() {
   return (
     <svg {...iconProps()}>
@@ -51,7 +51,7 @@ export function TrophyIcon() {
   );
 }
 
-/** Upgrade Advisor — a rising trend line. */
+/** Upgrade Advisor: a rising trend line. */
 export function TrendingUpIcon() {
   return (
     <svg {...iconProps()}>
@@ -61,7 +61,7 @@ export function TrendingUpIcon() {
   );
 }
 
-/** FAQ — a help bubble. */
+/** FAQ: a help bubble. */
 export function HelpIcon() {
   return (
     <svg {...iconProps()}>
@@ -72,7 +72,7 @@ export function HelpIcon() {
   );
 }
 
-/** Contact — an envelope. */
+/** Contact: an envelope. */
 export function MailIcon() {
   return (
     <svg {...iconProps()}>

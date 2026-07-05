@@ -81,7 +81,7 @@ function Chevron({ open, color }: { open: boolean; color: string }) {
       strokeLinejoin="round"
       aria-hidden="true"
       style={{
-        // stroke via CSS, not the attribute — var() only resolves in a CSS property.
+        // stroke via CSS, not the attribute: var() only resolves in a CSS property.
         stroke: color,
         flexShrink: 0,
         marginLeft: '12px',

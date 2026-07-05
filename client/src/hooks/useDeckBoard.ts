@@ -35,7 +35,7 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
   const [dragSource, setDragSource] = useState<SlotRef | null>(null);
   const [dragOver, setDragOver] = useState<SlotRef | null>(null);
 
-  // Persist only the user's work — server data is owned by React Query.
+  // Persist only the user's work; server data is owned by React Query.
   useEffect(() => { saveDecks(decks); }, [decks]);
   useEffect(() => { saveSlotVersions(slotVersion); }, [slotVersion]);
 
@@ -71,7 +71,7 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     let slotIndex = target.slotIndex;
     if (card?.rarity === 'champion' && !CHAMPION_SLOTS.includes(slotIndex)) {
       const free = CHAMPION_SLOTS.find((i) => decks[target.deckIndex]?.[i] == null);
-      if (free == null) return; // no room — the picker greys champions out
+      if (free == null) return; // no room; the picker greys champions out
       slotIndex = free;
     }
     setSlot(target.deckIndex, slotIndex, cardId);

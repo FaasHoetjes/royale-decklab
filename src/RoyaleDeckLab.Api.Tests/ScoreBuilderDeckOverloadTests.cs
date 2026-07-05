@@ -4,7 +4,7 @@ namespace RoyaleDeckLab.Api.Tests;
 
 /// <summary>
 /// The map-based ScoreBuilderDeck/FieldabilityScore overloads exist so the deck
-/// builder endpoint indexes the collection once instead of per deck — they must
+/// builder endpoint indexes the collection once instead of per deck: they must
 /// stay score-identical to the list-based originals.
 /// </summary>
 public sealed class ScoreBuilderDeckOverloadTests

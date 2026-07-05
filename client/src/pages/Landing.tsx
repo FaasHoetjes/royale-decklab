@@ -35,13 +35,13 @@ export default function Landing() {
       return;
     }
     if (!isValidTag(code)) {
-      setError("That doesn't look like a valid player tag — check it on your in-game profile.");
+      setError("That doesn't look like a valid player tag; check it on your in-game profile.");
       return;
     }
 
     // Validate the tag here rather than navigating optimistically: a bad tag
     // used to land the user on the generator page with an error toast. Instead
-    // fetch the player's war decks first — on success we've also warmed the
+    // fetch the player's war decks first: on success we've also warmed the
     // cache, so the generator paints instantly; on failure we stay put and show
     // the message inline.
     const tag = `#${code}`;

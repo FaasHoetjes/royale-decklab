@@ -6,7 +6,7 @@ namespace RoyaleDeckLab.Api.Clients;
 /// <summary>
 /// Short-lived cache with request coalescing for CR player profiles. The SPA
 /// warms several player-scoped pages at once (war decks, collection, upgrades),
-/// which would otherwise cost three identical upstream calls per tag — instead,
+/// which would otherwise cost three identical upstream calls per tag. Instead,
 /// concurrent and near-in-time requests share one in-flight fetch. The TTL stays
 /// short so a profile still reflects an upgrade the player just made without a
 /// long wait. Singleton.
@@ -54,7 +54,7 @@ public sealed class PlayerProfileCache(IHttpClientFactory httpFactory, TimeProvi
             }
             catch when (!ct.IsCancellationRequested)
             {
-                // A failed fetch must not be served for the rest of the TTL —
+                // A failed fetch must not be served for the rest of the TTL:
                 // evict so the next request retries upstream. (A cancelled
                 // caller doesn't evict: the shared fetch may still succeed.)
                 _entries.TryRemove(KeyValuePair.Create(key, entry));

@@ -45,7 +45,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase)));
 
-// Brotli/gzip the JSON payloads — the player profile and best-decks responses
+// Brotli/gzip the JSON payloads: the player profile and best-decks responses
 // are 100-200 kB raw and compress ~85%, which is what mobile users feel.
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
 
@@ -69,8 +69,8 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
     })
     // Standard resilience pipeline: 10s per-attempt timeout (vs the 100s
     // HttpClient default that ties up a request thread when the CR API stalls),
-    // up to 3 retries with exponential backoff on 408/429/5xx/timeouts —
-    // honouring Retry-After on 429 — and a circuit breaker so a dead upstream
+    // up to 3 retries with exponential backoff on 408/429/5xx/timeouts
+    // (honouring Retry-After on 429), and a circuit breaker so a dead upstream
     // fails fast. Hard errors like the IP-mismatch 403 are not retried.
     .AddStandardResilienceHandler();
 
@@ -85,14 +85,14 @@ builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 
-// Scoring domain services are stateless — a single shared instance is fine.
+// Scoring domain services are stateless, so a single shared instance is fine.
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
 
 // CORS exists only for local dev (the Vite server on 5173 hitting :3000
 // directly). In production the SPA is served same-origin from wwwroot, so no
-// cross-origin access is needed — and none is granted.
+// cross-origin access is needed, and none is granted.
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
@@ -100,7 +100,7 @@ if (builder.Environment.IsDevelopment())
 }
 
 // Unhandled exceptions become a bare ProblemDetails 500 via UseExceptionHandler
-// below — exception messages can carry upstream URIs and file paths, which
+// below. Exception messages can carry upstream URIs and file paths, which
 // don't belong in a public response.
 builder.Services.AddProblemDetails();
 
@@ -148,8 +148,8 @@ if (!app.Environment.IsDevelopment())
 
 // In production TLS terminates at a reverse proxy and the real client address
 // arrives in X-Forwarded-For; it must replace the proxy's address before the
-// per-IP rate limiter runs. Trust exactly one hop — the entry appended by our
-// own proxy — so clients can't spoof an arbitrary IP past the limiter. Leave
+// per-IP rate limiter runs. Trust exactly one hop (the entry appended by our
+// own proxy) so clients can't spoof an arbitrary IP past the limiter. Leave
 // unset when :3000 is reached directly (local dev).
 if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
 {
@@ -166,7 +166,7 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
 }
 
 // Baseline security headers on every response. The CSP allows only same-origin
-// assets — the SPA bundles everything, the theme-init script is an external file
+// assets: the SPA bundles everything, the theme-init script is an external file
 // (so no inline-script hash to maintain), and the one external source is card
 // art from Supercell's CDN. style-src needs 'unsafe-inline' because React sets
 // styles via the style attribute; that does not enable <script> injection.
@@ -197,7 +197,7 @@ if (app.Environment.IsDevelopment())
 app.UseRateLimiter();
 
 // Serve the built React SPA from wwwroot when it's present (production image).
-// In local dev there's no wwwroot — Vite serves the app and proxies /api here,
+// In local dev there's no wwwroot, so Vite serves the app and proxies /api here,
 // so this is a no-op and behaviour is unchanged.
 app.UseStaticFiles();
 

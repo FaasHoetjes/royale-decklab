@@ -158,7 +158,7 @@ public sealed class MetaCache(
         }
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        // Fresh enough and we have battles — aggregate without hitting the API.
+        // Fresh enough and we have battles: aggregate without hitting the API.
         if (lastBuild > 0 && now - lastBuild < _opt.CacheRefreshIntervalMs && count > 0)
         {
             logger.LogInformation("Meta cache fresh; aggregating from stored battles");

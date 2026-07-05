@@ -22,7 +22,7 @@
     <ProjectReference Include="..\RoyaleDeckLab.Api\RoyaleDeckLab.Api.csproj" />
   </ItemGroup>
 
-  <!-- Same non-exploitable SQLite advisory suppressed in the API project — it flows
+  <!-- Same non-exploitable SQLite advisory suppressed in the API project; it flows
        in transitively via the project reference. See RoyaleDeckLab.Api.csproj for
        the full rationale. -->
   <ItemGroup>

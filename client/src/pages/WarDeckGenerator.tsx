@@ -20,14 +20,14 @@ export default function WarDeckGenerator() {
   const meta = useMetaStatus();
   const metaReady = meta.isSuccess;
 
-  // The player's war decks, keyed by tag — the query cache replaces the old
+  // The player's war decks, keyed by tag. The query cache replaces the old
   // per-tag Map, so revisiting a loaded player paints instantly. Held off until
   // the backend is confirmed up.
   const warDecks = usePlayerWarDecks(tag, metaReady);
   const playerData = warDecks.data ?? null;
 
   // Reached the generator without a tag in the URL but a player is active
-  // (e.g. landed on '/') — load that player's page.
+  // (e.g. landed on '/'), so load that player's page.
   useEffect(() => {
     if (!playerId && activePlayerTag) {
       navigate(`/${activePlayerTag.replace(/#/g, '')}`, { replace: true });
@@ -43,7 +43,7 @@ export default function WarDeckGenerator() {
 
   const handleSearch = (playerTag: string) => {
     // Navigate; the query re-keys on the new tag and (cache permitting) may
-    // resolve instantly. Strip every '#' — a mid-string one would become a URL
+    // resolve instantly. Strip every '#': a mid-string one would become a URL
     // fragment and route to a truncated tag.
     navigate(`/${playerTag.replace(/#/g, '')}`);
   };
@@ -62,7 +62,7 @@ export default function WarDeckGenerator() {
         <h1>Royale DeckLab</h1>
         <p style={{ ...styles.error, color: '#ff6b6b' }}>
           {meta.isError
-            ? "Can't reach the server right now — please try again in a moment."
+            ? "Can't reach the server right now; please try again in a moment."
             : 'Connecting to server...'}
         </p>
         <button
@@ -93,7 +93,7 @@ export default function WarDeckGenerator() {
         />
       ) : (tag || activePlayerTag) && !searchError ? (
         // A player is being loaded (from the URL, or the redirect above is
-        // about to fire) — show a loader, not the empty search form, which
+        // about to fire). Show a loader, not the empty search form, which
         // would otherwise flash for a moment before results arrive.
         <div style={styles.centerContent}>
           <h1>Royale DeckLab</h1>

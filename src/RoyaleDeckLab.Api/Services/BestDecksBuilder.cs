@@ -5,7 +5,7 @@ namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
 /// Builds up to ten diverse sets of four card-disjoint meta decks for the "Best
-/// War Decks" page — the collection-independent counterpart to
+/// War Decks" page, the collection-independent counterpart to
 /// <see cref="DeckAnalyzer.FindBestWarDecks"/>. Stateless (singleton).
 /// </summary>
 public sealed class BestDecksBuilder
@@ -19,7 +19,7 @@ public sealed class BestDecksBuilder
     // archetype (the "same build, one card swapped" clones).
     private const int ArchetypeSharedCards = 6;
 
-    // A given deck may appear in at most this many shown sets — stops one elite deck
+    // A given deck may appear in at most this many shown sets. Stops one elite deck
     // from dominating every set.
     private const int MaxDeckReuse = 2;
 

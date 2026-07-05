@@ -16,13 +16,13 @@ const FILTERS: { key: Filter; label: string; empty: string }[] = [
   {
     key: 'lineup',
     label: 'Current decks',
-    empty: 'No upgrade improves a deck in your current lineup — those cards are already maxed.',
+    empty: 'No upgrade improves a deck in your current lineup; those cards are already maxed.',
   },
   {
     key: 'new',
     label: 'Unlocks new deck',
     empty:
-      'No single-card upgrade pulls a new deck into your lineup right now — not even taken all the way to max level, and no Evolution or Hero unlock does it either. Your top four are simply that far ahead.',
+      'No single-card upgrade pulls a new deck into your lineup right now, not even taken all the way to max level, and no Evolution or Hero unlock does it either. Your top four are simply that far ahead.',
   },
 ];
 
@@ -62,7 +62,7 @@ export default function UpgradeAdvisor() {
           {data && (
             <span
               style={{ ...styles.scorePill, color: theme.text.primary, borderColor: theme.border }}
-              title="Your recommended war lineup's total score today — the reference every suggestion is measured against."
+              title="Your recommended war lineup's total score today: the reference every suggestion is measured against."
             >
               <span style={{ ...styles.scorePillLabel, color: theme.text.secondary }}>Current Score</span>
               <span style={{ color: theme.accent }}>{data.baselineScore.toFixed(3)}</span>
@@ -97,18 +97,18 @@ export default function UpgradeAdvisor() {
       ) : data && data.suggestions.length === 0 ? (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           {data.collectionMaxed ? (
-            // Nothing was even simulatable — congratulate, don't console.
+            // Nothing was even simulatable: congratulate, don't console.
             <>
               <p style={{ ...styles.panelTitle, color: theme.text.primary }}>👑 Nothing left to upgrade</p>
               <p style={{ ...styles.panelText, color: theme.text.secondary }}>
                 Every card the current meta uses is at max level, and every Evolution and Hero it
-                fields is unlocked. Your lineup is as strong as your collection allows — check back
+                fields is unlocked. Your lineup is as strong as your collection allows; check back
                 when the meta shifts or new cards arrive.
               </p>
             </>
           ) : (
             <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-              No upgrade to a single card moves your recommended lineup right now — levels, jumps
+              No upgrade to a single card moves your recommended lineup right now: levels, jumps
               and Evolution / Hero unlocks included. Check back after the meta shifts.
             </p>
           )}
@@ -193,8 +193,8 @@ export default function UpgradeAdvisor() {
             )}
           </div>
           <p style={{ ...styles.footnote, color: theme.text.secondary }}>
-            Each suggestion is a simulation: that one change is applied — a card level, a bigger
-            level jump, or an Evolution / Hero unlock — your best four war decks are rebuilt from
+            Each suggestion is a simulation: that one change is applied (a card level, a bigger
+            level jump, or an Evolution / Hero unlock), your best four war decks are rebuilt from
             scratch, and the change in total score is measured. When one level isn't enough, the
             advisor also reports the smallest jump that would change your lineup. An upgrade
             marked <strong>Unlocks a new deck</strong> would pull a stronger deck into your lineup,

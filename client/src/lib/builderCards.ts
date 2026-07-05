@@ -24,7 +24,7 @@ export interface BuilderCard {
 /**
  * Which special art a card placed in a given slot can show, gated by what the
  * player owns (and by the art existing). The evo slot only offers evo, the
- * hero slot only hero; the "both" slot offers whichever the player owns — and
+ * hero slot only hero; the "both" slot offers whichever the player owns, and
  * when they own both, the UI shows a toggle to pick.
  */
 export function availableVersions(card: BuilderCard, kind: SlotKind | null): SpecialVersion[] {

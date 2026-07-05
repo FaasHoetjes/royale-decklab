@@ -22,7 +22,7 @@ export default function PlayerSearch({ onSearch, isLoading, isDarkMode }: Player
     }
 
     if (!isValidTag(tag)) {
-      setError("That doesn't look like a valid player tag — check it on your in-game profile.");
+      setError("That doesn't look like a valid player tag. Check it on your in-game profile.");
       return;
     }
 

@@ -22,12 +22,12 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         var cardMap = playerCards.ToDictionary(c => c.Id);
         // Score the whole pool ONCE; each simulation below reuses these scores for
         // every deck the upgraded card isn't in, and skips the swap-alternatives
-        // pool it never reads — together that turns seconds into milliseconds.
+        // pool it never reads; together that turns seconds into milliseconds.
         var fieldable = analyzer.ScoreFieldableDecks(metaDecks, cardMap);
         var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false);
         var baselineKeys = LineupKeys(baseline);
 
-        // A card in no meta deck can't move any deck's score — skip it up front.
+        // A card in no meta deck can't move any deck's score, so skip it up front.
         // Likewise a special version no meta deck fields: unlocking it removes no
         // penalty, so only versions in these sets are unlock candidates.
         var metaCardIds = new HashSet<int>();
@@ -50,7 +50,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         }
 
         // One candidate: swap the modified card into the collection, rescore only
-        // the decks fielding it (every other deck keeps its baseline score — the
+        // the decks fielding it (every other deck keeps its baseline score; the
         // rescore can't be null: the deck was fieldable before and the simulated
         // collection has the same cards), and re-run the lineup selection.
         (double Delta, WarDeckResult Result) Simulate(PlayerItemLevel modified)
@@ -86,7 +86,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
                 AffectedDeckIndexes: AffectedIndexes(baseline, card.Id, kind)));
 
         // Candidates actually simulated. Zero means the collection is maxed for
-        // this meta — every meta card at max level, every fielded special owned —
+        // this meta (every meta card at max level, every fielded special owned)
         // which the client reports differently from "nothing helps".
         var candidates = 0;
 
@@ -108,7 +108,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
                 }
 
                 // When one level doesn't already promote a new deck, ask whether
-                // ANY number of levels would: simulate straight at max level — if
+                // ANY number of levels would: simulate straight at max level, and if
                 // even a maxed card leaves the lineup unchanged, no smaller jump
                 // can move it and the per-level scan is skipped entirely. When it
                 // does change, report the cheapest jump that gets there.

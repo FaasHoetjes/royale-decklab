@@ -18,7 +18,7 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // The CR-derived data is stable within a session — don't re-fetch on a
+      // The CR-derived data is stable within a session, so don't re-fetch on a
       // window refocus, and treat results as fresh for a minute. Per-query
       // overrides (e.g. Infinity for the static catalog) live in queries.ts.
       refetchOnWindowFocus: false,

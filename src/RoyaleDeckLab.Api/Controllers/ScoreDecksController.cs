@@ -7,7 +7,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 
 /// <summary>
 /// Scores the four decks a player is hand-building in the War Deck Builder. Pure
-/// function of the posted cards + the in-memory meta cache — no CR API call — so
+/// function of the posted cards + the in-memory meta cache (no CR API call), so
 /// it's fast enough to call live as the user edits. A deck that exactly matches a
 /// meta deck gets its real player score; anything else gets a fieldability-only
 /// score flagged <c>isMeta: false</c>.
