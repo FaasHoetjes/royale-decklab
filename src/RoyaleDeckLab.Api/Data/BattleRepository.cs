@@ -143,12 +143,14 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     /// <summary>All stored battles, mapped to BattleRecord for aggregation.</summary>
     public List<BattleRecord> AllBattles()
-        // Materialise the entities first (EF applies the JSON value converters on
-        // read), THEN map in memory. A LINQ projection over the converted
-        // collection columns can't be translated to SQL.
-        => db.Battles.AsNoTracking()
-            .ToList()
-            .Select(b => new BattleRecord
+    {
+        // Enumerate the entities (EF applies the JSON value converters on read) and
+        // map in a single pass. A LINQ projection over the converted collection
+        // columns can't be translated to SQL, so the query itself stays unprojected.
+        var records = new List<BattleRecord>();
+        foreach (var b in db.Battles.AsNoTracking())
+        {
+            records.Add(new BattleRecord
             {
                 Key = b.Key,
                 BattleTime = b.BattleTime,
@@ -156,8 +158,10 @@ public sealed partial class BattleRepository(MetaDbContext db)
                 CardIds = b.CardIds,
                 Result = b.Result,
                 CardVersions = b.CardVersions,
-            })
-            .ToList();
+            });
+        }
+        return records;
+    }
 
     public int Count() => db.Battles.Count();
 

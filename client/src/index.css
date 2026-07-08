@@ -61,11 +61,14 @@
   --card-backdrop: linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%);
   --card-frame-border: 1px solid rgba(30, 41, 59, 0.12);
   --card-drop: 0 2px 8px rgba(30, 41, 59, 0.13);
-  /* War Deck Generator result banner: solid blue in light, flat panel in dark. */
-  --banner-bg: #007bff;
-  --banner-border: transparent;
-  --banner-shadow: 0 10px 30px rgba(0, 123, 255, 0.25);
-  --banner-muted: rgba(255, 255, 255, 0.85);
+  /* War Deck Generator result banner: a flat neutral panel in both themes.
+     Light is the pale twin of dark's dark panel — surface, hairline border,
+     soft shadow, muted gray labels, dark heading text — not the old blue fill. */
+  --banner-bg: #ffffff;
+  --banner-border: #e8ecf5;
+  --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
+  --banner-muted: #6b7280;
+  --banner-title: #0d1b3e;
 }
 
 :root[data-theme='dark'] {
@@ -113,6 +116,7 @@
   --banner-border: #33333a;
   --banner-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
   --banner-muted: #a1a1aa;
+  --banner-title: #ffffff;
 }
 
 body {

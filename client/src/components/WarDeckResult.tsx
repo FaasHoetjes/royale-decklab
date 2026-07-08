@@ -91,16 +91,17 @@ export default function WarDeckResult({
           background: theme.headerGradient,
           border: `1px solid ${theme.headerBorder}`,
           boxShadow: theme.headerShadow,
+          color: theme.title,
         }}
       >
         <div style={styles.headerInfo}>
           <span style={{ ...styles.eyebrow, color: theme.muted, opacity: 1 }}>WAR DECKS</span>
-          <h2 style={{ ...styles.title, fontSize: isMobile ? '24px' : '32px' }}>{playerName}</h2>
+          <h2 style={{ ...styles.title, fontSize: isMobile ? '24px' : '32px', color: theme.title }}>{playerName}</h2>
           <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>4 battle-ready decks · no shared cards</span>
         </div>
         <div style={styles.scoreBlock}>
           <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>Total Score</span>
-          <span style={{ ...styles.scoreValue, fontSize: isMobile ? '24px' : '32px' }}>{liveTotalScore.toFixed(3)}</span>
+          <span style={{ ...styles.scoreValue, fontSize: isMobile ? '24px' : '32px', color: theme.accent }}>{liveTotalScore.toFixed(3)}</span>
         </div>
       </div>
 
@@ -149,14 +150,19 @@ export default function WarDeckResult({
   );
 }
 
-// All CSS variables (index.css). The banner is a flat fill: dark matches the
-// deck-card background so the hero reads as part of the same surface; light
-// keeps the solid blue banner with translucent-white labels.
+// All CSS variables (index.css). The banner is a flat neutral panel in both
+// themes: dark matches the deck-card background so the hero reads as part of the
+// same surface, and light is its pale twin. Heading text flips with the theme
+// (dark navy on light, white on dark) via --banner-title.
 const theme = {
   headerGradient: 'var(--banner-bg)',
   headerBorder: 'var(--banner-border)',
   headerShadow: 'var(--banner-shadow)',
   muted: 'var(--banner-muted)',
+  title: 'var(--banner-title)',
+  // The score is the banner's focal number, so it carries the accent (blue in
+  // light, gold in dark) — the pop of color the old blue fill used to provide.
+  accent: 'var(--accent)',
   buttonBg: 'var(--cta-btn-bg)',
 };
 

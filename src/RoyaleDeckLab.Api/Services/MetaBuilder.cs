@@ -86,9 +86,9 @@ public sealed class MetaBuilder(
         var seenPlayers = new HashSet<string>();
         const int clanBatchSize = 10;
 
-        for (var i = 0; i < clanTags.Count; i += clanBatchSize)
+        var done = 0;
+        foreach (var clanBatch in clanTags.Chunk(clanBatchSize))
         {
-            var clanBatch = clanTags.Skip(i).Take(clanBatchSize).ToList();
             var rosters = await Task.WhenAll(clanBatch.Select(async tag =>
             {
                 try { return await client.GetClanMemberTagsAsync(tag, ct); }
@@ -99,8 +99,9 @@ public sealed class MetaBuilder(
             var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
 
             records.AddRange(await ProcessWarPlayersAsync(members, ct));
+            done += clanBatch.Length;
             logger.LogInformation("Processed {Done}/{Total} clans ({Players} players, {Records} records)",
-                Math.Min(i + clanBatchSize, clanTags.Count), clanTags.Count, seenPlayers.Count, records.Count);
+                done, clanTags.Count, seenPlayers.Count, records.Count);
 
             if (records.Count >= target)
             {
@@ -115,9 +116,8 @@ public sealed class MetaBuilder(
     {
         var records = new List<BattleRecord>();
         const int batchSize = 10;
-        for (var i = 0; i < tags.Count; i += batchSize)
+        foreach (var batch in tags.Chunk(batchSize))
         {
-            var batch = tags.Skip(i).Take(batchSize).ToList();
             var results = await Task.WhenAll(batch.Select(tag => ProcessWarBattleLogAsync(tag, ct)));
             foreach (var playerRecords in results)
             {
