@@ -7,13 +7,12 @@ import InfoTip from './InfoTip';
 
 interface CompactDeckRowProps {
   deck: BestDeckEntry;
-  isDarkMode: boolean;
   theme: Theme;
   isMobile: boolean;
 }
 
 /** One deck as a single compact row: 8 cards, inline stats, open-in-game. */
-export default function CompactDeckRow({ deck, isDarkMode, theme, isMobile }: CompactDeckRowProps) {
+export default function CompactDeckRow({ deck, theme, isMobile }: CompactDeckRowProps) {
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const accent = theme.accent;
 
@@ -25,8 +24,8 @@ export default function CompactDeckRow({ deck, isDarkMode, theme, isMobile }: Co
         flexWrap: isMobile ? ('wrap' as const) : ('nowrap' as const),
         gap: isMobile ? '8px' : '14px',
         padding: isMobile ? '10px' : '10px 14px',
-        backgroundColor: isDarkMode ? '#1a1a1e' : '#f8f9ff',
-        borderColor: isDarkMode ? '#2a2a2e' : '#eceef6',
+        backgroundColor: 'var(--row-bg)',
+        borderColor: 'var(--row-border)',
       }}
     >
       <div
@@ -41,7 +40,6 @@ export default function CompactDeckRow({ deck, isDarkMode, theme, isMobile }: Co
             <CardTile
               name={card.name}
               iconUrl={cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id))}
-              isDarkMode={isDarkMode}
               slotIndex={index}
               elixirCost={card.elixirCost}
               nameColor={theme.text.primary}
@@ -55,7 +53,7 @@ export default function CompactDeckRow({ deck, isDarkMode, theme, isMobile }: Co
         <div style={styles.stat}>
           <div style={{ ...styles.statLabel, color: theme.text.secondary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
             Meta Score
-            <InfoTip isDarkMode={isDarkMode} ariaLabel="Meta score details" color={theme.text.secondary} width={210}>
+            <InfoTip ariaLabel="Meta score details" color={theme.text.secondary} width={210}>
               Confidence-adjusted win rate × popularity weight. Higher means this deck both wins more <em>and</em> is run by more top war players.
             </InfoTip>
           </div>
@@ -73,8 +71,8 @@ export default function CompactDeckRow({ deck, isDarkMode, theme, isMobile }: Co
         aria-label="Open this deck in Clash Royale"
         style={{
           ...styles.openInGame,
-          border: `1px solid ${isDarkMode ? '#2a2a2e' : '#dbe4f5'}`,
-          backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
+          border: '1px solid var(--chip-border)',
+          backgroundColor: 'var(--float-btn-bg)',
           color: accent,
         }}
       >

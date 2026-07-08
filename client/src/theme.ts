@@ -3,10 +3,7 @@
 // these are just the var(--x) references, identical in both modes. That's what
 // makes a light/dark toggle a single native repaint (flip data-theme on <html>)
 // rather than React re-computing and re-applying inline styles across the tree.
-//
-// The parameter is kept for call-site compatibility but is unused: the mode is
-// resolved by CSS now, not here.
-export const getTheme = (_isDark?: boolean) => ({
+export const getTheme = () => ({
   bg: {
     primary: 'var(--bg-primary)',
     secondary: 'var(--bg-secondary)',

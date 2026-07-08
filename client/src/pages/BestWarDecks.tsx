@@ -20,8 +20,8 @@ import {
 } from '../lib/deckBoard';
 
 export default function BestWarDecks() {
-  const { isDarkMode, activePlayerTag } = useApp();
-  const theme = getTheme(isDarkMode);
+  const { activePlayerTag } = useApp();
+  const theme = getTheme();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -129,7 +129,6 @@ export default function BestWarDecks() {
                     <CompactDeckRow
                       key={deckIdx}
                       deck={deck}
-                      isDarkMode={isDarkMode}
                       theme={theme}
                       isMobile={isMobile}
                     />
@@ -140,7 +139,6 @@ export default function BestWarDecks() {
                     onClick={() => copySetToBuilder(set, setIdx)}
                     busy={copyingSetIdx !== null}
                     spinning={copyingSetIdx === setIdx}
-                    isDarkMode={isDarkMode}
                     accent={theme.accent}
                     variant="full"
                   />
@@ -150,7 +148,6 @@ export default function BestWarDecks() {
                       onClick={() => copySetToBuilder(set, setIdx)}
                       busy={copyingSetIdx !== null}
                       spinning={copyingSetIdx === setIdx}
-                      isDarkMode={isDarkMode}
                       accent={theme.accent}
                       variant="circle"
                     />

@@ -1,11 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { slotKind, slotBorderStyle, cardFrame } from '../lib/slotStyles';
+import { slotKind, slotBorderStyle, CARD_FRAME } from '../lib/slotStyles';
 import ElixirBadge from './ElixirBadge';
 
 interface CardTileProps {
   name: string;
   iconUrl?: string;
-  isDarkMode: boolean;
   /** Positional index; the first three positions get the evo/hero/both frame. */
   slotIndex?: number;
   elixirCost?: number;
@@ -24,7 +23,6 @@ interface CardTileProps {
 export default function CardTile({
   name,
   iconUrl,
-  isDarkMode,
   slotIndex,
   elixirCost,
   level,
@@ -40,7 +38,7 @@ export default function CardTile({
       <div
         style={{
           ...styles.art,
-          ...(kind ? slotBorderStyle(kind, isDarkMode) : cardFrame(isDarkMode)),
+          ...(kind ? slotBorderStyle(kind) : CARD_FRAME),
           ...artStyle,
         }}
       >

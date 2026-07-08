@@ -33,6 +33,39 @@
   --control-bg: #ffffff;
   --control-text: #1a1a1a;
   --control-border: #d0d0d0;
+  /* Component-level colors. Deck cards and rows use cooler, blue-tinted lights
+     than the neutral page surfaces above, so they get their own slots. */
+  --text-heading: #0d1b3e;
+  --stat-label: #6b7280;
+  --panel-border: #e8ecf5;
+  --panel-shadow: 0 6px 20px rgba(13, 27, 62, 0.06);
+  --inset-bg: #edeef2;
+  --row-bg: #f8f9ff;
+  --row-border: #eceef6;
+  --chip-bg: #f0f3ff;
+  --chip-text: #3a6ea5;
+  --chip-border: #dbe4f5;
+  --raised-bg: #f6f7f9;
+  --float-btn-bg: #ffffff;
+  --selected-bg: #eaf3ff;
+  --modal-bg: #ffffff;
+  --nav-active-bg: #edeef2;
+  --empty-slot-border: #e0e0e0;
+  /* Tooltips stay dark in both modes; only the edge treatment changes. */
+  --tooltip-bg: #1a1a1a;
+  --tooltip-border: #1a1a1a;
+  --search-btn-bg: #007bff;
+  --cta-btn-bg: #007bff;
+  /* Card art frame (see slotStyles.ts). The official card PNGs bake in a dark
+     backdrop but have transparent rounded corners; this shows through there. */
+  --card-backdrop: linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%);
+  --card-frame-border: 1px solid rgba(30, 41, 59, 0.12);
+  --card-drop: 0 2px 8px rgba(30, 41, 59, 0.13);
+  /* War Deck Generator result banner: solid blue in light, flat panel in dark. */
+  --banner-bg: #007bff;
+  --banner-border: transparent;
+  --banner-shadow: 0 10px 30px rgba(0, 123, 255, 0.25);
+  --banner-muted: rgba(255, 255, 255, 0.85);
 }
 
 :root[data-theme='dark'] {
@@ -53,6 +86,33 @@
   --control-bg: #161618;
   --control-text: #f4f4f5;
   --control-border: #2a2a2e;
+  --text-heading: #f4f4f5;
+  --stat-label: #8a8a93;
+  --panel-border: #2a2a2e;
+  --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --inset-bg: #101012;
+  --row-bg: #1a1a1e;
+  --row-border: #2a2a2e;
+  --chip-bg: #26262a;
+  --chip-text: #c4c4cc;
+  --chip-border: #34343a;
+  --raised-bg: #26262a;
+  --float-btn-bg: #26262a;
+  --selected-bg: #26262a;
+  --modal-bg: #161618;
+  --nav-active-bg: #26262a;
+  --empty-slot-border: rgba(0, 0, 0, 0.4);
+  --tooltip-bg: #000000;
+  --tooltip-border: #3a3a3a;
+  --search-btn-bg: #4a9eff;
+  --cta-btn-bg: #262626;
+  --card-backdrop: linear-gradient(160deg, #2a3a6a 0%, #16213f 100%);
+  --card-frame-border: 2px solid rgba(0, 0, 0, 0.15);
+  --card-drop: 0 3px 8px rgba(0, 0, 0, 0.25);
+  --banner-bg: #161618;
+  --banner-border: #33333a;
+  --banner-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+  --banner-muted: #a1a1aa;
 }
 
 body {

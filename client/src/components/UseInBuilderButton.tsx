@@ -6,19 +6,18 @@ interface UseInBuilderButtonProps {
   busy: boolean;
   /** This button's copy is in flight, showing the spinner. */
   spinning: boolean;
-  isDarkMode: boolean;
   accent: string;
   /** 'circle' floats in the desktop gutter (with hover tooltip); 'full' is the full-width mobile button. */
   variant: 'circle' | 'full';
 }
 
 /** The "copy this set into the War Deck Builder" action. */
-export default function UseInBuilderButton({ onClick, busy, spinning, isDarkMode, accent, variant }: UseInBuilderButtonProps) {
+export default function UseInBuilderButton({ onClick, busy, spinning, accent, variant }: UseInBuilderButtonProps) {
   const [hovered, setHovered] = useState(false);
 
   const shared = {
     border: `1px solid ${accent}`,
-    backgroundColor: isDarkMode ? '#26262a' : '#ffffff',
+    backgroundColor: 'var(--float-btn-bg)',
     color: accent,
     cursor: busy ? ('wait' as const) : ('pointer' as const),
     opacity: busy ? 0.6 : 1,
@@ -47,7 +46,7 @@ export default function UseInBuilderButton({ onClick, busy, spinning, isDarkMode
         <ArrowIcon size={20} spinning={spinning} />
       </button>
       {hovered && !busy && (
-        <div style={{ ...styles.tooltip, backgroundColor: isDarkMode ? '#000000' : '#1a1a1a' }}>
+        <div style={styles.tooltip}>
           Use in Builder
         </div>
       )}
@@ -103,6 +102,7 @@ const styles = {
     top: '50%',
     transform: 'translateY(-50%)',
     whiteSpace: 'nowrap' as const,
+    backgroundColor: 'var(--tooltip-bg)',
     color: '#ffffff',
     fontSize: '12px',
     fontWeight: 600 as const,

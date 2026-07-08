@@ -8,8 +8,8 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag } from '../lib/playerTag';
 
 export default function Landing() {
-  const { isDarkMode, setActivePlayerTag } = useApp();
-  const theme = getTheme(isDarkMode);
+  const { setActivePlayerTag } = useApp();
+  const theme = getTheme();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();

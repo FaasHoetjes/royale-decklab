@@ -17,8 +17,8 @@ function CornerThemeToggle() {
 }
 
 export default function Layout() {
-  const { isDarkMode, activePlayerTag } = useApp();
-  const theme = getTheme(isDarkMode);
+  const { activePlayerTag } = useApp();
+  const theme = getTheme();
   const isMobile = useIsMobile();
 
   // Warm every page's cache (upgrade advice, collection, card catalog, best
@@ -68,7 +68,10 @@ const styles = {
     display: 'flex' as const,
     minHeight: '100vh',
     fontFamily: 'system-ui, -apple-system, sans-serif',
-    transition: 'background-color 0.3s ease, color 0.3s ease',
+    // Deliberately no background/color transition: animating the full-viewport
+    // shell repaints everything under it every frame for the whole duration,
+    // which visibly stutters on card-dense pages (Best War Decks). An instant
+    // flip is one repaint.
   },
   content: {
     flex: 1,

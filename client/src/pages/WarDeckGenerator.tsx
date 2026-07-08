@@ -9,7 +9,7 @@ import { getTheme } from '../theme';
 export default function WarDeckGenerator() {
   const { playerId } = useParams();
   const navigate = useNavigate();
-  const { isDarkMode, activePlayerTag, setActivePlayerTag } = useApp();
+  const { activePlayerTag, setActivePlayerTag } = useApp();
 
   // The URL is the source of truth for which player to show; searching just
   // navigates and lets the query below react to the new tag.
@@ -54,7 +54,7 @@ export default function WarDeckGenerator() {
     navigate('/');
   };
 
-  const theme = getTheme(isDarkMode);
+  const theme = getTheme();
 
   if (!metaReady) {
     return (
@@ -89,7 +89,6 @@ export default function WarDeckGenerator() {
           decks={playerData.warDecks.decks}
           alternatives={playerData.warDecks.alternatives}
           onNewSearch={handleNewSearch}
-          isDarkMode={isDarkMode}
         />
       ) : (tag || activePlayerTag) && !searchError ? (
         // A player is being loaded (from the URL, or the redirect above is
@@ -100,7 +99,7 @@ export default function WarDeckGenerator() {
           <p style={{ ...styles.subtitle, color: theme.text.secondary }}>Loading your war decks…</p>
         </div>
       ) : (
-        <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} isDarkMode={isDarkMode} />
+        <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} />
       )}
       {searchError && <div style={{ ...styles.errorBanner, backgroundColor: '#ff6b6b' }}>{searchError}</div>}
     </>

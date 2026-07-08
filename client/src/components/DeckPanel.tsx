@@ -16,7 +16,6 @@ interface DeckPanelProps {
   score?: BuilderDeckScore;
   scoreAccent: string;
   theme: Theme;
-  isDarkMode: boolean;
   isMobile: boolean;
   onOpenPicker: (slotIndex: number) => void;
 }
@@ -29,7 +28,6 @@ export default function DeckPanel({
   score,
   scoreAccent,
   theme,
-  isDarkMode,
   isMobile,
   onOpenPicker,
 }: DeckPanelProps) {
@@ -116,7 +114,6 @@ export default function DeckPanel({
               key={slotIndex}
               card={cardId != null ? cardById.get(cardId) ?? null : null}
               slotIndex={slotIndex}
-              isDarkMode={isDarkMode}
               theme={theme}
               versionOverride={board.slotVersion[slotKey(deckIndex, slotIndex)]}
               isDragging={

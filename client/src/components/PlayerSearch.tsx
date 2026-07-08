@@ -4,10 +4,9 @@ import { isValidTag, normalizeTag } from '../lib/playerTag';
 interface PlayerSearchProps {
   onSearch: (playerTag: string) => void;
   isLoading: boolean;
-  isDarkMode: boolean;
 }
 
-export default function PlayerSearch({ onSearch, isLoading, isDarkMode }: PlayerSearchProps) {
+export default function PlayerSearch({ onSearch, isLoading }: PlayerSearchProps) {
   const [playerTag, setPlayerTag] = useState('');
   const [error, setError] = useState('');
 
@@ -27,14 +26,6 @@ export default function PlayerSearch({ onSearch, isLoading, isDarkMode }: Player
     }
 
     onSearch(`#${tag}`);
-  };
-
-  const theme = {
-    textSecondary: isDarkMode ? '#cccccc' : '#666',
-    inputBg: isDarkMode ? '#1e1e1e' : '#ffffff',
-    inputBorder: isDarkMode ? '#2c2c2c' : '#ddd',
-    inputText: isDarkMode ? '#ffffff' : '#000000',
-    buttonBg: isDarkMode ? '#4a9eff' : '#007bff',
   };
 
   return (
@@ -65,6 +56,14 @@ export default function PlayerSearch({ onSearch, isLoading, isDarkMode }: Player
     </div>
   );
 }
+
+const theme = {
+  textSecondary: 'var(--text-secondary)',
+  inputBg: 'var(--control-bg)',
+  inputBorder: 'var(--control-border)',
+  inputText: 'var(--control-text)',
+  buttonBg: 'var(--search-btn-bg)',
+};
 
 const styles = {
   container: {

@@ -16,7 +16,6 @@ interface DeckCardProps {
   metaCardVersions?: CardVersionRef[];
   playerScore: number;
   deckNumber: number;
-  isDarkMode: boolean;
   // When more than one valid option exists for this slot, show a Swap button.
   canSwap?: boolean;
   onSwap?: () => void;
@@ -34,7 +33,6 @@ export default function DeckCard({
   metaCardVersions,
   playerScore,
   deckNumber,
-  isDarkMode,
   canSwap,
   onSwap,
   scoreLabel,
@@ -51,32 +49,6 @@ export default function DeckCard({
   const slotVersion = (cardId: number) => {
     const meta = metaCardVersions?.find((v) => v.cardId === cardId)?.version;
     return meta && meta !== 'normal' ? meta : versionOf(cardVersions, cardId);
-  };
-
-  const theme = {
-    // Container sits one level above the page; the stats strip is recessed one
-    // level below it so the card reads as a layered object.
-    containerBg: isDarkMode ? '#161618' : '#f6f7f9',
-    containerBorder: isDarkMode ? '#2a2a2e' : '#e8ecf5',
-    containerShadow: isDarkMode
-      ? '0 8px 24px rgba(0, 0, 0, 0.45)'
-      : '0 6px 20px rgba(13, 27, 62, 0.06)',
-    headerText: isDarkMode ? '#f4f4f5' : '#0d1b3e',
-    badgeBg: isDarkMode ? '#26262a' : '#f0f3ff',
-    badgeText: isDarkMode ? '#c4c4cc' : '#3a6ea5',
-    badgeBorder: isDarkMode ? '#34343a' : '#dbe4f5',
-    statsBg: isDarkMode ? '#101012' : '#edeef2',
-    statsBorder: isDarkMode ? '#2a2a2e' : '#eceef6',
-    statsLabel: isDarkMode ? '#8a8a93' : '#6b7280',
-    statsValue: isDarkMode ? '#f4f4f5' : '#0d1b3e',
-    statsValueAccent: isDarkMode ? '#e8b24a' : '#007bff',
-    cardText: isDarkMode ? '#f4f4f5' : '#000000',
-    swapBg: isDarkMode ? '#26262a' : '#f6f7f9',
-    swapIcon: isDarkMode ? '#e8b24a' : '#007bff',
-    divider: isDarkMode ? '#2a2a2e' : '#eceef6',
-    openInGameBg: isDarkMode ? '#26262a' : '#f0f3ff',
-    openInGameText: isDarkMode ? '#e8b24a' : '#007bff',
-    openInGameBorder: isDarkMode ? '#34343a' : '#dbe4f5',
   };
 
   const orderedCards = orderBySlots(cards, slotVersion);
@@ -109,7 +81,7 @@ export default function DeckCard({
         <div style={{ ...styles.stat, position: 'relative' as const }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             Win Rate
-            <InfoTip isDarkMode={isDarkMode} ariaLabel="Win rate details" color={theme.statsLabel}>
+            <InfoTip ariaLabel="Win rate details" color={theme.statsLabel}>
               <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
               <br />
               Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
@@ -123,7 +95,7 @@ export default function DeckCard({
         <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}`, position: 'relative' as const }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             {scoreLabel ?? 'Player Score'}
-            <InfoTip isDarkMode={isDarkMode} ariaLabel="How the score is derived" color={theme.statsLabel}>
+            <InfoTip ariaLabel="How the score is derived" color={theme.statsLabel}>
               {scoreTooltip ?? (
                 <>
                   <strong>How well this meta deck fits your collection.</strong>
@@ -148,7 +120,6 @@ export default function DeckCard({
               <CardTile
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, versionOf(cardVersions, card.id))}
-                isDarkMode={isDarkMode}
                 slotIndex={index}
                 elixirCost={card.elixirCost}
                 level={displayLevel(card.level, card.maxLevel)}
@@ -186,6 +157,31 @@ export default function DeckCard({
     </div>
   );
 }
+
+// Container sits one level above the page; the stats strip is recessed one
+// level below it so the card reads as a layered object. All values are CSS
+// variables (index.css), so a theme toggle never re-renders these cards.
+const theme = {
+  containerBg: 'var(--bg-secondary)',
+  containerBorder: 'var(--panel-border)',
+  containerShadow: 'var(--panel-shadow)',
+  headerText: 'var(--text-heading)',
+  badgeBg: 'var(--chip-bg)',
+  badgeText: 'var(--chip-text)',
+  badgeBorder: 'var(--chip-border)',
+  statsBg: 'var(--inset-bg)',
+  statsBorder: 'var(--row-border)',
+  statsLabel: 'var(--stat-label)',
+  statsValue: 'var(--text-heading)',
+  statsValueAccent: 'var(--accent)',
+  cardText: 'var(--text-primary)',
+  swapBg: 'var(--raised-bg)',
+  swapIcon: 'var(--accent)',
+  divider: 'var(--row-border)',
+  openInGameBg: 'var(--chip-bg)',
+  openInGameText: 'var(--accent)',
+  openInGameBorder: 'var(--chip-border)',
+};
 
 function SwapArrows({ style }: { style: React.CSSProperties }) {
   return (

@@ -9,7 +9,6 @@ import CardTile from './CardTile';
 interface DeckSlotProps {
   card: BuilderCard | null;
   slotIndex: number;
-  isDarkMode: boolean;
   theme: Theme;
   /** The slot's saved evo/hero art choice, if any. */
   versionOverride?: SpecialVersion;
@@ -31,7 +30,6 @@ interface DeckSlotProps {
 export default function DeckSlot({
   card,
   slotIndex,
-  isDarkMode,
   theme,
   versionOverride,
   isDragging,
@@ -81,7 +79,6 @@ export default function DeckSlot({
         <CardTile
           name={card.name}
           iconUrl={cardIconUrl(card.iconUrls, activeVersion ?? 'normal')}
-          isDarkMode={isDarkMode}
           slotIndex={slotIndex}
           elixirCost={card.elixirCost}
           level={level}
@@ -123,15 +120,12 @@ export default function DeckSlot({
           <div
             style={{
               ...styles.empty,
-              // Default near-black border suits dark mode; soften it in light.
-              ...(isDarkMode ? {} : { border: `2px solid ${theme.border}` }),
               // Fill the interior with the deck surface so an empty special
               // slot blends in. Must be a gradient (image), not a bare colour:
               // a colour in this layer lets the border gradient bleed through.
               ...(kind
                 ? slotBorderStyle(
                     kind,
-                    isDarkMode,
                     `linear-gradient(${theme.bg.secondary}, ${theme.bg.secondary})`,
                     false
                   )
@@ -189,7 +183,8 @@ const styles = {
   },
   empty: {
     aspectRatio: '0.82',
-    border: '2px solid rgba(0, 0, 0, 0.4)',
+    // Near-black in dark mode, softened to the standard border in light.
+    border: '2px solid var(--empty-slot-border)',
     borderRadius: '10px',
     display: 'flex' as const,
     alignItems: 'center' as const,

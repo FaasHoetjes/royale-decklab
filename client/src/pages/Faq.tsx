@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { faqItems } from './faqContent';
 
 export default function Faq() {
-  const { isDarkMode } = useApp();
-  const theme = getTheme(isDarkMode);
+  const theme = getTheme();
   const isMobile = useIsMobile();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 

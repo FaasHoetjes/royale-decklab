@@ -33,8 +33,8 @@ function matches(s: UpgradeSuggestion, filter: Filter): boolean {
 }
 
 export default function UpgradeAdvisor() {
-  const { isDarkMode, activePlayerTag } = useApp();
-  const theme = getTheme(isDarkMode);
+  const { activePlayerTag } = useApp();
+  const theme = getTheme();
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState<Filter>('all');
   const [expanded, setExpanded] = useState(false);
@@ -171,7 +171,6 @@ export default function UpgradeAdvisor() {
                       suggestion={s}
                       relativeGain={maxDelta > 0 ? s.scoreDelta / maxDelta : 0}
                       baselineScore={data.baselineScore}
-                      isDarkMode={isDarkMode}
                       theme={theme}
                       isMobile={isMobile}
                     />

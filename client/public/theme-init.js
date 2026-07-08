@@ -4,8 +4,12 @@
 // the API can stay `script-src 'self'` with no inline-script hash to maintain.
 (function () {
   try {
-    var dark = JSON.parse(localStorage.getItem('darkMode') || 'false');
-    var mode = dark === true ? 'dark' : 'light';
+    var stored = localStorage.getItem('darkMode');
+    // No saved choice: follow the OS. A saved choice always wins.
+    var dark = stored !== null
+      ? JSON.parse(stored) === true
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var mode = dark ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', mode);
     document.documentElement.style.colorScheme = mode;
   } catch (e) {}

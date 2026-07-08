@@ -11,7 +11,6 @@ interface CardPickerProps {
   usedIds: Set<number>;
   onSelect: (cardId: number) => void;
   onClose: () => void;
-  isDarkMode: boolean;
   // Sort + type filters are owned by the parent so they persist across opens.
   // (Search query and the popover-open toggle stay local and reset each time.)
   filters: Set<FilterKey>;
@@ -29,7 +28,6 @@ export default function CardPicker({
   usedIds,
   onSelect,
   onClose,
-  isDarkMode,
   filters,
   setFilters,
   sortIndex,
@@ -38,7 +36,7 @@ export default function CardPicker({
   setDescending,
   allowChampions,
 }: CardPickerProps) {
-  const theme = getTheme(isDarkMode);
+  const theme = getTheme();
   const isMobile = useIsMobile();
 
   const [query, setQuery] = useState('');
@@ -152,7 +150,6 @@ export default function CardPicker({
         <CardTile
           name={card.name}
           iconUrl={pickerIconUrl(card, filters)}
-          isDarkMode={isDarkMode}
           elixirCost={card.elixirCost}
           level={level >= 0 ? level : undefined}
           nameColor={theme.text.primary}

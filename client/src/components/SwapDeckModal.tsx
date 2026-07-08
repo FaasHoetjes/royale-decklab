@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { DeckCardData } from '../api';
 import { versionOf, cardIconUrl, avgElixir, deckArchetype, type CardVersionRef } from '../lib/cardDisplay';
-import { cardBackdrop } from '../lib/slotStyles';
+import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 export interface SwapOption {
@@ -17,7 +17,6 @@ interface SwapDeckModalProps {
   slotNumber: number;
   options: SwapOption[];
   currentMaster: number;
-  isDarkMode: boolean;
   onSelect: (master: number) => void;
   onClose: () => void;
 }
@@ -26,7 +25,6 @@ export default function SwapDeckModal({
   slotNumber,
   options,
   currentMaster,
-  isDarkMode,
   onSelect,
   onClose,
 }: SwapDeckModalProps) {
@@ -38,19 +36,6 @@ export default function SwapDeckModal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-
-  const theme = {
-    panelBg: isDarkMode ? '#161618' : '#ffffff',
-    panelBorder: isDarkMode ? '#2a2a2e' : '#e0e0e0',
-    text: isDarkMode ? '#f4f4f5' : '#000000',
-    subtext: isDarkMode ? '#a1a1aa' : '#666',
-    // The one accent, kept to the win rate and the active marker.
-    accent: isDarkMode ? '#e8b24a' : '#007bff',
-    rowBg: isDarkMode ? '#1c1c1f' : '#f8f9ff',
-    rowBorder: isDarkMode ? '#2a2a2e' : '#e0e0e0',
-    activeBorder: isDarkMode ? '#e8b24a' : '#007bff',
-    activeBg: isDarkMode ? '#26262a' : '#eaf3ff',
-  };
 
   return (
     <div
@@ -115,7 +100,7 @@ export default function SwapDeckModal({
                   {opt.cards.map((card) => {
                     const icon = cardIconUrl(card.iconUrls, versionOf(opt.cardVersions, card.id));
                     return (
-                      <div key={card.id} style={{ ...styles.miniCard, background: cardBackdrop(isDarkMode) }} title={card.name}>
+                      <div key={card.id} style={{ ...styles.miniCard, background: CARD_BACKDROP }} title={card.name}>
                         {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
                       </div>
                     );
@@ -129,6 +114,20 @@ export default function SwapDeckModal({
     </div>
   );
 }
+
+// All CSS variables (index.css), so the modal is theme-agnostic in JS.
+const theme = {
+  panelBg: 'var(--modal-bg)',
+  panelBorder: 'var(--border)',
+  text: 'var(--text-primary)',
+  subtext: 'var(--text-secondary)',
+  // The one accent, kept to the win rate and the active marker.
+  accent: 'var(--accent)',
+  rowBg: 'var(--row-bg)',
+  rowBorder: 'var(--border)',
+  activeBorder: 'var(--accent)',
+  activeBg: 'var(--selected-bg)',
+};
 
 function OptionStat({ label, value, labelColor, valueColor }: { label: string; value: string; labelColor: string; valueColor: string }) {
   return (

@@ -1,11 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 
 /** Catch-all for unmatched routes (only multi-segment paths, since `/:playerId` claims single segments). */
 export default function NotFound() {
-  const { isDarkMode } = useApp();
-  const theme = getTheme(isDarkMode);
+  const theme = getTheme();
 
   return (
     <div style={styles.container}>

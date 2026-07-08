@@ -9,7 +9,6 @@ interface UpgradeRowProps {
   /** This suggestion's gain relative to the top one (0-1), drives the bar. */
   relativeGain: number;
   baselineScore: number;
-  isDarkMode: boolean;
   theme: Theme;
   isMobile: boolean;
 }
@@ -27,7 +26,6 @@ export default function UpgradeRow({
   suggestion: s,
   relativeGain,
   baselineScore,
-  isDarkMode,
   theme,
   isMobile,
 }: UpgradeRowProps) {
@@ -44,7 +42,6 @@ export default function UpgradeRow({
           // Unlock rows show the art being unlocked (falls back to normal art
           // when the CDN has none).
           iconUrl={cardIconUrl(s.iconUrls, s.kind === 'level' ? 'normal' : s.kind)}
-          isDarkMode={isDarkMode}
           showName={false}
         />
       </div>

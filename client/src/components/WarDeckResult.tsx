@@ -9,7 +9,6 @@ interface WarDeckResultProps {
   decks: ScoredDeck[];
   alternatives: ScoredDeck[];
   onNewSearch: () => void;
-  isDarkMode: boolean;
 }
 
 export default function WarDeckResult({
@@ -17,7 +16,6 @@ export default function WarDeckResult({
   decks,
   alternatives,
   onNewSearch,
-  isDarkMode,
 }: WarDeckResultProps) {
   const isMobile = useIsMobile();
   // One flat list the slots index into: the four primary decks first (master
@@ -68,19 +66,6 @@ export default function WarDeckResult({
   };
 
   const liveTotalScore = slots.reduce((sum, master) => sum + deckAt(master).playerScore, 0);
-
-  const theme = {
-    // Flat fill: dark matches the deck-card background (#161618) so the hero
-    // reads as part of the same surface; light keeps the solid blue banner.
-    headerGradient: isDarkMode ? '#161618' : '#007bff',
-    headerBorder: isDarkMode ? '#33333a' : 'transparent',
-    headerShadow: isDarkMode
-      ? '0 14px 36px rgba(0, 0, 0, 0.5)'
-      : '0 10px 30px rgba(0, 123, 255, 0.25)',
-    // Eyebrow / labels: a calm light grey in dark mode, translucent white on blue.
-    muted: isDarkMode ? '#a1a1aa' : 'rgba(255, 255, 255, 0.85)',
-    buttonBg: isDarkMode ? '#262626' : '#007bff',
-  };
 
   if (decks.length === 0) {
     return (
@@ -135,7 +120,6 @@ export default function WarDeckResult({
               metaCardVersions={deck.metaCardVersions}
               playerScore={deck.playerScore}
               deckNumber={slotPos + 1}
-              isDarkMode={isDarkMode}
               canSwap={options.length > 1}
               onSwap={() => setSwapSlot(slotPos)}
             />
@@ -146,7 +130,6 @@ export default function WarDeckResult({
       {swapSlot != null && (
         <SwapDeckModal
           slotNumber={swapSlot + 1}
-          isDarkMode={isDarkMode}
           currentMaster={slots[swapSlot] ?? -1}
           options={candidatesForSlot(swapSlot).map((master) => {
             const d = deckAt(master);
@@ -165,6 +148,17 @@ export default function WarDeckResult({
     </div>
   );
 }
+
+// All CSS variables (index.css). The banner is a flat fill: dark matches the
+// deck-card background so the hero reads as part of the same surface; light
+// keeps the solid blue banner with translucent-white labels.
+const theme = {
+  headerGradient: 'var(--banner-bg)',
+  headerBorder: 'var(--banner-border)',
+  headerShadow: 'var(--banner-shadow)',
+  muted: 'var(--banner-muted)',
+  buttonBg: 'var(--cta-btn-bg)',
+};
 
 const styles = {
   container: {

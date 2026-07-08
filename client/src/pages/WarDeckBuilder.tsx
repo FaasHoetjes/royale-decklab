@@ -15,11 +15,11 @@ import DeckPanel from '../components/DeckPanel';
 import TrashIcon from '../components/TrashIcon';
 
 export default function WarDeckBuilder() {
-  const { isDarkMode, activePlayerTag } = useApp();
-  const theme = getTheme(isDarkMode);
+  const { activePlayerTag } = useApp();
+  const theme = getTheme();
   const isMobile = useIsMobile();
   // The one accent for a meta-backed score; matches the generator's accent.
-  const scoreAccent = isDarkMode ? '#e8b24a' : '#007bff';
+  const scoreAccent = 'var(--accent)';
 
   // Server data via React Query, cached and shared with the rest of the app
   // (e.g. Best Decks' copy-to-builder), so revisiting paints from cache.
@@ -180,7 +180,6 @@ export default function WarDeckBuilder() {
             score={scores?.decks[deckIndex]}
             scoreAccent={scoreAccent}
             theme={theme}
-            isDarkMode={isDarkMode}
             isMobile={isMobile}
             onOpenPicker={(slotIndex) => setPicker({ deckIndex, slotIndex })}
           />
@@ -205,7 +204,6 @@ export default function WarDeckBuilder() {
           usedIds={board.usedIds}
           onSelect={handleSelectCard}
           onClose={() => setPicker(null)}
-          isDarkMode={isDarkMode}
           filters={pickerFilters}
           setFilters={setPickerFilters}
           sortIndex={pickerSortIndex}

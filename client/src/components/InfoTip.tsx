@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 
 interface InfoTipProps {
-  isDarkMode: boolean;
   ariaLabel: string;
   color?: string;
   width?: number;
@@ -9,7 +8,7 @@ interface InfoTipProps {
 }
 
 /** A small hover "i" icon that reveals a dark tooltip above itself. */
-export default function InfoTip({ isDarkMode, ariaLabel, color, width = 220, children }: InfoTipProps) {
+export default function InfoTip({ ariaLabel, color, width = 220, children }: InfoTipProps) {
   const [show, setShow] = useState(false);
   return (
     <span
@@ -34,8 +33,6 @@ export default function InfoTip({ isDarkMode, ariaLabel, color, width = 220, chi
           style={{
             ...styles.tooltip,
             width: `${width}px`,
-            backgroundColor: isDarkMode ? '#000000' : '#1a1a1a',
-            borderColor: isDarkMode ? '#3a3a3a' : '#1a1a1a',
           }}
         >
           {children}
@@ -76,7 +73,8 @@ const styles = {
     transform: 'translateX(-50%)',
     padding: '10px 12px',
     borderRadius: '6px',
-    border: '1px solid',
+    border: '1px solid var(--tooltip-border)',
+    backgroundColor: 'var(--tooltip-bg)',
     color: '#ffffff',
     fontSize: '11px',
     fontWeight: 'normal' as const,

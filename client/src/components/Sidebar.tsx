@@ -7,8 +7,8 @@ import ThemeToggle from './ThemeToggle';
 import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, MenuIcon, CloseIcon } from './navIcons';
 
 export default function Sidebar() {
-  const { isDarkMode, activePlayerTag, setActivePlayerTag } = useApp();
-  const theme = getTheme(isDarkMode);
+  const { activePlayerTag, setActivePlayerTag } = useApp();
+  const theme = getTheme();
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -40,7 +40,7 @@ export default function Sidebar() {
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 
   // Active nav item: neutral fill + a single accent bar on the left.
-  const activeBg = isDarkMode ? theme.bg.elevated : theme.bg.tertiary;
+  const activeBg = 'var(--nav-active-bg)';
 
   const navItems = [
     { to: generatorTo, label: 'War Deck Generator', end: true, icon: <ZapIcon /> },
@@ -184,7 +184,6 @@ const styles = {
     position: 'sticky' as const,
     top: 0,
     alignSelf: 'flex-start' as const,
-    transition: 'background-color 0.3s ease',
     display: 'flex' as const,
     flexDirection: 'column' as const,
   },
@@ -200,7 +199,6 @@ const styles = {
     position: 'sticky' as const,
     top: 0,
     zIndex: 900,
-    transition: 'background-color 0.3s ease',
   },
   barActions: {
     display: 'flex' as const,
