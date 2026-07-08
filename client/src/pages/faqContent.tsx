@@ -49,8 +49,10 @@ export const faqItems: FaqItem[] = [
         <p style={pStyle}>
           From real <strong>Clan War</strong> battles, the exact mode these decks are for. We
           sample the war battles of the top ~100 war clans (~5,000 players), group them by the
-          exact 8-card deck, and tally wins/losses (a draw = half a win) over a rolling 7-day
-          window, refreshed every few hours. The window resets after each balance patch.
+          exact 8-card deck, and tally wins/losses (a draw = half a win) over a rolling 30-day
+          window, refreshed every couple of hours. Clan War only runs on weekends, so 30 days
+          captures about four war weekends. After a balance patch we reset the window to the new
+          patch.
         </p>
         <p style={pLast}>
           The percentage shown is the deck's <strong>raw</strong> win rate. Hover the{' '}
@@ -157,9 +159,14 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          By simulation, not a fixed rule: for every card you could level up, we pretend it's one
-          level higher, rebuild your best four war decks from scratch, and measure how much your
-          lineup's total score rises. The list is those gains, ranked.
+          By simulation, not a fixed rule. For every upgrade you could make (leveling a card up, or
+          unlocking a card's Evolution or Hero version) we apply that one change, rebuild your best
+          four war decks from scratch, and measure how much your lineup's total score rises. The
+          list is those gains, ranked.
+        </p>
+        <p style={pStyle}>
+          A card level normally moves one step at a time, but when a single level isn't enough to
+          change anything, the advisor reports the smallest bigger jump that would.
         </p>
         <p style={pLast}>
           Because the whole recommendation is re-run, an upgrade can win in two ways: making a deck
@@ -171,12 +178,56 @@ export const faqItems: FaqItem[] = [
     ),
   },
   {
+    question: 'How does the War Deck Builder score my deck?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          The Builder lets you assemble four war decks by hand, with each card used once across all
+          four (a war set can't reuse cards), and scores them on the same scale as the
+          auto-generated recommendations. Search your player tag first so it knows your card levels
+          and which versions you own.
+        </p>
+        <p style={pStyle}>
+          Each deck scores one of two ways. A deck that matches a known meta deck (marked{' '}
+          <strong>★</strong>) is scored exactly like a recommendation: the win rate you can expect
+          at your card levels, weighted by how widely it's played. Any other deck (marked{' '}
+          <strong>~</strong>) is unproven, so it gets a neutral estimate, deliberately dampened to
+          sit below any real meta deck. The <strong>Total Score</strong> is the sum of all four.
+        </p>
+        <p style={pLast}>
+          The special slots are positional, matching the game: one slot takes an Evolution, one
+          takes a Hero, and a third takes either. An Evolution or Hero you own but place outside its
+          slot costs a small penalty, because in-game it would be fielded as its normal version
+          there.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: 'What is the Best War Decks page?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          It's the raw meta leaderboard: the strongest four-deck war sets right now, ranked by
+          performance across the war battles we sample. Unlike your personal recommendations, it
+          ignores collections and assumes every card is maxed with all Evolutions and Heroes
+          unlocked, so it shows the meta's ceiling rather than what you can field today.
+        </p>
+        <p style={pLast}>
+          Hit <strong>Use in Builder</strong> on any set to drop it into the War Deck Builder and
+          score it against your own collection. Cards you don't own are left as empty slots for you
+          to fill.
+        </p>
+      </>
+    ),
+  },
+  {
     question: 'How fresh is the data?',
     answer: (
       <p style={pLast}>
-        War battles are sampled continuously and refreshed every couple of hours, accumulated over
-        a rolling 7-day window. After a balance update we reset to the new patch, so win rates show
-        lower confidence for a few days while fresh data builds up.
+        War battles are refreshed every couple of hours and accumulated over a rolling 30-day
+        window. After a balance update we reset to the new patch, so win rates show lower confidence
+        for a few days while fresh data builds up.
       </p>
     ),
   },
