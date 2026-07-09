@@ -8,6 +8,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 public sealed class CardsController(CardCatalog catalog, ILogger<CardsController> logger) : ControllerBase
 {
     [HttpGet]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
         try

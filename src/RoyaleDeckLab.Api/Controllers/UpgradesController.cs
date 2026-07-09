@@ -1,7 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
@@ -11,9 +10,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 [ApiController]
 [EnableRateLimiting(RateLimitPolicies.Player)]
 public sealed class UpgradesController(
-    PlayerProfileCache players,
-    MetaCache cache,
-    UpgradeAdvisor advisor,
+    UpgradeAdviceCache adviceCache,
     ILogger<UpgradesController> logger) : ControllerBase
 {
     [HttpGet("api/player/{tag}/upgrades")]
@@ -26,14 +23,11 @@ public sealed class UpgradesController(
 
         try
         {
-            var player = await players.GetPlayerDataAsync(tag, ct);
-            if (player.Cards is null)
+            var (player, advice) = await adviceCache.GetAsync(tag, ct);
+            if (advice is null)
             {
                 return BadRequest(new { error = "Player cards data not found in API response" });
             }
-
-            var playerCards = player.Cards.Select(c => c.ToPlayerItemLevel()).ToList();
-            var advice = advisor.Advise(playerCards, cache.Meta);
 
             return Ok(new
             {

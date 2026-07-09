@@ -573,17 +573,28 @@ public sealed class DeckAnalyzer
         return fieldable;
     }
 
-    public WarDeckResult SelectLineup(
-        IReadOnlyList<(DeckMeta deck, double score)> fieldable,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
-        bool includeAlternatives)
-    {
-        // OrderBy is stable, so equal-score/equal-player decks keep their meta
-        // ranking order.
-        var sorted = fieldable
+    // OrderBy is stable, so equal-score/equal-player decks keep their meta ranking
+    // order. CompareCandidates must match this ordering exactly.
+    public static List<(DeckMeta deck, double score)> SortCandidates(
+        IEnumerable<(DeckMeta deck, double score)> fieldable)
+        => fieldable
             .OrderByDescending(s => s.score)
             .ThenByDescending(s => s.deck.Players ?? 0)
             .ToList();
+
+    public static int CompareCandidates((DeckMeta deck, double score) x, (DeckMeta deck, double score) y)
+    {
+        var byScore = y.score.CompareTo(x.score);
+        return byScore != 0 ? byScore : (y.deck.Players ?? 0).CompareTo(x.deck.Players ?? 0);
+    }
+
+    public WarDeckResult SelectLineup(
+        IReadOnlyList<(DeckMeta deck, double score)> fieldable,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        bool includeAlternatives,
+        bool assumeSorted = false)
+    {
+        var sorted = assumeSorted ? fieldable : SortCandidates(fieldable);
 
         var lineup = new List<(DeckMeta deck, double score)>();
         var lastPoolCount = -1;

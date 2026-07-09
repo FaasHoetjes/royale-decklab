@@ -211,13 +211,15 @@ public sealed class MetaBuilder(
         };
     }
 
-    public List<DeckMeta> AggregateBattles(IReadOnlyList<BattleRecord> records)
+    // Single pass: the source may be a streaming enumerable that can't be replayed.
+    public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records)
     {
-        var sampledPlayers = records.Select(r => r.PlayerTag).Distinct().Count();
+        var sampledPlayers = new HashSet<string>();
 
         var byDeck = new Dictionary<string, DeckAgg>();
         foreach (var record in records)
         {
+            sampledPlayers.Add(record.PlayerTag);
             var deckKey = string.Join(',', record.CardIds);
             if (!byDeck.TryGetValue(deckKey, out var agg))
             {
@@ -268,7 +270,7 @@ public sealed class MetaBuilder(
                 Confidence = confidence,
                 Uses = total,
                 Players = agg.Players.Count,
-                PickRate = sampledPlayers > 0 ? (double)agg.Players.Count / sampledPlayers : 0,
+                PickRate = sampledPlayers.Count > 0 ? (double)agg.Players.Count / sampledPlayers.Count : 0,
                 CardVersions = agg.Loadouts.Values
                     .OrderByDescending(l => l.Count)
                     .ThenByDescending(l => l.LatestTime, StringComparer.Ordinal)

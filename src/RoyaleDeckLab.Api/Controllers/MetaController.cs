@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
 
@@ -29,6 +30,7 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
     // so an open endpoint would let anyone keep the key pinned at its rate limit.
     [HttpPost("refresh")]
     [RequireAdminToken]
+    [EnableRateLimiting(RateLimitPolicies.Admin)]
     public async Task<IActionResult> Refresh()
     {
         if (cache.IsBuilding)
@@ -45,6 +47,7 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
     // permanently deletes stored battles that can't be re-collected.
     [HttpPost("epoch")]
     [RequireAdminToken]
+    [EnableRateLimiting(RateLimitPolicies.Admin)]
     public async Task<IActionResult> SetEpoch()
     {
         if (cache.IsBuilding)
@@ -100,7 +103,7 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
             return StatusCode(400, new { status = "error", message = "Timestamp is in the future." });
         }
 
-        var decks = cache.SetEpoch(ts);
+        var decks = await cache.SetEpochAsync(ts, HttpContext.RequestAborted);
         return Ok(new
         {
             status = "epoch-set",

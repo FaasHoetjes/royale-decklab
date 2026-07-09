@@ -12,6 +12,7 @@ public sealed class BestDecksController(
     ILogger<BestDecksController> logger) : ControllerBase
 {
     [HttpGet("api/best-decks")]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
         try
@@ -19,7 +20,7 @@ public sealed class BestDecksController(
             var cards = await catalog.GetAsync(ct);
             var catalogById = cards.ToDictionary(c => c.Id);
 
-            var sets = builder.Build(cache.Meta, catalogById);
+            var sets = builder.BuildCached(cache.Version, cache.Meta, catalogById);
             return Ok(new { sets });
         }
         catch (Exception ex)

@@ -74,6 +74,7 @@ builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
+builder.Services.AddSingleton<UpgradeAdviceCache>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -90,6 +91,7 @@ builder.Services.AddRateLimiter(o =>
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     o.OnRejected = static async (ctx, ct) =>
     {
+        ctx.HttpContext.Response.Headers.RetryAfter = "60";
         ctx.HttpContext.Response.ContentType = "application/json";
         await ctx.HttpContext.Response.WriteAsync("""{"error":"Too many requests. Try again in a minute."}""", ct);
     };
@@ -100,6 +102,22 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = 30,
             Window = TimeSpan.FromMinutes(1),
         }));
+    o.AddPolicy(RateLimitPolicies.Admin, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        static _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+    // Backstop for the endpoints without their own policy; no real browser session hits it.
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            static _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window = TimeSpan.FromMinutes(1),
+            }));
 });
 
 var app = builder.Build();
@@ -119,7 +137,13 @@ using (var scope = app.Services.CreateScope())
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler();
+    app.UseExceptionHandler(new ExceptionHandlerOptions
+    {
+        // Keep client-fault status codes (e.g. the 413 from a request-size cap) out of the generic 500.
+        StatusCodeSelector = ex => ex is Microsoft.AspNetCore.Http.BadHttpRequestException bad
+            ? bad.StatusCode
+            : StatusCodes.Status500InternalServerError,
+    });
 }
 
 // In production TLS terminates at a reverse proxy and the real client address
@@ -134,10 +158,27 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
         ForwardLimit = 1,
     };
-    // The proxy's address is deployment-specific, so the default loopback-only
-    // allowlist can't name it; ForwardLimit=1 is the spoofing guard instead.
     forwarded.KnownIPNetworks.Clear();
     forwarded.KnownProxies.Clear();
+
+    // TRUSTED_PROXY_IPS (comma-separated IPs/CIDRs) pins X-Forwarded-For trust to the
+    // actual proxy, so a client reaching this port directly can't spoof its IP past the
+    // rate limiter. When unset the port must only be reachable via the proxy (DOCKER.md).
+    var trustedProxies = Environment.GetEnvironmentVariable("TRUSTED_PROXY_IPS");
+    if (!string.IsNullOrWhiteSpace(trustedProxies))
+    {
+        foreach (var entry in trustedProxies.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (entry.Contains('/'))
+            {
+                forwarded.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(entry));
+            }
+            else
+            {
+                forwarded.KnownProxies.Add(System.Net.IPAddress.Parse(entry));
+            }
+        }
+    }
     app.UseForwardedHeaders(forwarded);
 }
 
@@ -165,12 +206,29 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// One log line per API request; asset/SPA requests stay quiet.
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.StartsWithSegments("/api"))
+    {
+        await next();
+        return;
+    }
+    var start = System.Diagnostics.Stopwatch.GetTimestamp();
+    await next();
+    var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(start);
+    app.Logger.LogInformation("{Method} {Path} => {Status} in {Elapsed:F1} ms",
+        context.Request.Method, context.Request.Path, context.Response.StatusCode, elapsed.TotalMilliseconds);
+});
+
 app.UseResponseCompression();
 if (app.Environment.IsDevelopment())
 {
     app.UseCors();
 }
 app.UseRateLimiter();
+
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
 
 // Serve the built React SPA from wwwroot when it's present (production image).
 // In local dev there's no wwwroot, so Vite serves the app and proxies /api here,

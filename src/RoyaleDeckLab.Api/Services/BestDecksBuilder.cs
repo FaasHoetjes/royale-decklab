@@ -14,6 +14,27 @@ public sealed class BestDecksBuilder
     private const int MaxSets = 10;
     private const int DecksPerSet = 4;
 
+    // Build() is deterministic per meta version, so compute once and serve until it advances.
+    private readonly object _cacheLock = new();
+    private long _cachedVersion = -1;
+    private IReadOnlyList<BestDeckSet> _cachedSets = [];
+
+    public IReadOnlyList<BestDeckSet> BuildCached(
+        long metaVersion,
+        IReadOnlyList<DeckMeta> meta,
+        IReadOnlyDictionary<int, CatalogCard> catalog)
+    {
+        lock (_cacheLock)
+        {
+            if (_cachedVersion != metaVersion)
+            {
+                _cachedSets = Build(meta, catalog);
+                _cachedVersion = metaVersion;
+            }
+            return _cachedSets;
+        }
+    }
+
     public IReadOnlyList<BestDeckSet> Build(
         IReadOnlyList<DeckMeta> meta,
         IReadOnlyDictionary<int, CatalogCard> catalog)

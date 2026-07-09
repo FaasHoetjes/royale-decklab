@@ -15,7 +15,9 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
     private const int MaxDecks = 8;
     private const int MaxDeckSlots = 8;
 
+    // The count caps below only run after deserialization; this stops oversized bodies before it.
     [HttpPost("api/score-decks")]
+    [RequestSizeLimit(64 * 1024)]
     public IActionResult ScoreDecks([FromBody] ScoreDecksRequest request)
     {
         var cards = request.Cards ?? [];

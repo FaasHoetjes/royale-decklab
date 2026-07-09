@@ -17,15 +17,20 @@ public sealed class MetaCache(
     private volatile List<DeckMeta> _meta = [];
     private long _lastCacheTime;
     private long _epochStart;
+    private long _version;
     private bool _isBuilding;
 
     private Dictionary<string, DeckMeta> _metaIndex = new();
-    private long _metaIndexTime = -1;
+    private long _metaIndexVersion = -1;
 
     public IReadOnlyList<DeckMeta> Meta => _meta;
     public int DeckCount => _meta.Count;
     public long LastCacheTime => Interlocked.Read(ref _lastCacheTime);
     public long EpochStart => Interlocked.Read(ref _epochStart);
+
+    // Bumped on every _meta swap; derived caches key on this, not LastCacheTime,
+    // which deliberately does NOT advance on an epoch re-aggregate.
+    public long Version => Interlocked.Read(ref _version);
     public bool IsBuilding { get { lock (_buildLock) { return _isBuilding; } } }
 
     public static string DeckKey(IEnumerable<int> cardIds) => string.Join(',', cardIds.OrderBy(x => x));
@@ -51,25 +56,25 @@ public sealed class MetaCache(
     }
 
     // Pure DB + CPU, no network; does NOT advance the stored last-build time (only RebuildAsync does, after a fresh fetch).
-    public List<DeckMeta> AggregateFromStore(string reason)
+    public async Task<List<DeckMeta>> AggregateFromStoreAsync(string reason, CancellationToken ct = default)
     {
         using var scope = scopeFactory.CreateScope();
         var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
         var builder = scope.ServiceProvider.GetRequiredService<MetaBuilder>();
-        return AggregateWithin(store, builder, reason);
+        return await AggregateWithinAsync(store, builder, reason, ct);
     }
 
-    private List<DeckMeta> AggregateWithin(BattleRepository store, MetaBuilder builder, string reason)
+    private async Task<List<DeckMeta>> AggregateWithinAsync(
+        BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
     {
         var cutoff = EffectiveCutoff();
-        var pruned = store.Prune(cutoff);
-        var battles = store.AllBattles();
-
-        var decks = builder.AggregateBattles(battles);
+        var pruned = await store.PruneAsync(cutoff, ct);
+        var decks = builder.AggregateBattles(store.AllBattles());
         _meta = decks;
+        Interlocked.Increment(ref _version);
         Interlocked.Exchange(ref _lastCacheTime, store.GetLastBuild());
         logger.LogInformation("Meta {Reason}: {Decks} decks from {Battles} battles (pruned {Pruned}, cutoff {Cutoff})",
-            reason, decks.Count, battles.Count, pruned, IsoMs(cutoff));
+            reason, decks.Count, store.Count(), pruned, IsoMs(cutoff));
         return decks;
     }
 
@@ -101,9 +106,9 @@ public sealed class MetaCache(
                 return _meta;
             }
 
-            var added = store.MergeBattles(fresh);
-            store.SetLastBuild(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-            var decks = AggregateWithin(store, builder, $"rebuild ({reason})");
+            var added = await store.MergeBattlesAsync(fresh, ct);
+            await store.SetLastBuildAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct);
+            var decks = await AggregateWithinAsync(store, builder, $"rebuild ({reason})", ct);
             logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Kept} kept after cutoff",
                 added, fresh.Count, store.Count());
             return decks;
@@ -133,14 +138,14 @@ public sealed class MetaCache(
         if (lastBuild > 0 && now - lastBuild < _opt.CacheRefreshIntervalMs && count > 0)
         {
             logger.LogInformation("Meta cache fresh; aggregating from stored battles");
-            AggregateFromStore("startup (cached)");
+            await AggregateFromStoreAsync("startup (cached)", ct);
             return;
         }
 
         if (count > 0)
         {
             logger.LogInformation("Meta cache stale; serving stored battles while a fresh crawl runs...");
-            AggregateFromStore("startup (stale)");
+            await AggregateFromStoreAsync("startup (stale)", ct);
         }
         else
         {
@@ -155,14 +160,14 @@ public sealed class MetaCache(
         }
     }
 
-    public List<DeckMeta> SetEpoch(long ms)
+    public async Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
     {
         Interlocked.Exchange(ref _epochStart, ms);
         using (var scope = scopeFactory.CreateScope())
         {
-            scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStart(ms);
+            await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, ct);
         }
-        return AggregateFromStore("epoch update");
+        return await AggregateFromStoreAsync("epoch update", ct);
     }
 
     public int BattleCount()
@@ -173,10 +178,10 @@ public sealed class MetaCache(
 
     public Dictionary<string, DeckMeta> GetMetaIndex()
     {
-        var cacheTime = Interlocked.Read(ref _lastCacheTime);
+        var version = Version;
         lock (_indexLock)
         {
-            if (_metaIndexTime != cacheTime)
+            if (_metaIndexVersion != version)
             {
                 var index = new Dictionary<string, DeckMeta>();
                 foreach (var deck in _meta)
@@ -184,7 +189,7 @@ public sealed class MetaCache(
                     index[DeckKey(deck.CardIds)] = deck;
                 }
                 _metaIndex = index;
-                _metaIndexTime = cacheTime;
+                _metaIndexVersion = version;
             }
             return _metaIndex;
         }

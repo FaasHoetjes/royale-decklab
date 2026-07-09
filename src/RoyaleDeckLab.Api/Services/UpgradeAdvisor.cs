@@ -10,8 +10,9 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
     public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks)
     {
         var cardMap = playerCards.ToDictionary(c => c.Id);
-        var fieldable = analyzer.ScoreFieldableDecks(metaDecks, cardMap);
-        var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false);
+        // Sorted once; each simulation repairs this order instead of re-sorting.
+        var fieldable = DeckAnalyzer.SortCandidates(analyzer.ScoreFieldableDecks(metaDecks, cardMap));
+        var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false, assumeSorted: true);
         var baselineKeys = LineupKeys(baseline);
 
         var metaCardIds = new HashSet<int>();
@@ -36,14 +37,23 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         (double Delta, WarDeckResult Result) Simulate(PlayerItemLevel modified)
         {
             var simulatedMap = new Dictionary<int, PlayerItemLevel>(cardMap) { [modified.Id] = modified };
-            var adjusted = new List<(DeckMeta deck, double score)>(fieldable.Count);
+            // Only decks containing the modified card change score; merging them
+            // back into the still-sorted rest beats re-sorting the whole pool.
+            var unchanged = new List<(DeckMeta deck, double score)>(fieldable.Count);
+            var changed = new List<(DeckMeta deck, double score)>();
             foreach (var (deck, score) in fieldable)
             {
-                adjusted.Add(deck.CardIds.Contains(modified.Id)
-                    ? (deck, analyzer.ScoreDeckForPlayer(simulatedMap, deck, deck.CardVersions) ?? score)
-                    : (deck, score));
+                if (deck.CardIds.Contains(modified.Id))
+                {
+                    changed.Add((deck, analyzer.ScoreDeckForPlayer(simulatedMap, deck, deck.CardVersions) ?? score));
+                }
+                else
+                {
+                    unchanged.Add((deck, score));
+                }
             }
-            var result = analyzer.SelectLineup(adjusted, simulatedMap, includeAlternatives: false);
+            var adjusted = MergeByRank(unchanged, DeckAnalyzer.SortCandidates(changed));
+            var result = analyzer.SelectLineup(adjusted, simulatedMap, includeAlternatives: false, assumeSorted: true);
             return (result.TotalScore - baseline.TotalScore, result);
         }
 
@@ -136,6 +146,28 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             .ThenBy(s => s.Kind)
             .ToList();
         return new UpgradeAdvice(baseline.TotalScore, ranked, CollectionMaxed: candidates == 0);
+    }
+
+    // Both inputs must be in SortCandidates order; ties keep the unchanged entry first.
+    private static List<(DeckMeta deck, double score)> MergeByRank(
+        List<(DeckMeta deck, double score)> unchanged,
+        List<(DeckMeta deck, double score)> changed)
+    {
+        if (changed.Count == 0)
+        {
+            return unchanged;
+        }
+        var merged = new List<(DeckMeta deck, double score)>(unchanged.Count + changed.Count);
+        int i = 0, j = 0;
+        while (i < unchanged.Count && j < changed.Count)
+        {
+            merged.Add(DeckAnalyzer.CompareCandidates(unchanged[i], changed[j]) <= 0
+                ? unchanged[i++]
+                : changed[j++]);
+        }
+        merged.AddRange(unchanged.Skip(i));
+        merged.AddRange(changed.Skip(j));
+        return merged;
     }
 
     private static HashSet<string> LineupKeys(WarDeckResult result)

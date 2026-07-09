@@ -37,17 +37,17 @@ public sealed partial class BattleRepository(MetaDbContext db)
         return new DateTimeOffset(dt).ToUnixTimeMilliseconds();
     }
 
-    public int MergeBattles(IReadOnlyCollection<BattleRecord> records)
+    public async Task<int> MergeBattlesAsync(IReadOnlyCollection<BattleRecord> records, CancellationToken ct = default)
     {
         if (records.Count == 0)
         {
             return 0;
         }
 
-        WriteGate.Wait();
+        await WriteGate.WaitAsync(ct);
         try
         {
-            return MergeBattlesCore(records);
+            return await MergeBattlesCoreAsync(records, ct);
         }
         finally
         {
@@ -55,11 +55,11 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    private int MergeBattlesCore(IReadOnlyCollection<BattleRecord> records)
+    private async Task<int> MergeBattlesCoreAsync(IReadOnlyCollection<BattleRecord> records, CancellationToken ct)
     {
-        using var tx = db.Database.BeginTransaction();
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
         var conn = (SqliteConnection)db.Database.GetDbConnection();
-        using var cmd = conn.CreateCommand();
+        await using var cmd = conn.CreateCommand();
         cmd.Transaction = (SqliteTransaction)tx.GetDbTransaction();
         cmd.CommandText =
             """
@@ -85,18 +85,18 @@ public sealed partial class BattleRepository(MetaDbContext db)
             pCards.Value = JsonSerializer.Serialize(r.CardIds, StorageJson.Options);
             pResult.Value = r.Result.ToString().ToLowerInvariant();
             pVersions.Value = JsonSerializer.Serialize(r.CardVersions, StorageJson.Options);
-            added += cmd.ExecuteNonQuery();
+            added += await cmd.ExecuteNonQueryAsync(ct);
         }
-        tx.Commit();
+        await tx.CommitAsync(ct);
         return added;
     }
 
-    public int Prune(long cutoffMs)
+    public async Task<int> PruneAsync(long cutoffMs, CancellationToken ct = default)
     {
-        WriteGate.Wait();
+        await WriteGate.WaitAsync(ct);
         try
         {
-            return db.Battles.Where(b => b.BattleTimeMs < cutoffMs).ExecuteDelete();
+            return await db.Battles.Where(b => b.BattleTimeMs < cutoffMs).ExecuteDeleteAsync(ct);
         }
         finally
         {
@@ -104,16 +104,16 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    public void Clear()
+    public async Task ClearAsync(CancellationToken ct = default)
     {
-        WriteGate.Wait();
+        await WriteGate.WaitAsync(ct);
         try
         {
-            db.Battles.ExecuteDelete();
-            // Inline rather than via SetEpochStart because the gate is not reentrant.
+            await db.Battles.ExecuteDeleteAsync(ct);
+            // Inline rather than via SetEpochStartAsync because the gate is not reentrant.
             var s = State();
             s.EpochStartMs = 0;
-            db.SaveChanges();
+            await db.SaveChangesAsync(ct);
         }
         finally
         {
@@ -121,14 +121,15 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    public List<BattleRecord> AllBattles()
+    // Streams rather than materialising (the window can hold millions of rows);
+    // the connection stays open until the enumeration completes. A LINQ projection
+    // over the converted collection columns can't be translated to SQL, so
+    // enumerate the entities and map.
+    public IEnumerable<BattleRecord> AllBattles()
     {
-        // A LINQ projection over the converted collection columns can't be
-        // translated to SQL, so enumerate the entities and map in a single pass.
-        var records = new List<BattleRecord>();
         foreach (var b in db.Battles.AsNoTracking())
         {
-            records.Add(new BattleRecord
+            yield return new BattleRecord
             {
                 Key = b.Key,
                 BattleTime = b.BattleTime,
@@ -136,23 +137,22 @@ public sealed partial class BattleRepository(MetaDbContext db)
                 CardIds = b.CardIds,
                 Result = b.Result,
                 CardVersions = b.CardVersions,
-            });
+            };
         }
-        return records;
     }
 
     public int Count() => db.Battles.Count();
 
     public long GetEpochStart() => State().EpochStartMs;
 
-    public void SetEpochStart(long ms)
+    public async Task SetEpochStartAsync(long ms, CancellationToken ct = default)
     {
-        WriteGate.Wait();
+        await WriteGate.WaitAsync(ct);
         try
         {
             var s = State();
             s.EpochStartMs = ms;
-            db.SaveChanges();
+            await db.SaveChangesAsync(ct);
         }
         finally
         {
@@ -162,14 +162,14 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public long GetLastBuild() => State().LastBuildMs;
 
-    public void SetLastBuild(long ms)
+    public async Task SetLastBuildAsync(long ms, CancellationToken ct = default)
     {
-        WriteGate.Wait();
+        await WriteGate.WaitAsync(ct);
         try
         {
             var s = State();
             s.LastBuildMs = ms;
-            db.SaveChanges();
+            await db.SaveChangesAsync(ct);
         }
         finally
         {
