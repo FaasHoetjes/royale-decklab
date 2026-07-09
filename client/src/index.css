@@ -64,7 +64,7 @@
   /* War Deck Generator result banner: a flat neutral panel in both themes.
      Light is the pale twin of dark's dark panel — surface, hairline border,
      soft shadow, muted gray labels, dark heading text — not the old blue fill. */
-  --banner-bg: #ffffff;
+  --banner-bg: var(--bg-secondary);
   --banner-border: #e8ecf5;
   --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
   --banner-muted: #6b7280;

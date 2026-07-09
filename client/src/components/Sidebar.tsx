@@ -4,7 +4,7 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import ThemeToggle from './ThemeToggle';
-import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, MenuIcon, CloseIcon } from './navIcons';
+import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, GitHubIcon, MenuIcon, CloseIcon } from './navIcons';
 
 export default function Sidebar() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
@@ -75,14 +75,28 @@ export default function Sidebar() {
 
   const footer = (
     <div style={styles.footer}>
-      <a
-        href="mailto:faashoetjes+royaledecklab@gmail.com"
-        className="nav-link"
-        style={{ ...styles.contactLink, color: theme.text.secondary }}
-      >
-        <span style={styles.navIcon} aria-hidden="true"><MailIcon /></span>
-        Contact
-      </a>
+      <div style={styles.footerIcons}>
+        <a
+          href="mailto:faashoetjes@gmail.com"
+          className="nav-link"
+          aria-label="Contact"
+          title="Contact"
+          style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
+        >
+          <MailIcon />
+        </a>
+        <a
+          href="https://github.com/FaasHoetjes/royale-decklab"
+          target="_blank"
+          rel="noreferrer"
+          className="nav-link"
+          aria-label="GitHub repository"
+          title="GitHub"
+          style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
+        >
+          <GitHubIcon />
+        </a>
+      </div>
       {activePlayerTag && (
         <div style={{ ...styles.playerBox, borderTopColor: theme.border }}>
           <div style={{ ...styles.playerLabel, color: theme.text.secondary }}>Player</div>
@@ -286,16 +300,20 @@ const styles = {
     marginTop: 'auto',
     paddingTop: '16px',
   },
-  contactLink: {
+  footerIcons: {
     display: 'flex' as const,
+    gap: '8px',
+    padding: '0 8px 12px',
+  },
+  iconButton: {
+    display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    gap: '11px',
-    padding: '10px 14px',
-    borderRadius: '8px',
+    justifyContent: 'center' as const,
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    border: '1px solid',
     textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: 600 as const,
-    transition: 'all 0.2s ease',
   },
   playerBox: {
     marginTop: '4px',
