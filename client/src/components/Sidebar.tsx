@@ -77,7 +77,7 @@ export default function Sidebar() {
     <div style={styles.footer}>
       <div style={styles.footerIcons}>
         <a
-          href="mailto:faashoetjes@gmail.com"
+          href="mailto:faashoetjes+royaledecklab@gmail.com"
           className="nav-link"
           aria-label="Contact"
           title="Contact"
