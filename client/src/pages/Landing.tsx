@@ -19,8 +19,6 @@ export default function Landing() {
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // The '#' is shown as a fixed prefix, so strip it (and stray whitespace)
-  // from whatever the user types or pastes.
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value.replace(/[#\s]/g, '').toUpperCase());
   };

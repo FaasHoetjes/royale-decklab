@@ -3,27 +3,12 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// Builds up to ten diverse sets of four card-disjoint meta decks for the "Best
-/// War Decks" page, the collection-independent counterpart to
-/// <see cref="DeckAnalyzer.FindBestWarDecks"/>. Stateless (singleton).
-/// </summary>
 public sealed class BestDecksBuilder
 {
-    // Its own popularity prior/floor, independent of the meta-cache ranking so this
-    // page can tune diversity without shifting the aggregate ordering.
     private const int PopularityPrior = 8;
     private const int MinPlayers = 5;
-
-    // Two decks sharing this many of their 8 cards are treated as the same
-    // archetype (the "same build, one card swapped" clones).
     private const int ArchetypeSharedCards = 6;
-
-    // A given deck may appear in at most this many shown sets. Stops one elite deck
-    // from dominating every set.
     private const int MaxDeckReuse = 2;
-
-    // Cap the working pool once we have plenty of distinct archetypes.
     private const int ArchetypePoolSize = 150;
 
     private const int MaxSets = 10;
@@ -43,9 +28,7 @@ public sealed class BestDecksBuilder
         var sets = BuildDiverseSets(eligible);
 
         return sets
-            // List.Sort is unstable; OrderByDescending keeps equal-score sets in
-            // build order to match the original.
-            .OrderByDescending(s => s.totalScore)
+            .OrderByDescending(s => s.totalScore) // List.Sort is unstable; this keeps equal-score sets in build order
             .Select(s => new BestDeckSet(
                 s.decks.Select(d => ToEntry(d.deck, d.score, catalog)).ToList(),
                 s.totalScore))
@@ -59,11 +42,6 @@ public sealed class BestDecksBuilder
         return d.Confidence * pop;
     }
 
-    /// <summary>
-    /// Collapses near-duplicate decks into archetypes: walking strongest first, keep
-    /// a deck only if it shares fewer than <see cref="ArchetypeSharedCards"/> cards
-    /// with every deck already kept.
-    /// </summary>
     private static List<(DeckMeta deck, double score)> CollapseToArchetypes(
         List<(DeckMeta deck, double score)> scored)
     {
@@ -84,10 +62,6 @@ public sealed class BestDecksBuilder
         return eligible;
     }
 
-    /// <summary>
-    /// Builds up to ten diverse sets in one budget-aware pass, then relaxes the
-    /// reuse budget to top up if a thin meta couldn't yield ten distinct sets.
-    /// </summary>
     private static List<(List<(DeckMeta deck, double score)> decks, double totalScore)> BuildDiverseSets(
         List<(DeckMeta deck, double score)> eligible)
     {
@@ -161,11 +135,7 @@ public sealed class BestDecksBuilder
         return top;
     }
 
-    /// <summary>
-    /// Builds one deck's response entry. Champions are forced to the hero slot by
-    /// catalog rarity (the battlelog can't flag them); every other card keeps its
-    /// stored version. Unlike the player scorer, evolutions are NOT legal-capped here.
-    /// </summary>
+    // Champions are forced to the hero slot by catalog rarity: the battlelog can't flag them.
     private static BestDeckEntry ToEntry(
         DeckMeta deck,
         double score,

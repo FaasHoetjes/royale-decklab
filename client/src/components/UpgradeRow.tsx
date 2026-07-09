@@ -6,21 +6,17 @@ import type { Theme } from '../theme';
 interface UpgradeRowProps {
   rank: number;
   suggestion: UpgradeSuggestion;
-  /** This suggestion's gain relative to the top one (0-1), drives the bar. */
   relativeGain: number;
   baselineScore: number;
   theme: Theme;
   isMobile: boolean;
 }
 
-// The evo/hero unlock rows reuse the purple/gold color language of the special
-// deck slots (see slotStyles.ts / DeckSlot's version toggle).
 const UNLOCK_LABEL = {
   evo: { text: 'Unlock Evolution', color: '#a03cf0' },
   hero: { text: 'Unlock Hero', color: '#f5a623' },
 } as const;
 
-/** One ranked upgrade: card art, the level step or unlock, and its score gain. */
 export default function UpgradeRow({
   rank,
   suggestion: s,
@@ -39,8 +35,6 @@ export default function UpgradeRow({
       <div style={{ width: isMobile ? '44px' : '54px', flexShrink: 0 }}>
         <CardTile
           name={s.name ?? ''}
-          // Unlock rows show the art being unlocked (falls back to normal art
-          // when the CDN has none).
           iconUrl={cardIconUrl(s.iconUrls, s.kind === 'level' ? 'normal' : s.kind)}
           showName={false}
         />

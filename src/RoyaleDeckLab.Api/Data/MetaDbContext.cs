@@ -6,11 +6,6 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Data;
 
-/// <summary>
-/// EF Core context over the SQLite battle store (meta.db): an indexed
-/// <c>battles</c> table and a single-row <c>meta_state</c> table. Card ids /
-/// versions are JSON text columns.
-/// </summary>
 public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbContext(options)
 {
     public DbSet<BattleEntity> Battles => Set<BattleEntity>();
@@ -36,7 +31,6 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
             v => v.ToList());
 
-        // Stored as lowercase text ("win"/"loss"/"draw").
         var resultConverter = new ValueConverter<BattleResult, string>(
             v => v.ToString().ToLowerInvariant(),
             v => Enum.Parse<BattleResult>(v, ignoreCase: true));

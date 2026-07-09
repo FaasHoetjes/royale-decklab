@@ -43,7 +43,6 @@ export default function UpgradeAdvisor() {
   const data = advice.data;
   const filtered = data?.suggestions.filter((s) => matches(s, filter)) ?? [];
   const visible = expanded ? filtered : filtered.slice(0, INITIAL_ROWS);
-  // The top visible suggestion anchors the relative-gain bars.
   const maxDelta = filtered[0]?.scoreDelta ?? 0;
   const countFor = (f: Filter) => data?.suggestions.filter((s) => matches(s, f)).length ?? 0;
 
@@ -97,7 +96,6 @@ export default function UpgradeAdvisor() {
       ) : data && data.suggestions.length === 0 ? (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           {data.collectionMaxed ? (
-            // Nothing was even simulatable: congratulate, don't console.
             <>
               <p style={{ ...styles.panelTitle, color: theme.text.primary }}>👑 Nothing left to upgrade</p>
               <p style={{ ...styles.panelText, color: theme.text.secondary }}>

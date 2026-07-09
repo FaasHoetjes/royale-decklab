@@ -7,7 +7,6 @@ interface InfoTipProps {
   children: ReactNode;
 }
 
-/** A small hover "i" icon that reveals a dark tooltip above itself. */
 export default function InfoTip({ ariaLabel, color, width = 220, children }: InfoTipProps) {
   const [show, setShow] = useState(false);
   return (

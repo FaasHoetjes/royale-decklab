@@ -1,11 +1,8 @@
-// Set the theme before first paint so dark-mode users never see a flash of
-// the light palette. Mirrors the effect in AppContext; same localStorage key.
-// Lives as an external file (not inline in index.html) so the CSP served by
-// the API can stay `script-src 'self'` with no inline-script hash to maintain.
+// Runs before first paint to avoid a flash of the wrong palette. External
+// file (not inline) so the API's CSP can stay `script-src 'self'`.
 (function () {
   try {
     var stored = localStorage.getItem('darkMode');
-    // No saved choice: follow the OS. A saved choice always wins.
     var dark = stored !== null
       ? JSON.parse(stored) === true
       : window.matchMedia('(prefers-color-scheme: dark)').matches;

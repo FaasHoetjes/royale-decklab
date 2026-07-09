@@ -18,11 +18,8 @@ export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
-  // The one accent for a meta-backed score; matches the generator's accent.
   const scoreAccent = 'var(--accent)';
 
-  // Server data via React Query, cached and shared with the rest of the app
-  // (e.g. Best Decks' copy-to-builder), so revisiting paints from cache.
   const cardsQuery = useAllCards();
   const catalog = cardsQuery.data ?? [];
   const collectionQuery = usePlayerCollection(activePlayerTag);
@@ -32,7 +29,6 @@ export default function WarDeckBuilder() {
   const loadError = cardsQuery.error ?? collectionQuery.error;
   const error = loadError instanceof Error ? loadError.message : '';
 
-  // Merge catalog with ownership into the builder view model.
   const builderCards = useMemo<BuilderCard[]>(() => {
     const ownedById = new Map(owned.map((c) => [c.id, c]));
     return catalog.map((c) => {
@@ -69,9 +65,6 @@ export default function WarDeckBuilder() {
   const board = useDeckBoard(cardById);
 
   const [picker, setPicker] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
-  // Picker sort + filters live here (not in the picker, which unmounts on
-  // close) and persist to sessionStorage like the board, so they also survive
-  // navigating to another page and back.
   const [initialPrefs] = useState(loadPickerPrefs);
   const [pickerFilters, setPickerFilters] = useState<Set<FilterKey>>(
     () => new Set(initialPrefs.filters)
@@ -86,8 +79,6 @@ export default function WarDeckBuilder() {
     });
   }, [pickerFilters, pickerSortIndex, pickerDescending]);
 
-  // The placed cards with the player's levels + owned tiers. Sending only
-  // these means the server never re-fetches the collection while scoring.
   const scoreCards = useMemo<ScoreDeckCard[]>(() => {
     return [...board.usedIds]
       .map((id) => cardById.get(id))
@@ -101,9 +92,6 @@ export default function WarDeckBuilder() {
       }));
   }, [board.usedIds, cardById]);
 
-  // Debounce the scoring inputs together so a flurry of edits scores once;
-  // useDeckScores dedupes identical arrangements and keeps the previous
-  // scores on-screen while a new arrangement is scored.
   const scoreInput = useMemo(() => ({ cards: scoreCards, decks: board.decks }), [scoreCards, board.decks]);
   const debouncedInput = useDebouncedValue(scoreInput, 300);
   const scoreQuery = useDeckScores(
@@ -121,7 +109,6 @@ export default function WarDeckBuilder() {
     setPicker(null);
   };
 
-  // Surface the evo/hero footnote only while a version toggle is on-screen.
   const hasVersionToggle = board.decks.some((deck) =>
     deck.some((id, slotIndex) => {
       if (id == null || slotKind(slotIndex) !== 'both') return false;

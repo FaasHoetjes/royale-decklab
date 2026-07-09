@@ -11,7 +11,6 @@ interface UseInBuilderButtonProps {
   variant: 'circle' | 'full';
 }
 
-/** The "copy this set into the War Deck Builder" action. */
 export default function UseInBuilderButton({ onClick, busy, spinning, accent, variant }: UseInBuilderButtonProps) {
   const [hovered, setHovered] = useState(false);
 

@@ -1,6 +1,5 @@
 namespace RoyaleDeckLab.Api.Dtos;
 
-/// <summary>One entry in a player's battle log (only the fields MetaBuilder reads).</summary>
 public sealed record CrBattle(
     string Type,
     string BattleTime,

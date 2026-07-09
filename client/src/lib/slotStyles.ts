@@ -1,40 +1,25 @@
 import type { CSSProperties } from 'react';
 
-// The in-game evolution slots are positional and colour-coded: slot 1 takes an
-// evolution (purple), slot 2 the hero (gold), slot 3 either one (purple→gold).
-// We mirror that framing in both the War Deck Generator and the War Deck Builder
-// so the slot a card sits in reads at a glance, matching the live game.
 export type SlotKind = 'evo' | 'hero' | 'both';
 
 const SLOT_ORDER: SlotKind[] = ['evo', 'hero', 'both'];
 
-/** The slot kind for a positional index, or null for the normal (4th+) slots. */
 export function slotKind(index: number): SlotKind | null {
   return SLOT_ORDER[index] ?? null;
 }
 
-// All theme-dependent values live as CSS variables (index.css), so these
-// styles are identical in both modes and a light/dark toggle never re-renders
-// the (many) card tiles built from them.
-
-/** The inner backdrop that shows through a card PNG's transparent corners. */
+// Theme-dependent values live as CSS variables (index.css) so a light/dark
+// toggle never re-renders the (many) card tiles built from these.
 export const CARD_BACKDROP = 'var(--card-backdrop)';
 
-/**
- * Frame for a normal (non-special) card slot: the theme-aware backdrop plus a
- * subtle border and a soft lift, so the dark card render looks intentional on a
- * light page. Spread this over the static card-art style.
- */
 export const CARD_FRAME: CSSProperties = {
   background: CARD_BACKDROP,
   border: 'var(--card-frame-border)',
   boxShadow: 'var(--card-drop)',
 };
 
-// `shadow` is the glow layer(s) of the box-shadow (the dark drop shadow is added
-// in slotBorderStyle). The 'both' slot splits its glow as well as its border
-// (purple off the left edge, gold off the right) so the two-tone split reads
-// clearly instead of blending into one muddy colour.
+// `shadow` is the glow layer(s) of the box-shadow; the 'both' slot splits its
+// glow and border (purple off the left, gold off the right) for a clean two-tone edge.
 const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
   evo: {
     grad: 'linear-gradient(135deg, #d486ff, #8a2be2)',
@@ -50,12 +35,8 @@ const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
   },
 };
 
-/**
- * Glowing colour-coded border for a special slot, built with the padding-box /
- * border-box background trick so the gradient border respects the card's rounded
- * corners (a plain border-color can't be a gradient). `innerBg` is the fill behind
- * the border: the card gradient for a filled slot, 'transparent' for an empty one.
- */
+// Uses the padding-box/border-box background trick so the gradient border
+// respects the card's rounded corners (a plain border-color can't be a gradient).
 export function slotBorderStyle(
   kind: SlotKind,
   innerBg?: string,
@@ -67,9 +48,6 @@ export function slotBorderStyle(
     border: '3px solid transparent',
     backgroundColor: 'transparent',
     background: `${fill} padding-box, ${grad} border-box`,
-    // The coloured halo belongs to a real, filled card. On an empty slot it
-    // reads as neon against the dark interior, so we keep only the soft drop
-    // shadow there and let the gradient outline mark the slot quietly.
     boxShadow: glow ? `${shadow}, var(--card-drop)` : 'var(--card-drop)',
   };
 }

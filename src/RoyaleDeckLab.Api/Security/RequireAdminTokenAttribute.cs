@@ -5,13 +5,6 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace RoyaleDeckLab.Api.Security;
 
-/// <summary>
-/// Guards mutating admin endpoints with a shared secret: the request must send
-/// an <c>X-Admin-Token</c> header matching the <c>ADMIN_TOKEN</c> environment
-/// variable (set it in the repo-root .env locally, inject it at deploy time).
-/// Fails closed: with no <c>ADMIN_TOKEN</c> configured the endpoints are
-/// disabled entirely rather than left open.
-/// </summary>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public sealed class RequireAdminTokenAttribute : Attribute, IAuthorizationFilter
 {
@@ -37,7 +30,7 @@ public sealed class RequireAdminTokenAttribute : Attribute, IAuthorizationFilter
         }
     }
 
-    /// <summary>Constant-time comparison so the token can't be probed byte-by-byte via timing.</summary>
+    // Constant-time comparison so the token can't be probed byte-by-byte via timing.
     public static bool TokensMatch(string provided, string expected)
         => provided.Length > 0
            && CryptographicOperations.FixedTimeEquals(

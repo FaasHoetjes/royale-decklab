@@ -1,6 +1,6 @@
 namespace RoyaleDeckLab.Api.Dtos;
 
-/// <summary>One side (team or opponent) of a battle. Rounds is populated for duels.</summary>
+/// <summary>Rounds is populated for duels.</summary>
 public sealed record CrBattleSide(
     string? Tag,
     string? Name,

@@ -11,7 +11,6 @@ interface CompactDeckRowProps {
   isMobile: boolean;
 }
 
-/** One deck as a single compact row: 8 cards, inline stats, open-in-game. */
 export default function CompactDeckRow({ deck, theme, isMobile }: CompactDeckRowProps) {
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const accent = theme.accent;
@@ -20,7 +19,6 @@ export default function CompactDeckRow({ deck, theme, isMobile }: CompactDeckRow
     <div
       style={{
         ...styles.row,
-        // On phones the cards take the full width and the stats wrap beneath.
         flexWrap: isMobile ? ('wrap' as const) : ('nowrap' as const),
         gap: isMobile ? '8px' : '14px',
         padding: isMobile ? '10px' : '10px 14px',

@@ -9,7 +9,6 @@ interface FilterPopoverProps {
   theme: Theme;
 }
 
-/** The card picker's filter dropdown: checkable type filters + a Clear row. */
 export default function FilterPopover({ filters, onToggle, onClear, onClose, theme }: FilterPopoverProps) {
   return (
     <>

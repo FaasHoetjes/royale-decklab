@@ -20,7 +20,6 @@ public sealed record PlayerItemLevel
     public CardIconUrls? IconUrls { get; init; }
 }
 
-/// <summary>Maps a CR API player card into the domain shape (shared by the player-facing endpoints).</summary>
 public static class PlayerItemLevelMapping
 {
     public static PlayerItemLevel ToPlayerItemLevel(this CrPlayerCard c) => new()

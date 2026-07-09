@@ -5,16 +5,6 @@ using RoyaleDeckLab.Api.Options;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// Holds the aggregated meta in memory and owns the build/refresh lifecycle.
-///
-/// Registered as a singleton. Requests are served on many threads while the
-/// background service refreshes, so: the deck list is swapped by atomic
-/// reference assignment (readers see either the whole old list or the whole new
-/// one), and the "a build is in flight" guard is a lock. Scoped DB work
-/// (BattleRepository/MetaBuilder) is resolved per operation through the scope
-/// factory, since a singleton can't hold a scoped DbContext.
-/// </summary>
 public sealed class MetaCache(
     IServiceScopeFactory scopeFactory,
     IOptions<MetaOptions> options,
@@ -29,8 +19,6 @@ public sealed class MetaCache(
     private long _epochStart;
     private bool _isBuilding;
 
-    // Exact-deck lookup index for scoring (slice 2): sorted-card-id key → meta
-    // entry. Rebuilt lazily whenever the cache changes (keyed on _lastCacheTime).
     private Dictionary<string, DeckMeta> _metaIndex = new();
     private long _metaIndexTime = -1;
 
@@ -40,17 +28,11 @@ public sealed class MetaCache(
     public long EpochStart => Interlocked.Read(ref _epochStart);
     public bool IsBuilding { get { lock (_buildLock) { return _isBuilding; } } }
 
-    /// <summary>The sorted-card-id key used to match a deck against the meta index.</summary>
     public static string DeckKey(IEnumerable<int> cardIds) => string.Join(',', cardIds.OrderBy(x => x));
 
-    /// <summary>
-    /// The oldest battleTime that still counts: the later of the rolling-window
-    /// edge and the patch boundary.
-    /// </summary>
     private long EffectiveCutoff()
         => Math.Max(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _opt.BattleWindowMs, Interlocked.Read(ref _epochStart));
 
-    /// <summary>Restores the patch boundary from the store and loads/builds the cache. Call once at startup.</summary>
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         long epoch;
@@ -68,11 +50,7 @@ public sealed class MetaCache(
         await LoadOrBuildAsync(ct);
     }
 
-    /// <summary>
-    /// Re-aggregates the in-memory cache from the stored battles after pruning past
-    /// the effective cutoff. Pure DB + CPU, no network. Does NOT advance the stored
-    /// last-build time (that marks the last successful fetch).
-    /// </summary>
+    // Pure DB + CPU, no network; does NOT advance the stored last-build time (only RebuildAsync does, after a fresh fetch).
     public List<DeckMeta> AggregateFromStore(string reason)
     {
         using var scope = scopeFactory.CreateScope();
@@ -95,11 +73,6 @@ public sealed class MetaCache(
         return decks;
     }
 
-    /// <summary>
-    /// Rebuilds from a fresh fetch, then swaps the result into the cache. Returns
-    /// the existing cache unchanged if a build is already running, the fetch comes
-    /// back empty, or the build fails.
-    /// </summary>
     public async Task<List<DeckMeta>> RebuildAsync(string reason, CancellationToken ct = default)
     {
         lock (_buildLock)
@@ -121,8 +94,7 @@ public sealed class MetaCache(
 
             var fresh = await builder.CollectWarBattleRecordsAsync(ct);
 
-            // An empty fetch means the API is down. Keep the existing store and
-            // cache rather than wiping good data with nothing.
+            // An empty fetch means the API is down; keep the existing store/cache rather than wiping good data.
             if (fresh.Count == 0)
             {
                 logger.LogWarning("Meta rebuild ({Reason}): fetched 0 battles, keeping existing cache", reason);
@@ -158,7 +130,6 @@ public sealed class MetaCache(
         }
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        // Fresh enough and we have battles: aggregate without hitting the API.
         if (lastBuild > 0 && now - lastBuild < _opt.CacheRefreshIntervalMs && count > 0)
         {
             logger.LogInformation("Meta cache fresh; aggregating from stored battles");
@@ -166,10 +137,6 @@ public sealed class MetaCache(
             return;
         }
 
-        // Stale but non-empty: serve the slightly-stale aggregate right away so
-        // meta-dependent endpoints aren't empty for the minutes the crawl below
-        // takes. The rebuild swaps in fresh data when it lands (and on failure
-        // this stale meta simply stays in place).
         if (count > 0)
         {
             logger.LogInformation("Meta cache stale; serving stored battles while a fresh crawl runs...");
@@ -188,7 +155,6 @@ public sealed class MetaCache(
         }
     }
 
-    /// <summary>Sets the patch boundary, drops pre-boundary battles, and re-aggregates immediately (no re-fetch).</summary>
     public List<DeckMeta> SetEpoch(long ms)
     {
         Interlocked.Exchange(ref _epochStart, ms);
@@ -205,7 +171,6 @@ public sealed class MetaCache(
         return scope.ServiceProvider.GetRequiredService<BattleRepository>().Count();
     }
 
-    /// <summary>Exact-deck lookup index, rebuilt lazily when the cache changes. Used by deck scoring.</summary>
     public Dictionary<string, DeckMeta> GetMetaIndex()
     {
         var cacheTime = Interlocked.Read(ref _lastCacheTime);
@@ -225,7 +190,6 @@ public sealed class MetaCache(
         }
     }
 
-    /// <summary>Formats epoch ms as an ISO-8601 UTC string with millisecond precision (matches the old JS output).</summary>
     public static string IsoMs(long ms)
         => DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 }

@@ -7,32 +7,22 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Data;
 
-/// <summary>
-/// SQLite-backed persistence for the rolling battle store and meta state.
-/// Battles live in one indexed table: dedup is the primary key, pruning the
-/// window is one indexed DELETE, and the aggregated meta is NOT persisted (it's
-/// rebuilt from the battles on demand, so battles are the single source of truth).
-///
-/// Reads go through EF (AsNoTracking); the bulk merge uses raw INSERT OR IGNORE
-/// because EF has no native upsert and war battles are full of cross-perspective
-/// duplicates (both sampled players log the same physical game).
-/// </summary>
+// The aggregated meta is NOT persisted here: it's rebuilt from the battles on
+// demand, so battles are the single source of truth. The bulk merge uses raw
+// INSERT OR IGNORE because EF has no native upsert and war battles are full of
+// cross-perspective duplicates (both sampled players log the same physical game).
 public sealed partial class BattleRepository(MetaDbContext db)
 {
     // SQLite allows a single writer at a time, and the background crawl's merge
-    // and an admin /meta/epoch prune run on separate scopes (= separate
-    // connections). Serialise every write through one process-wide gate rather
-    // than relying on busy-timeout retries under contention. NOT reentrant:
-    // a write method must never call another write method while holding it.
+    // and an admin /meta/epoch prune run on separate connections. Serialise every
+    // write through one process-wide gate. NOT reentrant: a write method must
+    // never call another write method while holding it.
     private static readonly SemaphoreSlim WriteGate = new(1, 1);
 
     [GeneratedRegex(@"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})")]
     private static partial Regex BattleTimeRegex();
 
-    /// <summary>
-    /// Converts an API battleTime ("20240617T120000.000Z") to epoch ms. Returns 0
-    /// on an unparseable value so such records sort as ancient and get pruned out.
-    /// </summary>
+    // Returns 0 on an unparseable value so such records sort as ancient and get pruned out.
     public static long ParseBattleTime(string battleTime)
     {
         var m = BattleTimeRegex().Match(battleTime);
@@ -47,11 +37,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         return new DateTimeOffset(dt).ToUnixTimeMilliseconds();
     }
 
-    /// <summary>
-    /// Merges battle records, deduping on the primary key. Returns how many rows
-    /// were newly inserted (duplicates are ignored and don't count): the
-    /// "+N new this fetch" figure.
-    /// </summary>
     public int MergeBattles(IReadOnlyCollection<BattleRecord> records)
     {
         if (records.Count == 0)
@@ -72,9 +57,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     private int MergeBattlesCore(IReadOnlyCollection<BattleRecord> records)
     {
-        // EF's transaction owns the connection lifetime: it opens on Begin and
-        // closes on dispose (the previous manual Open left it open for the rest
-        // of the scope).
         using var tx = db.Database.BeginTransaction();
         var conn = (SqliteConnection)db.Database.GetDbConnection();
         using var cmd = conn.CreateCommand();
@@ -109,7 +91,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         return added;
     }
 
-    /// <summary>Deletes battles older than the cutoff (epoch ms). Returns rows removed.</summary>
     public int Prune(long cutoffMs)
     {
         WriteGate.Wait();
@@ -123,7 +104,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    /// <summary>Removes every battle and resets the patch boundary, for a clean rebuild.</summary>
     public void Clear()
     {
         WriteGate.Wait();
@@ -141,12 +121,10 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    /// <summary>All stored battles, mapped to BattleRecord for aggregation.</summary>
     public List<BattleRecord> AllBattles()
     {
-        // Enumerate the entities (EF applies the JSON value converters on read) and
-        // map in a single pass. A LINQ projection over the converted collection
-        // columns can't be translated to SQL, so the query itself stays unprojected.
+        // A LINQ projection over the converted collection columns can't be
+        // translated to SQL, so enumerate the entities and map in a single pass.
         var records = new List<BattleRecord>();
         foreach (var b in db.Battles.AsNoTracking())
         {
@@ -199,9 +177,8 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    // The meta_state table holds exactly one row, keyed Id = 1 (seeded at startup).
-    // A primary-key lookup is both the correct access and avoids EF's
-    // "FirstOrDefault without OrderBy" ambiguity warning.
+    // meta_state holds exactly one row, keyed Id = 1 (seeded at startup). A
+    // primary-key lookup also avoids EF's "FirstOrDefault without OrderBy" warning.
     private MetaStateEntity State()
         => db.MetaState.Find(1)
            ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");

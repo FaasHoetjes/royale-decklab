@@ -1,9 +1,5 @@
 namespace RoyaleDeckLab.Api.Models;
 
-/// <summary>
-/// The player-facing view of a meta deck: its meta stats plus this player's fit
-/// score, the player's own card objects, and two version lists.
-/// </summary>
 public sealed record ScoredDeck
 {
     public required int[] CardIds { get; init; }
@@ -13,8 +9,6 @@ public sealed record ScoredDeck
     public required int Players { get; init; }
     public required double PickRate { get; init; }
     public required double PlayerScore { get; init; }
-
-    /// <summary>The player's own card objects for this deck (levels, icons) for display.</summary>
     public required IReadOnlyList<PlayerItemLevel> Cards { get; init; }
 
     /// <summary>

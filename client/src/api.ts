@@ -1,5 +1,3 @@
-// Typed fetch helpers for the backend API. Components consume these through
-// the React Query hooks in queries.ts.
 import type { CardVersionRef, CardIconUrls } from './lib/cardDisplay';
 
 async function getJson<T>(url: string, label: string, signal?: AbortSignal): Promise<T> {
@@ -10,7 +8,6 @@ async function getJson<T>(url: string, label: string, signal?: AbortSignal): Pro
   return response.json();
 }
 
-/** A card as it appears inside a scored deck's card list. */
 export interface DeckCardData {
   id: number;
   name: string;
@@ -28,8 +25,7 @@ export interface ScoredDeck {
   players: number;
   pickRate: number;
   playerScore: number;
-  // cardVersions is personalised to the player (unowned specials downgraded);
-  // metaCardVersions is what top players actually fielded.
+  // cardVersions is personalised to the player (unowned specials downgraded); metaCardVersions is what top players actually fielded.
   cardVersions?: CardVersionRef[];
   metaCardVersions?: CardVersionRef[];
   cards: DeckCardData[];
@@ -64,12 +60,7 @@ export interface OwnedCard {
   iconUrls?: CardIconUrls;
 }
 
-/**
- * One deck's score in the War Deck Builder: always `winRate × fieldability` on
- * a single comparable scale. A meta-matched deck (`isMeta`) uses its real
- * confidence-adjusted win rate; any other deck uses a neutral 0.5 prior.
- * `score` is null when the deck is empty or a card is missing.
- */
+// score is winRate x fieldability; non-meta decks use a neutral 0.5 prior; null when the deck is empty or a card is missing.
 export interface BuilderDeckScore {
   score: number | null;
   isMeta: boolean;
@@ -108,14 +99,8 @@ export interface BestDeckSet {
   totalScore: number;
 }
 
-/**
- * One recommended upgrade. Kind 'level' raises the card from `fromLevel` to
- * `toLevel` (more than one level when that's the cheapest jump that changes the
- * lineup); 'evo'/'hero' unlock that special version (levels unchanged).
- * `affectedDeckIndexes` are the current lineup decks (0-3) the change can move;
- * empty with `changesLineup` true means the upgrade promotes a deck that isn't
- * in the lineup yet.
- */
+// 'level' raises fromLevel->toLevel (may skip levels to the cheapest lineup-changing jump); 'evo'/'hero' unlock that version instead.
+// affectedDeckIndexes empty + changesLineup true means the upgrade promotes a deck not currently in the lineup.
 export interface UpgradeSuggestion {
   cardId: number;
   name?: string;
@@ -134,7 +119,6 @@ export interface UpgradeSuggestion {
 export interface UpgradeAdviceResponse {
   player: { tag: string; name: string };
   baselineScore: number;
-  /** True when nothing was even simulatable: every meta card maxed, every fielded evo/hero owned. */
   collectionMaxed: boolean;
   suggestions: UpgradeSuggestion[];
 }

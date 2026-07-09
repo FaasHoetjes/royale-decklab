@@ -3,25 +3,16 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Tests;
 
-/// <summary>
-/// The builder's placement penalty: the in-game special slots are positional
-/// (slot 1 fields an Evo, slot 2 a Hero, slot 3 either), so a meta special the
-/// player OWNS but parks in a normal slot fields as the normal version and costs
-/// the same multiplier as not owning it, while an UNOWNED special is priced by
-/// the ownership check alone and never penalized twice.
-/// </summary>
+/// <summary>Builder slots are positional (1=Evo, 2=Hero, 3=either); an owned special parked outside its slot fields as normal.</summary>
 public sealed class BuilderPlacementPenaltyTests
 {
-    // DeckAnalyzer.MissingSpecialMultiplier: one special not fielded ≈ 6% weaker.
     private const double MissingSpecial = 0.94;
 
     private readonly DeckAnalyzer _analyzer = new();
     private static readonly int[] Ids = Build.Eight(1);
 
-    /// <summary>A positional 8-slot deck, as the builder posts it.</summary>
     private static List<int?> Slots(params int[] ids) => ids.Select(id => (int?)id).ToList();
 
-    /// <summary>One version entry per deck card: the given specials, rest normal.</summary>
     private static List<CardVersion> Versions(params CardVersion[] specials)
     {
         var byId = specials.ToDictionary(v => v.CardId);
@@ -92,9 +83,7 @@ public sealed class BuilderPlacementPenaltyTests
     [Fact]
     public void UnownedSpecial_MisplacementAddsNoSecondPenalty()
     {
-        // The player doesn't own the evo, so the ownership check inside
-        // ScoreDeckForPlayer already applied the multiplier; placement must not
-        // stack another one on top.
+        // Unowned: ScoreDeckForPlayer already applied the multiplier; placement must not stack a second one.
         var cards = Build.Collection(Ids);
         var map = Build.CardMap(cards);
         var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));

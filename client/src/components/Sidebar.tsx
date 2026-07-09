@@ -12,12 +12,10 @@ export default function Sidebar() {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Leaving mobile discards the drawer state so it can't reappear open later.
   useEffect(() => {
     if (!isMobile && drawerOpen) setDrawerOpen(false);
   }, [isMobile, drawerOpen]);
 
-  // While the drawer is up, the page behind it must not scroll.
   useEffect(() => {
     if (!drawerOpen) return;
     const prev = document.body.style.overflow;
@@ -36,10 +34,8 @@ export default function Sidebar() {
     return () => window.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
 
-  // The generator keys off the URL player id, so point it at the active tag.
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 
-  // Active nav item: neutral fill + a single accent bar on the left.
   const activeBg = 'var(--nav-active-bg)';
 
   const navItems = [
@@ -105,8 +101,6 @@ export default function Sidebar() {
     </div>
   );
 
-  // Mobile: a sticky top bar (brand · theme toggle · hamburger) plus a
-  // right-hand slide-in drawer with the full nav, contact link and player box.
   if (isMobile) {
     return (
       <>
@@ -159,7 +153,6 @@ export default function Sidebar() {
     );
   }
 
-  // Desktop: the full-height side column.
   return (
     <nav style={{ ...styles.sidebar, backgroundColor: theme.bg.secondary, borderRightColor: theme.border }}>
       <div style={{ ...styles.brand, color: theme.text.primary }}>
@@ -289,7 +282,6 @@ const styles = {
     justifyContent: 'center' as const,
     flexShrink: 0,
   },
-  // Pinned to the bottom of the column.
   footer: {
     marginTop: 'auto',
     paddingTop: '16px',

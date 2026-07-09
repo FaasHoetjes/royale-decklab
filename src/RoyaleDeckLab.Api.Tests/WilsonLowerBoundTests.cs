@@ -13,7 +13,6 @@ public sealed class WilsonLowerBoundTests
     [Fact]
     public void IsAlwaysBelowTheObservedRate()
     {
-        // The lower bound discounts for uncertainty, so it must sit under the raw rate.
         Assert.True(MetaBuilder.WilsonLowerBound(6, 10) < 0.6);
         Assert.True(MetaBuilder.WilsonLowerBound(60, 100) < 0.6);
     }
@@ -21,7 +20,6 @@ public sealed class WilsonLowerBoundTests
     [Fact]
     public void TightensTowardTheRate_AsTheSampleGrows()
     {
-        // Same 60% win rate, more games -> a higher (less discounted) lower bound.
         var few = MetaBuilder.WilsonLowerBound(6, 10);
         var many = MetaBuilder.WilsonLowerBound(60, 100);
         Assert.True(many > few);

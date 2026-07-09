@@ -2,18 +2,15 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Data;
 
-/// <summary>
-/// A row in the <c>battles</c> table. Card ids and versions are stored as JSON
-/// text columns (via value converters in <see cref="MetaDbContext"/>).
-/// </summary>
+// Card ids and versions are stored as JSON text columns (value converters in MetaDbContext).
 public sealed class BattleEntity
 {
-    /// <summary>Primary key. Dedup: one player's battle at one time is one observation.</summary>
+    // Dedup: one player's battle at one time is one observation.
     public string Key { get; set; } = "";
 
     public string BattleTime { get; set; } = "";
 
-    /// <summary>battleTime parsed to epoch ms; the indexed column the prune rides.</summary>
+    // Parsed to epoch ms; the indexed column the prune rides.
     public long BattleTimeMs { get; set; }
 
     public string PlayerTag { get; set; } = "";
@@ -25,10 +22,6 @@ public sealed class BattleEntity
     public IReadOnlyList<CardVersion> CardVersions { get; set; } = [];
 }
 
-/// <summary>
-/// The single-row <c>meta_state</c> table holding the patch boundary and last
-/// successful fetch time.
-/// </summary>
 public sealed class MetaStateEntity
 {
     public int Id { get; set; } = 1;

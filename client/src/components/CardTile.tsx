@@ -8,18 +8,14 @@ interface CardTileProps {
   /** Positional index; the first three positions get the evo/hero/both frame. */
   slotIndex?: number;
   elixirCost?: number;
-  /** Unified /16 level; omit to hide the level banner. */
   level?: number | null;
   showName?: boolean;
   nameColor?: string;
   lazyLoad?: boolean;
-  /** Extra overrides on the art box (e.g. drag drop-target outline). */
   artStyle?: CSSProperties;
-  /** Extra overlays inside the art box (e.g. the builder's version toggle). */
   children?: ReactNode;
 }
 
-/** One card: framed art with elixir/level overlays, optionally named below. */
 export default function CardTile({
   name,
   iconUrl,

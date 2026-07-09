@@ -2,11 +2,7 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Tests;
 
-/// <summary>
-/// The map-based ScoreBuilderDeck/FieldabilityScore overloads exist so the deck
-/// builder endpoint indexes the collection once instead of per deck: they must
-/// stay score-identical to the list-based originals.
-/// </summary>
+/// <summary>The map-based overloads exist so the builder endpoint indexes once instead of per deck; they must stay score-identical to the list-based originals.</summary>
 public sealed class ScoreBuilderDeckOverloadTests
 {
     private readonly DeckAnalyzer _analyzer = new();
@@ -53,7 +49,7 @@ public sealed class ScoreBuilderDeckOverloadTests
     [Fact]
     public void ScoreBuilderDeck_MissingCard_ReturnsNull_InBothOverloads()
     {
-        var cards = Build.Collection(1, 2, 3); // deck needs 1..8
+        var cards = Build.Collection(1, 2, 3);
 
         Assert.Null(_analyzer.ScoreBuilderDeck(cards, Build.Eight(1), meta: null));
         Assert.Null(_analyzer.ScoreBuilderDeck(Build.CardMap(cards), Build.Eight(1), meta: null));

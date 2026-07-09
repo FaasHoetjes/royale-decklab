@@ -1,8 +1,5 @@
-// The theme object components style against. The actual color values live as CSS
-// custom properties in index.css (light on :root, dark on :root[data-theme]);
-// these are just the var(--x) references, identical in both modes. That's what
-// makes a light/dark toggle a single native repaint (flip data-theme on <html>)
-// rather than React re-computing and re-applying inline styles across the tree.
+// Values are var(--x) refs into index.css; flipping data-theme repaints
+// natively instead of React re-computing styles across the tree.
 export const getTheme = () => ({
   bg: {
     primary: 'var(--bg-primary)',

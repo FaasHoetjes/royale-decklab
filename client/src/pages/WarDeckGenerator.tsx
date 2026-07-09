@@ -11,23 +11,14 @@ export default function WarDeckGenerator() {
   const navigate = useNavigate();
   const { activePlayerTag, setActivePlayerTag } = useApp();
 
-  // The URL is the source of truth for which player to show; searching just
-  // navigates and lets the query below react to the new tag.
   const tag = playerId ? `#${playerId}` : null;
 
-  // Backend readiness. staleTime:Infinity means a remount won't re-flash the
-  // "connecting" screen once it has answered this session.
   const meta = useMetaStatus();
   const metaReady = meta.isSuccess;
 
-  // The player's war decks, keyed by tag. The query cache replaces the old
-  // per-tag Map, so revisiting a loaded player paints instantly. Held off until
-  // the backend is confirmed up.
   const warDecks = usePlayerWarDecks(tag, metaReady);
   const playerData = warDecks.data ?? null;
 
-  // Reached the generator without a tag in the URL but a player is active
-  // (e.g. landed on '/'), so load that player's page.
   useEffect(() => {
     if (!playerId && activePlayerTag) {
       navigate(`/${activePlayerTag.replace(/#/g, '')}`, { replace: true });
@@ -49,7 +40,6 @@ export default function WarDeckGenerator() {
   };
 
   const handleNewSearch = () => {
-    // Clearing the active player returns the app to the landing page.
     setActivePlayerTag(null);
     navigate('/');
   };
@@ -91,9 +81,6 @@ export default function WarDeckGenerator() {
           onNewSearch={handleNewSearch}
         />
       ) : (tag || activePlayerTag) && !searchError ? (
-        // A player is being loaded (from the URL, or the redirect above is
-        // about to fire). Show a loader, not the empty search form, which
-        // would otherwise flash for a moment before results arrive.
         <div style={styles.centerContent}>
           <h1>Royale DeckLab</h1>
           <p style={{ ...styles.subtitle, color: theme.text.secondary }}>Loading your war decks…</p>

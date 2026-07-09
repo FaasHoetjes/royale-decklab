@@ -2,81 +2,42 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// Scores meta decks against a player's collection and assembles the four
-/// card-disjoint war decks. Stateless (registered as a singleton). The tuning
-/// constants below carry their rationale in comments: they're the one part of
-/// the scoring that isn't learned from data.
-/// </summary>
 public sealed class DeckAnalyzer
 {
-    // In-game evolution slots: slot 1 takes an Evo, slot 2 a Hero, slot 3 either.
-    // So a legal deck has at most 2 Evos, at most 2 Heroes, and at most 3 specials.
-    // Correct meta data already respects this; the cap is only a safety net.
+    // Slot 1 takes an Evo, slot 2 a Hero, slot 3 either; caps are a safety net,
+    // correct meta data already respects them.
     private const int MaxEvo = 2;
     private const int MaxHero = 2;
     private const int MaxSpecials = 3;
 
-    // Clash Royale card stats compound ~10% per level, so a card N levels below its
-    // max fields 1.10^-N of full combat stats. Meta win rates are measured at
-    // tournament-normalised (maxed) levels, so "maxed" is the reference point.
+    // CR card stats compound ~10% per level; meta win rates are measured at maxed levels.
     private const double StatGrowthPerLevel = 1.10;
 
-    // A stat deficit doesn't cost win rate linearly: it flips interaction
-    // breakpoints (the Fireball that no longer kills the Musketeer, the unit that
-    // survives one extra hit), and a battle chains many such interactions. So the
-    // deck's stat fraction enters the win ODDS raised to this exponent, roughly
-    // "how many level-sensitive interactions decide a battle". A reasoned default,
-    // deliberately not data-fitted: the battle store keeps only 7 days and drops
-    // card levels, so fitting would first require logging levels at collection time.
+    // Not data-fitted: the battle store keeps 7 days and drops card levels, so
+    // fitting would first require logging levels at collection time.
     private const double BattleCompoundingExponent = 4.0;
 
-    // Strength lost per special version (Evo/Hero) the meta deck fielded that the
-    // player hasn't unlocked. Compounds across the deck: one ≈ 6% weaker, two ≈ 12%.
+    // ~6% weaker per missing special version, compounding across the deck.
     private const double MissingSpecialMultiplier = 0.94;
 
-    // Minimum distinct top players who must have run a deck for us to recommend it:
-    // a representativeness gate, not a win-rate multiplier. Relaxes downward only
-    // (see the ladder), so raising the floor costs thin collections nothing.
     private const int MinDistinctPlayers = 5;
-
-    // Popularity also re-enters as a soft weight above the gate: players/(players +
-    // prior), rising with count and saturating, so broadly-adopted decks edge out
-    // niche high-variance ones without letting popularity dominate win rate.
     private const int PopularityPrior = 8;
-
-    // The prior win rate for a deck we have no meta data on: a 1v1 coin flip. Keeps
-    // a custom deck on the same winRate × fieldability scale as a meta deck.
     private const double NeutralWinRate = 0.5;
-
-    // Extra decks beyond the primary four to return as swap candidates. Meta decks
-    // share staples, so most of this pool gets filtered per slot by the UI, hence
-    // a generous size so enough survive the per-slot disjointness filter.
     private const int AlternativePoolSize = 60;
 
-    // The adaptive gate: strictest first, falling through only to fill slots the
-    // player can't otherwise fill with four disjoint decks. The last step admits
-    // even one-off decks as a last resort.
+    // Strictest gate first, falling through only when it can't fill all four slots.
     private static readonly int[] PopularityGateLadder = [MinDistinctPlayers, 3, 2, 1];
 
-    // A war lineup fields four decks.
     private const int DecksPerLineup = 4;
 
-    // Safety valve for the exact lineup search: a pathological pool (thousands of
-    // decks with near-identical scores and dense overlaps) could make the
-    // branch-and-bound crawl, so past this many visited nodes it returns the best
-    // lineup found so far, never worse than the greedy seed. Realistic pools
-    // finish in a few thousand nodes.
+    // Safety valve for the branch-and-bound search on pathological pools;
+    // realistic pools finish in a few thousand nodes.
     private const long SearchNodeBudget = 2_000_000;
 
-    /// <summary>The score + factors for one War Deck Builder deck (see <see cref="ScoreBuilderDeck"/>).</summary>
     public sealed record BuilderScore(double Score, double WinRate, double Fieldability, bool IsMeta, int Players);
 
-    /// <summary>
-    /// Champions (Mighty Miner, Golden Knight, …) are a rarity, not an evolution:
-    /// always fielded in the champion ("hero") slot with no normal version. The
-    /// battlelog's evolutionLevel never flags them, so rarity is the only signal.
-    /// </summary>
+    // Champions are a rarity, not an evolution, and the battlelog's evolutionLevel
+    // never flags them, so rarity is the only signal.
     private static bool IsChampion(int cardId, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
         => cardMap.TryGetValue(cardId, out var card) && card.Rarity == Rarity.Champion;
 
@@ -93,11 +54,6 @@ public sealed class DeckAnalyzer
         return (double)players.Value / (players.Value + PopularityPrior);
     }
 
-    /// <summary>
-    /// Adds champions to a meta deck's stored versions: a champion is forced to the
-    /// hero slot by identity (the battlelog can't flag it), every other card keeps
-    /// its stored version. One entry per deck card, ordered by the deck's card list.
-    /// </summary>
     private static List<CardVersion> WithChampionVersions(
         IReadOnlyList<int> cardIds,
         IReadOnlyList<CardVersion>? cardVersions,
@@ -120,11 +76,8 @@ public sealed class DeckAnalyzer
         return result;
     }
 
-    /// <summary>
-    /// Enforces the legal evolution-slot limits, downgrading any special beyond the
-    /// limits back to normal (first legal ones win). Returns the original list
-    /// untouched when it's already legal, so the shared meta cache is never mutated.
-    /// </summary>
+    // Returns the original list unchanged when already legal, since callers share
+    // this against the cached meta deck.
     private static IReadOnlyList<CardVersion>? CapEvolutions(IReadOnlyList<CardVersion>? cardVersions)
     {
         if (cardVersions is null)
@@ -158,13 +111,8 @@ public sealed class DeckAnalyzer
         return illegal ? capped : cardVersions;
     }
 
-    /// <summary>
-    /// Resolves a meta deck's specials down to what THIS player can field for
-    /// display: an evo/hero they haven't unlocked is shown as normal. Purely
-    /// cosmetic: scoring still uses the real meta versions. Champions are never
-    /// downgraded (owning the card means owning the champion). Returns the original
-    /// list untouched when nothing changes.
-    /// </summary>
+    // Cosmetic only: swaps unlocked specials to normal for display, scoring still
+    // uses the meta versions.
     private static IReadOnlyList<CardVersion>? PersonalizeVersions(
         IReadOnlyList<CardVersion>? cardVersions,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
@@ -196,19 +144,6 @@ public sealed class DeckAnalyzer
         return changed ? personalized : cardVersions;
     }
 
-    /// <summary>
-    /// Fills special-slot capacity the meta deck leaves unused with versions the
-    /// player owns: the in-game slots are positional, so a meta-normal card placed
-    /// in a free hero/evo slot fields as that version automatically, a free
-    /// upgrade the meta record simply never exercised. Ownership comes from the
-    /// cumulative evolutionLevel (2 = hero unlocked, 1 = evo unlocked; at 2 the
-    /// evo tier is ambiguous, so a hero owner never claims an evo slot).
-    /// Capacity counts the META specials, not the personalised ones, because a
-    /// downgraded special keeps its on-screen slot. Cosmetic, like
-    /// <see cref="PersonalizeVersions"/>: scoring still uses the meta versions.
-    /// Both lists come from <see cref="WithChampionVersions"/>, one entry per
-    /// deck card in deck order, so they pair up by index.
-    /// </summary>
     private static IReadOnlyList<CardVersion>? UpgradeIntoFreeSlots(
         IReadOnlyList<CardVersion>? personalized,
         IReadOnlyList<CardVersion>? metaVersions,
@@ -231,14 +166,14 @@ public sealed class DeckAnalyzer
         for (var i = 0; i < personalized.Count; i++)
         {
             var v = personalized[i];
-            // Only a card the meta fielded as normal can claim a free slot; a meta
-            // special keeps its slot even when downgraded for this player.
             if (v.Version != CardVersionKind.Normal || metaVersions[i].Version != CardVersionKind.Normal)
             {
                 upgraded.Add(v);
                 continue;
             }
             var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
+            // Check hero before evo: an evolutionLevel of 2 unlocks the hero, so a
+            // hero owner shouldn't also claim an evo slot.
             if (owned >= 2 && hero < MaxHero && total < MaxSpecials)
             {
                 hero++;
@@ -261,30 +196,18 @@ public sealed class DeckAnalyzer
         return changed ? upgraded : personalized;
     }
 
-    /// <summary>
-    /// This player's fit for a meta deck: the win rate they can expect fielding it
-    /// at their card levels (see <see cref="LevelAdjustedWinRate"/>) × unlocked
-    /// specials × adoption. Returns null if a card is missing from their collection.
-    /// </summary>
     public double? ScoreDeckForPlayer(
         IReadOnlyList<PlayerItemLevel> playerCards,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions)
         => ScoreDeckForPlayer(BuildCardMap(playerCards), metaDeck, cardVersions);
 
-    /// <summary>
-    /// Map-based core of ScoreDeckForPlayer, for hot paths that score many decks
-    /// against one collection: building the map per deck used to dominate the
-    /// Upgrade Advisor's runtime.
-    /// </summary>
     public double? ScoreDeckForPlayer(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions)
     {
         double totalStatFraction = 0;
-        // Version fit compounds across the deck (a product), so each missing special
-        // takes a real bite out of the whole score rather than 1/8 of one card's.
         var versionFit = 1.0;
         var validCards = 0;
 
@@ -295,15 +218,10 @@ public sealed class DeckAnalyzer
                 return null;
             }
 
-            // Fraction of full combat stats this card fields, from CR's ~10%-per-level
-            // curve: each level below the card's max costs ~10%. Rarity-fair.
             var levelsBelowMax = Math.Max(0, playerCard.MaxLevel - playerCard.Level);
             totalStatFraction += Math.Pow(StatGrowthPerLevel, -levelsBelowMax);
             validCards++;
 
-            // Penalty if the meta deck fielded a special the player hasn't unlocked
-            // (hero needs evolutionLevel >= 2, evo >= 1). Champions are exempt, and
-            // only specials the deck actually fields count.
             if (cardVersions is not null && !IsChampion(cardId, cardMap))
             {
                 var metaCardVersion = cardVersions.FirstOrDefault(c => c.CardId == cardId);
@@ -321,22 +239,15 @@ public sealed class DeckAnalyzer
         }
 
         var avgStatFraction = totalStatFraction / validCards;
-        // Confidence is the confidence-adjusted win rate (always stored in this
-        // port), so small-sample decks don't outrank well-tested ones.
+        // metaDeck.Confidence is already the confidence-adjusted win rate.
         var expectedWinRate = LevelAdjustedWinRate(metaDeck.Confidence, avgStatFraction);
         return expectedWinRate * versionFit * PopularityFactor(metaDeck.Players);
     }
 
-    /// <summary>
-    /// The win rate the player can expect fielding a deck at
-    /// <paramref name="statFraction"/> of full combat stats, given its meta win
-    /// rate at maxed levels. Works in odds space (Bradley-Terry): the stat ratio
-    /// multiplies the win odds raised to <see cref="BattleCompoundingExponent"/>,
-    /// because a per-interaction stat edge compounds over a battle. Maxed decks
-    /// (fraction 1) keep the meta win rate exactly; underleveled decks fall off
-    /// much faster than the old linear score scaling: e.g. a 54% deck one full
-    /// level down plays like ~45%, two levels down like ~36%.
-    /// </summary>
+    // Odds-space (Bradley-Terry): the stat ratio multiplies win odds raised to
+    // BattleCompoundingExponent, since a per-interaction stat edge compounds over
+    // a battle. E.g. a 54% deck one full level down plays like ~45%, two levels
+    // down like ~36%.
     private static double LevelAdjustedWinRate(double winRate, double statFraction)
     {
         if (winRate <= 0)
@@ -351,21 +262,9 @@ public sealed class DeckAnalyzer
         return odds / (1 + odds);
     }
 
-    /// <summary>
-    /// The player-controllable strength of an ARBITRARY deck: the average combat-stat
-    /// fraction across its cards (1 = fully maxed). This is the raw fraction for
-    /// display: the win-rate impact of a deficit is applied by
-    /// <see cref="LevelAdjustedWinRate"/>, not here. No version penalty: the builder
-    /// fields exactly the art the player owns. Returns null if a card isn't in the
-    /// collection.
-    /// </summary>
     public double? FieldabilityScore(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<int> cardIds)
         => FieldabilityScore(BuildCardMap(playerCards), cardIds);
 
-    /// <summary>
-    /// Map-based overload for callers scoring many decks against one collection
-    /// (the deck builder): build the map once instead of per deck.
-    /// </summary>
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
     {
         double totalStatFraction = 0;
@@ -387,24 +286,10 @@ public sealed class DeckAnalyzer
         return totalStatFraction / validCards;
     }
 
-    /// <summary>
-    /// Whether the builder slot at <paramref name="slotIndex"/> can field a card's
-    /// special version. The in-game special slots are positional (slot 1 takes an
-    /// Evo, slot 2 a Hero, slot 3 either), and the builder mirrors that layout
-    /// (client/src/lib/slotStyles.ts), so a special outside its slot plays as the
-    /// normal version.
-    /// </summary>
+    // Mirrors the builder's positional slot layout in client/src/lib/slotStyles.ts.
     private static bool SlotCanField(CardVersionKind version, int slotIndex)
         => version == CardVersionKind.Hero ? slotIndex is 1 or 2 : slotIndex is 0 or 2;
 
-    /// <summary>
-    /// The version-fit penalty for owned specials the board placement doesn't
-    /// field. Complements the ownership penalty inside
-    /// <see cref="ScoreDeckForPlayer"/>: that one prices meta specials the player
-    /// can't field at all, this one prices specials they own but parked in a
-    /// normal slot, so each meta special is penalized at most once, by the same
-    /// <see cref="MissingSpecialMultiplier"/>.
-    /// </summary>
     private static double PlacementFit(
         IReadOnlyList<int?> slots,
         IReadOnlyList<CardVersion>? metaVersions,
@@ -418,14 +303,12 @@ public sealed class DeckAnalyzer
         var fit = 1.0;
         foreach (var v in metaVersions)
         {
-            // Champions field as themselves wherever the (client-restricted)
-            // board allows them, and normal versions have nothing to lose.
             if (v.Version == CardVersionKind.Normal || IsChampion(v.CardId, cardMap))
             {
                 continue;
             }
-            // An unowned special is already penalized by the ownership check;
-            // placement can't make it any less fielded.
+            // Unowned specials are already penalized by the ownership check in
+            // ScoreDeckForPlayer; this only covers owned-but-misplaced ones.
             var owned = cardMap.TryGetValue(v.CardId, out var card) ? card.EvolutionLevel : 0;
             var ownsVersion = v.Version == CardVersionKind.Hero ? owned >= 2 : owned >= 1;
             if (!ownsVersion)
@@ -450,16 +333,6 @@ public sealed class DeckAnalyzer
         return fit;
     }
 
-    /// <summary>
-    /// Scores a single War Deck Builder deck on the same scale as the recommendations.
-    /// A known meta deck delegates to <see cref="ScoreDeckForPlayer"/> (identical
-    /// formula), then applies <see cref="PlacementFit"/> when the positional
-    /// <paramref name="slots"/> are given: an owned special sitting outside its
-    /// special slot fields as normal in-game, so it costs the same multiplier as
-    /// not owning it. An unproven deck gets the neutral win rate and single-player
-    /// popularity, keeping it strictly below any recommendable meta deck. Returns
-    /// null when the deck is empty or a card isn't in the player's collection.
-    /// </summary>
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyList<PlayerItemLevel> playerCards,
         IReadOnlyList<int> cardIds,
@@ -467,10 +340,6 @@ public sealed class DeckAnalyzer
         IReadOnlyList<int?>? slots = null)
         => ScoreBuilderDeck(BuildCardMap(playerCards), cardIds, meta, slots);
 
-    /// <summary>
-    /// Map-based overload for callers scoring many decks against one collection
-    /// (the deck builder): build the map once instead of per deck.
-    /// </summary>
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         IReadOnlyList<int> cardIds,
@@ -494,12 +363,10 @@ public sealed class DeckAnalyzer
             return new BuilderScore(score.Value * placementFit, meta.Confidence, fieldability.Value, IsMeta: true, meta.Players ?? 0);
         }
 
-        // Same odds-space level adjustment as a meta deck, so the scales compare.
         var neutral = LevelAdjustedWinRate(NeutralWinRate, fieldability.Value) * PopularityFactor(1);
         return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0);
     }
 
-    /// <summary>Builds the player-facing <see cref="ScoredDeck"/> view of a meta deck.</summary>
     private static ScoredDeck ToScoredDeck(
         DeckMeta deck,
         double score,
@@ -514,8 +381,6 @@ public sealed class DeckAnalyzer
             }
         }
 
-        // Stored versions can't flag champions, so reconcile them before splitting
-        // into the meta (slot-driving) and personalised (art-driving) views.
         var versions = WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
         var metaVersions = CapEvolutions(versions);
         var personalized = UpgradeIntoFreeSlots(
@@ -536,16 +401,10 @@ public sealed class DeckAnalyzer
         };
     }
 
-    /// <summary>
-    /// The provably best lineup in a pool (pre-sorted by score descending): most
-    /// decks first (a war wants every slot filled), then highest total score.
-    /// Branch-and-bound: a branch's upper bound takes the next-best remaining
-    /// scores wholesale (a prefix-sum lookup thanks to the sort), and since that
-    /// bound only shrinks further down the list, the first failing candidate cuts
-    /// off the rest of its level. A greedy pass seeds the incumbent so pruning
-    /// bites from the first node, and card sets are bitmasks so a disjointness
-    /// check is a couple of word ANDs.
-    /// </summary>
+    // Branch-and-bound over the pre-sorted pool: a branch's upper bound takes the
+    // next-best remaining scores wholesale via a prefix-sum, so the first failing
+    // candidate cuts off the rest of its level. A greedy pass seeds the incumbent
+    // so pruning bites from the first node.
     private static List<(DeckMeta deck, double score)> FindOptimalLineup(
         IReadOnlyList<(DeckMeta deck, double score)> pool)
     {
@@ -555,7 +414,6 @@ public sealed class DeckAnalyzer
             return [];
         }
 
-        // Bitmask per deck over the distinct card ids present in this pool.
         var bitOf = new Dictionary<int, int>();
         foreach (var (deck, _) in pool)
         {
@@ -580,8 +438,6 @@ public sealed class DeckAnalyzer
             masks[i] = mask;
         }
 
-        // prefix[i] = sum of the i highest scores. The best k decks from position
-        // i onward are simply the next k, so a bound is prefix[i+k] - prefix[i].
         var prefix = new double[n + 1];
         for (var i = 0; i < n; i++)
         {
@@ -596,7 +452,6 @@ public sealed class DeckAnalyzer
             bestScore += pool[p].score;
         }
 
-        // One reusable used-cards mask per depth instead of allocating per node.
         var usedAt = new ulong[DecksPerLineup + 1][];
         for (var d = 0; d <= DecksPerLineup; d++)
         {
@@ -610,8 +465,7 @@ public sealed class DeckAnalyzer
             var used = usedAt[depth];
             for (var i = start; i < n; i++)
             {
-                // Upper bound if the best remaining decks were all disjoint. Count
-                // outranks score: fewer filled slots can never win on points.
+                // Count outranks score: fewer filled slots can never win on points.
                 var take = Math.Min(DecksPerLineup - depth, n - i);
                 var boundCount = depth + take;
                 var boundScore = score + prefix[i + take] - prefix[i];
@@ -668,7 +522,6 @@ public sealed class DeckAnalyzer
         return lineup;
     }
 
-    /// <summary>Best-first greedy fill: the incumbent that seeds the exact search.</summary>
     private static int[] GreedyPicks(
         IReadOnlyList<(DeckMeta deck, double score)> pool, ulong[][] masks, int words)
     {
@@ -699,17 +552,11 @@ public sealed class DeckAnalyzer
         return [.. picks];
     }
 
-    /// <summary>
-    /// The four best card-disjoint war decks the player can field, plus a ranked
-    /// swap pool. Composed of the two halves below so the Upgrade Advisor can
-    /// score the pool once and re-run only the (cheap) selection per simulation.
-    /// </summary>
     public WarDeckResult FindBestWarDecks(
         IReadOnlyList<DeckMeta> metaDecks,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
         => SelectLineup(ScoreFieldableDecks(metaDecks, cardMap), cardMap, includeAlternatives: true);
 
-    /// <summary>Scores every meta deck the player can actually field (a missing card disqualifies).</summary>
     public List<(DeckMeta deck, double score)> ScoreFieldableDecks(
         IReadOnlyList<DeckMeta> metaDecks,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
@@ -726,23 +573,13 @@ public sealed class DeckAnalyzer
         return fieldable;
     }
 
-    /// <summary>
-    /// Picks the best four card-disjoint decks from a pre-scored pool, exactly,
-    /// not greedily: the single strongest deck often hogs staple cards that two
-    /// other strong decks both want, and the best TOTAL then skips it (see
-    /// <see cref="FindOptimalLineup"/>). The popularity-gate ladder still applies:
-    /// the strictest gate whose pool can fill all four slots wins, and only when
-    /// four disjoint decks don't exist do looser pools (which are supersets, so
-    /// the last search subsumes the earlier ones) get a say. The swap pool is
-    /// optional: callers that only read the total score skip building it.
-    /// </summary>
     public WarDeckResult SelectLineup(
         IReadOnlyList<(DeckMeta deck, double score)> fieldable,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         bool includeAlternatives)
     {
-        // Strength first; player count only breaks exact ties. OrderBy is stable,
-        // so equal-score/equal-player decks keep their meta ranking order.
+        // OrderBy is stable, so equal-score/equal-player decks keep their meta
+        // ranking order.
         var sorted = fieldable
             .OrderByDescending(s => s.score)
             .ThenByDescending(s => s.deck.Players ?? 0)
@@ -753,7 +590,7 @@ public sealed class DeckAnalyzer
         foreach (var gate in PopularityGateLadder)
         {
             var pool = sorted.Where(s => s.deck.Players is null || s.deck.Players >= gate).ToList();
-            // Gates nest, so an unchanged size means the identical pool, so skip it.
+            // Gates nest, so an unchanged size means the identical pool.
             if (pool.Count == lastPoolCount)
             {
                 continue;
@@ -774,9 +611,8 @@ public sealed class DeckAnalyzer
             selectedDecks.Add(ToScoredDeck(deck, score, cardMap));
         }
 
-        // The swap pool: next best-scoring decks not among the four, drawn from the
-        // FULL fieldable set (every gate) for archetype diversity. These may overlap
-        // each other and the primaries; the UI enforces disjointness at swap time.
+        // Drawn from the full fieldable set (every gate) for archetype diversity;
+        // may overlap the primaries, the UI enforces disjointness at swap time.
         var alternatives = new List<ScoredDeck>();
         if (includeAlternatives)
         {

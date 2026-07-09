@@ -58,8 +58,8 @@ public sealed class BestDecksBuilderTests
     {
         // deckB shares 7 of 8 cards with deckA (>= the 6-card archetype threshold),
         // so it's a variant and must never appear alongside the archetypes.
-        var deckA = Build.Eight(1);              // 1..8
-        var deckB = new[] { 1, 2, 3, 4, 5, 6, 7, 99 }; // shares 7 with A
+        var deckA = Build.Eight(1);
+        var deckB = new[] { 1, 2, 3, 4, 5, 6, 7, 99 };
         var meta = new List<DeckMeta>
         {
             Build.Deck(deckA, confidence: 0.60),

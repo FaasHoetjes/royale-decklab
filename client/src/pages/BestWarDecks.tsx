@@ -28,8 +28,7 @@ export default function BestWarDecks() {
   const { data, isLoading, isError, error } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
 
-  // Copies a set into the builder via the shared sessionStorage board. Cards
-  // the active player doesn't own are left as empty slots; the builder
+  // Cards the active player doesn't own are left as empty slots; the builder
   // re-scores the board itself once mounted.
   async function copySetToBuilder(set: BestDeckSet, setIdx: number) {
     setCopyingSetIdx(setIdx);
@@ -121,8 +120,6 @@ export default function BestWarDecks() {
                 </div>
               </div>
 
-              {/* Desktop reserves a right gutter for the floating copy button;
-                  on phones it becomes a full-width button under the rows. */}
               <div style={{ position: 'relative', paddingRight: isMobile ? 0 : '60px' }}>
                 <div style={styles.rowList}>
                   {set.decks.map((deck, deckIdx) => (
@@ -230,7 +227,6 @@ const styles = {
     flexDirection: 'column' as const,
     gap: '8px',
   },
-  // Vertically centers the circle button on the 4 rows.
   gutter: {
     position: 'absolute' as const,
     right: 0,

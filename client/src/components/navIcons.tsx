@@ -1,6 +1,3 @@
-// Stroke-based line icons for the sidebar nav. They inherit the nav item's
-// text color via `currentColor` and stay crisp at 18px.
-
 const ICON_SIZE = 18;
 
 function iconProps() {
@@ -16,7 +13,6 @@ function iconProps() {
   };
 }
 
-/** War Deck Generator: a bolt for the one-tap "generate". */
 export function ZapIcon() {
   return (
     <svg {...iconProps()}>
@@ -25,7 +21,6 @@ export function ZapIcon() {
   );
 }
 
-/** War Deck Builder: a card grid for hand-picking the eight slots. */
 export function GridIcon() {
   return (
     <svg {...iconProps()}>
@@ -37,7 +32,6 @@ export function GridIcon() {
   );
 }
 
-/** Best War Decks: a trophy. */
 export function TrophyIcon() {
   return (
     <svg {...iconProps()}>
@@ -51,7 +45,6 @@ export function TrophyIcon() {
   );
 }
 
-/** Upgrade Advisor: a rising trend line. */
 export function TrendingUpIcon() {
   return (
     <svg {...iconProps()}>
@@ -61,7 +54,6 @@ export function TrendingUpIcon() {
   );
 }
 
-/** FAQ: a help bubble. */
 export function HelpIcon() {
   return (
     <svg {...iconProps()}>
@@ -72,7 +64,6 @@ export function HelpIcon() {
   );
 }
 
-/** Contact: an envelope. */
 export function MailIcon() {
   return (
     <svg {...iconProps()}>
@@ -82,7 +73,6 @@ export function MailIcon() {
   );
 }
 
-/** Hamburger menu. */
 export function MenuIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -93,7 +83,6 @@ export function MenuIcon() {
   );
 }
 
-/** Close (X). */
 export function CloseIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

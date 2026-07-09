@@ -1,12 +1,9 @@
 namespace RoyaleDeckLab.Api.Dtos;
 
 /// <summary>
-/// Ranked upgrade suggestions against the player's baseline lineup score.
-/// <see cref="CollectionMaxed"/> is true when there was nothing to even
-/// simulate: every meta card is at max level and every special version the meta
-/// fields is unlocked. This is distinct from "upgrades exist but none moves the
-/// lineup" (suggestions empty, flag false), so the client can congratulate
-/// instead of consoling.
+/// <see cref="CollectionMaxed"/> true means every meta card is maxed and every
+/// special version the meta fields is unlocked (nothing to simulate) — distinct
+/// from "upgrades exist but none moves the lineup" (suggestions empty, flag false).
 /// </summary>
 public sealed record UpgradeAdvice(
     double BaselineScore,

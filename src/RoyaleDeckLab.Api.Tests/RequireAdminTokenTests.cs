@@ -9,7 +9,6 @@ namespace RoyaleDeckLab.Api.Tests;
 
 public sealed class RequireAdminTokenTests
 {
-    /// <summary>Runs the filter with ADMIN_TOKEN set to <paramref name="envToken"/> and the given header.</summary>
     private static AuthorizationFilterContext Run(string? envToken, string? header)
     {
         var previous = Environment.GetEnvironmentVariable(RequireAdminTokenAttribute.EnvVar);

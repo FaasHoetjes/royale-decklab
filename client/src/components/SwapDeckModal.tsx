@@ -5,7 +5,6 @@ import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 export interface SwapOption {
-  // Stable identity used to mark the active deck and to report the choice back.
   master: number;
   cards: DeckCardData[];
   metaWinRate: number;
@@ -115,13 +114,11 @@ export default function SwapDeckModal({
   );
 }
 
-// All CSS variables (index.css), so the modal is theme-agnostic in JS.
 const theme = {
   panelBg: 'var(--modal-bg)',
   panelBorder: 'var(--border)',
   text: 'var(--text-primary)',
   subtext: 'var(--text-secondary)',
-  // The one accent, kept to the win rate and the active marker.
   accent: 'var(--accent)',
   rowBg: 'var(--row-bg)',
   rowBorder: 'var(--border)',
@@ -208,7 +205,6 @@ const styles = {
   optionStats: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    // Lets the stats drop to their own line on narrow screens.
     flexWrap: 'wrap' as const,
     gap: '8px 14px',
   },

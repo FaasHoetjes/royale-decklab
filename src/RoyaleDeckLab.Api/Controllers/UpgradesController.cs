@@ -8,11 +8,6 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
-/// <summary>
-/// Serves GET /api/player/{tag}/upgrades: the player's card upgrades ranked by
-/// how much each raises their recommended war lineup's total score. Fetches the
-/// player from the CR API and delegates the simulation to <see cref="UpgradeAdvisor"/>.
-/// </summary>
 [ApiController]
 [EnableRateLimiting(RateLimitPolicies.Player)]
 public sealed class UpgradesController(

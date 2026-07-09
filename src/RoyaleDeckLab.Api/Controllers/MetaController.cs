@@ -6,7 +6,6 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
-/// <summary>Meta status / refresh / patch-boundary endpoints (the /api/meta/* routes).</summary>
 [ApiController]
 [Route("api/meta")]
 public sealed class MetaController(MetaCache cache) : ControllerBase

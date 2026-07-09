@@ -26,7 +26,6 @@ export default function Layout() {
   // instead of fetching on click.
   usePrefetchAppData(activePlayerTag);
 
-  // Until a player tag is set, the app is just the landing page (no sidebar).
   if (!activePlayerTag) {
     return (
       <div
@@ -46,7 +45,6 @@ export default function Layout() {
     <div
       style={{
         ...styles.shell,
-        // On phones the side column becomes a top bar, so stack vertically.
         flexDirection: isMobile ? 'column' : 'row',
         backgroundColor: theme.bg.primary,
         color: theme.text.primary,
@@ -54,7 +52,6 @@ export default function Layout() {
     >
       <Sidebar />
       <main style={{ ...styles.content, padding: isMobile ? '12px' : '20px' }}>
-        {/* On mobile the toggle lives inside the top bar instead. */}
         {!isMobile && <CornerThemeToggle />}
         <ElixirGradientDefs />
         <Outlet />

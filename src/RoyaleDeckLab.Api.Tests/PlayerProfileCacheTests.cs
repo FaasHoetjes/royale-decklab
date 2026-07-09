@@ -6,9 +6,6 @@ namespace RoyaleDeckLab.Api.Tests;
 
 public sealed class PlayerProfileCacheTests
 {
-    // ---- Test doubles ------------------------------------------------------
-
-    /// <summary>Counts upstream calls and serves a swappable canned response.</summary>
     private sealed class StubHandler : HttpMessageHandler
     {
         private int _calls;
@@ -31,7 +28,6 @@ public sealed class PlayerProfileCacheTests
             => new(handler, disposeHandler: false) { BaseAddress = new Uri("https://cr.test/v1/") };
     }
 
-    /// <summary>A clock the test moves by hand, in whole ticks.</summary>
     private sealed class ManualClock : TimeProvider
     {
         private long _ticks;
@@ -46,8 +42,6 @@ public sealed class PlayerProfileCacheTests
         var clock = new ManualClock();
         return (new PlayerProfileCache(new StubFactory(upstream), clock), upstream, clock);
     }
-
-    // ---- Behaviour -----------------------------------------------------------
 
     [Fact]
     public async Task CoalescesConcurrentRequests_IntoOneUpstreamCall()
@@ -71,7 +65,7 @@ public sealed class PlayerProfileCacheTests
         await cache.GetPlayerDataAsync("#2QGG92L9");
         clock.Advance(TimeSpan.FromSeconds(30));
         await cache.GetPlayerDataAsync("#2QGG92L9");
-        Assert.Equal(1, upstream.Calls); // still fresh
+        Assert.Equal(1, upstream.Calls);
 
         clock.Advance(TimeSpan.FromSeconds(31)); // now past the 60s TTL
         await cache.GetPlayerDataAsync("#2QGG92L9");
@@ -101,6 +95,6 @@ public sealed class PlayerProfileCacheTests
         var player = await cache.GetPlayerDataAsync("#2QGG92L9");
 
         Assert.Equal("Player", player.Name);
-        Assert.Equal(2, upstream.Calls); // the failure was evicted, not replayed
+        Assert.Equal(2, upstream.Calls);
     }
 }

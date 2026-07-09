@@ -3,11 +3,7 @@ using RoyaleDeckLab.Api.Dtos;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// Lazily-fetched, in-memory cache of the full card catalog. Singleton; the
-/// one-time fetch is resolved through a scope since the CR client is registered
-/// as a typed HttpClient.
-/// </summary>
+// Singleton; resolves the client through a scope since ClashRoyaleClient is a scoped typed HttpClient.
 public sealed class CardCatalog(IServiceScopeFactory scopeFactory)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);

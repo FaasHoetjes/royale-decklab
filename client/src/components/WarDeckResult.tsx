@@ -38,7 +38,6 @@ export default function WarDeckResult({
     setSlots(decks.map((_, i) => i));
   }, [decks]);
 
-  // Which slot's swap picker is currently open (null = none).
   const [swapSlot, setSwapSlot] = useState<number | null>(null);
 
   // All valid swap options for one slot: its own primary deck plus the shared
@@ -220,7 +219,6 @@ const styles = {
     textTransform: 'uppercase' as const,
     opacity: 0.85,
   },
-  // Match the player name (styles.title): same size, weight, and white color.
   scoreValue: {
     fontSize: '32px',
     fontWeight: 800 as const,

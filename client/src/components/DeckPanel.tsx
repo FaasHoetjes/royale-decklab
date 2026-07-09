@@ -20,7 +20,6 @@ interface DeckPanelProps {
   onOpenPicker: (slotIndex: number) => void;
 }
 
-/** One of the four builder decks: header stats + the 8-slot grid. */
 export default function DeckPanel({
   deckIndex,
   board,
@@ -39,7 +38,7 @@ export default function DeckPanel({
 
   const handleSlotClick = (slotIndex: number) => {
     if (deck[slotIndex] != null) {
-      board.setSlot(deckIndex, slotIndex, null); // filled slot → remove
+      board.setSlot(deckIndex, slotIndex, null);
     } else {
       onOpenPicker(slotIndex);
     }

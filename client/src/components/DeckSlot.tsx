@@ -10,7 +10,6 @@ interface DeckSlotProps {
   card: BuilderCard | null;
   slotIndex: number;
   theme: Theme;
-  /** The slot's saved evo/hero art choice, if any. */
   versionOverride?: SpecialVersion;
   isDragging: boolean;
   isDropTarget: boolean;
@@ -23,10 +22,6 @@ interface DeckSlotProps {
   onDragEnd: () => void;
 }
 
-/**
- * One builder slot: click to add/remove, drag to swap. A filled "both" slot
- * whose card has both specials unlocked shows a toggle to pick the art.
- */
 export default function DeckSlot({
   card,
   slotIndex,
@@ -95,9 +90,6 @@ export default function DeckSlot({
                 e.stopPropagation();
                 onToggleVersion(versions);
               }}
-              // A span (not a real <button>) because it sits inside the slot's
-              // <button>, so Enter/Space need wiring by hand. stopPropagation
-              // keeps the keypress from also triggering the slot's own action.
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -135,8 +127,6 @@ export default function DeckSlot({
           >
             <span style={{ ...styles.plus, color: theme.text.secondary }}>+</span>
           </div>
-          {/* Non-breaking space keeps the name row's height so filling a slot
-              never shifts the grid. */}
           <div style={{ ...styles.emptyName, color: theme.text.primary }}> </div>
         </>
       )}
@@ -162,7 +152,6 @@ const styles = {
     outline: '3px solid #ff6b6b',
     outlineOffset: '2px',
   },
-  // Small pill, top-right of a "both" slot, to flip between owned evo/hero art.
   versionToggle: {
     position: 'absolute' as const,
     top: '3px',
@@ -183,7 +172,6 @@ const styles = {
   },
   empty: {
     aspectRatio: '0.82',
-    // Near-black in dark mode, softened to the standard border in light.
     border: '2px solid var(--empty-slot-border)',
     borderRadius: '10px',
     display: 'flex' as const,

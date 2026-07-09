@@ -21,21 +21,13 @@ export interface SlotRef {
 
 export type DeckBoard = ReturnType<typeof useDeckBoard>;
 
-/**
- * The builder's board state and every way it can change: placing/removing
- * cards, drag-to-swap (with the champion-slot rule), per-slot evo/hero art
- * overrides, and resets. Persists to sessionStorage across navigations.
- */
 export function useDeckBoard(cardById: Map<number, BuilderCard>) {
   const [decks, setDecks] = useState<DeckState>(loadDecks);
   const [slotVersion, setSlotVersion] = useState<SlotVersionMap>(loadSlotVersions);
 
-  // Drag-to-swap: the slot a drag started from, and the slot currently
-  // hovered as a drop target.
   const [dragSource, setDragSource] = useState<SlotRef | null>(null);
   const [dragOver, setDragOver] = useState<SlotRef | null>(null);
 
-  // Persist only the user's work; server data is owned by React Query.
   useEffect(() => { saveDecks(decks); }, [decks]);
   useEffect(() => { saveSlotVersions(slotVersion); }, [slotVersion]);
 
@@ -45,8 +37,6 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     return set;
   }, [decks]);
 
-  // Drop the art override for a slot whenever its card changes, so a new card
-  // never inherits the previous occupant's evo/hero choice.
   const clearVersions = (...keys: string[]) =>
     setSlotVersion((prev) => {
       if (!keys.some((k) => k in prev)) return prev;
@@ -64,8 +54,6 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     clearVersions(slotKey(deckIndex, slotIndex));
   };
 
-  // Champions are confined to the champion slots; picking one from another
-  // slot routes it into the first free champion slot instead.
   const placeCard = (target: SlotRef, cardId: number) => {
     const card = cardById.get(cardId);
     let slotIndex = target.slotIndex;
@@ -77,8 +65,6 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     setSlot(target.deckIndex, slotIndex, cardId);
   };
 
-  // Swap (or move, if the target is empty) the cards between two slots. Both
-  // art overrides are dropped so each card re-derives its art from its new slot.
   const swapSlots = (a: SlotRef, b: SlotRef) => {
     if (a.deckIndex === b.deckIndex && a.slotIndex === b.slotIndex) return;
     setDecks((prev) => {
@@ -91,7 +77,6 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     clearVersions(slotKey(a.deckIndex, a.slotIndex), slotKey(b.deckIndex, b.slotIndex));
   };
 
-  /** True when swapping src and tgt would put a champion in a non-champion slot. */
   const isChampionViolation = (src: SlotRef, tgt: SlotRef): boolean => {
     const rarityAt = ({ deckIndex, slotIndex }: SlotRef) => {
       const id = decks[deckIndex]?.[slotIndex];
@@ -115,7 +100,6 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     setSlotVersion({});
   };
 
-  /** Flip a "both" slot between the player's owned evo and hero art. */
   const toggleVersion = (deckIndex: number, slotIndex: number, versions: SpecialVersion[]) => {
     const key = slotKey(deckIndex, slotIndex);
     setSlotVersion((prev) => {

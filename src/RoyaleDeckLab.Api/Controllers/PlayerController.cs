@@ -8,12 +8,6 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
-/// <summary>
-/// Player-facing endpoints: the recommended war decks for a player and their raw
-/// card collection. Both fetch the player through the short-lived profile cache
-/// (the SPA hits several player endpoints per tag) and map its cards into the
-/// domain <see cref="PlayerItemLevel"/> shape.
-/// </summary>
 [ApiController]
 [EnableRateLimiting(RateLimitPolicies.Player)]
 public sealed class PlayerController(
@@ -22,7 +16,6 @@ public sealed class PlayerController(
     DeckAnalyzer analyzer,
     ILogger<PlayerController> logger) : ControllerBase
 {
-    /// <summary>The player's raw collection, trimmed to what the collection view needs.</summary>
     [HttpGet("api/player/{tag}/collection")]
     public async Task<IActionResult> Collection(string tag, CancellationToken ct)
     {
@@ -65,7 +58,6 @@ public sealed class PlayerController(
         }
     }
 
-    /// <summary>The four recommended card-disjoint war decks + swap alternatives.</summary>
     [HttpGet("api/player/{tag}")]
     public async Task<IActionResult> WarDecks(string tag, CancellationToken ct)
     {

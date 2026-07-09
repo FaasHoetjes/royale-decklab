@@ -13,7 +13,6 @@ public static partial class PlayerTag
     [GeneratedRegex("^[0289PYLQGRJCUV]{3,14}$", RegexOptions.IgnoreCase)]
     private static partial Regex TagRegex();
 
-    /// <summary>True when <paramref name="tag"/> (with or without a leading '#') is a plausible CR tag.</summary>
     public static bool IsValid(string? tag)
         => !string.IsNullOrEmpty(tag) && TagRegex().IsMatch(tag.TrimStart('#'));
 }

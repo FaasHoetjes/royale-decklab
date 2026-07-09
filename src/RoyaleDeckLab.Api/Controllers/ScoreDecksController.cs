@@ -5,20 +5,12 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
-/// <summary>
-/// Scores the four decks a player is hand-building in the War Deck Builder. Pure
-/// function of the posted cards + the in-memory meta cache (no CR API call), so
-/// it's fast enough to call live as the user edits. A deck that exactly matches a
-/// meta deck gets its real player score; anything else gets a fieldability-only
-/// score flagged <c>isMeta: false</c>.
-/// </summary>
 [ApiController]
 public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer) : ControllerBase
 {
-    // Hard input caps. The builder UI posts one collection (~120 cards exist in
-    // the game) and exactly four 8-slot decks; anything materially bigger is not
-    // our client, and scoring cost scales with cards × decks, so reject it
-    // before doing any work.
+    // Hard input caps: the builder UI posts one collection (~120 cards exist in
+    // the game) and exactly four 8-slot decks; scoring cost scales with cards ×
+    // decks, so reject anything materially bigger before doing any work.
     private const int MaxCards = 250;
     private const int MaxDecks = 8;
     private const int MaxDeckSlots = 8;
@@ -58,7 +50,7 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
 
         var scored = decks.Select(deck =>
         {
-            // Keep the positional slot array too: which slot an owned evo/hero
+            // Positional slot array is needed too: which slot an owned evo/hero
             // sits in decides whether it actually fields (see PlacementFit).
             var slots = deck ?? [];
             var cardIds = slots.Where(id => id.HasValue).Select(id => id!.Value).ToList();
@@ -67,8 +59,6 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
                 return new BuilderDeckScore(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
             }
 
-            // Only a complete eight-card deck can match a meta deck; anything shorter
-            // scores on the neutral prior.
             DeckMeta? meta = cardIds.Count == 8 && index.TryGetValue(MetaCache.DeckKey(cardIds), out var m) ? m : null;
             var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta, slots);
             if (result is null)

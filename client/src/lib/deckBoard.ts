@@ -1,7 +1,3 @@
-// The War Deck Builder's board: 4 decks × 8 slots of card ids, plus per-slot
-// evo/hero art choices. Persisted in sessionStorage so the board survives
-// navigation and so Best Decks can hand a full set straight to the builder.
-
 export const DECK_COUNT = 4;
 export const SLOTS_PER_DECK = 8;
 
@@ -10,7 +6,6 @@ export const CHAMPION_SLOTS = [1, 2];
 
 export type DeckState = (number | null)[][];
 export type SpecialVersion = 'evo' | 'hero';
-/** Art override per slot, keyed `${deckIndex}-${slotIndex}`. */
 export type SlotVersionMap = Record<string, SpecialVersion>;
 
 export const slotKey = (deckIndex: number, slotIndex: number) => `${deckIndex}-${slotIndex}`;
@@ -32,9 +27,8 @@ function load(key: string): unknown {
   }
 }
 
-// Stored values are typed on write but not on read: a stale format from an
-// older version (or a tampered value) parses fine as JSON and then crashes the
-// Builder's .map() calls, so validate the shape before trusting it.
+// Validated on read: a stale or tampered value can parse as JSON but crash
+// the Builder's .map() calls if the shape is wrong.
 const isDeckState = (v: unknown): v is DeckState =>
   Array.isArray(v) &&
   v.length === DECK_COUNT &&

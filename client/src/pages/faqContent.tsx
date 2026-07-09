@@ -1,5 +1,3 @@
-// The FAQ's questions and answers, kept apart from the accordion UI in Faq.tsx.
-
 export interface FaqItem {
   question: string;
   answer: React.ReactNode;

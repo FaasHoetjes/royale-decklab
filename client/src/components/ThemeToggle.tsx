@@ -1,7 +1,5 @@
 import { useTheme } from '../ThemeContext';
 
-// The sun/moon toggle button, positioning-agnostic: Layout renders it fixed in
-// the top-right corner on desktop, the mobile top bar renders it inline.
 export default function ThemeToggle({ size = 28 }: { size?: number }) {
   const { isDarkMode, toggleDarkMode } = useTheme();
   return (

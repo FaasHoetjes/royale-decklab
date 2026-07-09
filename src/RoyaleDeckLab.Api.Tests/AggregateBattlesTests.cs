@@ -28,9 +28,8 @@ public sealed class AggregateBattlesTests
 
         Assert.Equal(3, result.Uses);
         Assert.Equal(3, result.Players);
-        // effectiveWins = 1 win + 0.5 draw = 1.5 over 3 games.
         Assert.Equal(0.5, result.WinRate, 10);
-        Assert.Equal(1.0, result.PickRate!.Value, 10); // 3 of 3 sampled players ran it
+        Assert.Equal(1.0, result.PickRate!.Value, 10);
     }
 
     [Fact]
@@ -44,7 +43,7 @@ public sealed class AggregateBattlesTests
         };
 
         var result = Assert.Single(NewBuilder().AggregateBattles(battles));
-        Assert.Equal(0.75, result.WinRate, 10); // (1 + 0.5) / 2
+        Assert.Equal(0.75, result.WinRate, 10);
     }
 
     [Fact]
@@ -73,7 +72,6 @@ public sealed class AggregateBattlesTests
     [Fact]
     public void RanksByConfidenceWeightedByPopularity()
     {
-        // Deck A: proven and broadly played. Deck B: fewer players, weaker record.
         var deckA = Build.Eight(1);
         var deckB = Build.Eight(9);
         var battles = new List<BattleRecord>();
@@ -87,15 +85,12 @@ public sealed class AggregateBattlesTests
         var result = NewBuilder().AggregateBattles(battles);
 
         Assert.Equal(2, result.Count);
-        Assert.True(result[0].CardIds.SequenceEqual(deckA)); // strongest first
+        Assert.True(result[0].CardIds.SequenceEqual(deckA));
     }
 
     [Fact]
     public void TracksTheMostCommonVersionLoadout_NotTheLatestBattles()
     {
-        // Two battles field the hero, one later battle (a player without it)
-        // fields the plain card: the majority loadout must win, or one outlier
-        // relabels the deck.
         var deck = Build.Eight(1);
         var hero = new List<CardVersion> { new(1, CardVersionKind.Hero) };
         var plain = new List<CardVersion> { new(1, CardVersionKind.Normal) };

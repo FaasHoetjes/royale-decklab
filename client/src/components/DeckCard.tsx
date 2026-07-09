@@ -16,7 +16,6 @@ interface DeckCardProps {
   metaCardVersions?: CardVersionRef[];
   playerScore: number;
   deckNumber: number;
-  // When more than one valid option exists for this slot, show a Swap button.
   canSwap?: boolean;
   onSwap?: () => void;
   scoreLabel?: string;

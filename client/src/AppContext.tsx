@@ -1,8 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
-// Theme state lives in ThemeContext, not here: keeping it separate means a
-// light/dark toggle doesn't re-render every consumer of this context.
-
 interface AppContextValue {
   activePlayerTag: string | null;
   setActivePlayerTag: (tag: string | null) => void;

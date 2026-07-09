@@ -12,11 +12,7 @@ public sealed class DeckMeta
     public required double WinRate { get; init; }
     public required double Confidence { get; init; }
     public required int Uses { get; init; }
-
-    /// <summary>Distinct top players who ran this deck within the sample window.</summary>
     public int? Players { get; init; }
-
-    /// <summary>Fraction of sampled players who ran this deck (0-1).</summary>
     public double? PickRate { get; init; }
 
     public IReadOnlyList<CardVersion>? CardVersions { get; init; }

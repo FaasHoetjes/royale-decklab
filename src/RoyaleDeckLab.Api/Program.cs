@@ -14,18 +14,16 @@ using RoyaleDeckLab.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load CLASH_ROYALE_API_KEY and friends from the repo-root .env (two levels up).
 DotEnv.Load(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env")));
 
-// Listen on 3000 so the existing Vite proxy (/api -> localhost:3000) and React
-// app need no changes. In a container ASPNETCORE_URLS is set (to bind 0.0.0.0);
-// honour it when present rather than forcing localhost.
+// Listen on 3000 so the existing Vite proxy (/api -> localhost:3000) needs no
+// changes. In a container ASPNETCORE_URLS is set (to bind 0.0.0.0); honour it
+// when present rather than forcing localhost.
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     builder.WebHost.UseUrls("http://localhost:3000");
 }
 
-// --- Options ---------------------------------------------------------------
 builder.Services.Configure<MetaOptions>(builder.Configuration.GetSection(MetaOptions.SectionName));
 builder.Services.Configure<ClashRoyaleOptions>(builder.Configuration.GetSection(ClashRoyaleOptions.SectionName));
 // The token lives in CLASH_ROYALE_API_KEY (env / .env), not appsettings.
@@ -38,18 +36,12 @@ builder.Services.PostConfigure<ClashRoyaleOptions>(o =>
     }
 });
 
-// --- Controllers + JSON ----------------------------------------------------
-// MVC web defaults are camelCase already; add the string-enum converter so
-// CardVersionKind / BattleResult serialise as "normal"/"evo"/"hero", "win" etc.
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase)));
 
-// Brotli/gzip the JSON payloads: the player profile and best-decks responses
-// are 100-200 kB raw and compress ~85%, which is what mobile users feel.
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
 
-// --- Data ------------------------------------------------------------------
 var contentRoot = builder.Environment.ContentRootPath;
 builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
 {
@@ -59,7 +51,6 @@ builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
 });
 builder.Services.AddScoped<BattleRepository>();
 
-// --- Clash Royale API client (typed HttpClient) ----------------------------
 builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
     {
         var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
@@ -67,47 +58,33 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
         http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     })
-    // Standard resilience pipeline: 10s per-attempt timeout (vs the 100s
-    // HttpClient default that ties up a request thread when the CR API stalls),
-    // up to 3 retries with exponential backoff on 408/429/5xx/timeouts
-    // (honouring Retry-After on 429), and a circuit breaker so a dead upstream
-    // fails fast. Hard errors like the IP-mismatch 403 are not retried.
+    // 10s per-attempt timeout (vs the 100s HttpClient default that ties up a
+    // request thread when the CR API stalls); hard errors like the
+    // IP-mismatch 403 are not retried.
     .AddStandardResilienceHandler();
 
-// Player-profile cache: coalesces the burst of per-tag requests the SPA fires
-// (war decks + collection + upgrades) into one upstream CR API call.
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PlayerProfileCache>();
 
-// --- Domain services -------------------------------------------------------
 builder.Services.AddScoped<MetaBuilder>();
 builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 
-// Scoring domain services are stateless, so a single shared instance is fine.
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
 
-// CORS exists only for local dev (the Vite server on 5173 hitting :3000
-// directly). In production the SPA is served same-origin from wwwroot, so no
-// cross-origin access is needed, and none is granted.
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
         p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
 }
 
-// Unhandled exceptions become a bare ProblemDetails 500 via UseExceptionHandler
-// below. Exception messages can carry upstream URIs and file paths, which
-// don't belong in a public response.
 builder.Services.AddProblemDetails();
 
-// The /api/player/* endpoints spend the rate-limited CR API key on the caller's
-// behalf. The profile cache coalesces repeat lookups of the same tag, but only a
-// per-IP cap stops a tag-enumeration loop from burning the upstream quota. The
-// SPA fires at most three player calls per tag viewed, so 30/min is ample.
+// Per-IP cap: the profile cache coalesces repeat lookups, but only this stops
+// a tag-enumeration loop from burning the upstream CR API quota.
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -127,7 +104,6 @@ builder.Services.AddRateLimiter(o =>
 
 var app = builder.Build();
 
-// --- Database init ---------------------------------------------------------
 // EnsureCreated builds the schema only when the DB doesn't exist yet. The data
 // is derived/regenerable, so there's no migration history to maintain.
 using (var scope = app.Services.CreateScope())
@@ -201,7 +177,6 @@ app.UseRateLimiter();
 // so this is a no-op and behaviour is unchanged.
 app.UseStaticFiles();
 
-// --- Endpoints -------------------------------------------------------------
 app.MapControllers();
 
 var spaIndex = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");

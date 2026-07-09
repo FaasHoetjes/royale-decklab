@@ -13,15 +13,10 @@ import UpgradeAdvisor from './pages/UpgradeAdvisor'
 import NotFound from './pages/NotFound'
 import './index.css'
 
-// One client for the app's lifetime. Server data (meta status, player decks,
-// card catalog, collections, best decks, deck scores) all flows through here,
-// so navigating between pages reuses cached results instead of re-fetching.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // The CR-derived data is stable within a session, so don't re-fetch on a
-      // window refocus, and treat results as fresh for a minute. Per-query
-      // overrides (e.g. Infinity for the static catalog) live in queries.ts.
+      // Data is stable within a session; per-query overrides live in queries.ts.
       refetchOnWindowFocus: false,
       staleTime: 60_000,
       gcTime: 30 * 60_000,
@@ -44,8 +39,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/best-decks" element={<BestWarDecks />} />
               <Route path="/upgrades" element={<UpgradeAdvisor />} />
               <Route path="/:playerId" element={<WarDeckGenerator />} />
-              {/* Anything deeper than one segment matches nothing above and
-                  would otherwise render a blank page without even the Layout. */}
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

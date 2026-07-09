@@ -1,10 +1,5 @@
 namespace RoyaleDeckLab.Api.Configuration;
 
-/// <summary>
-/// Minimal .env loader for the repo-root .env (notably CLASH_ROYALE_API_KEY),
-/// without an extra dependency. Sets each KEY=VALUE into the process
-/// environment unless already set.
-/// </summary>
 public static class DotEnv
 {
     public static void Load(string path)

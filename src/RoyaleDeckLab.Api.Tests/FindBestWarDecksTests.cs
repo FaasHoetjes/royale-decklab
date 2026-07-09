@@ -20,7 +20,7 @@ public sealed class FindBestWarDecksTests
 
         Assert.Equal(4, result.Decks.Count);
         var allCards = result.Decks.SelectMany(d => d.CardIds).ToList();
-        Assert.Equal(allCards.Count, allCards.Distinct().Count()); // no card fielded twice
+        Assert.Equal(allCards.Count, allCards.Distinct().Count());
     }
 
     [Fact]
@@ -44,15 +44,13 @@ public sealed class FindBestWarDecksTests
 
         var pickedKeys = result.Decks.Select(d => string.Join(',', d.CardIds)).ToHashSet();
         Assert.All(result.Alternatives, alt => Assert.DoesNotContain(string.Join(',', alt.CardIds), pickedKeys));
-        Assert.Single(result.Alternatives); // 5 fieldable minus 4 picked
+        Assert.Single(result.Alternatives);
     }
 
     [Fact]
     public void SkipsTheStrongestDeck_WhenItBlocksABetterTotal()
     {
-        // The 0.60 deck holds cards 1 AND 2, each of which one of the 0.58 decks
-        // needs. Greedy grabs it and settles for fillers (0.60 + 3×0.50); the
-        // exact search fields both 0.58s instead (2×0.58 + 2×0.50 = better).
+        // Deck 0.60 blocks both 0.58 decks; greedy takes it, the exact search benches it for a better total.
         var cards = Build.Collection(Enumerable.Range(1, 46).ToArray());
         var meta = new[]
         {
@@ -68,16 +66,13 @@ public sealed class FindBestWarDecksTests
 
         Assert.Equal(4, result.Decks.Count);
         Assert.DoesNotContain(result.Decks, d => d.CardIds.SequenceEqual(Build.Eight(1)));
-        // Maxed cards and equal adoption, so scores are confidence × the shared
-        // popularity factor (20 players, prior 8).
+        // Maxed, equal adoption: score is confidence × popularity factor (20 players, prior 8).
         Assert.Equal((0.58 + 0.58 + 0.50 + 0.50) * (20.0 / 28.0), result.TotalScore, 10);
     }
 
     [Fact]
     public void PrefersMoreDecks_OverOneStrongerDeck()
     {
-        // The 0.90 deck overlaps both 0.20 decks, which are disjoint from each
-        // other. A war wants slots filled: two decks beat one, whatever the scores.
         var cards = Build.Collection(Enumerable.Range(1, 22).ToArray());
         var meta = new[]
         {
@@ -95,9 +90,6 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void MatchesExhaustiveSearch_OnADenselyOverlappingPool()
     {
-        // 14 random decks over 30 cards force heavy overlap; brute-force every
-        // disjoint lineup of up to four and check the search finds the optimum
-        // (most decks first, then highest total).
         var rng = new Random(42);
         var cards = Build.Collection(Enumerable.Range(1, 30).ToArray());
         var cardMap = Build.CardMap(cards);
@@ -150,9 +142,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void HandlesAMetaSizedPool()
     {
-        // A pool the size of a real meta: 1500 random decks over the full card
-        // roster, with near-tied scores, the worst case for the exact search's
-        // pruning. Must still produce four disjoint decks (and finish promptly).
+        // 1500 near-tied decks over the full roster: the worst case for the exact search's pruning.
         var rng = new Random(7);
         var cards = Build.Collection(Enumerable.Range(1, 110).ToArray());
         var meta = Enumerable.Range(0, 1500)
@@ -171,8 +161,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void RelaxesThePopularityGate_ToFillTheFourthSlot()
     {
-        // Three well-adopted disjoint decks, plus a fourth run by only 2 players. The
-        // strict floor (5) yields three; the ladder relaxes to admit the last one.
+        // Strict floor (5 players) yields three decks; the ladder relaxes to admit the 2-player fourth.
         var cards = Build.Collection(Enumerable.Range(1, 32).ToArray());
         var meta = new List<DeckMeta>
         {
@@ -191,11 +180,11 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void SkipsDecks_ThePlayerCannotField()
     {
-        var cards = Build.Collection(Build.Eight(1)); // owns deck 1 only
+        var cards = Build.Collection(Build.Eight(1));
         var meta = new List<DeckMeta>
         {
             Build.Deck(Build.Eight(1)),
-            Build.Deck(Build.Eight(9)), // needs cards the player lacks
+            Build.Deck(Build.Eight(9)),
         };
 
         var result = Run(cards, meta);
@@ -207,13 +196,12 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void PersonalisesArtwork_ButKeepsTheMetaSlotVersion_ForAnUnownedEvo()
     {
-        var cards = Build.Collection(Build.Eight(1)); // card 1 owned, evo level 0
+        var cards = Build.Collection(Build.Eight(1));
         var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
         var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
 
         var deck = Assert.Single(Run(cards, meta).Decks);
 
-        // Meta (slot-driving) view keeps the evo; personalised (art) view downgrades it.
         Assert.Equal(CardVersionKind.Evo, deck.MetaCardVersions!.Single(v => v.CardId == 1).Version);
         Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
     }
@@ -221,9 +209,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void UpgradesAMetaNormalCard_ToAnOwnedHero_WhenTheHeroSlotIsFree()
     {
-        // The meta deck fields two evos and no hero; the player owns card 1's hero
-        // (evolutionLevel 2). In game the hero slot is positional, so fielding
-        // card 1 there is a free upgrade, the personalised view must show it.
+        // The hero slot is positional: fielding the player's owned hero there is a free upgrade.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo) };
@@ -240,7 +226,7 @@ public sealed class FindBestWarDecksTests
     {
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 1) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
-        var meta = new[] { Build.Deck(Build.Eight(1)) }; // all-normal meta deck
+        var meta = new[] { Build.Deck(Build.Eight(1)) };
 
         var deck = Assert.Single(Run(cards, meta).Decks);
 
@@ -250,8 +236,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void NeverUpgrades_WhenTheMetaSpecialsAlreadyFillTheSlots()
     {
-        // Three meta specials use all slot capacity: even unowned ones keep
-        // their slots on screen, so the owned hero of card 1 has nowhere to go.
+        // Unowned specials still occupy their slots, so the owned hero has nowhere free to go.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion>
@@ -268,8 +253,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void AHeroOwner_NeverClaimsAnEvoSlot()
     {
-        // Both hero slots are taken; evo slots are free. evolutionLevel 2 proves
-        // the hero but leaves evo ownership ambiguous, so no evo is claimed.
+        // Both hero slots are taken; evolutionLevel 2 proves the hero but leaves evo ownership ambiguous.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(2, CardVersionKind.Hero), new(3, CardVersionKind.Hero) };
@@ -283,8 +267,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void ForcesChampionsIntoTheHeroSlot_EvenWithoutAStoredVersion()
     {
-        // Card 1 is a champion; the battlelog can't flag it, so version reconciliation
-        // must force it to hero by identity.
+        // The battlelog can't flag champions, so reconciliation must force hero placement by identity.
         var cards = new List<PlayerItemLevel> { Build.Card(1, rarity: Rarity.Champion) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var meta = new[] { Build.Deck(Build.Eight(1), versions: null) };

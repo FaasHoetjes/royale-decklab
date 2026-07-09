@@ -6,11 +6,6 @@ using RoyaleDeckLab.Api.Options;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// Builds the meta from real Clan War battles. Walks the top war clans
-/// strongest-first, samples their members' battle logs into BattleRecords, then
-/// aggregates the rolling store into ranked DeckMeta via the Wilson lower bound.
-/// </summary>
 public sealed class MetaBuilder(
     ClashRoyaleClient client,
     IOptions<MetaOptions> options,
@@ -18,15 +13,10 @@ public sealed class MetaBuilder(
 {
     private readonly MetaOptions _opt = options.Value;
 
-    // Only the standard war 1v1 counts among riverRacePvP battles; modifier modes
-    // (e.g. RampUpElixir_Ladder) share the type but skew which decks win.
+    // Modifier modes (e.g. RampUpElixir_Ladder) share the riverRacePvP type but skew which decks win.
     private const string WarBattleMode = "CW_Battle_1v1";
 
-    /// <summary>
-    /// Wilson score lower bound for a binomial proportion: a conservative win-rate
-    /// estimate that pulls small samples far below their observed rate and leaves
-    /// large samples near it, so "60% over 300 games" outranks "100% over 3".
-    /// </summary>
+    // Conservative win-rate estimate: pulls small samples down, leaves large samples near the observed rate.
     public static double WilsonLowerBound(double wins, double total, double z = 1.96)
     {
         if (total <= 0)
@@ -41,11 +31,6 @@ public sealed class MetaBuilder(
         return Math.Max(0, (center - margin) / denominator);
     }
 
-    /// <summary>
-    /// Collects battle records from real Clan War battles. Returns [] (rather than
-    /// throwing) on a failed leaderboard fetch, so a transient outage leaves any
-    /// existing store untouched.
-    /// </summary>
     public async Task<List<BattleRecord>> CollectWarBattleRecordsAsync(CancellationToken ct = default)
     {
         logger.LogInformation("Collecting WAR battle records...");
@@ -95,7 +80,6 @@ public sealed class MetaBuilder(
                 catch { return (IReadOnlyList<string>)[]; }
             }));
 
-            // A player is only in one clan, but dedup defensively anyway.
             var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
 
             records.AddRange(await ProcessWarPlayersAsync(members, ct));
@@ -167,7 +151,6 @@ public sealed class MetaBuilder(
         return records;
     }
 
-    /// <summary>Records both sides of one war game; crowns decide the result, the opponent's is the mirror.</summary>
     private static void RecordWarPair(
         List<BattleRecord> records,
         string playerTag,
@@ -197,12 +180,6 @@ public sealed class MetaBuilder(
         }
     }
 
-    /// <summary>
-    /// Builds a BattleRecord for one side, or null if it has no usable 8-card deck.
-    /// Keyed by tag|battleTime(|rN): one player has one battle per timestamp, the
-    /// natural dedup key across refresh windows and across both perspectives of a
-    /// single physical battle.
-    /// </summary>
     private static BattleRecord? ToBattleRecord(
         string tag, string battleTime, List<CrBattleCard>? cards, BattleResult result, string keySuffix = "")
     {
@@ -211,12 +188,9 @@ public sealed class MetaBuilder(
             return null;
         }
 
-        // Sort card ids so an identical 8-card deck always produces the same key.
         var cardIds = cards.Select(c => c.Id).OrderBy(id => id).ToArray();
 
-        // Champion ("hero") slot: a hero version is flagged by evolutionLevel >= 2;
-        // a champion card (rarity "champion") is never flagged via evolutionLevel,
-        // so rarity is the only signal there. evolutionLevel == 1 is a plain evo.
+        // Champion cards never carry evolutionLevel, so rarity is the only hero signal for them.
         var cardVersions = cards.Select(card =>
         {
             var evo = card.EvolutionLevel ?? 0;
@@ -237,12 +211,6 @@ public sealed class MetaBuilder(
         };
     }
 
-    /// <summary>
-    /// Aggregates the rolling battle store into ranked deck stats. The per-deck
-    /// sample here is far larger than any single fetch (the store accumulates
-    /// across refreshes), which is the whole point: tighter Wilson bounds and a
-    /// meaningful pick rate.
-    /// </summary>
     public List<DeckMeta> AggregateBattles(IReadOnlyList<BattleRecord> records)
     {
         var sampledPlayers = records.Select(r => r.PlayerTag).Distinct().Count();
@@ -265,11 +233,7 @@ public sealed class MetaBuilder(
             }
             agg.Players.Add(record.PlayerTag);
 
-            // Tally the exact version loadout (which cards were evo/hero) this
-            // battle fielded. The deck's stored versions become the most common
-            // loadout, not the latest battle's: a single battle can be an outlier
-            // (one player without the hero fields the same deck plain), and it
-            // once relabeled a top deck's hero Knight as normal.
+            // Stored loadout is the most-common one seen, not the latest: an outlier battle once relabeled a top deck's hero Knight as normal.
             var comboKey = string.Join(',',
                 record.CardVersions.OrderBy(v => v.CardId).Select(v => $"{v.CardId}:{(int)v.Version}"));
             if (!agg.Loadouts.TryGetValue(comboKey, out var loadout))
@@ -278,8 +242,6 @@ public sealed class MetaBuilder(
                 agg.Loadouts[comboKey] = loadout;
             }
             loadout.Count++;
-            // battleTime strings share a fixed format, so ordinal comparison is
-            // chronological; recency only breaks count ties.
             if (string.CompareOrdinal(record.BattleTime, loadout.LatestTime) > 0)
             {
                 loadout.LatestTime = record.BattleTime;
@@ -290,14 +252,11 @@ public sealed class MetaBuilder(
         foreach (var agg in byDeck.Values)
         {
             var total = agg.Wins + agg.Losses + agg.Draws;
-            // No hard sample cutoff (the Wilson bound discounts small samples);
-            // skip only single-game noise.
             if (total < 2)
             {
                 continue;
             }
 
-            // Count a draw as half a win for rate purposes.
             var effectiveWins = agg.Wins + agg.Draws * 0.5;
             var winRate = effectiveWins / total;
             var confidence = WilsonLowerBound(effectiveWins, total);
@@ -317,7 +276,6 @@ public sealed class MetaBuilder(
             });
         }
 
-        // Rank by confidence-adjusted win rate weighted by player count.
         static double MetaScore(DeckMeta d) => d.Confidence * DomainMath.PopularityWeight(d.Players ?? 1);
         decks.Sort((a, b) => MetaScore(b).CompareTo(MetaScore(a)));
         return decks;
@@ -333,7 +291,6 @@ public sealed class MetaBuilder(
         public Dictionary<string, LoadoutAgg> Loadouts { get; } = [];
     }
 
-    /// <summary>One distinct version loadout of a deck (which cards were fielded as evo/hero).</summary>
     private sealed class LoadoutAgg
     {
         public int Count;

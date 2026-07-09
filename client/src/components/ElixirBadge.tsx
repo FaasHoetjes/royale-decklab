@@ -19,7 +19,6 @@ export function ElixirGradientDefs() {
   );
 }
 
-/** Small flat-fill drop, for inline use next to text (e.g. "Avg 3.4"). */
 export function ElixirDropIcon({ width = 15, height = 16 }: { width?: number; height?: number }) {
   return (
     <svg viewBox="0 0 28 30" style={{ width, height, filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))' }} aria-hidden="true">

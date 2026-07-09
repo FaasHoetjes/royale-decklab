@@ -11,15 +11,12 @@ interface CardPickerProps {
   usedIds: Set<number>;
   onSelect: (cardId: number) => void;
   onClose: () => void;
-  // Sort + type filters are owned by the parent so they persist across opens.
-  // (Search query and the popover-open toggle stay local and reset each time.)
   filters: Set<FilterKey>;
   setFilters: Dispatch<SetStateAction<Set<FilterKey>>>;
   sortIndex: number;
   setSortIndex: Dispatch<SetStateAction<number>>;
   descending: boolean;
   setDescending: Dispatch<SetStateAction<boolean>>;
-  // When the target deck has no free champion slot, champions show greyed-out.
   allowChampions: boolean;
 }
 
@@ -42,7 +39,6 @@ export default function CardPicker({
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Same Escape-to-close behavior as SwapDeckModal.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -57,7 +53,6 @@ export default function CardPicker({
       if (next.has(key)) {
         next.delete(key);
       } else {
-        // Turning on a type filter clears the other mutually-exclusive types.
         if (EXCLUSIVE_TYPES.includes(key)) EXCLUSIVE_TYPES.forEach((k) => next.delete(k));
         next.add(key);
       }
@@ -71,8 +66,8 @@ export default function CardPicker({
 
   const ownedCount = useMemo(() => cards.filter((c) => c.owned).length, [cards]);
 
-  // FLIP animation: cards slide from their old positions to their new ones on
-  // every re-sort.
+  // FLIP animation: batch-read old/new positions, offset instantly (no
+  // transition), then release the offset next frame so cards glide over.
   const sortKey = `${sortType}-${descending}`;
   const cardRefs = useRef(new Map<number, HTMLButtonElement>());
   const prevRects = useRef(new Map<number, DOMRect>());
@@ -80,11 +75,9 @@ export default function CardPicker({
   useLayoutEffect(() => {
     const refs = cardRefs.current;
 
-    // Read all new positions first (batched) to avoid layout thrashing.
     const newRects = new Map<number, DOMRect>();
     refs.forEach((el, id) => newRects.set(id, el.getBoundingClientRect()));
 
-    // Invert: offset each moved card back to where it was, with no transition.
     refs.forEach((el, id) => {
       const prev = prevRects.current.get(id);
       const next = newRects.get(id);
@@ -97,7 +90,6 @@ export default function CardPicker({
       }
     });
 
-    // Play: on the next frame, release the offset so cards glide over.
     requestAnimationFrame(() => {
       refs.forEach((el) => {
         if (el.style.transform) {
@@ -186,8 +178,6 @@ export default function CardPicker({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* On phones the header stacks: title row (with close) above a
-            full-width controls row. */}
         <div
           style={{
             ...styles.header,
@@ -280,8 +270,6 @@ export default function CardPicker({
           <div
             style={{
               ...styles.grid,
-              // Four fluid columns on phones; fixed tracks on desktop so cards
-              // never resize as results are filtered.
               gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(auto-fill, 110px)',
               gap: isMobile ? '8px' : '12px',
             }}
@@ -304,8 +292,7 @@ const styles = {
     justifyContent: 'center' as const,
     zIndex: 2000,
   },
-  // Fixed height (not max-height) so the window stays the same size whether the
-  // full collection or a few search results are showing.
+  // Fixed height (not max-height): the window stays the same size regardless of result count.
   modal: {
     width: '100%',
     maxWidth: '900px',
@@ -422,17 +409,13 @@ const styles = {
     flex: 1,
     minHeight: 0,
     overflowY: 'auto' as const,
-    // Always reserve the scrollbar gutter so filtering doesn't change the
-    // viewport width and resize every card mid-typing.
+    // Reserve the scrollbar gutter so filtering doesn't shift viewport width mid-typing.
     scrollbarGutter: 'stable' as const,
-    // Promote to a GPU layer: the modal's rounded overflow clip would
-    // otherwise force this scroller to repaint every frame.
+    // Promote to a GPU layer, else the modal's rounded overflow clip forces a repaint every frame.
     transform: 'translateZ(0)',
     willChange: 'transform' as const,
     contain: 'paint' as const,
   },
-  // Fixed-width desktop tracks so cards keep their size however few results
-  // are showing; centered so the leftover gutter is even.
   grid: {
     display: 'grid' as const,
     justifyContent: 'center' as const,

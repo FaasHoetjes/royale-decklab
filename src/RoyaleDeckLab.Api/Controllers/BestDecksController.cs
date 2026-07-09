@@ -4,11 +4,6 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
-/// <summary>
-/// Serves GET /api/best-decks: up to ten diverse sets of four card-disjoint meta
-/// decks, independent of any player's collection. Reads the current meta cache and
-/// the card catalog, then delegates the set-building to <see cref="BestDecksBuilder"/>.
-/// </summary>
 [ApiController]
 public sealed class BestDecksController(
     MetaCache cache,

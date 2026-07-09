@@ -3,7 +3,6 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
-/// <summary>Card catalog passthrough. Serves GET /api/cards.</summary>
 [ApiController]
 [Route("api/cards")]
 public sealed class CardsController(CardCatalog catalog, ILogger<CardsController> logger) : ControllerBase
