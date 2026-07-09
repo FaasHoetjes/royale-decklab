@@ -5,6 +5,7 @@ import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useUpgradeAdvice } from '../queries';
 import UpgradeRow from '../components/UpgradeRow';
+import { UpgradeAdvisorSkeleton } from '../components/LoadingSkeletons';
 import type { UpgradeSuggestion } from '../api';
 
 const INITIAL_ROWS = 10;
@@ -88,7 +89,7 @@ export default function UpgradeAdvisor() {
           </Link>
         </div>
       ) : advice.isLoading ? (
-        <p style={{ ...styles.message, color: theme.text.secondary }}>Simulating your upgrades…</p>
+        <UpgradeAdvisorSkeleton isMobile={isMobile} />
       ) : advice.isError ? (
         <p style={{ ...styles.message, color: '#e05c5c' }}>
           Failed to load: {advice.error instanceof Error ? advice.error.message : 'Unknown error'}

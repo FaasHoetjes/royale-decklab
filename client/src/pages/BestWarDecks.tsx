@@ -9,6 +9,7 @@ import { versionOf, orderBySlots } from '../lib/cardDisplay';
 import { useIsMobile } from '../hooks/useIsMobile';
 import CompactDeckRow from '../components/CompactDeckRow';
 import UseInBuilderButton from '../components/UseInBuilderButton';
+import { BestDecksSkeleton } from '../components/LoadingSkeletons';
 import {
   DECK_COUNT,
   SLOTS_PER_DECK,
@@ -90,7 +91,7 @@ export default function BestWarDecks() {
         </p>
       </div>
 
-      {isLoading && <p style={{ ...styles.message, color: theme.text.secondary }}>Loading best decks…</p>}
+      {isLoading && <BestDecksSkeleton isMobile={isMobile} />}
       {isError && (
         <p style={{ ...styles.message, color: '#e05c5c' }}>
           Failed to load: {error instanceof Error ? error.message : 'Unknown error'}

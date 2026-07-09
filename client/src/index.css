@@ -69,6 +69,8 @@
   --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
   --banner-muted: #6b7280;
   --banner-title: #0d1b3e;
+  --skeleton-base: #d5d9e0;
+  --skeleton-highlight: #eef0f4;
 }
 
 :root[data-theme='dark'] {
@@ -117,6 +119,8 @@
   --banner-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
   --banner-muted: #a1a1aa;
   --banner-title: #ffffff;
+  --skeleton-base: #28282d;
+  --skeleton-highlight: #3a3a40;
 }
 
 body {
@@ -207,4 +211,29 @@ input:disabled {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Data-loading placeholders share the shape of the content they replace, so
+   cold loads do not jump from a short message to a full page. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 25%,
+    var(--skeleton-highlight) 50%,
+    var(--skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--skeleton-base);
+  }
 }

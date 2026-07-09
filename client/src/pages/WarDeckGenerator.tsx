@@ -5,11 +5,14 @@ import WarDeckResult from '../components/WarDeckResult';
 import { useMetaStatus, usePlayerWarDecks } from '../queries';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
+import { WarDecksSkeleton } from '../components/LoadingSkeletons';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function WarDeckGenerator() {
   const { playerId } = useParams();
   const navigate = useNavigate();
   const { activePlayerTag, setActivePlayerTag } = useApp();
+  const isMobile = useIsMobile();
 
   const tag = playerId ? `#${playerId}` : null;
 
@@ -47,13 +50,13 @@ export default function WarDeckGenerator() {
   const theme = getTheme();
 
   if (!metaReady) {
+    if (!meta.isError) return <WarDecksSkeleton isMobile={isMobile} />;
+
     return (
       <div style={styles.centerContent}>
         <h1>Royale DeckLab</h1>
         <p style={{ ...styles.error, color: '#ff6b6b' }}>
-          {meta.isError
-            ? "Can't reach the server right now; please try again in a moment."
-            : 'Connecting to server...'}
+          Can't reach the server right now; please try again in a moment.
         </p>
         <button
           onClick={() => meta.refetch()}
@@ -81,10 +84,7 @@ export default function WarDeckGenerator() {
           onNewSearch={handleNewSearch}
         />
       ) : (tag || activePlayerTag) && !searchError ? (
-        <div style={styles.centerContent}>
-          <h1>Royale DeckLab</h1>
-          <p style={{ ...styles.subtitle, color: theme.text.secondary }}>Loading your war decks…</p>
-        </div>
+        <WarDecksSkeleton isMobile={isMobile} />
       ) : (
         <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} />
       )}

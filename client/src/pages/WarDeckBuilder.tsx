@@ -13,6 +13,7 @@ import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerD
 import CardPicker from '../components/CardPicker';
 import DeckPanel from '../components/DeckPanel';
 import TrashIcon from '../components/TrashIcon';
+import { BuilderSkeleton } from '../components/LoadingSkeletons';
 
 export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();
@@ -25,7 +26,7 @@ export default function WarDeckBuilder() {
   const collectionQuery = usePlayerCollection(activePlayerTag);
   const owned = collectionQuery.data ?? [];
 
-  const loading = cardsQuery.isLoading;
+  const loading = cardsQuery.isLoading || collectionQuery.isLoading;
   const loadError = cardsQuery.error ?? collectionQuery.error;
   const error = loadError instanceof Error ? loadError.message : '';
 
@@ -154,24 +155,27 @@ export default function WarDeckBuilder() {
         <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
           Each card can be used once across all four decks. Click a slot to choose a card; drag a card to swap it with another slot; click a filled card to remove it.
         </p>
-        {loading && <p style={{ color: theme.text.secondary }}>Loading cards…</p>}
       </div>
 
-      <div style={{ ...styles.deckList, gap: isMobile ? '14px' : '24px' }}>
-        {board.decks.map((_, deckIndex) => (
-          <DeckPanel
-            key={deckIndex}
-            deckIndex={deckIndex}
-            board={board}
-            cardById={cardById}
-            score={scores?.decks[deckIndex]}
-            scoreAccent={scoreAccent}
-            theme={theme}
-            isMobile={isMobile}
-            onOpenPicker={(slotIndex) => setPicker({ deckIndex, slotIndex })}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <BuilderSkeleton isMobile={isMobile} />
+      ) : (
+        <div style={{ ...styles.deckList, gap: isMobile ? '14px' : '24px' }}>
+          {board.decks.map((_, deckIndex) => (
+            <DeckPanel
+              key={deckIndex}
+              deckIndex={deckIndex}
+              board={board}
+              cardById={cardById}
+              score={scores?.decks[deckIndex]}
+              scoreAccent={scoreAccent}
+              theme={theme}
+              isMobile={isMobile}
+              onOpenPicker={(slotIndex) => setPicker({ deckIndex, slotIndex })}
+            />
+          ))}
+        </div>
+      )}
 
       {hasVersionToggle && (
         <p style={{ ...styles.versionNote, color: theme.text.secondary }}>
