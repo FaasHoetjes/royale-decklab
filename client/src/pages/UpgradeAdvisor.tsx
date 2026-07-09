@@ -98,18 +98,26 @@ export default function UpgradeAdvisor() {
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           {data.collectionMaxed ? (
             <>
-              <p style={{ ...styles.panelTitle, color: theme.text.primary }}>👑 Nothing left to upgrade</p>
+              <p style={{ ...styles.panelTitle, color: theme.text.primary }}>
+                All relevant upgrades are complete
+              </p>
               <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-                Every card the current meta uses is at max level, and every Evolution and Hero it
-                fields is unlocked. Your lineup is as strong as your collection allows; check back
-                when the meta shifts or new cards arrive.
+                Every card used by the current meta is at max level, and every Evolution and Hero
+                it uses is unlocked. There are no upgrades for the advisor to recommend right now.
+                Check back when the meta changes or new cards arrive.
               </p>
             </>
           ) : (
-            <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-              No upgrade to a single card moves your recommended lineup right now: levels, jumps
-              and Evolution / Hero unlocks included. Check back after the meta shifts.
-            </p>
+            <>
+              <p style={{ ...styles.panelTitle, color: theme.text.primary }}>
+                Your recommended lineup is fully upgraded
+              </p>
+              <p style={{ ...styles.panelText, color: theme.text.secondary }}>
+                No remaining card-level upgrade, Evolution, or Hero unlock would improve your
+                recommended lineup or bring a stronger deck into it right now. Check back when the
+                meta changes.
+              </p>
+            </>
           )}
         </div>
       ) : data ? (
