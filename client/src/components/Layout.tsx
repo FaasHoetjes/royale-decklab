@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
+import Footer from './Footer';
 import { ElixirGradientDefs } from './ElixirBadge';
 import Landing from '../pages/Landing';
 import { useApp } from '../AppContext';
@@ -31,12 +32,14 @@ export default function Layout() {
       <div
         style={{
           ...styles.shell,
+          flexDirection: 'column' as const,
           backgroundColor: theme.bg.primary,
           color: theme.text.primary,
         }}
       >
         <CornerThemeToggle />
         <Landing />
+        <Footer />
       </div>
     );
   }
@@ -55,6 +58,7 @@ export default function Layout() {
         {!isMobile && <CornerThemeToggle />}
         <ElixirGradientDefs />
         <Outlet />
+        <Footer />
       </main>
     </div>
   );

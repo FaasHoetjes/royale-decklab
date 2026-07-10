@@ -117,7 +117,6 @@ export default function Landing() {
 const styles = {
   container: {
     flex: 1,
-    minHeight: '100vh',
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
