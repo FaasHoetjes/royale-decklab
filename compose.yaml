@@ -1,0 +1,37 @@
+# Production deployment: the app container plus Caddy for HTTPS.
+#
+#   docker compose up -d --build
+#
+# The app publishes no ports; it is only reachable by Caddy over the internal
+# compose network, so TRUST_PROXY_HEADERS=true is safe without TRUSTED_PROXY_IPS
+# (see DOCKER.md). Runtime secrets come from ./.env (gitignored):
+#
+#   CLASH_ROYALE_API_KEY=...   # key bound to this server's IPv4
+#   ADMIN_TOKEN=...            # openssl rand -hex 32
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TRUST_PROXY_HEADERS: "true"
+    volumes:
+      - meta:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  meta:
+  caddy_data:
+  caddy_config:

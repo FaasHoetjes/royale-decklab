@@ -1,0 +1,12 @@
+{
+	# Contact for Let's Encrypt expiry/problem notices.
+	email faashoetjes@gmail.com
+}
+
+royaledecklab.com {
+	reverse_proxy app:3000
+}
+
+www.royaledecklab.com {
+	redir https://royaledecklab.com{uri} permanent
+}
