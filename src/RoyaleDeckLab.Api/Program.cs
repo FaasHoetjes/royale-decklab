@@ -184,18 +184,20 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
 
 // Baseline security headers on every response. The CSP allows only same-origin
 // assets: the SPA bundles everything, the theme-init script is an external file
-// (so no inline-script hash to maintain), and the one external source is card
-// art from Supercell's CDN. style-src needs 'unsafe-inline' because React sets
-// styles via the style attribute; that does not enable <script> injection.
+// (so no inline-script hash to maintain). External sources: card art from
+// Supercell's CDN, plus the Cloudflare Web Analytics beacon (script from
+// static.cloudflareinsights.com, reporting to cloudflareinsights.com).
+// style-src needs 'unsafe-inline' because React sets styles via the style
+// attribute; that does not enable <script> injection.
 app.Use(async (context, next) =>
 {
     var headers = context.Response.Headers;
     headers.ContentSecurityPolicy =
         "default-src 'self'; " +
-        "script-src 'self'; " +
+        "script-src 'self' https://static.cloudflareinsights.com; " +
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: https://api-assets.clashroyale.com; " +
-        "connect-src 'self'; " +
+        "connect-src 'self' https://cloudflareinsights.com; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self'";

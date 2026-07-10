@@ -8,6 +8,12 @@
     <!-- Blocking on purpose: sets the theme before first paint (no light-mode
          flash). External rather than inline so the CSP needs no script hash. -->
     <script src="/theme-init.js"></script>
+    <!-- Cloudflare Web Analytics (cookie-less; also allowed by the API's CSP) -->
+    <script
+      type="module"
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "449f9e22270042b08cac7a2a0806036b"}'
+    ></script>
   </head>
   <body>
     <div id="root"></div>
