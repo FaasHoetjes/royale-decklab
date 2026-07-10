@@ -1,0 +1,42 @@
+# Auto-deploy: every push to main SSHes into the production server and
+# rebuilds. Same flow as a manual deploy (git pull + compose up --build),
+# just automated. Requires two repo secrets:
+#   DEPLOY_HOST     - the server's public IPv4
+#   DEPLOY_SSH_KEY  - private half of a dedicated deploy keypair whose
+#                     public half is in root's authorized_keys on the server
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# Never run two deploys at once; a push during a deploy queues the next one.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key root@"$HOST" '
+            set -euo pipefail
+            cd /opt/royaledecklab
+            git pull --ff-only
+            docker compose up -d --build
+            docker image prune -f
+          '
+
+      - name: Smoke test
+        run: |
+          sleep 10
+          curl -fsS https://royaledecklab.com/healthz
