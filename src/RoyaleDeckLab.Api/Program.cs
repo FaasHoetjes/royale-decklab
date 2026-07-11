@@ -171,6 +171,7 @@ app.Use(async (context, next) =>
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self'";
+    headers.StrictTransportSecurity = "max-age=31536000";
     headers.XContentTypeOptions = "nosniff";
     headers.XFrameOptions = "DENY";
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
@@ -200,6 +201,14 @@ if (app.Environment.IsDevelopment())
 app.UseRateLimiter();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
+
+app.MapGet("/.well-known/security.txt", () => Results.Text(
+    """
+    Contact: mailto:faashoetjes+royaledecklab@gmail.com
+    Expires: 2027-07-11T00:00:00Z
+    Preferred-Languages: en, nl
+    Canonical: https://royaledecklab.com/.well-known/security.txt
+    """, "text/plain"));
 
 var spaStaticFiles = new StaticFileOptions
 {
