@@ -2,7 +2,7 @@
 
 A Clash Royale companion that builds your **best war decks** for you.
 
-**Live at [royaledecklab.com](https://royaledecklab.com)** — enter your player
+**Live at [royaledecklab.com](https://royaledecklab.com)**. Enter your player
 tag and go.
 
 ## War Deck Generator
@@ -24,7 +24,7 @@ right now.
 
 - **War Deck Builder**: hand-build a deck and see it scored against the live meta in real time.
 - **Best War Decks**: browse the top-performing decks in the current meta.
-- **Upgrade Advisor**: ranks which card upgrades (including Evolutions and Heroes) strengthen your current war lineup — or unlock a better one.
+- **Upgrade Advisor**: ranks which card upgrades (including Evolutions and Heroes) strengthen your current war lineup, or unlock a better one.
 
 ## Tech
 
