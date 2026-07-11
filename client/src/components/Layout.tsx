@@ -91,7 +91,7 @@ export default function Layout() {
 const styles = {
   shell: {
     display: 'flex' as const,
-    minHeight: '100vh',
+    minHeight: '100dvh',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   },
   content: {
