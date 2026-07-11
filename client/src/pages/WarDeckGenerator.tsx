@@ -34,6 +34,19 @@ export default function WarDeckGenerator() {
     if (warDecks.isSuccess && tag) setActivePlayerTag(tag);
   }, [warDecks.isSuccess, tag]);
 
+  useEffect(() => {
+    if (warDecks.isError && playerId) {
+      setActivePlayerTag(null);
+      navigate('/', {
+        replace: true,
+        state: {
+          tagError: "Couldn't load that player. Check your tag or try again.",
+          badTag: playerId,
+        },
+      });
+    }
+  }, [warDecks.isError, playerId]);
+
   const handleSearch = (playerTag: string) => {
     navigate(`/${playerTag.replace(/#/g, '')}`);
   };
@@ -64,28 +77,17 @@ export default function WarDeckGenerator() {
     );
   }
 
-  const searchError = warDecks.isError
-    ? warDecks.error instanceof Error
-      ? warDecks.error.message
-      : 'Failed to fetch player data. Please try again.'
-    : '';
-
-  return (
-    <>
-      {playerData ? (
-        <WarDeckResult
-          playerName={playerData.player.name}
-          decks={playerData.warDecks.decks}
-          alternatives={playerData.warDecks.alternatives}
-          onNewSearch={handleNewSearch}
-        />
-      ) : (tag || activePlayerTag) && !searchError ? (
-        <WarDecksSkeleton isMobile={isMobile} />
-      ) : (
-        <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} />
-      )}
-      {searchError && <div style={{ ...styles.errorBanner, backgroundColor: '#ff6b6b' }}>{searchError}</div>}
-    </>
+  return playerData ? (
+    <WarDeckResult
+      playerName={playerData.player.name}
+      decks={playerData.warDecks.decks}
+      alternatives={playerData.warDecks.alternatives}
+      onNewSearch={handleNewSearch}
+    />
+  ) : tag || activePlayerTag ? (
+    <WarDecksSkeleton isMobile={isMobile} />
+  ) : (
+    <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} />
   );
 }
 
@@ -116,19 +118,5 @@ const styles = {
     color: '#d32f2f',
     marginTop: '20px',
     fontSize: '16px',
-  },
-  errorBanner: {
-    position: 'fixed' as const,
-    bottom: '20px',
-    left: '20px',
-    right: '20px',
-    marginLeft: 'auto' as const,
-    width: 'fit-content' as const,
-    backgroundColor: '#d32f2f',
-    color: 'white',
-    padding: '16px 20px',
-    borderRadius: '8px',
-    maxWidth: '400px',
-    boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
   },
 };

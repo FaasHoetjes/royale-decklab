@@ -9,9 +9,6 @@ interface InfoTipProps {
 
 export default function InfoTip({ ariaLabel, color, width = 220, children }: InfoTipProps) {
   const [show, setShow] = useState(false);
-  // Pointer-type-aware: mouse hovers, touch taps to toggle. A touch tap fires
-  // emulated mouseenter + focus + click in one go, which with plain hover
-  // handlers cancels itself out (tooltip only appeared on the second tap).
   const lastPointerType = useRef('');
   return (
     <span

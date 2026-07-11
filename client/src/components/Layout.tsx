@@ -1,4 +1,5 @@
-import { Outlet, useMatch } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useMatch, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import Footer from './Footer';
@@ -18,14 +19,32 @@ function CornerThemeToggle() {
   );
 }
 
+const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades']);
+
 export default function Layout() {
-  const { activePlayerTag } = useApp();
+  const { activePlayerTag, setActivePlayerTag } = useApp();
+  const navigate = useNavigate();
   const theme = getTheme();
   const isMobile = useIsMobile();
 
   const playerMatch = useMatch('/:playerId');
   const isPlayerDeepLink =
     !!playerMatch?.params.playerId && isValidTag(playerMatch.params.playerId);
+
+  const badTag = playerMatch?.params.playerId;
+  const isMalformedTagLink = !!badTag && !STATIC_PATHS.has(badTag) && !isValidTag(badTag);
+  useEffect(() => {
+    if (isMalformedTagLink) {
+      setActivePlayerTag(null);
+      navigate('/', {
+        replace: true,
+        state: {
+          tagError: "That doesn't look like a valid player tag; check it on your in-game profile.",
+          badTag,
+        },
+      });
+    }
+  }, [isMalformedTagLink, badTag]);
 
   usePrefetchAppData(activePlayerTag);
 

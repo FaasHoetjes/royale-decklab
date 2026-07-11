@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { playerWarDecksOptions } from '../queries';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { isValidTag } from '../lib/playerTag';
+import { isValidTag, normalizeTag } from '../lib/playerTag';
 
 export default function Landing() {
   const { setActivePlayerTag } = useApp();
@@ -16,6 +16,14 @@ export default function Landing() {
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+
+  const linkState = (useLocation().state ?? null) as { tagError?: string; badTag?: string } | null;
+  useEffect(() => {
+    if (linkState?.tagError) {
+      setError(linkState.tagError);
+      if (linkState.badTag) setValue(normalizeTag(linkState.badTag));
+    }
+  }, [linkState]);
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
 
