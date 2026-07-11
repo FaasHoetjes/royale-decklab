@@ -35,8 +35,8 @@ export default function UseInBuilderButton({ onClick, busy, spinning, accent, va
         disabled={busy}
         aria-label="Use in Builder"
         className="deck-swap-btn"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onPointerEnter={(e) => { if (e.pointerType === 'mouse') setHovered(true); }}
+        onPointerLeave={(e) => { if (e.pointerType === 'mouse') setHovered(false); }}
         style={{ ...styles.circle, ...shared }}
       >
         <ArrowIcon size={20} spinning={spinning} />

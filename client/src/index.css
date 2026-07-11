@@ -115,10 +115,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-button:hover {
-  opacity: 0.9;
-}
-
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -132,23 +128,13 @@ input:disabled {
 .picker-filter-option {
   transition: background-color 0.12s ease;
 }
-.picker-filter-option:hover {
-  background-color: rgba(148, 148, 148, 0.15);
-}
 
 .nav-link {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
-.nav-link:not(.active):hover {
-  background-color: rgba(148, 148, 148, 0.12);
-}
 
 .theme-toggle-btn {
   border-radius: 10px;
-}
-.theme-toggle-btn:hover {
-  background-color: rgba(148, 148, 148, 0.16) !important;
-  opacity: 1 !important;
 }
 
 .deck-slot-btn {
@@ -162,9 +148,27 @@ input:disabled {
 .deck-swap-btn {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.deck-swap-btn:hover {
-  transform: scale(1.08);
-  box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
+
+/* Hover-capable devices only: on touch screens a tap would otherwise leave
+   the element stuck in its :hover state until the next tap elsewhere. */
+@media (hover: hover) {
+  button:hover {
+    opacity: 0.9;
+  }
+  .picker-filter-option:hover {
+    background-color: rgba(148, 148, 148, 0.15);
+  }
+  .nav-link:not(.active):hover {
+    background-color: rgba(148, 148, 148, 0.12);
+  }
+  .theme-toggle-btn:hover {
+    background-color: rgba(148, 148, 148, 0.16) !important;
+    opacity: 1 !important;
+  }
+  .deck-swap-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
+  }
 }
 
 .drawer-backdrop {

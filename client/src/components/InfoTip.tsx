@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 interface InfoTipProps {
   ariaLabel: string;
@@ -9,15 +9,20 @@ interface InfoTipProps {
 
 export default function InfoTip({ ariaLabel, color, width = 220, children }: InfoTipProps) {
   const [show, setShow] = useState(false);
+  // Pointer-type-aware: mouse hovers, touch taps to toggle. A touch tap fires
+  // emulated mouseenter + focus + click in one go, which with plain hover
+  // handlers cancels itself out (tooltip only appeared on the second tap).
+  const lastPointerType = useRef('');
   return (
     <span
       style={{ ...styles.icon, color }}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
+      onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setShow(true); }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setShow(false); }}
       tabIndex={0}
-      onFocus={() => setShow(true)}
+      onFocus={(e) => { if (e.target.matches(':focus-visible')) setShow(true); }}
       onBlur={() => setShow(false)}
-      onClick={() => setShow((prev) => !prev)}
+      onClick={() => { if (lastPointerType.current !== 'mouse') setShow((prev) => !prev); }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') setShow(false);
       }}
