@@ -51,7 +51,7 @@ export default function Layout() {
   usePrefetchAppData(activePlayerTag);
 
   const isPublicPath = PUBLIC_PATHS.has(pathname.replace(/^\//, ''));
-  if (!activePlayerTag && !isPlayerDeepLink && !isPublicPath) {
+  if (pathname === '/' || (!activePlayerTag && !isPlayerDeepLink && !isPublicPath)) {
     return (
       <div
         style={{

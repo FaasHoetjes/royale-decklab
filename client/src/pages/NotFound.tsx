@@ -11,7 +11,7 @@ export default function NotFound() {
         That link doesn't match anything here; it may be mistyped or outdated.
       </p>
       <Link to="/" style={{ ...styles.homeLink, backgroundColor: theme.accent, color: theme.onAccent }}>
-        Back to the generator
+        Back to the start
       </Link>
     </div>
   );
