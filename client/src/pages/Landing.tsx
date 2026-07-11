@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
@@ -26,6 +26,17 @@ export default function Landing() {
   }, [linkState]);
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const lastPrefetched = useRef('');
+  useEffect(() => {
+    const code = value.trim();
+    if (code.length < 8 || !isValidTag(code) || lastPrefetched.current === code) return;
+    const timer = setTimeout(() => {
+      lastPrefetched.current = code;
+      queryClient.prefetchQuery({ ...playerWarDecksOptions(`#${code}`), retry: false });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [value, queryClient]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value.replace(/[#\s]/g, '').toUpperCase());
