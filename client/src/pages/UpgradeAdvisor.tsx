@@ -57,8 +57,8 @@ export default function UpgradeAdvisor() {
           paddingBottom: isMobile ? '14px' : '20px',
         }}
       >
-        <div style={styles.titleRow}>
-          <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>
+        <div style={{ ...styles.titleRow, justifyContent: isMobile ? 'flex-end' : 'space-between' }}>
+          {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>}
           {data && (
             <span
               style={{ ...styles.scorePill, color: theme.text.primary, borderColor: theme.border }}

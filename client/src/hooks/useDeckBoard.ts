@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState, type DragEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { BuilderCard } from '../lib/builderCards';
 import {
   CHAMPION_SLOTS,
@@ -59,7 +67,7 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     let slotIndex = target.slotIndex;
     if (card?.rarity === 'champion' && !CHAMPION_SLOTS.includes(slotIndex)) {
       const free = CHAMPION_SLOTS.find((i) => decks[target.deckIndex]?.[i] == null);
-      if (free == null) return; // no room; the picker greys champions out
+      if (free == null) return;
       slotIndex = free;
     }
     setSlot(target.deckIndex, slotIndex, cardId);
@@ -110,6 +118,10 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
   };
 
   const handleDragStart = (e: DragEvent, slot: SlotRef) => {
+    if (touchDrag.current) {
+      e.preventDefault();
+      return;
+    }
     if (decks[slot.deckIndex]?.[slot.slotIndex] == null) {
       e.preventDefault();
       return;
@@ -143,6 +155,74 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     setDragOver(null);
   };
 
+  const touchDrag = useRef<{ slot: SlotRef; startX: number; startY: number; active: boolean } | null>(null);
+  const suppressClick = useRef(false);
+
+  const slotFromPoint = (x: number, y: number): SlotRef | null => {
+    const el = document.elementFromPoint(x, y)?.closest('[data-deck-index]');
+    if (!(el instanceof HTMLElement)) return null;
+    return { deckIndex: Number(el.dataset.deckIndex), slotIndex: Number(el.dataset.slotIndex) };
+  };
+
+  const handlePointerDown = (e: ReactPointerEvent, slot: SlotRef) => {
+    if (e.pointerType === 'mouse') return;
+    if (decks[slot.deckIndex]?.[slot.slotIndex] == null) return;
+    touchDrag.current = { slot, startX: e.clientX, startY: e.clientY, active: false };
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent) => {
+    const t = touchDrag.current;
+    if (!t) return;
+    if (!t.active) {
+      const dx = e.clientX - t.startX;
+      const dy = e.clientY - t.startY;
+      if (dx * dx + dy * dy < 36) return;
+      t.active = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setDragSource(t.slot);
+    }
+    const over = slotFromPoint(e.clientX, e.clientY);
+    setDragOver((prev) =>
+      prev?.deckIndex === over?.deckIndex && prev?.slotIndex === over?.slotIndex ? prev : over
+    );
+    const margin = 90;
+    if (e.clientY < margin) window.scrollBy(0, -14);
+    else if (e.clientY > window.innerHeight - margin) window.scrollBy(0, 14);
+  };
+
+  const handlePointerUp = (e: ReactPointerEvent) => {
+    const t = touchDrag.current;
+    touchDrag.current = null;
+    if (!t?.active) return;
+    suppressClick.current = true;
+    window.setTimeout(() => {
+      suppressClick.current = false;
+    }, 150);
+    const target = slotFromPoint(e.clientX, e.clientY);
+    if (target && !isChampionViolation(t.slot, target)) {
+      swapSlots(t.slot, target);
+    }
+    setDragSource(null);
+    setDragOver(null);
+  };
+
+  const handlePointerCancel = () => {
+    if (!touchDrag.current) return;
+    touchDrag.current = null;
+    setDragSource(null);
+    setDragOver(null);
+  };
+
+  const handleContextMenu = (e: ReactMouseEvent) => {
+    if (touchDrag.current) e.preventDefault();
+  };
+
+  const consumeDragClick = () => {
+    const v = suppressClick.current;
+    suppressClick.current = false;
+    return v;
+  };
+
   return {
     decks,
     slotVersion,
@@ -159,5 +239,11 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     handleDragOver,
     handleDrop,
     handleDragEnd,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    handleContextMenu,
+    consumeDragClick,
   };
 }

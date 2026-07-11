@@ -41,6 +41,24 @@ const inlineInfo: React.CSSProperties = {
 
 export const faqItems: FaqItem[] = [
   {
+    question: 'What is Royale DeckLab?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          A free companion tool for Clash Royale's Clan Wars. Enter your player tag and it
+          generates the four strongest war decks you can field right now, based on what top war
+          clans actually win with and adjusted for your own card levels, Evolutions, and Heroes.
+          It also ranks which upgrades would improve your lineup the most, and lets you build and
+          score war decks by hand.
+        </p>
+        <p style={pLast}>
+          Royale DeckLab is an independent fan-made project built on Supercell's official public
+          API. It isn't endorsed by or affiliated with Supercell.
+        </p>
+      </>
+    ),
+  },
+  {
     question: 'How is the win rate determined?',
     answer: (
       <>
@@ -106,18 +124,6 @@ export const faqItems: FaqItem[] = [
           cards).
         </p>
       </>
-    ),
-  },
-  {
-    question: 'What does the Swap button do?',
-    answer: (
-      <p style={pLast}>
-        It opens alternatives for that one war slot: other high-scoring decks that{' '}
-        <strong>don't share any cards</strong> with your other three, so your four-deck lineup
-        stays valid. Each option shows its win rate, your player score, and average elixir; click
-        one to drop it into that slot. Use it to dodge a deck you dislike or to try a different
-        archetype without rebuilding the whole set.
-      </p>
     ),
   },
   {
@@ -226,15 +232,6 @@ export const faqItems: FaqItem[] = [
         War battles are refreshed every couple of hours and accumulated over a rolling 30-day
         window. After a balance update we reset to the new patch, so win rates show lower confidence
         for a few days while fresh data builds up.
-      </p>
-    ),
-  },
-  {
-    question: 'Is this affiliated with Supercell?',
-    answer: (
-      <p style={pLast}>
-        No. Royale DeckLab is an independent fan-made tool built on Supercell's official public
-        API. It isn't endorsed by or affiliated with Supercell.
       </p>
     ),
   },

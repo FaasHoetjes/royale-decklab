@@ -10,19 +10,18 @@ export default function Faq() {
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div
-        style={{
-          ...styles.header,
-          borderBottomColor: theme.border,
-          marginBottom: isMobile ? '20px' : '30px',
-          paddingBottom: isMobile ? '14px' : '20px',
-        }}
-      >
-        <h2 style={{ color: theme.text.primary, margin: 0 }}>FAQ</h2>
-        <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
-          How the War Deck Generator scores and ranks decks.
-        </p>
-      </div>
+      {!isMobile && (
+        <div
+          style={{
+            ...styles.header,
+            borderBottomColor: theme.border,
+            marginBottom: '30px',
+            paddingBottom: '20px',
+          }}
+        >
+          <h2 style={{ color: theme.text.primary, margin: 0 }}>FAQ</h2>
+        </div>
+      )}
 
       <div style={{ ...styles.list, backgroundColor: theme.bg.secondary, borderColor: theme.border }}>
         {faqItems.map((item, i) => {
@@ -95,10 +94,6 @@ const styles = {
   container: {
     maxWidth: '760px',
     margin: '0 auto',
-  },
-  subtitle: {
-    fontSize: '15px',
-    margin: '8px 0 0',
   },
   header: {
     borderBottom: '1px solid',

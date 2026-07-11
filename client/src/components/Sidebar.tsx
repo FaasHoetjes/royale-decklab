@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -36,6 +36,7 @@ export default function Sidebar() {
   }, [drawerOpen]);
 
   const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
+  const { pathname } = useLocation();
 
   const activeBg = 'var(--nav-active-bg)';
 
@@ -47,6 +48,10 @@ export default function Sidebar() {
     { to: '/faq', label: 'FAQ', end: false, icon: <HelpIcon /> },
   ];
 
+  const activeTitle = navItems.find((item) =>
+    item.end ? pathname === item.to : pathname.startsWith(item.to)
+  )?.label;
+
   const renderNavLink = (item: (typeof navItems)[number]) => (
     <NavLink
       key={item.label}
@@ -57,8 +62,6 @@ export default function Sidebar() {
       style={({ isActive }) => ({
         ...styles.navLink,
         color: isActive ? theme.accent : theme.text.secondary,
-        // Leave inactive backgrounds unset (not 'transparent') so the
-        // `.nav-link:not(.active):hover` CSS rule isn't beaten by inline style.
         backgroundColor: isActive ? activeBg : undefined,
         boxShadow: isActive ? `inset 3px 0 0 ${theme.accent}` : 'none',
       })}
@@ -66,12 +69,6 @@ export default function Sidebar() {
       <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
       {item.label}
     </NavLink>
-  );
-
-  const brand = (
-    <div style={{ ...styles.brandMobile, color: theme.text.primary }}>
-      ROYALE<span style={styles.brandMobileBold}> DECKLAB</span>
-    </div>
   );
 
   const footer = (
@@ -106,8 +103,6 @@ export default function Sidebar() {
             onClick={() => {
               setDrawerOpen(false);
               setActivePlayerTag(null);
-              // Back to the landing URL too; without this the old player's
-              // tag lingers in the address bar over the landing screen.
               navigate('/');
             }}
             style={{ ...styles.changeButton, color: theme.accent }}
@@ -123,9 +118,7 @@ export default function Sidebar() {
     return (
       <>
         <header style={{ ...styles.bar, backgroundColor: theme.bg.secondary, borderBottomColor: theme.border }}>
-          {brand}
-          <div style={styles.barActions}>
-            <ThemeToggle size={22} />
+          <div style={styles.barLeft}>
             <button
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
@@ -135,7 +128,11 @@ export default function Sidebar() {
             >
               <MenuIcon />
             </button>
+            {activeTitle && (
+              <span style={{ ...styles.barTitle, color: theme.text.primary }}>{activeTitle}</span>
+            )}
           </div>
+          <ThemeToggle size={22} />
         </header>
 
         {drawerOpen && (
@@ -150,16 +147,19 @@ export default function Sidebar() {
               onClick={(e) => e.stopPropagation()}
               aria-label="Main menu"
             >
+              <button
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+                className="theme-toggle-btn"
+                style={{ ...styles.menuButton, ...styles.drawerClose, color: theme.text.primary }}
+              >
+                <CloseIcon />
+              </button>
               <div style={styles.drawerHeader}>
-                {brand}
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Close menu"
-                  className="theme-toggle-btn"
-                  style={{ ...styles.menuButton, color: theme.text.secondary }}
-                >
-                  <CloseIcon />
-                </button>
+                <div style={{ ...styles.drawerBrand, color: theme.text.primary }}>
+                  <div style={{ ...styles.brandTop, fontSize: '36px' }}>ROYALE</div>
+                  <div style={{ ...styles.brandBottom, fontSize: '48px' }}>DECKLAB</div>
+                </div>
               </div>
 
               <div style={styles.navList}>{navItems.map(renderNavLink)}</div>
@@ -205,16 +205,24 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: '12px',
-    padding: '8px 8px 8px 14px',
+    padding: '8px 10px 8px 6px',
     borderBottom: '1px solid',
     position: 'sticky' as const,
     top: 0,
     zIndex: 900,
   },
-  barActions: {
+  barLeft: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: '2px',
+    gap: '4px',
+    minWidth: 0,
+  },
+  barTitle: {
+    fontSize: '16px',
+    fontWeight: 700 as const,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
   },
   menuButton: {
     border: 'none',
@@ -233,39 +241,33 @@ const styles = {
   },
   drawer: {
     position: 'absolute' as const,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 'min(300px, 85vw)',
+    inset: 0,
+    width: '100%',
     boxSizing: 'border-box' as const,
     padding: '12px 16px 24px',
     display: 'flex' as const,
     flexDirection: 'column' as const,
-    boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.35)',
     overflowY: 'auto' as const,
   },
   drawerHeader: {
     display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: '20px',
+    justifyContent: 'center' as const,
+    padding: '36px 0 8px',
+    marginBottom: '24px',
+  },
+  drawerClose: {
+    position: 'absolute' as const,
+    top: '8px',
+    left: '6px',
+  },
+  drawerBrand: {
+    lineHeight: 1.05,
   },
   brand: {
     alignSelf: 'flex-start' as const,
     marginBottom: '32px',
     paddingLeft: '8px',
     lineHeight: 1.05,
-  },
-  brandMobile: {
-    fontSize: '19px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.5px',
-    whiteSpace: 'nowrap' as const,
-    flexShrink: 0,
-    lineHeight: 1,
-  },
-  brandMobileBold: {
-    fontWeight: 800 as const,
   },
   brandTop: {
     fontSize: '28px',

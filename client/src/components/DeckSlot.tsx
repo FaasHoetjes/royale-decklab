@@ -1,4 +1,4 @@
-import type { DragEvent } from 'react';
+import type { DragEvent, MouseEvent, PointerEvent } from 'react';
 import type { Theme } from '../theme';
 import { availableVersions, type BuilderCard } from '../lib/builderCards';
 import { cardIconUrl, displayLevel } from '../lib/cardDisplay';
@@ -8,6 +8,7 @@ import CardTile from './CardTile';
 
 interface DeckSlotProps {
   card: BuilderCard | null;
+  deckIndex: number;
   slotIndex: number;
   theme: Theme;
   versionOverride?: SpecialVersion;
@@ -20,10 +21,16 @@ interface DeckSlotProps {
   onDragOver: (e: DragEvent) => void;
   onDrop: (e: DragEvent) => void;
   onDragEnd: () => void;
+  onPointerDown: (e: PointerEvent) => void;
+  onPointerMove: (e: PointerEvent) => void;
+  onPointerUp: (e: PointerEvent) => void;
+  onPointerCancel: () => void;
+  onContextMenu: (e: MouseEvent) => void;
 }
 
 export default function DeckSlot({
   card,
+  deckIndex,
   slotIndex,
   theme,
   versionOverride,
@@ -36,6 +43,11 @@ export default function DeckSlot({
   onDragOver,
   onDrop,
   onDragEnd,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onContextMenu,
 }: DeckSlotProps) {
   const kind = slotKind(slotIndex);
   const versions = card ? availableVersions(card, kind) : [];
@@ -53,16 +65,24 @@ export default function DeckSlot({
   return (
     <button
       className="deck-slot-btn"
+      data-deck-index={deckIndex}
+      data-slot-index={slotIndex}
       onClick={onClick}
       draggable={card != null}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onContextMenu={onContextMenu}
       style={{
         ...styles.slot,
         cursor: card ? 'grab' : 'pointer',
         opacity: isDragging ? 0.4 : 1,
+        touchAction: card ? 'none' : undefined,
       }}
       title={
         card
@@ -140,6 +160,7 @@ const styles = {
     display: 'block',
     width: '100%',
     userSelect: 'none' as const,
+    WebkitTouchCallout: 'none' as const,
   },
   dropTarget: {
     outline: '3px solid #4dabf7',

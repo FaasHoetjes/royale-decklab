@@ -124,8 +124,8 @@ export default function WarDeckBuilder() {
           paddingBottom: isMobile ? '14px' : '20px',
         }}
       >
-        <div style={styles.titleRow}>
-          <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>
+        <div style={{ ...styles.titleRow, justifyContent: isMobile ? 'flex-end' : 'space-between' }}>
+          {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>}
           <div style={styles.titleRowRight}>
             {scores && scores.total > 0 && (
               <span
@@ -149,7 +149,7 @@ export default function WarDeckBuilder() {
           </div>
         </div>
         <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
-          Each card can be used once across all four decks. Click a slot to choose a card; drag a card to swap it with another slot; click a filled card to remove it.
+          Click a slot to choose a card; drag a card to swap it with another slot; click a filled card to remove it.
         </p>
       </div>
 

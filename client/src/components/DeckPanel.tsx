@@ -37,6 +37,7 @@ export default function DeckPanel({
   });
 
   const handleSlotClick = (slotIndex: number) => {
+    if (board.consumeDragClick()) return;
     if (deck[slotIndex] != null) {
       board.setSlot(deckIndex, slotIndex, null);
     } else {
@@ -110,6 +111,7 @@ export default function DeckPanel({
             <DeckSlot
               key={slotIndex}
               card={cardId != null ? cardById.get(cardId) ?? null : null}
+              deckIndex={deckIndex}
               slotIndex={slotIndex}
               theme={theme}
               versionOverride={board.slotVersion[slotKey(deckIndex, slotIndex)]}
@@ -126,6 +128,11 @@ export default function DeckPanel({
               onDragOver={(e) => board.handleDragOver(e, slot)}
               onDrop={(e) => board.handleDrop(e, slot)}
               onDragEnd={board.handleDragEnd}
+              onPointerDown={(e) => board.handlePointerDown(e, slot)}
+              onPointerMove={board.handlePointerMove}
+              onPointerUp={board.handlePointerUp}
+              onPointerCancel={board.handlePointerCancel}
+              onContextMenu={board.handleContextMenu}
             />
           );
         })}
