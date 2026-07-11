@@ -17,18 +17,21 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.DEPLOY_HOST }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/deploy_key root@"$HOST" '
-            set -euo pipefail
-            cd /opt/royaledecklab
-            git pull --ff-only
-            docker compose up -d --build
-            docker image prune -f
-          '
+          # Pinned host key: refuse to connect to anything but our server.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The key is bound to a forced command on the server
+          # (/usr/local/sbin/deploy-royaledecklab), so the word "deploy" here
+          # is ignored; the server always runs exactly that script.
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            root@"$HOST" deploy
 
       - name: Smoke test
         run: |
