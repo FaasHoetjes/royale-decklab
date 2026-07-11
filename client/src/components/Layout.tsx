@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, useMatch, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import Footer from './Footer';
@@ -20,10 +20,12 @@ function CornerThemeToggle() {
 }
 
 const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades']);
+const PUBLIC_PATHS = new Set(['faq', 'best-decks']);
 
 export default function Layout() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const theme = getTheme();
   const isMobile = useIsMobile();
 
@@ -48,7 +50,8 @@ export default function Layout() {
 
   usePrefetchAppData(activePlayerTag);
 
-  if (!activePlayerTag && !isPlayerDeepLink) {
+  const isPublicPath = PUBLIC_PATHS.has(pathname.replace(/^\//, ''));
+  if (!activePlayerTag && !isPlayerDeepLink && !isPublicPath) {
     return (
       <div
         style={{
