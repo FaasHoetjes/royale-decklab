@@ -86,7 +86,7 @@ export default function BestWarDecks() {
       >
         {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Best War Deck Sets</h2>}
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
-          The statistically best 4-deck combinations for war, ranked by meta performance. Assumes all cards are owned, upgraded to the max level, with all evolutions and heroes unlocked.
+          The strongest four deck war sets in the current meta. Assumes a maxed collection with all Evolutions and Heroes.
         </p>
       </div>
 

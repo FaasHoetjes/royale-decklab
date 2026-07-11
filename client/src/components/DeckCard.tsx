@@ -80,13 +80,15 @@ export default function DeckCard({
         <div style={{ ...styles.stat, position: 'relative' as const }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             Win Rate
-            <InfoTip ariaLabel="Win rate details" color={theme.statsLabel}>
-              <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
-              <br />
-              Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
-              <br />
-              Ranking uses a confidence-adjusted version of this so small-sample decks don't dominate.
-            </InfoTip>
+            {!isMobile && (
+              <InfoTip ariaLabel="Win rate details" color={theme.statsLabel}>
+                <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
+                <br />
+                Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
+                <br />
+                Ranking uses a confidence-adjusted version of this so small-sample decks don't dominate.
+              </InfoTip>
+            )}
           </span>
           <span style={{ ...styles.statValue, color: theme.statsValueAccent }}>{(metaWinRate * 100).toFixed(1)}%</span>
           <span style={{ ...styles.statSubtext, color: theme.statsLabel }}>{uses} game{uses === 1 ? '' : 's'}</span>
@@ -94,15 +96,17 @@ export default function DeckCard({
         <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}`, position: 'relative' as const }}>
           <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
             {scoreLabel ?? 'Player Score'}
-            <InfoTip ariaLabel="How the score is derived" color={theme.statsLabel}>
-              {scoreTooltip ?? (
-                <>
-                  <strong>How well this meta deck fits your collection.</strong>
-                  <br />
-                  The win rate you can expect at your card levels (under-leveled cards cost win odds, compounded) × evolutions/heroes you've unlocked × how widely top players run it.
-                </>
-              )}
-            </InfoTip>
+            {!isMobile && (
+              <InfoTip ariaLabel="How the score is derived" color={theme.statsLabel}>
+                {scoreTooltip ?? (
+                  <>
+                    <strong>How well this meta deck fits your collection.</strong>
+                    <br />
+                    The win rate you can expect at your card levels (under-leveled cards cost win odds, compounded) × evolutions/heroes you've unlocked × how widely top players run it.
+                  </>
+                )}
+              </InfoTip>
+            )}
           </span>
           <span style={{ ...styles.statValue, color: theme.statsValue }}>{playerScore.toFixed(3)}</span>
         </div>

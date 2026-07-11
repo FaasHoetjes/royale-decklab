@@ -17,13 +17,12 @@ const FILTERS: { key: Filter; label: string; empty: string }[] = [
   {
     key: 'lineup',
     label: 'Current decks',
-    empty: 'No upgrade improves a deck in your current lineup; those cards are already maxed.',
+    empty: 'No upgrade improves a deck in your current lineup. Those cards are already maxed.',
   },
   {
     key: 'new',
     label: 'Unlocks new deck',
-    empty:
-      'No single-card upgrade pulls a new deck into your lineup right now, not even taken all the way to max level, and no Evolution or Hero unlock does it either. Your top four are simply that far ahead.',
+    empty: 'No upgrade brings a new deck into your lineup right now.',
   },
 ];
 
@@ -62,7 +61,7 @@ export default function UpgradeAdvisor() {
           {data && (
             <span
               style={{ ...styles.scorePill, color: theme.text.primary, borderColor: theme.border }}
-              title="Your recommended war lineup's total score today: the reference every suggestion is measured against."
+              title="Your current lineup score. Each suggestion shows how much it can raise it."
             >
               <span style={{ ...styles.scorePillLabel, color: theme.text.secondary }}>Current Score</span>
               <span style={{ color: theme.accent }}>{data.baselineScore.toFixed(3)}</span>
@@ -70,16 +69,14 @@ export default function UpgradeAdvisor() {
           )}
         </div>
         <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
-          Where your next upgrade earns the most: card levels and Evolution / Hero unlocks ranked
-          by how much they raise your recommended war lineup's total score.
+          Ranked by the increase each upgrade gives your best war lineup.
         </p>
       </div>
 
       {!activePlayerTag ? (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-            Upgrade advice is computed from your card collection, so we need to know who you are
-            first.
+            Upgrade advice uses your card collection. Search your player tag first.
           </p>
           <Link
             to="/"
@@ -102,9 +99,8 @@ export default function UpgradeAdvisor() {
                 All relevant upgrades are complete
               </p>
               <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-                Every card used by the current meta is at max level, and every Evolution and Hero
-                it uses is unlocked. There are no upgrades for the advisor to recommend right now.
-                Check back when the meta changes or new cards arrive.
+                Every card used in the current meta is maxed, and its Evolutions and Heroes are
+                unlocked. Check back when the meta changes or new cards arrive.
               </p>
             </>
           ) : (
@@ -113,9 +109,8 @@ export default function UpgradeAdvisor() {
                 Your recommended lineup is fully upgraded
               </p>
               <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-                No remaining card-level upgrade, Evolution, or Hero unlock would improve your
-                recommended lineup or bring a stronger deck into it right now. Check back when the
-                meta changes.
+                No available upgrade improves your recommended lineup or brings in a stronger deck.
+                Check back when the meta changes.
               </p>
             </>
           )}
@@ -197,12 +192,8 @@ export default function UpgradeAdvisor() {
             )}
           </div>
           <p style={{ ...styles.footnote, color: theme.text.secondary }}>
-            Each suggestion is a simulation: that one change is applied (a card level, a bigger
-            level jump, or an Evolution / Hero unlock), your best four war decks are rebuilt from
-            scratch, and the change in total score is measured. When one level isn't enough, the
-            advisor also reports the smallest jump that would change your lineup. An upgrade
-            marked <strong>Unlocks a new deck</strong> would pull a stronger deck into your lineup,
-            not just improve a current one.
+            Each result is tested against a rebuilt lineup. <strong>Unlocks a new deck</strong>{' '}
+            means the upgrade changes your four decks.
           </p>
         </>
       ) : null}
