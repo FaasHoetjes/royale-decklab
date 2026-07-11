@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -8,6 +8,7 @@ import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, GitH
 
 export default function Sidebar() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
+  const navigate = useNavigate();
   const theme = getTheme();
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -105,6 +106,9 @@ export default function Sidebar() {
             onClick={() => {
               setDrawerOpen(false);
               setActivePlayerTag(null);
+              // Back to the landing URL too; without this the old player's
+              // tag lingers in the address bar over the landing screen.
+              navigate('/');
             }}
             style={{ ...styles.changeButton, color: theme.accent }}
           >

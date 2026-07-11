@@ -7,22 +7,13 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Data;
 
-// The aggregated meta is NOT persisted here: it's rebuilt from the battles on
-// demand, so battles are the single source of truth. The bulk merge uses raw
-// INSERT OR IGNORE because EF has no native upsert and war battles are full of
-// cross-perspective duplicates (both sampled players log the same physical game).
 public sealed partial class BattleRepository(MetaDbContext db)
 {
-    // SQLite allows a single writer at a time, and the background crawl's merge
-    // and an admin /meta/epoch prune run on separate connections. Serialise every
-    // write through one process-wide gate. NOT reentrant: a write method must
-    // never call another write method while holding it.
     private static readonly SemaphoreSlim WriteGate = new(1, 1);
 
     [GeneratedRegex(@"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})")]
     private static partial Regex BattleTimeRegex();
 
-    // Returns 0 on an unparseable value so such records sort as ancient and get pruned out.
     public static long ParseBattleTime(string battleTime)
     {
         var m = BattleTimeRegex().Match(battleTime);
@@ -110,7 +101,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         try
         {
             await db.Battles.ExecuteDeleteAsync(ct);
-            // Inline rather than via SetEpochStartAsync because the gate is not reentrant.
             var s = State();
             s.EpochStartMs = 0;
             await db.SaveChangesAsync(ct);
@@ -121,10 +111,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    // Streams rather than materialising (the window can hold millions of rows);
-    // the connection stays open until the enumeration completes. A LINQ projection
-    // over the converted collection columns can't be translated to SQL, so
-    // enumerate the entities and map.
     public IEnumerable<BattleRecord> AllBattles()
     {
         foreach (var b in db.Battles.AsNoTracking())
@@ -177,8 +163,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    // meta_state holds exactly one row, keyed Id = 1 (seeded at startup). A
-    // primary-key lookup also avoids EF's "FirstOrDefault without OrderBy" warning.
     private MetaStateEntity State()
         => db.MetaState.Find(1)
            ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");

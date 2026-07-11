@@ -4,37 +4,27 @@
   box-sizing: border-box;
 }
 
-/* ── Theme palette ───────────────────────────────────────────────────────────
-   The single source of truth for every color. Components read these via var(--x)
-   (see theme.ts), so switching light/dark only flips the data-theme attribute on
-   <html>: the browser recolors natively in one pass, instead of React
-   re-applying inline styles across the whole tree (which was the toggle lag). */
 :root {
-  /* A deliberate surface ladder so elevation reads at a glance: each level is a
-     clear step away from the page, instead of three near-identical greys. */
-  --bg-primary: #e6e8ec; /* page background (lowest) */
-  --bg-secondary: #f6f7f9; /* raised panels: sidebar, hero, deck cards */
-  --bg-tertiary: #edeef2; /* inset wells / nested surfaces */
-  --bg-elevated: #f6f7f9; /* interactive surfaces sitting on top */
-  /* Three text roles: primary is the content, secondary labels, tertiary the
-     faintest metadata. */
+  --bg-primary: #e6e8ec;
+  --bg-secondary: #f6f7f9;
+  --bg-tertiary: #edeef2;
+  --bg-elevated: #f6f7f9;
+
   --text-primary: #000000;
   --text-secondary: #666666;
   --text-tertiary: #9aa0ab;
   --border: #e0e0e0;
   --border-strong: #cdd3df;
-  /* The single accent: blue in light mode, gold in dark. It is a FILL color:
-     always pair it with --on-accent for legible text, never white-on-gold. */
+
   --accent: #007bff;
   --accent-bright: #3393ff;
   --on-accent: #ffffff;
-  /* --accent at 20% alpha (0x33), for the tag-search focus ring. */
+
   --accent-a20: rgba(0, 123, 255, 0.2);
   --control-bg: #ffffff;
   --control-text: #1a1a1a;
   --control-border: #d0d0d0;
-  /* Component-level colors. Deck cards and rows use cooler, blue-tinted lights
-     than the neutral page surfaces above, so they get their own slots. */
+
   --text-heading: #0d1b3e;
   --stat-label: #6b7280;
   --panel-border: #e8ecf5;
@@ -51,19 +41,16 @@
   --modal-bg: #ffffff;
   --nav-active-bg: #edeef2;
   --empty-slot-border: #e0e0e0;
-  /* Tooltips stay dark in both modes; only the edge treatment changes. */
+
   --tooltip-bg: #1a1a1a;
   --tooltip-border: #1a1a1a;
   --search-btn-bg: #007bff;
   --cta-btn-bg: #007bff;
-  /* Card art frame (see slotStyles.ts). The official card PNGs bake in a dark
-     backdrop but have transparent rounded corners; this shows through there. */
+
   --card-backdrop: linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%);
   --card-frame-border: 1px solid rgba(30, 41, 59, 0.12);
   --card-drop: 0 2px 8px rgba(30, 41, 59, 0.13);
-  /* War Deck Generator result banner: a flat neutral panel in both themes.
-     Light is the pale twin of dark's dark panel — surface, hairline border,
-     soft shadow, muted gray labels, dark heading text — not the old blue fill. */
+
   --banner-bg: var(--bg-secondary);
   --banner-border: #e8ecf5;
   --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
@@ -78,7 +65,6 @@
   --bg-secondary: #161618;
   --bg-tertiary: #202023;
   --bg-elevated: #26262a;
-  /* Softened off-white reads cleaner than pure #fff against near-black. */
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
   --text-tertiary: #71717a;
@@ -143,7 +129,6 @@ input:disabled {
   cursor: not-allowed;
 }
 
-/* Card picker: highlight a filter option row on hover (neutral, theme-agnostic). */
 .picker-filter-option {
   transition: background-color 0.12s ease;
 }
@@ -151,8 +136,6 @@ input:disabled {
   background-color: rgba(148, 148, 148, 0.15);
 }
 
-/* Sidebar nav: subtle neutral hover on inactive items (the active item keeps
-   its own fill + gold accent bar via inline styles, so exclude it here). */
 .nav-link {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -160,7 +143,6 @@ input:disabled {
   background-color: rgba(148, 148, 148, 0.12);
 }
 
-/* Theme toggle: give the icon a hover surface so it reads as a real control. */
 .theme-toggle-btn {
   border-radius: 10px;
 }
@@ -169,11 +151,6 @@ input:disabled {
   opacity: 1 !important;
 }
 
-/* Builder deck slots: the slot button keeps focus after its picker closes, and
-   closing with Escape (a key press) makes the browser paint its default
-   focus-visible ring, a stark white box that ignores the card's rounded shape.
-   Keep the indicator (keyboard users need to see where focus landed) but draw
-   it as a themed ring that follows the slot's radius. */
 .deck-slot-btn {
   border-radius: 12px;
 }
@@ -182,7 +159,6 @@ input:disabled {
   outline-offset: 3px;
 }
 
-/* War Deck Generator: swap button hover. */
 .deck-swap-btn {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -191,7 +167,6 @@ input:disabled {
   box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
 }
 
-/* Mobile menu: fade the backdrop in and slide the drawer panel in from the right. */
 .drawer-backdrop {
   animation: drawer-fade 0.2s ease;
 }
@@ -213,8 +188,6 @@ input:disabled {
   to { transform: rotate(360deg); }
 }
 
-/* Data-loading placeholders share the shape of the content they replace, so
-   cold loads do not jump from a short message to a full page. */
 .skeleton {
   background: linear-gradient(
     90deg,

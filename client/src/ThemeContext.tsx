@@ -1,8 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-// Kept out of AppContext so toggling the theme only re-renders the toggle
-// button; the rest of the app recolors natively via CSS variables.
-
 interface ThemeContextValue {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -12,7 +9,6 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Must fall back to light mode on failure, not white-screen the app.
     try {
       const stored = localStorage.getItem('darkMode');
       if (stored !== null) return JSON.parse(stored) === true;
@@ -24,7 +20,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-    // theme-init.js already sets this pre-paint; this effect only handles toggles.
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
     document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
   }, [isDarkMode]);

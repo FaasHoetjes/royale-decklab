@@ -25,7 +25,6 @@ export interface ScoredDeck {
   players: number;
   pickRate: number;
   playerScore: number;
-  // cardVersions is personalised to the player (unowned specials downgraded); metaCardVersions is what top players actually fielded.
   cardVersions?: CardVersionRef[];
   metaCardVersions?: CardVersionRef[];
   cards: DeckCardData[];
@@ -60,7 +59,6 @@ export interface OwnedCard {
   iconUrls?: CardIconUrls;
 }
 
-// score is winRate x fieldability; non-meta decks use a neutral 0.5 prior; null when the deck is empty or a card is missing.
 export interface BuilderDeckScore {
   score: number | null;
   isMeta: boolean;
@@ -99,8 +97,6 @@ export interface BestDeckSet {
   totalScore: number;
 }
 
-// 'level' raises fromLevel->toLevel (may skip levels to the cheapest lineup-changing jump); 'evo'/'hero' unlock that version instead.
-// affectedDeckIndexes empty + changesLineup true means the upgrade promotes a deck not currently in the lineup.
 export interface UpgradeSuggestion {
   cardId: number;
   name?: string;

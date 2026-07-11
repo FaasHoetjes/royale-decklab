@@ -2,7 +2,6 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Tests;
 
-/// <summary>The map-based overloads exist so the builder endpoint indexes once instead of per deck; they must stay score-identical to the list-based originals.</summary>
 public sealed class ScoreBuilderDeckOverloadTests
 {
     private readonly DeckAnalyzer _analyzer = new();

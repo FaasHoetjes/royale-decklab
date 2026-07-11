@@ -10,7 +10,6 @@ export interface BuilderCard {
   owned: boolean;
   level?: number;
   maxLevel?: number;
-  /** Card CAN be a hero (vs. owning the hero tier — see ownsHero). */
   isHero?: boolean;
   hasEvo?: boolean;
   ownsHero?: boolean;

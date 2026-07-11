@@ -1,5 +1,3 @@
-// Values are var(--x) refs into index.css; flipping data-theme repaints
-// natively instead of React re-computing styles across the tree.
 export const getTheme = () => ({
   bg: {
     primary: 'var(--bg-primary)',

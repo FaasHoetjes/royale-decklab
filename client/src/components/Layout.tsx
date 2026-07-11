@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useMatch } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import Footer from './Footer';
@@ -8,6 +8,7 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { usePrefetchAppData } from '../queries';
+import { isValidTag } from '../lib/playerTag';
 
 function CornerThemeToggle() {
   return (
@@ -22,12 +23,13 @@ export default function Layout() {
   const theme = getTheme();
   const isMobile = useIsMobile();
 
-  // Warm every page's cache (upgrade advice, collection, card catalog, best
-  // decks) the moment a tag is active, so navigating opens pages instantly
-  // instead of fetching on click.
+  const playerMatch = useMatch('/:playerId');
+  const isPlayerDeepLink =
+    !!playerMatch?.params.playerId && isValidTag(playerMatch.params.playerId);
+
   usePrefetchAppData(activePlayerTag);
 
-  if (!activePlayerTag) {
+  if (!activePlayerTag && !isPlayerDeepLink) {
     return (
       <div
         style={{
@@ -69,10 +71,6 @@ const styles = {
     display: 'flex' as const,
     minHeight: '100vh',
     fontFamily: 'system-ui, -apple-system, sans-serif',
-    // Deliberately no background/color transition: animating the full-viewport
-    // shell repaints everything under it every frame for the whole duration,
-    // which visibly stutters on card-dense pages (Best War Decks). An instant
-    // flip is one repaint.
   },
   content: {
     flex: 1,

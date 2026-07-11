@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { getTheme } from '../theme';
 
-/** Catch-all for unmatched routes (only multi-segment paths, since `/:playerId` claims single segments). */
 export default function NotFound() {
   const theme = getTheme();
 

@@ -65,9 +65,6 @@ export default function CardPicker({
   const sortType: SortType = SORT_TYPES[sortIndex]!;
 
   const ownedCount = useMemo(() => cards.filter((c) => c.owned).length, [cards]);
-
-  // FLIP animation: batch-read old/new positions, offset instantly (no
-  // transition), then release the offset next frame so cards glide over.
   const sortKey = `${sortType}-${descending}`;
   const cardRefs = useRef(new Map<number, HTMLButtonElement>());
   const prevRects = useRef(new Map<number, DOMRect>());
@@ -251,7 +248,6 @@ export default function CardPicker({
                 viewBox="0 0 24 24"
                 style={{ transform: descending ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}
               >
-                {/* fill via CSS, not the attribute. var() only resolves in a CSS property. */}
                 <path d="M12 4 L21 19 L3 19 Z" style={{ fill: theme.control.text }} />
               </svg>
             </button>
@@ -292,7 +288,6 @@ const styles = {
     justifyContent: 'center' as const,
     zIndex: 2000,
   },
-  // Fixed height (not max-height): the window stays the same size regardless of result count.
   modal: {
     width: '100%',
     maxWidth: '900px',
@@ -409,9 +404,7 @@ const styles = {
     flex: 1,
     minHeight: 0,
     overflowY: 'auto' as const,
-    // Reserve the scrollbar gutter so filtering doesn't shift viewport width mid-typing.
     scrollbarGutter: 'stable' as const,
-    // Promote to a GPU layer, else the modal's rounded overflow clip forces a repaint every frame.
     transform: 'translateZ(0)',
     willChange: 'transform' as const,
     contain: 'paint' as const,

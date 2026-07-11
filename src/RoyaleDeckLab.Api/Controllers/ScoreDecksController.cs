@@ -8,14 +8,10 @@ namespace RoyaleDeckLab.Api.Controllers;
 [ApiController]
 public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer) : ControllerBase
 {
-    // Hard input caps: the builder UI posts one collection (~120 cards exist in
-    // the game) and exactly four 8-slot decks; scoring cost scales with cards ×
-    // decks, so reject anything materially bigger before doing any work.
     private const int MaxCards = 250;
     private const int MaxDecks = 8;
     private const int MaxDeckSlots = 8;
 
-    // The count caps below only run after deserialization; this stops oversized bodies before it.
     [HttpPost("api/score-decks")]
     [RequestSizeLimit(64 * 1024)]
     public IActionResult ScoreDecks([FromBody] ScoreDecksRequest request)
@@ -52,8 +48,6 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
 
         var scored = decks.Select(deck =>
         {
-            // Positional slot array is needed too: which slot an owned evo/hero
-            // sits in decides whether it actually fields (see PlacementFit).
             var slots = deck ?? [];
             var cardIds = slots.Where(id => id.HasValue).Select(id => id!.Value).ToList();
             if (cardIds.Count == 0)

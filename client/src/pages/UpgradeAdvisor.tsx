@@ -165,8 +165,6 @@ export default function UpgradeAdvisor() {
               <>
                 {visible.map((s, i) => (
                   <div
-                    // A card can carry several suggestions (a level, a bigger
-                    // jump, an unlock), so the id alone isn't unique.
                     key={`${s.cardId}-${s.kind}-${s.toLevel}`}
                     style={{
                       borderBottom:
@@ -288,7 +286,6 @@ const styles = {
     justifyContent: 'center' as const,
     gap: '6px',
     border: 'none',
-    // The active tab's accent underline sits on top of the header's border.
     borderBottom: '2px solid transparent',
     marginBottom: '-1px',
     background: 'none',

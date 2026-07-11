@@ -5,7 +5,7 @@ import ElixirBadge from './ElixirBadge';
 interface CardTileProps {
   name: string;
   iconUrl?: string;
-  /** Positional index; the first three positions get the evo/hero/both frame. */
+  /** The first three positions get the evo/hero/both frame. */
   slotIndex?: number;
   elixirCost?: number;
   level?: number | null;

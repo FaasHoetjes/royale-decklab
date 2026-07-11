@@ -27,8 +27,6 @@ function load(key: string): unknown {
   }
 }
 
-// Validated on read: a stale or tampered value can parse as JSON but crash
-// the Builder's .map() calls if the shape is wrong.
 const isDeckState = (v: unknown): v is DeckState =>
   Array.isArray(v) &&
   v.length === DECK_COUNT &&

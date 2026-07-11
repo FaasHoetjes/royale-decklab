@@ -12,8 +12,6 @@ interface FilterPopoverProps {
 export default function FilterPopover({ filters, onToggle, onClear, onClose, theme }: FilterPopoverProps) {
   return (
     <>
-      {/* Transparent layer that catches the next click anywhere else and
-          closes the popover without dismissing the whole modal. */}
       <div style={styles.backdrop} onClick={onClose} />
       <div style={{ ...styles.popover, backgroundColor: theme.bg.secondary, border: `1px solid ${theme.border}` }}>
         {FILTER_OPTIONS.map((opt) => {

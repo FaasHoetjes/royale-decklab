@@ -112,9 +112,6 @@ export default function DeckSlot({
           <div
             style={{
               ...styles.empty,
-              // Fill the interior with the deck surface so an empty special
-              // slot blends in. Must be a gradient (image), not a bare colour:
-              // a colour in this layer lets the border gradient bleed through.
               ...(kind
                 ? slotBorderStyle(
                     kind,

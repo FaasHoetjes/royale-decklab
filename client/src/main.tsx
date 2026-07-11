@@ -16,7 +16,6 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Data is stable within a session; per-query overrides live in queries.ts.
       refetchOnWindowFocus: false,
       staleTime: 60_000,
       gcTime: 30 * 60_000,

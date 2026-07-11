@@ -3,7 +3,6 @@ using RoyaleDeckLab.Api.Dtos;
 
 namespace RoyaleDeckLab.Api.Services;
 
-// Singleton; resolves the client through a scope since ClashRoyaleClient is a scoped typed HttpClient.
 public sealed class CardCatalog(IServiceScopeFactory scopeFactory)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);

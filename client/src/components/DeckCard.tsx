@@ -127,8 +127,6 @@ export default function DeckCard({
             </div>
           ))}
         </div>
-        {/* Desktop: a floating circle beside the cards; on phones it becomes a
-            full-width button below so it never overlaps the full-width grid. */}
         {canSwap && !isMobile && (
           <button
             type="button"
@@ -157,9 +155,6 @@ export default function DeckCard({
   );
 }
 
-// Container sits one level above the page; the stats strip is recessed one
-// level below it so the card reads as a layered object. All values are CSS
-// variables (index.css), so a theme toggle never re-renders these cards.
 const theme = {
   containerBg: 'var(--bg-secondary)',
   containerBorder: 'var(--panel-border)',
@@ -224,7 +219,6 @@ const styles = {
     textDecoration: 'none',
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
-    // 1px nudge down to optically balance against the title's cap height.
     marginTop: '2px',
   },
   openInGameIcon: {
@@ -294,8 +288,6 @@ const styles = {
     display: 'flex' as const,
     justifyContent: 'space-around',
     marginBottom: '24px',
-    // Extra bottom padding leaves room for the games count hanging below the
-    // win-rate value.
     padding: '14px 10px 26px',
     border: '1px solid',
     borderRadius: '12px',
@@ -324,7 +316,6 @@ const styles = {
   },
   statSubtext: {
     fontSize: '11px',
-    // Out of flow so the games count doesn't add height to the stats row.
     position: 'absolute' as const,
     top: '100%',
     left: 0,

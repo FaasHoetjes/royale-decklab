@@ -69,7 +69,6 @@ export default function BestWarDecks() {
       saveSlotVersions(slotVersions);
       navigate('/builder');
     } catch {
-      // Collection fetch failed; stay on the page.
     } finally {
       setCopyingSetIdx(null);
     }

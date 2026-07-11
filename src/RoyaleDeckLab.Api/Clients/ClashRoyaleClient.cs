@@ -6,7 +6,6 @@ namespace RoyaleDeckLab.Api.Clients;
 
 public sealed class ClashRoyaleClient(HttpClient http)
 {
-    // CR API responses are camelCase; bind case-insensitively.
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public async Task<IReadOnlyList<CatalogCard>> GetAllCardsAsync(CancellationToken ct = default)
@@ -15,7 +14,6 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return data?.Items ?? [];
     }
 
-    // Stays well below the API's 1000 cap (see MetaOptions.MaxWarClans) since war skill collapses past ~200.
     public async Task<IReadOnlyList<string>> GetTopWarClansAsync(int limit, CancellationToken ct = default)
     {
         var data = await http.GetFromJsonAsync<RankingsResponse>(
@@ -30,7 +28,6 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return data?.MemberList?.Select(m => m.Tag).Where(t => !string.IsNullOrEmpty(t)).Cast<string>().ToList() ?? [];
     }
 
-    // The CR API exposes only the last ~25 games.
     public async Task<IReadOnlyList<CrBattle>> GetPlayerBattlelogAsync(string playerTag, CancellationToken ct = default)
     {
         var encoded = Uri.EscapeDataString(playerTag);

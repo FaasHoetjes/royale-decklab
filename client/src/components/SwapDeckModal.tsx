@@ -146,8 +146,6 @@ const styles = {
     overflowY: 'auto' as const,
     zIndex: 100,
   },
-  // Capped to the viewport; the header + subtitle stay fixed and only the
-  // option list below scrolls.
   panel: {
     width: '100%',
     maxWidth: '640px',
@@ -179,8 +177,6 @@ const styles = {
     margin: '6px 0 20px',
     fontSize: '13px',
   },
-  // The negative margin + matching padding give the scrollbar room without
-  // clipping the option borders against the panel edge.
   optionList: {
     display: 'flex' as const,
     flexDirection: 'column' as const,

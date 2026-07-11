@@ -5,9 +5,6 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-// Caches the CPU-heavy Advise() result per tag for the profile TTL, coalescing
-// concurrent requests (same pattern as PlayerProfileCache). Entries also key on
-// the meta version so a rebuild or epoch set invalidates immediately. Singleton.
 public sealed class UpgradeAdviceCache(
     PlayerProfileCache players,
     MetaCache cache,
@@ -22,7 +19,6 @@ public sealed class UpgradeAdviceCache(
 
     private sealed record Entry(long Stamp, long MetaVersion, Lazy<Task<Result>> Compute);
 
-    // Advice is null when the upstream profile carried no cards.
     public sealed record Result(CrPlayer Player, UpgradeAdvice? Advice);
 
     public async Task<Result> GetAsync(string playerTag, CancellationToken ct = default)
@@ -54,8 +50,6 @@ public sealed class UpgradeAdviceCache(
             }
             catch when (!ct.IsCancellationRequested)
             {
-                // Evict failures so the next request retries; a cancelled caller
-                // doesn't evict, since the shared computation may still succeed for others.
                 _entries.TryRemove(KeyValuePair.Create(key, entry));
                 throw;
             }
@@ -64,7 +58,6 @@ public sealed class UpgradeAdviceCache(
 
     private async Task<Result> ComputeAsync(string playerTag)
     {
-        // Not the caller's token: one caller aborting must not cancel the shared computation.
         var player = await players.GetPlayerDataAsync(playerTag, CancellationToken.None);
         if (player.Cards is null)
         {

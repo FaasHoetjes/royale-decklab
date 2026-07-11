@@ -1,11 +1,5 @@
 namespace RoyaleDeckLab.Api.Models;
 
-/// <summary>
-/// Aggregated stats for one deck across the sampled battles. <see cref="Confidence"/>
-/// is the Wilson lower bound on the win rate (the displayed rate); ranking combines
-/// it with <see cref="DomainMath.PopularityWeight"/> so a deck few players run can't
-/// top the list on win rate alone.
-/// </summary>
 public sealed class DeckMeta
 {
     public required int[] CardIds { get; init; }

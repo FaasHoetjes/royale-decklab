@@ -116,7 +116,6 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     }
     setDragSource(slot);
     e.dataTransfer.effectAllowed = 'move';
-    // Firefox requires data to be set for a drag to actually start.
     e.dataTransfer.setData('text/plain', `${slot.deckIndex}:${slot.slotIndex}`);
   };
 

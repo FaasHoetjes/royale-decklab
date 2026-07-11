@@ -1,16 +1,10 @@
-# Auto-deploy: every push to main SSHes into the production server and
-# rebuilds. Same flow as a manual deploy (git pull + compose up --build),
-# just automated. Requires two repo secrets:
-#   DEPLOY_HOST     - the server's public IPv4
-#   DEPLOY_SSH_KEY  - private half of a dedicated deploy keypair whose
-#                     public half is in root's authorized_keys on the server
+# Auto-deploy: every push to main SSHes into the production server and rebuilds.
 name: Deploy
 
 on:
   push:
     branches: [main]
 
-# Never run two deploys at once; a push during a deploy queues the next one.
 concurrency:
   group: production-deploy
   cancel-in-progress: false

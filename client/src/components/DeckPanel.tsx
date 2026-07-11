@@ -98,8 +98,6 @@ export default function DeckPanel({
       <div
         style={{
           ...styles.slotGrid,
-          // Phones can't fit 8 readable cards on one line, so fold each deck
-          // into two rows of four, like the in-game deck screen.
           gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
           gap: isMobile ? '8px' : '10px',
         }}

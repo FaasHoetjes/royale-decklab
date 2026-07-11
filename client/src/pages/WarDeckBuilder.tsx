@@ -42,11 +42,8 @@ export default function WarDeckBuilder() {
         owned: !!ownedCard,
         level: ownedCard?.level,
         maxLevel: ownedCard?.maxLevel ?? c.maxLevel,
-        // CAN be a hero: a hero icon exists or the catalog reaches evo tier 2.
         isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
-        // Ownership: only the per-player evolutionLevel proves a tier is
-        // unlocked (>= 1 evo, >= 2 hero). The iconUrls exist for every card
-        // that CAN evolve, owned or not, so they're useless as signals.
+        // Ownership: the per-player evolutionLevel proves a tier is unlocked (>= 1 evo, >= 2 hero).
         hasEvo: (ownedCard?.evolutionLevel ?? 0) >= 1,
         ownsHero: (ownedCard?.evolutionLevel ?? 0) >= 2,
         iconUrls: {
@@ -100,8 +97,7 @@ export default function WarDeckBuilder() {
     debouncedInput.decks,
     debouncedInput.cards.length > 0
   );
-  // Gate on the undebounced count so clearing the board drops the score
-  // instantly instead of lingering on the last arrangement's result.
+
   const scores = board.usedIds.size > 0 ? scoreQuery.data ?? null : null;
 
   const handleSelectCard = (cardId: number) => {

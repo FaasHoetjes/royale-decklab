@@ -28,8 +28,6 @@ public sealed class MetaCache(
     public long LastCacheTime => Interlocked.Read(ref _lastCacheTime);
     public long EpochStart => Interlocked.Read(ref _epochStart);
 
-    // Bumped on every _meta swap; derived caches key on this, not LastCacheTime,
-    // which deliberately does NOT advance on an epoch re-aggregate.
     public long Version => Interlocked.Read(ref _version);
     public bool IsBuilding { get { lock (_buildLock) { return _isBuilding; } } }
 
@@ -55,7 +53,6 @@ public sealed class MetaCache(
         await LoadOrBuildAsync(ct);
     }
 
-    // Pure DB + CPU, no network; does NOT advance the stored last-build time (only RebuildAsync does, after a fresh fetch).
     public async Task<List<DeckMeta>> AggregateFromStoreAsync(string reason, CancellationToken ct = default)
     {
         using var scope = scopeFactory.CreateScope();
@@ -99,7 +96,6 @@ public sealed class MetaCache(
 
             var fresh = await builder.CollectWarBattleRecordsAsync(ct);
 
-            // An empty fetch means the API is down; keep the existing store/cache rather than wiping good data.
             if (fresh.Count == 0)
             {
                 logger.LogWarning("Meta rebuild ({Reason}): fetched 0 battles, keeping existing cache", reason);

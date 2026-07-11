@@ -13,10 +13,8 @@ public sealed class MetaBuilder(
 {
     private readonly MetaOptions _opt = options.Value;
 
-    // Modifier modes (e.g. RampUpElixir_Ladder) share the riverRacePvP type but skew which decks win.
     private const string WarBattleMode = "CW_Battle_1v1";
 
-    // Conservative win-rate estimate: pulls small samples down, leaves large samples near the observed rate.
     public static double WilsonLowerBound(double wins, double total, double z = 1.96)
     {
         if (total <= 0)
@@ -190,7 +188,6 @@ public sealed class MetaBuilder(
 
         var cardIds = cards.Select(c => c.Id).OrderBy(id => id).ToArray();
 
-        // Champion cards never carry evolutionLevel, so rarity is the only hero signal for them.
         var cardVersions = cards.Select(card =>
         {
             var evo = card.EvolutionLevel ?? 0;
@@ -211,7 +208,6 @@ public sealed class MetaBuilder(
         };
     }
 
-    // Single pass: the source may be a streaming enumerable that can't be replayed.
     public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records)
     {
         var sampledPlayers = new HashSet<string>();
@@ -235,7 +231,6 @@ public sealed class MetaBuilder(
             }
             agg.Players.Add(record.PlayerTag);
 
-            // Stored loadout is the most-common one seen, not the latest: an outlier battle once relabeled a top deck's hero Knight as normal.
             var comboKey = string.Join(',',
                 record.CardVersions.OrderBy(v => v.CardId).Select(v => $"{v.CardId}:{(int)v.Version}"));
             if (!agg.Loadouts.TryGetValue(comboKey, out var loadout))

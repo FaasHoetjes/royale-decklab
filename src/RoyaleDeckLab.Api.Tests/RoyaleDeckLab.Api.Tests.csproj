@@ -22,16 +22,10 @@
     <ProjectReference Include="..\RoyaleDeckLab.Api\RoyaleDeckLab.Api.csproj" />
   </ItemGroup>
 
-  <!-- Same non-exploitable SQLite advisory suppressed in the API project; it flows
-       in transitively via the project reference. See RoyaleDeckLab.Api.csproj for
-       the full rationale. -->
   <ItemGroup>
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
   </ItemGroup>
 
-  <!-- The system under test is a Web SDK project; unit-testing its internals
-       (e.g. constructing MetaBuilder with IOptions/ILogger) needs the shared
-       framework the API builds against. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

@@ -28,6 +28,46 @@ docker run -d --name royale-decklab \
 
 Then open http://localhost:3000.
 
+## Production (compose + Caddy)
+
+This is how [royaledecklab.com](https://royaledecklab.com) runs. The repo-root
+`compose.yaml` starts two containers:
+
+- **app** — the image above, built from the repo. Publishes **no ports**; it is
+  only reachable over the internal compose network, so `TRUST_PROXY_HEADERS=true`
+  is safe without `TRUSTED_PROXY_IPS` (see the table below).
+- **caddy** — reverse proxy on 80/443 with automatic Let's Encrypt certificates.
+  Domains live in the repo-root `Caddyfile` (`www.` redirects to the bare domain).
+
+Secrets come from a server-side `.env` next to `compose.yaml` (gitignored):
+
+```bash
+CLASH_ROYALE_API_KEY=<token bound to the server's IP>
+ADMIN_TOKEN=<openssl rand -hex 32>
+```
+
+Launch/update:
+
+```bash
+docker compose up -d --build
+```
+
+`meta.db` lives on the named volume (`<project>_meta`); to seed it, stop the app
+container and copy a prebuilt file to
+`/var/lib/docker/volumes/<project>_meta/_data/meta.db`, chown it to uid `1654`
+(the image's non-root app user), and start the app again.
+
+### Auto-deploy
+
+`.github/workflows/deploy.yml` deploys every push to `main`: it SSHes into the
+server, runs `git pull` + `docker compose up -d --build`, prunes dangling
+images, and smoke-tests `/healthz`. It needs two repo **Actions secrets**:
+
+| Secret           | Value                                                        |
+|------------------|--------------------------------------------------------------|
+| `DEPLOY_HOST`    | The server's public IPv4                                     |
+| `DEPLOY_SSH_KEY` | Private half of a dedicated deploy keypair (no passphrase) whose public half is in the server's `authorized_keys` |
+
 ### Configuration
 
 | Env var                  | Purpose                                             | Default            |
@@ -60,7 +100,8 @@ of truth, and it's gitignored. Mount a volume at `/data` so it survives restarts
   (needs a working key, see below). Until the first rebuild, meta-backed endpoints
   return empty results but the app runs.
 - **Seed with existing data** → bind-mount a prebuilt file instead:
-  `-v /abs/path/meta.db:/data/meta.db`. Everything cache-backed
+  `-v /abs/path/meta.db:/data/meta.db`, or with the compose setup copy it into
+  the named volume (see the production section above). Everything cache-backed
   (`/api/meta/status`, `/api/score-decks`) works immediately, offline.
 
 ## The IP-bound API key (important for cloud deploys)

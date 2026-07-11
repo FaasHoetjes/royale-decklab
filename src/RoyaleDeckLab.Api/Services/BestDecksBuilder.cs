@@ -14,7 +14,6 @@ public sealed class BestDecksBuilder
     private const int MaxSets = 10;
     private const int DecksPerSet = 4;
 
-    // Build() is deterministic per meta version, so compute once and serve until it advances.
     private readonly object _cacheLock = new();
     private long _cachedVersion = -1;
     private IReadOnlyList<BestDeckSet> _cachedSets = [];
@@ -49,7 +48,7 @@ public sealed class BestDecksBuilder
         var sets = BuildDiverseSets(eligible);
 
         return sets
-            .OrderByDescending(s => s.totalScore) // List.Sort is unstable; this keeps equal-score sets in build order
+            .OrderByDescending(s => s.totalScore)
             .Select(s => new BestDeckSet(
                 s.decks.Select(d => ToEntry(d.deck, d.score, catalog)).ToList(),
                 s.totalScore))
@@ -156,7 +155,6 @@ public sealed class BestDecksBuilder
         return top;
     }
 
-    // Champions are forced to the hero slot by catalog rarity: the battlelog can't flag them.
     private static BestDeckEntry ToEntry(
         DeckMeta deck,
         double score,

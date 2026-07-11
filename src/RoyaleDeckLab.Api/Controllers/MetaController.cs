@@ -26,8 +26,6 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
         });
     }
 
-    // Admin-gated: one call fans out into thousands of upstream CR API fetches,
-    // so an open endpoint would let anyone keep the key pinned at its rate limit.
     [HttpPost("refresh")]
     [RequireAdminToken]
     [EnableRateLimiting(RateLimitPolicies.Admin)]
@@ -41,10 +39,7 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
         return Ok(new { status = "refreshed", deckCount = decks.Count });
     }
 
-    // Set the patch boundary after a balance update. Body: { "timestamp":
-    // <ISO string | epoch ms | "now"> }, defaulting to now. Drops pre-boundary
-    // battles and re-aggregates immediately (no re-fetch). Admin-gated: this
-    // permanently deletes stored battles that can't be re-collected.
+    // Set the patch boundary after a balance update.
     [HttpPost("epoch")]
     [RequireAdminToken]
     [EnableRateLimiting(RateLimitPolicies.Admin)]
@@ -58,8 +53,6 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
         JsonElement? timestamp = null;
         try
         {
-            // Read the body by hand so a missing/empty body is allowed (falls back
-            // to "now") rather than triggering the [ApiController] 400-on-null-body.
             var body = await Request.ReadFromJsonAsync<JsonElement>();
             if (body is { ValueKind: JsonValueKind.Object } el && el.TryGetProperty("timestamp", out var t))
             {
@@ -68,7 +61,7 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
         }
         catch
         {
-            // No / invalid body: fall through to "now".
+            // No / invalid body
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -95,9 +88,6 @@ public sealed class MetaController(MetaCache cache) : ControllerBase
             ts = parsed.ToUnixTimeMilliseconds();
         }
 
-        // A future boundary would persist and then prune every battle collected
-        // until that date arrives, leaving the meta permanently empty. Nothing
-        // legitimate sets a patch time ahead of the clock (5 min skew allowed).
         if (ts > now + 5 * 60_000)
         {
             return StatusCode(400, new { status = "error", message = "Timestamp is in the future." });

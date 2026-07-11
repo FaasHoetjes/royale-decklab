@@ -27,7 +27,6 @@ export const queryKeys = {
     ['score-decks', cards, decks] as const,
 };
 
-// Shared so the hook and the imperative "copy set to builder" prefetch use the exact same key + fetcher.
 export function playerCollectionOptions(tag: string) {
   return {
     queryKey: queryKeys.playerCollection(tag),
@@ -43,7 +42,6 @@ export function useMetaStatus() {
   });
 }
 
-// Shared with the Landing page's pre-navigation tag check, so a successful check warms this cache for the instant paint on arrival.
 export function playerWarDecksOptions(tag: string) {
   return {
     queryKey: queryKeys.playerWarDecks(tag),
@@ -96,7 +94,6 @@ export function useUpgradeAdvice(tag: string | null) {
   });
 }
 
-// Best-effort: a failed prefetch is swallowed and the page's own query retries on visit.
 export function usePrefetchAppData(tag: string | null) {
   const qc = useQueryClient();
   useEffect(() => {
@@ -120,7 +117,6 @@ export function useBestDecks() {
   return useQuery(bestDecksOptions());
 }
 
-// Pure function of (cards, decks): identical arrangements hit cache instead of re-POSTing.
 export function useDeckScores(
   cards: ScoreDeckCard[],
   decks: (number | null)[][],

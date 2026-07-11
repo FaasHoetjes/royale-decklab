@@ -37,11 +37,6 @@ export default function Landing() {
       return;
     }
 
-    // Validate the tag here rather than navigating optimistically: a bad tag
-    // used to land the user on the generator page with an error toast. Instead
-    // fetch the player's war decks first: on success we've also warmed the
-    // cache, so the generator paints instantly; on failure we stay put and show
-    // the message inline.
     const tag = `#${code}`;
     setLoading(true);
     try {
@@ -73,8 +68,6 @@ export default function Landing() {
               ...styles.field,
               backgroundColor: theme.bg.secondary,
               borderColor: focused ? theme.accent : theme.border,
-              // --accent-a20 is the accent at 20% alpha (was `${accent}33`); a
-              // var() can't carry the inline hex-alpha suffix.
               boxShadow: focused ? '0 0 0 3px var(--accent-a20)' : 'none',
             }}
           >

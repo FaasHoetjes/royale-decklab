@@ -30,7 +30,6 @@ public sealed class RequireAdminTokenAttribute : Attribute, IAuthorizationFilter
         }
     }
 
-    // Constant-time comparison so the token can't be probed byte-by-byte via timing.
     public static bool TokensMatch(string provided, string expected)
         => provided.Length > 0
            && CryptographicOperations.FixedTimeEquals(

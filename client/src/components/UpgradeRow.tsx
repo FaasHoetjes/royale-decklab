@@ -64,7 +64,6 @@ export default function UpgradeRow({
           <div
             style={{
               ...styles.barFill,
-              // Floor so even the smallest gain stays visible.
               width: `${Math.max(relativeGain * 100, 4)}%`,
               backgroundColor: theme.accent,
             }}

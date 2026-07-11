@@ -29,16 +29,12 @@ export default function WarDeckGenerator() {
   }, [playerId, activePlayerTag]);
 
   // Once a tag's decks load successfully, make that player active app-wide
-  // (used by the Builder + Best Decks). Only on success so a bad tag doesn't
-  // poison the active player.
+  // (used by the Builder + Best Decks).
   useEffect(() => {
     if (warDecks.isSuccess && tag) setActivePlayerTag(tag);
   }, [warDecks.isSuccess, tag]);
 
   const handleSearch = (playerTag: string) => {
-    // Navigate; the query re-keys on the new tag and (cache permitting) may
-    // resolve instantly. Strip every '#': a mid-string one would become a URL
-    // fragment and route to a truncated tag.
     navigate(`/${playerTag.replace(/#/g, '')}`);
   };
 
@@ -124,8 +120,6 @@ const styles = {
   errorBanner: {
     position: 'fixed' as const,
     bottom: '20px',
-    // Anchored to both edges with a max width so it hugs the right on desktop
-    // but never overflows a phone screen.
     left: '20px',
     right: '20px',
     marginLeft: 'auto' as const,

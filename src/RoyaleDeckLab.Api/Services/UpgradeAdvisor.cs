@@ -10,7 +10,6 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
     public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks)
     {
         var cardMap = playerCards.ToDictionary(c => c.Id);
-        // Sorted once; each simulation repairs this order instead of re-sorting.
         var fieldable = DeckAnalyzer.SortCandidates(analyzer.ScoreFieldableDecks(metaDecks, cardMap));
         var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false, assumeSorted: true);
         var baselineKeys = LineupKeys(baseline);
@@ -37,8 +36,6 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         (double Delta, WarDeckResult Result) Simulate(PlayerItemLevel modified)
         {
             var simulatedMap = new Dictionary<int, PlayerItemLevel>(cardMap) { [modified.Id] = modified };
-            // Only decks containing the modified card change score; merging them
-            // back into the still-sorted rest beats re-sorting the whole pool.
             var unchanged = new List<(DeckMeta deck, double score)>(fieldable.Count);
             var changed = new List<(DeckMeta deck, double score)>();
             foreach (var (deck, score) in fieldable)
@@ -148,7 +145,6 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         return new UpgradeAdvice(baseline.TotalScore, ranked, CollectionMaxed: candidates == 0);
     }
 
-    // Both inputs must be in SortCandidates order; ties keep the unchanged entry first.
     private static List<(DeckMeta deck, double score)> MergeByRank(
         List<(DeckMeta deck, double score)> unchanged,
         List<(DeckMeta deck, double score)> changed)
@@ -173,7 +169,6 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
     private static HashSet<string> LineupKeys(WarDeckResult result)
         => result.Decks.Select(d => MetaCache.DeckKey(d.CardIds)).ToHashSet();
 
-    // Unlock upgrades only affect decks fielding that special version, not just the card.
     private static List<int> AffectedIndexes(WarDeckResult baseline, int cardId, string kind)
     {
         var version = kind switch

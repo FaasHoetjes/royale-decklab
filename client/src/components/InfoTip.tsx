@@ -14,8 +14,6 @@ export default function InfoTip({ ariaLabel, color, width = 220, children }: Inf
       style={{ ...styles.icon, color }}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
-      // Hover alone excludes keyboard and touch users (i.e. all mobile users):
-      // focus shows it, click/tap toggles it, Escape dismisses it.
       tabIndex={0}
       onFocus={() => setShow(true)}
       onBlur={() => setShow(false)}
@@ -41,8 +39,6 @@ export default function InfoTip({ ariaLabel, color, width = 220, children }: Inf
   );
 }
 
-// Ring, dot, and stem drawn in one SVG (all currentColor) so they stay
-// concentric and legible at any size. A text "i" blurs at this scale.
 function InfoMark() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>

@@ -8,8 +8,6 @@ export function slotKind(index: number): SlotKind | null {
   return SLOT_ORDER[index] ?? null;
 }
 
-// Theme-dependent values live as CSS variables (index.css) so a light/dark
-// toggle never re-renders the (many) card tiles built from these.
 export const CARD_BACKDROP = 'var(--card-backdrop)';
 
 export const CARD_FRAME: CSSProperties = {
@@ -18,8 +16,6 @@ export const CARD_FRAME: CSSProperties = {
   boxShadow: 'var(--card-drop)',
 };
 
-// `shadow` is the glow layer(s) of the box-shadow; the 'both' slot splits its
-// glow and border (purple off the left, gold off the right) for a clean two-tone edge.
 const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
   evo: {
     grad: 'linear-gradient(135deg, #d486ff, #8a2be2)',
@@ -35,8 +31,6 @@ const BORDER: Record<SlotKind, { grad: string; shadow: string }> = {
   },
 };
 
-// Uses the padding-box/border-box background trick so the gradient border
-// respects the card's rounded corners (a plain border-color can't be a gradient).
 export function slotBorderStyle(
   kind: SlotKind,
   innerBg?: string,

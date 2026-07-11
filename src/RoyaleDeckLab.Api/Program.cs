@@ -16,9 +16,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 DotEnv.Load(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env")));
 
-// Listen on 3000 so the existing Vite proxy (/api -> localhost:3000) needs no
-// changes. In a container ASPNETCORE_URLS is set (to bind 0.0.0.0); honour it
-// when present rather than forcing localhost.
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     builder.WebHost.UseUrls("http://localhost:3000");
@@ -26,7 +23,6 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 
 builder.Services.Configure<MetaOptions>(builder.Configuration.GetSection(MetaOptions.SectionName));
 builder.Services.Configure<ClashRoyaleOptions>(builder.Configuration.GetSection(ClashRoyaleOptions.SectionName));
-// The token lives in CLASH_ROYALE_API_KEY (env / .env), not appsettings.
 builder.Services.PostConfigure<ClashRoyaleOptions>(o =>
 {
     var key = Environment.GetEnvironmentVariable("CLASH_ROYALE_API_KEY");
@@ -58,9 +54,6 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
         http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     })
-    // 10s per-attempt timeout (vs the 100s HttpClient default that ties up a
-    // request thread when the CR API stalls); hard errors like the
-    // IP-mismatch 403 are not retried.
     .AddStandardResilienceHandler();
 
 builder.Services.AddSingleton(TimeProvider.System);
@@ -84,8 +77,6 @@ if (builder.Environment.IsDevelopment())
 
 builder.Services.AddProblemDetails();
 
-// Per-IP cap: the profile cache coalesces repeat lookups, but only this stops
-// a tag-enumeration loop from burning the upstream CR API quota.
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -109,7 +100,6 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = 5,
             Window = TimeSpan.FromMinutes(1),
         }));
-    // Backstop for the endpoints without their own policy; no real browser session hits it.
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
         RateLimitPartition.GetFixedWindowLimiter(
             ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -122,16 +112,12 @@ builder.Services.AddRateLimiter(o =>
 
 var app = builder.Build();
 
-// EnsureCreated builds the schema only when the DB doesn't exist yet. The data
-// is derived/regenerable, so there's no migration history to maintain.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MetaDbContext>();
     db.Database.EnsureCreated();
-    // WAL persists in the file header; NORMAL sync is the standard WAL pairing.
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
     db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
-    // Seed the single meta_state row (no-op if it already exists).
     db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
 }
 
@@ -139,18 +125,12 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler(new ExceptionHandlerOptions
     {
-        // Keep client-fault status codes (e.g. the 413 from a request-size cap) out of the generic 500.
         StatusCodeSelector = ex => ex is Microsoft.AspNetCore.Http.BadHttpRequestException bad
             ? bad.StatusCode
             : StatusCodes.Status500InternalServerError,
     });
 }
 
-// In production TLS terminates at a reverse proxy and the real client address
-// arrives in X-Forwarded-For; it must replace the proxy's address before the
-// per-IP rate limiter runs. Trust exactly one hop (the entry appended by our
-// own proxy) so clients can't spoof an arbitrary IP past the limiter. Leave
-// unset when :3000 is reached directly (local dev).
 if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
 {
     var forwarded = new ForwardedHeadersOptions
@@ -161,9 +141,6 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
     forwarded.KnownIPNetworks.Clear();
     forwarded.KnownProxies.Clear();
 
-    // TRUSTED_PROXY_IPS (comma-separated IPs/CIDRs) pins X-Forwarded-For trust to the
-    // actual proxy, so a client reaching this port directly can't spoof its IP past the
-    // rate limiter. When unset the port must only be reachable via the proxy (DOCKER.md).
     var trustedProxies = Environment.GetEnvironmentVariable("TRUSTED_PROXY_IPS");
     if (!string.IsNullOrWhiteSpace(trustedProxies))
     {
@@ -182,13 +159,6 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
     app.UseForwardedHeaders(forwarded);
 }
 
-// Baseline security headers on every response. The CSP allows only same-origin
-// assets: the SPA bundles everything, the theme-init script is an external file
-// (so no inline-script hash to maintain). External sources: card art from
-// Supercell's CDN, plus the Cloudflare Web Analytics beacon (script from
-// static.cloudflareinsights.com, reporting to cloudflareinsights.com).
-// style-src needs 'unsafe-inline' because React sets styles via the style
-// attribute; that does not enable <script> injection.
 app.Use(async (context, next) =>
 {
     var headers = context.Response.Headers;
@@ -208,7 +178,6 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// One log line per API request; asset/SPA requests stay quiet.
 app.Use(async (context, next) =>
 {
     if (!context.Request.Path.StartsWithSegments("/api"))
@@ -232,9 +201,6 @@ app.UseRateLimiter();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
 
-// Serve the built React SPA from wwwroot when it's present (production image).
-// In local dev there's no wwwroot, so Vite serves the app and proxies /api here,
-// so this is a no-op and behaviour is unchanged.
 app.UseStaticFiles();
 
 app.MapControllers();
@@ -242,8 +208,6 @@ app.MapControllers();
 var spaIndex = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
 if (File.Exists(spaIndex))
 {
-    // Unmatched /api/* stays a JSON 404; every other unmatched path serves the
-    // SPA shell so client-side routing works on reload.
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
     app.MapFallbackToFile("index.html");
 }

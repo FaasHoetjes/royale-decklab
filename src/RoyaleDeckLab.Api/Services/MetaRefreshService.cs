@@ -20,8 +20,6 @@ public sealed class MetaRefreshService(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // An unhandled exception here stops the whole host (BackgroundServiceExceptionBehavior.StopHost),
-                // so a transient startup failure must not bubble; the timer loop below retries on the next tick.
                 logger.LogError(ex, "Initial meta load failed; retrying on the refresh interval");
             }
 

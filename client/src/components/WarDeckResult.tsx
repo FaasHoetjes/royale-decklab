@@ -149,18 +149,12 @@ export default function WarDeckResult({
   );
 }
 
-// All CSS variables (index.css). The banner is a flat neutral panel in both
-// themes: dark matches the deck-card background so the hero reads as part of the
-// same surface, and light is its pale twin. Heading text flips with the theme
-// (dark navy on light, white on dark) via --banner-title.
 const theme = {
   headerGradient: 'var(--banner-bg)',
   headerBorder: 'var(--banner-border)',
   headerShadow: 'var(--banner-shadow)',
   muted: 'var(--banner-muted)',
   title: 'var(--banner-title)',
-  // The score is the banner's focal number, so it carries the accent (blue in
-  // light, gold in dark) — the pop of color the old blue fill used to provide.
   accent: 'var(--accent)',
   buttonBg: 'var(--cta-btn-bg)',
 };

@@ -1,9 +1,5 @@
 namespace RoyaleDeckLab.Api.Models;
 
-/// <summary>
-/// The only rarity the scoring logic branches on is <see cref="Champion"/>
-/// (champions live in the hero slot and have no normal version; see DeckAnalyzer).
-/// </summary>
 public enum Rarity
 {
     Common,
