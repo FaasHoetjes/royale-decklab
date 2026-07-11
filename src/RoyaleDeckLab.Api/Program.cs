@@ -136,7 +136,7 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
     var forwarded = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-        ForwardLimit = 1,
+        ForwardLimit = 2,
     };
     forwarded.KnownIPNetworks.Clear();
     forwarded.KnownProxies.Clear();
@@ -201,7 +201,17 @@ app.UseRateLimiter();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
 
-app.UseStaticFiles();
+var spaStaticFiles = new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.CacheControl =
+            ctx.Context.Request.Path.StartsWithSegments("/assets")
+                ? "public, max-age=31536000, immutable"
+                : "no-cache";
+    },
+};
+app.UseStaticFiles(spaStaticFiles);
 
 app.MapControllers();
 
@@ -209,7 +219,7 @@ var spaIndex = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.
 if (File.Exists(spaIndex))
 {
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-    app.MapFallbackToFile("index.html");
+    app.MapFallbackToFile("index.html", spaStaticFiles);
 }
 else
 {
