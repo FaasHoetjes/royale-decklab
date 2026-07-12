@@ -59,15 +59,15 @@ export default function DeckPanel({
       <div style={{ ...styles.header, gap: isMobile ? '8px' : '14px' }}>
         <h3 style={{ ...styles.title, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
         <div style={{ ...styles.headerStats, gap: isMobile ? '10px' : '14px' }}>
-          {complete && (
+          {!isMobile && complete && (
             <DeckLinkAction
               link={buildDeckLink(deck)}
-              isMobile={isMobile}
+              isMobile={false}
               className="mobile-touch-target"
               style={{ ...styles.openInGameBtn, color: scoreAccent, borderColor: theme.border }}
             />
           )}
-          {placedCards.length > 0 && (
+          {!isMobile && placedCards.length > 0 && (
             <button
               className="mobile-touch-target"
               onClick={() => board.resetDeck(deckIndex)}
@@ -96,7 +96,7 @@ export default function DeckPanel({
       <div
         style={{
           ...styles.slotGrid,
-          gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
+          gridTemplateColumns: isMobile ? 'repeat(4, minmax(0, 1fr))' : 'repeat(8, minmax(0, 1fr))',
           gap: isMobile ? '8px' : '10px',
         }}
       >
@@ -134,6 +134,31 @@ export default function DeckPanel({
           );
         })}
       </div>
+
+      {isMobile && (complete || placedCards.length > 0) && (
+        <div style={styles.mobileActions}>
+          {placedCards.length > 0 && (
+            <button
+              className="mobile-touch-target"
+              onClick={() => board.resetDeck(deckIndex)}
+              aria-label={`Clear Deck ${deckIndex + 1}`}
+              style={{ ...styles.footerBtn, background: 'var(--raised-bg)', color: scoreAccent, borderColor: theme.border }}
+            >
+              <TrashIcon size={15} />
+              Clear deck
+            </button>
+          )}
+          {complete && (
+            <DeckLinkAction
+              link={buildDeckLink(deck)}
+              isMobile
+              className="mobile-touch-target"
+              style={{ ...styles.footerBtn, backgroundColor: 'var(--raised-bg)', color: scoreAccent, borderColor: theme.border }}
+              label="Open in Clash Royale"
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -243,5 +268,26 @@ const styles = {
   },
   slotGrid: {
     display: 'grid' as const,
+  },
+  mobileActions: {
+    display: 'grid' as const,
+    gridTemplateColumns: '1fr',
+    gap: '10px',
+    marginTop: '14px',
+  },
+  footerBtn: {
+    minWidth: 0,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '8px',
+    padding: '11px 12px',
+    border: '1px solid',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap' as const,
+    cursor: 'pointer' as const,
   },
 };

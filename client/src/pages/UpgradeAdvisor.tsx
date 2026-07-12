@@ -12,16 +12,18 @@ const INITIAL_ROWS = 10;
 
 type Filter = 'all' | 'lineup' | 'new';
 
-const FILTERS: { key: Filter; label: string; empty: string }[] = [
-  { key: 'all', label: 'All', empty: '' },
+const FILTERS: { key: Filter; label: string; shortLabel: string; empty: string }[] = [
+  { key: 'all', label: 'All', shortLabel: 'All', empty: '' },
   {
     key: 'lineup',
     label: 'Current decks',
+    shortLabel: 'Current',
     empty: 'No upgrade improves a deck in your current lineup. Those cards are already maxed.',
   },
   {
     key: 'new',
     label: 'Unlocks new deck',
+    shortLabel: 'New deck',
     empty: 'No upgrade brings a new deck into your lineup right now.',
   },
 ];
@@ -36,6 +38,7 @@ export default function UpgradeAdvisor() {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
+  const isPhone = useIsMobile(560);
   const [filter, setFilter] = useState<Filter>('all');
   const [expanded, setExpanded] = useState(false);
 
@@ -75,16 +78,6 @@ export default function UpgradeAdvisor() {
           against a rebuilt lineup. <strong>Unlocks a new deck</strong> means the upgrade changes
           your four decks.
         </p>
-        {isMobile && data && (
-          <ScoreSummary
-            score={data.baselineScore}
-            accent={theme.accent}
-            text={theme.text.primary}
-            muted={theme.text.secondary}
-            border={theme.border}
-            fullWidth
-          />
-        )}
       </div>
 
       {!activePlayerTag ? (
@@ -152,7 +145,7 @@ export default function UpgradeAdvisor() {
                       fontWeight: active ? 700 : 600,
                     }}
                   >
-                    {f.label}
+                    {isPhone ? f.shortLabel : f.label}
                     <span
                       style={{
                         ...styles.tabCount,
@@ -219,20 +212,17 @@ function ScoreSummary({
   text,
   muted,
   border,
-  fullWidth = false,
 }: {
   score: number;
   accent: string;
   text: string;
   muted: string;
   border: string;
-  fullWidth?: boolean;
 }) {
   return (
     <span
       style={{
         ...styles.scorePill,
-        ...(fullWidth ? styles.scoreSummaryMobile : {}),
         color: text,
         borderColor: border,
       }}
@@ -276,13 +266,6 @@ const styles = {
     fontWeight: 600 as const,
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
-  },
-  scoreSummaryMobile: {
-    display: 'flex' as const,
-    width: 'fit-content',
-    justifyContent: 'center' as const,
-    margin: '14px auto 0',
-    boxSizing: 'border-box' as const,
   },
   subtitle: {
     fontSize: '15px',

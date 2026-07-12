@@ -35,6 +35,7 @@ export default function CardPicker({
 }: CardPickerProps) {
   const theme = getTheme();
   const isMobile = useIsMobile();
+  const isPhone = useIsMobile(768);
 
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -270,8 +271,12 @@ export default function CardPicker({
           <div
             style={{
               ...styles.grid,
-              gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(auto-fill, 110px)',
-              gap: isMobile ? '8px' : '12px',
+              gridTemplateColumns: isPhone
+                ? 'repeat(4, minmax(0, 1fr))'
+                : isMobile
+                  ? 'repeat(auto-fill, minmax(110px, 1fr))'
+                  : 'repeat(auto-fill, 110px)',
+              gap: isPhone ? '8px' : '12px',
             }}
           >
             {visibleCards.map(renderCard)}
@@ -423,6 +428,7 @@ const styles = {
     padding: 0,
     display: 'block',
     width: '100%',
+    minWidth: 0,
     transition: 'transform 0.15s ease, opacity 0.15s ease',
   },
 };

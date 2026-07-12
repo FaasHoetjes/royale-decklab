@@ -160,6 +160,7 @@ const styles = {
     cursor: 'pointer',
     display: 'block',
     width: '100%',
+    minWidth: 0,
     userSelect: 'none' as const,
     WebkitTouchCallout: 'none' as const,
   },
