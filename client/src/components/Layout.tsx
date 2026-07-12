@@ -82,7 +82,13 @@ export default function Layout() {
       }}
     >
       <Sidebar />
-      <main style={{ ...styles.content, padding: isMobile ? '12px' : '20px' }}>
+      <main
+        style={{
+          ...styles.content,
+          padding: isMobile ? '12px' : '20px',
+          ...(isMobile ? { maxWidth: '560px', margin: '0 auto', width: '100%' } : {}),
+        }}
+      >
         {!isMobile && <CornerThemeToggle />}
         <ElixirGradientDefs />
         <Outlet />

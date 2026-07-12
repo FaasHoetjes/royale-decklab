@@ -111,7 +111,7 @@ export default function DeckCard({
       <div style={styles.cardsRow}>
         <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '22px' }}>
           {orderedCards.map((card, index) => (
-            <div key={card.id} title={`${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`}>
+            <div key={card.id} style={{ minWidth: 0 }} title={`${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`}>
               <CardTile
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, versionOf(cardVersions, card.id))}
