@@ -98,16 +98,20 @@ export default function BestWarDecks() {
       )}
 
       {data && (
-        <div style={{ ...styles.setList, gap: isMobile ? '16px' : '24px' }}>
+        <div style={{ ...styles.setList, gap: isMobile ? '28px' : '24px' }}>
           {data.sets.map((set, setIdx) => (
             <section
               key={setIdx}
-              style={{
-                ...styles.setCard,
-                padding: isMobile ? '16px 12px' : '20px 24px',
-                borderColor: theme.border,
-                backgroundColor: theme.bg.secondary,
-              }}
+              style={
+                isMobile
+                  ? undefined
+                  : {
+                      ...styles.setCard,
+                      padding: '20px 24px',
+                      borderColor: theme.border,
+                      backgroundColor: theme.bg.secondary,
+                    }
+              }
             >
               <div style={{ ...styles.setHeader, borderBottomColor: theme.border }}>
                 <div style={styles.setRank}>
@@ -121,13 +125,14 @@ export default function BestWarDecks() {
               </div>
 
               <div style={{ position: 'relative', paddingRight: isMobile ? 0 : '60px' }}>
-                <div style={styles.rowList}>
+                <div style={{ ...styles.rowList, gap: isMobile ? '14px' : '8px' }}>
                   {set.decks.map((deck, deckIdx) => (
                     <CompactDeckRow
                       key={deckIdx}
                       deck={deck}
                       theme={theme}
                       isMobile={isMobile}
+                      deckNumber={deckIdx + 1}
                     />
                   ))}
                 </div>
@@ -225,7 +230,6 @@ const styles = {
   rowList: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
-    gap: '8px',
   },
   gutter: {
     position: 'absolute' as const,

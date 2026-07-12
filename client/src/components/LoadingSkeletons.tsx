@@ -19,15 +19,13 @@ function LoadingRegion({ label, children }: { label: string; children: ReactNode
 export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <LoadingRegion label="Loading best war deck sets">
-      <div style={{ ...styles.stack, gap: isMobile ? '16px' : '24px' }}>
+      <div style={{ ...styles.stack, gap: isMobile ? '28px' : '24px' }}>
         {[0, 1].map((set) => (
           <section
             key={set}
-            style={{
-              ...styles.panel,
-              padding: isMobile ? '16px 12px' : '20px 24px',
-              borderRadius: '16px',
-            }}
+            style={
+              isMobile ? undefined : { ...styles.panel, padding: '20px 24px', borderRadius: '16px' }
+            }
           >
             <div style={styles.setHeader}>
               <div style={styles.inline}>
@@ -39,40 +37,55 @@ export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
                 <Skeleton style={{ width: '52px', height: '19px' }} />
               </div>
             </div>
-            <div style={{ ...styles.stack, gap: '8px' }}>
-              {[0, 1, 2, 3].map((row) => (
-                <div
-                  key={row}
-                  style={{
-                    ...styles.deckRow,
-                    flexWrap: isMobile ? 'wrap' : 'nowrap',
-                    padding: isMobile ? '10px' : '10px 14px',
-                  }}
-                >
-                  <div
-                    style={{
-                      ...styles.cards,
-                      flexBasis: isMobile ? '100%' : undefined,
-                      gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
-                    }}
-                  >
-                    {Array.from({ length: 8 }, (_, card) => (
-                      <div key={card}>
-                        <Skeleton style={styles.cardArt} />
-                        <Skeleton style={{ width: '72%', height: '7px', margin: '5px auto 0' }} />
+            <div style={{ ...styles.stack, gap: isMobile ? '14px' : '8px' }}>
+              {[0, 1, 2, 3].map((row) =>
+                isMobile ? (
+                  <div key={row} style={{ ...styles.panel, padding: '14px 12px', borderRadius: '12px' }}>
+                    <div style={{ ...styles.inline, justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <Skeleton style={{ width: '58px', height: '16px' }} />
+                      <div style={styles.inline}>
+                        <Skeleton style={{ width: '26px', height: '26px', borderRadius: '50%' }} />
+                        <Skeleton style={{ width: '54px', height: '13px' }} />
                       </div>
-                    ))}
+                    </div>
+                    <div style={{ ...styles.cards, gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                      {Array.from({ length: 8 }, (_, card) => (
+                        <div key={card}>
+                          <Skeleton style={styles.cardArt} />
+                          <Skeleton style={{ width: '72%', height: '7px', margin: '5px auto 0' }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ ...styles.statPlaceholders, marginTop: '14px' }}>
+                      {[0, 1].map((stat) => (
+                        <div key={stat} style={{ ...styles.stack, gap: '5px', alignItems: 'center' }}>
+                          <Skeleton style={{ width: '46px', height: '7px' }} />
+                          <Skeleton style={{ width: '36px', height: '13px' }} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ ...styles.statPlaceholders, flex: isMobile ? 1 : undefined }}>
-                    {[0, 1, 2].map((stat) => (
-                      <div key={stat} style={{ ...styles.stack, gap: '5px', alignItems: 'center' }}>
-                        <Skeleton style={{ width: '46px', height: '7px' }} />
-                        <Skeleton style={{ width: '36px', height: '13px' }} />
-                      </div>
-                    ))}
+                ) : (
+                  <div key={row} style={{ ...styles.deckRow, padding: '10px 14px' }}>
+                    <div style={{ ...styles.cards, gridTemplateColumns: 'repeat(8, 1fr)' }}>
+                      {Array.from({ length: 8 }, (_, card) => (
+                        <div key={card}>
+                          <Skeleton style={styles.cardArt} />
+                          <Skeleton style={{ width: '72%', height: '7px', margin: '5px auto 0' }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div style={styles.statPlaceholders}>
+                      {[0, 1, 2].map((stat) => (
+                        <div key={stat} style={{ ...styles.stack, gap: '5px', alignItems: 'center' }}>
+                          <Skeleton style={{ width: '46px', height: '7px' }} />
+                          <Skeleton style={{ width: '36px', height: '13px' }} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           </section>
         ))}
