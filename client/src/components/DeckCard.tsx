@@ -39,12 +39,6 @@ export default function DeckCard({
 }: DeckCardProps) {
   const isMobile = useIsMobile();
 
-  // Two version signals: the meta versions (what top players fielded) drive
-  // which positional slot a card lands in; the personalised versions (unowned
-  // specials downgraded, owned specials upgraded into free slots) drive the
-  // artwork the player would actually field. A meta special keeps its slot even
-  // when downgraded, but a personalised upgrade must claim its slot too. The
-  // server caps the combined set to the legal slot limits.
   const slotVersion = (cardId: number) => {
     const meta = metaCardVersions?.find((v) => v.cardId === cardId)?.version;
     return meta && meta !== 'normal' ? meta : versionOf(cardVersions, cardId);
@@ -102,7 +96,7 @@ export default function DeckCard({
                   <>
                     <strong>How well this meta deck fits your collection.</strong>
                     <br />
-                    The win rate you can expect at your card levels (under-leveled cards cost win odds, compounded) × evolutions/heroes you've unlocked × how widely top players run it.
+                    Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), the Evolutions and Heroes you've unlocked, and how widely top players run it.
                   </>
                 )}
               </InfoTip>

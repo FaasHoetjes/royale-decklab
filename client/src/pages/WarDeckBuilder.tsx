@@ -130,7 +130,7 @@ export default function WarDeckBuilder() {
             {scores && scores.total > 0 && (
               <span
                 style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
-                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (the win rate you can expect at your card levels × how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
+                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (based on your card levels, unlocked Evolutions/Heroes, and how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
               >
                 <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
                 <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>

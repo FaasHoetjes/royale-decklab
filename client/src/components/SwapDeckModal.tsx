@@ -36,6 +36,14 @@ export default function SwapDeckModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   return (
     <div
       style={{ ...styles.overlay, padding: isMobile ? '14px 10px' : '40px 20px' }}
@@ -144,7 +152,8 @@ const styles = {
     alignItems: 'flex-start' as const,
     justifyContent: 'center' as const,
     overflowY: 'auto' as const,
-    zIndex: 100,
+    overscrollBehavior: 'contain' as const,
+    zIndex: 2000,
   },
   panel: {
     width: '100%',
@@ -182,6 +191,7 @@ const styles = {
     flexDirection: 'column' as const,
     gap: '12px',
     overflowY: 'auto' as const,
+    overscrollBehavior: 'contain' as const,
     flex: 1,
     margin: '0 -4px',
     padding: '4px',

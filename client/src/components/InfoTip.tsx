@@ -4,10 +4,21 @@ interface InfoTipProps {
   ariaLabel: string;
   color?: string;
   width?: number;
+  placement?: 'top' | 'bottom';
+  align?: 'center' | 'right';
+  interactive?: boolean;
   children: ReactNode;
 }
 
-export default function InfoTip({ ariaLabel, color, width = 220, children }: InfoTipProps) {
+export default function InfoTip({
+  ariaLabel,
+  color,
+  width = 220,
+  placement = 'top',
+  align = 'center',
+  interactive = false,
+  children,
+}: InfoTipProps) {
   const [show, setShow] = useState(false);
   const lastPointerType = useRef('');
   return (
@@ -18,7 +29,9 @@ export default function InfoTip({ ariaLabel, color, width = 220, children }: Inf
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') setShow(false); }}
       tabIndex={0}
       onFocus={(e) => { if (e.target.matches(':focus-visible')) setShow(true); }}
-      onBlur={() => setShow(false)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setShow(false);
+      }}
       onClick={() => { if (lastPointerType.current !== 'mouse') setShow((prev) => !prev); }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') setShow(false);
@@ -29,9 +42,18 @@ export default function InfoTip({ ariaLabel, color, width = 220, children }: Inf
       <InfoMark />
       {show && (
         <span
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => e.stopPropagation()}
           style={{
             ...styles.tooltip,
             width: `${width}px`,
+            ...(placement === 'bottom'
+              ? { top: 'calc(100% + 8px)', bottom: 'auto' }
+              : {}),
+            ...(align === 'right'
+              ? { left: 'auto', right: '-4px', transform: 'none' }
+              : {}),
+            ...(interactive ? { pointerEvents: 'auto' as const } : {}),
           }}
         >
           {children}

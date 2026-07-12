@@ -1,6 +1,7 @@
 export interface FaqItem {
   question: string;
   answer: React.ReactNode;
+  id?: string;
 }
 
 const pStyle: React.CSSProperties = {
@@ -22,6 +23,18 @@ export const faqItems: FaqItem[] = [
         Royale Decklab is a free companion for Clash Royale Clan Wars. It recommends four decks
         for your collection, suggests valuable upgrades, and lets you build and score your own
         war decks. It is an independent fan project and is not affiliated with Supercell.
+      </p>
+    ),
+  },
+  {
+    id: 'player-score',
+    question: "How is a deck's player score determined?",
+    answer: (
+      <p style={pLast}>
+        The score combines the deck's expected win rate at your card levels, how widely top war
+        players use it, and whether you own the required Evolution or Hero versions. Results with
+        very few games are treated cautiously, and missing versions reduce the score. The four
+        highest scoring decks with no repeated cards are selected.
       </p>
     ),
   },
@@ -55,17 +68,7 @@ export const faqItems: FaqItem[] = [
       </p>
     ),
   },
-  {
-    question: "How is a deck's player score determined?",
-    answer: (
-      <p style={pLast}>
-        The score combines the deck's expected win rate at your card levels, how widely top war
-        players use it, and whether you own the required Evolution or Hero versions. Results with
-        very few games are treated cautiously, and missing versions reduce the score. The four
-        highest scoring decks with no repeated cards are selected.
-      </p>
-    ),
-  },
+
   {
     question: 'How does the upgrade advisor pick cards?',
     answer: (

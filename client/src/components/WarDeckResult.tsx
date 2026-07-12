@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { ScoredDeck } from '../api';
 import DeckCard from './DeckCard';
+import InfoTip from './InfoTip';
 import SwapDeckModal from './SwapDeckModal';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -18,21 +20,13 @@ export default function WarDeckResult({
   onNewSearch,
 }: WarDeckResultProps) {
   const isMobile = useIsMobile();
-  // One flat list the slots index into: the four primary decks first (master
-  // indices 0..3), then the swap pool. A slot's "own" primary deck is the deck
-  // at its own position, so primary index === slot position.
   const allDecks = useMemo(() => [...decks, ...alternatives], [decks, alternatives]);
-  // Indices here are always built from allDecks, so the lookup never misses;
-  // this just satisfies the strict indexed-access check in one place.
   const deckAt = (master: number): ScoredDeck => {
     const deck = allDecks[master];
     if (!deck) throw new Error(`No deck at index ${master}`);
     return deck;
   };
 
-  // Which deck (master index) each of the four slots currently shows. Starts on
-  // the four recommended decks; a new search remounts this component, but reset
-  // defensively when the deck set itself changes.
   const [slots, setSlots] = useState<number[]>(() => decks.map((_, i) => i));
   useEffect(() => {
     setSlots(decks.map((_, i) => i));
@@ -40,11 +34,6 @@ export default function WarDeckResult({
 
   const [swapSlot, setSwapSlot] = useState<number | null>(null);
 
-  // All valid swap options for one slot: its own primary deck plus the shared
-  // pool, dropping any deck that shares a card with the three decks the other
-  // slots currently show, best score first. Because every option is disjoint
-  // from the other three, swapping keeps all four shown decks mutually
-  // card-disjoint, the war rule that each card is fielded only once.
   const candidatesForSlot = (slotPos: number): number[] => {
     const otherCards = new Set<number>();
     slots.forEach((master, pos) => {
@@ -99,7 +88,29 @@ export default function WarDeckResult({
           <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>4 battle-ready decks · no shared cards</span>
         </div>
         <div style={styles.scoreBlock}>
-          <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>Total Score</span>
+          <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>
+            Total Score
+            <InfoTip
+              ariaLabel="How the total score is derived"
+              color={theme.muted}
+              placement="bottom"
+              align="right"
+              interactive={isMobile}
+            >
+              The combined Player Score of all four recommended decks.{' '}
+              {isMobile ? (
+                <>
+                  See the{' '}
+                  <Link to="/faq#player-score" style={styles.tooltipLink}>
+                    FAQ
+                  </Link>{' '}
+                  for how each individual score is calculated.
+                </>
+              ) : (
+                <>See a deck's Player Score tooltip for how each individual score is calculated.</>
+              )}
+            </InfoTip>
+          </span>
           <span style={{ ...styles.scoreValue, fontSize: isMobile ? '24px' : '32px', color: theme.accent }}>{liveTotalScore.toFixed(3)}</span>
         </div>
       </div>
@@ -207,11 +218,19 @@ const styles = {
     alignItems: 'flex-end' as const,
   },
   scoreLabel: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
     fontSize: '11px',
     fontWeight: 700 as const,
     letterSpacing: '1px',
     textTransform: 'uppercase' as const,
     opacity: 0.85,
+  },
+  tooltipLink: {
+    color: 'var(--accent-bright)',
+    fontWeight: 700 as const,
+    textDecoration: 'underline' as const,
   },
   scoreValue: {
     fontSize: '32px',

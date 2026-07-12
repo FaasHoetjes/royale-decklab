@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { faqItems } from './faqContent';
@@ -6,7 +7,11 @@ import { faqItems } from './faqContent';
 export default function Faq() {
   const theme = getTheme();
   const isMobile = useIsMobile();
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const { hash } = useLocation();
+  const [openIndex, setOpenIndex] = useState<number | null>(() => {
+    const linked = faqItems.findIndex((item) => item.id === hash.slice(1));
+    return linked >= 0 ? linked : 0;
+  });
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -31,6 +36,7 @@ export default function Faq() {
           return (
             <div
               key={item.question}
+              id={item.id}
               style={{
                 borderBottom: i === faqItems.length - 1 ? 'none' : `1px solid ${theme.border}`,
               }}
