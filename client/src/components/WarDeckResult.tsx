@@ -117,7 +117,13 @@ export default function WarDeckResult({
         </div>
       </div>
 
-      <div style={{ ...styles.decksGrid, gap: isMobile ? '16px' : '30px' }}>
+      <div
+        style={{
+          ...styles.decksGrid,
+          gap: isMobile ? '16px' : '30px',
+          marginBottom: isMobile ? 0 : '50px',
+        }}
+      >
         {slots.map((master, slotPos) => {
           const deck = deckAt(master);
           const options = candidatesForSlot(slotPos);
