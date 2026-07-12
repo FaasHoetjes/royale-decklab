@@ -38,7 +38,7 @@ export default function CardTile({
           ...artStyle,
         }}
       >
-        {iconUrl && (
+        {iconUrl ? (
           <img
             src={iconUrl}
             alt={name}
@@ -46,6 +46,10 @@ export default function CardTile({
             decoding={lazyLoad ? 'async' : undefined}
             style={styles.image}
           />
+        ) : (
+          <div style={styles.placeholder} aria-hidden="true">
+            {placeholderInitials(name)}
+          </div>
         )}
         {elixirCost != null && <ElixirBadge cost={elixirCost} />}
         {level != null && <div style={styles.level}>LEVEL {level}</div>}
@@ -56,12 +60,33 @@ export default function CardTile({
   );
 }
 
+function placeholderInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
+
 const styles = {
   art: {
     position: 'relative' as const,
     aspectRatio: '0.82',
     borderRadius: '10px',
     overflow: 'hidden' as const,
+    containerType: 'inline-size' as const,
+  },
+  placeholder: {
+    position: 'absolute' as const,
+    inset: 0,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    fontSize: '32cqw',
+    fontWeight: 800 as const,
+    letterSpacing: '1px',
+    color: 'rgba(255, 255, 255, 0.45)',
   },
   image: {
     position: 'absolute' as const,
