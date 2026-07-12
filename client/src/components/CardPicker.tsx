@@ -150,6 +150,7 @@ export default function CardPicker({
 
   const closeButton = (
     <button
+      className="mobile-touch-target"
       onClick={onClose}
       style={{ ...styles.closeButton, color: theme.text.secondary }}
       aria-label="Close card picker"
@@ -209,6 +210,7 @@ export default function CardPicker({
             />
             <div style={styles.filterWrap}>
               <button
+                className="mobile-touch-target"
                 onClick={() => setShowFilters((s) => !s)}
                 style={{
                   ...styles.filterButton,
@@ -237,6 +239,7 @@ export default function CardPicker({
               )}
             </div>
             <button
+              className="mobile-touch-target"
               onClick={() => setDescending((d) => !d)}
               style={{ ...styles.arrowButton, backgroundColor: theme.control.bg, border: `1px solid ${theme.control.border}` }}
               title={descending ? 'Descending, click for ascending' : 'Ascending, click for descending'}
@@ -252,6 +255,7 @@ export default function CardPicker({
               </svg>
             </button>
             <button
+              className="mobile-touch-target"
               onClick={() => setSortIndex((i) => (i + 1) % SORT_TYPES.length)}
               style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px' } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
               title="Click to change sort order"

@@ -18,9 +18,9 @@ export default function FilterPopover({ filters, onToggle, onClear, onClose, the
           const on = filters.has(opt.key);
           return (
             <button
+              className="picker-filter-option mobile-touch-target"
               key={opt.key}
               onClick={() => onToggle(opt.key)}
-              className="picker-filter-option"
               style={{ ...styles.option, color: theme.text.primary }}
               role="menuitemcheckbox"
               aria-checked={on}
@@ -44,6 +44,7 @@ export default function FilterPopover({ filters, onToggle, onClear, onClose, the
           );
         })}
         <button
+          className="mobile-touch-target"
           onClick={onClear}
           disabled={filters.size === 0}
           style={{

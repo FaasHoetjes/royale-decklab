@@ -102,6 +102,7 @@ export default function DeckSlot({
         >
           {canToggle && (
             <span
+              className="mobile-touch-hitbox"
               role="button"
               tabIndex={0}
               aria-label={`Showing ${activeVersion} art, switch version`}

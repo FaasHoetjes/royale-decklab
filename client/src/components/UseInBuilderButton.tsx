@@ -21,9 +21,9 @@ export default function UseInBuilderButton({ onClick, busy, spinning, accent, va
 
   if (variant === 'full') {
     return (
-      <button onClick={onClick} disabled={busy} style={{ ...styles.full, ...shared }}>
+      <button className="mobile-touch-target" onClick={onClick} disabled={busy} style={{ ...styles.full, ...shared }}>
         <ArrowIcon size={16} spinning={spinning} />
-        Use in Builder
+        Use War Deck Set in Builder
       </button>
     );
   }
@@ -33,8 +33,8 @@ export default function UseInBuilderButton({ onClick, busy, spinning, accent, va
       <button
         onClick={onClick}
         disabled={busy}
-        aria-label="Use in Builder"
-        className="deck-swap-btn"
+        aria-label="Use War Deck Set in Builder"
+        className="deck-swap-btn mobile-touch-target"
         onPointerEnter={(e) => { if (e.pointerType === 'mouse') setHovered(true); }}
         onPointerLeave={(e) => { if (e.pointerType === 'mouse') setHovered(false); }}
         style={{ ...styles.circle, ...shared }}
@@ -43,7 +43,7 @@ export default function UseInBuilderButton({ onClick, busy, spinning, accent, va
       </button>
       {hovered && !busy && (
         <div style={styles.tooltip}>
-          Use in Builder
+          Use War Deck Set in Builder
         </div>
       )}
     </div>

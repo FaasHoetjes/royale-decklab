@@ -45,25 +45,28 @@ export default function DeckCard({
   };
 
   const orderedCards = orderBySlots(cards, slotVersion);
+  const deckLink = buildDeckLink(orderedCards.map((c) => c.id));
 
   return (
     <div className="deck-card" style={{ ...styles.container, padding: isMobile ? '16px' : '24px', backgroundColor: theme.containerBg, borderColor: theme.containerBorder, boxShadow: theme.containerShadow }}>
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
-          <a
-            href={buildDeckLink(orderedCards.map((c) => c.id))}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="deck-swap-btn"
-            title="Open this deck in Clash Royale"
-            style={{ ...styles.openInGame, backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }}
-          >
-            <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
-              <path fill="currentColor" d="M8 5v14l11-7z" />
-            </svg>
-            Open in game
-          </a>
+          {!isMobile && (
+            <a
+              href={deckLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="deck-swap-btn"
+              title="Open this deck in Clash Royale"
+              style={{ ...styles.openInGame, backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }}
+            >
+              <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
+                <path fill="currentColor" d="M8 5v14l11-7z" />
+              </svg>
+              Open in game
+            </a>
+          )}
         </div>
         <span style={{ ...styles.archetypeBadge, backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, color: theme.badgeText }}>
           {deckArchetype(cards)}
@@ -131,23 +134,41 @@ export default function DeckCard({
             onClick={onSwap}
             aria-label={`Swap deck ${deckNumber}`}
             title="See alternatives for this deck"
-            className="deck-swap-btn"
+            className="deck-swap-btn mobile-touch-target"
             style={{ ...styles.swapButton, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
           >
             <SwapArrows style={styles.swapIcon} />
           </button>
         )}
       </div>
-      {canSwap && isMobile && (
-        <button
-          type="button"
-          onClick={onSwap}
-          aria-label={`Swap deck ${deckNumber}`}
-          style={{ ...styles.swapButtonMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
-        >
-          <SwapArrows style={styles.swapIconMobile} />
-          Swap this deck
-        </button>
+      {isMobile && (
+        <div className="deck-mobile-actions" style={styles.mobileActions}>
+          <a
+            href={deckLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mobile-touch-target"
+            title="Open this deck in Clash Royale"
+            style={{ ...styles.openInGameMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
+          >
+            <svg viewBox="0 0 24 24" style={styles.actionIconMobile} aria-hidden="true">
+              <path fill="currentColor" d="M8 5v14l11-7z" />
+            </svg>
+            Open in Clash Royale
+          </a>
+          {canSwap && (
+            <button
+              className="mobile-touch-target"
+              type="button"
+              onClick={onSwap}
+              aria-label={`Swap deck ${deckNumber}`}
+              style={{ ...styles.swapButtonMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
+            >
+              <SwapArrows style={styles.actionIconMobile} />
+              Swap deck
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -158,9 +179,9 @@ const theme = {
   containerBorder: 'var(--panel-border)',
   containerShadow: 'var(--panel-shadow)',
   headerText: 'var(--text-heading)',
-  badgeBg: 'var(--chip-bg)',
-  badgeText: 'var(--chip-text)',
-  badgeBorder: 'var(--chip-border)',
+  badgeBg: 'var(--archetype-bg)',
+  badgeText: 'var(--archetype-text)',
+  badgeBorder: 'var(--archetype-border)',
   statsBg: 'var(--inset-bg)',
   statsBorder: 'var(--row-border)',
   statsLabel: 'var(--stat-label)',
@@ -256,7 +277,6 @@ const styles = {
   },
   swapButtonMobile: {
     width: '100%',
-    marginTop: '14px',
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -268,10 +288,31 @@ const styles = {
     fontWeight: 700 as const,
     cursor: 'pointer',
   },
-  swapIconMobile: {
+  mobileActions: {
+    display: 'grid' as const,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: '10px',
+    marginTop: '14px',
+  },
+  openInGameMobile: {
+    minWidth: 0,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '8px',
+    padding: '11px 12px',
+    border: '1px solid',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap' as const,
+  },
+  actionIconMobile: {
     width: '15px',
     height: '15px',
     display: 'block',
+    flexShrink: 0,
   },
   archetypeBadge: {
     fontSize: '12px',

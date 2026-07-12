@@ -5,7 +5,7 @@ export default function ThemeToggle({ size = 28 }: { size?: number }) {
   return (
     <button
       onClick={toggleDarkMode}
-      className="theme-toggle-btn"
+      className="theme-toggle-btn mobile-touch-target"
       style={styles.button}
       title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}

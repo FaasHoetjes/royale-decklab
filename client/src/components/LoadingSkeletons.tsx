@@ -43,9 +43,13 @@ export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
                   <div key={row} style={{ ...styles.panel, padding: '14px 12px', borderRadius: '12px' }}>
                     <div style={{ ...styles.inline, justifyContent: 'space-between', marginBottom: '16px' }}>
                       <Skeleton style={{ width: '58px', height: '16px' }} />
-                      <div style={styles.inline}>
-                        <Skeleton style={{ width: '26px', height: '26px', borderRadius: '50%' }} />
-                        <Skeleton style={{ width: '54px', height: '13px' }} />
+                      <div style={{ ...styles.inline, gap: '12px', alignItems: 'flex-end' }}>
+                        {[0, 1, 2].map((stat) => (
+                          <div key={stat} style={{ ...styles.stack, gap: '4px', alignItems: 'center' }}>
+                            <Skeleton style={{ width: '24px', height: '7px' }} />
+                            <Skeleton style={{ width: stat === 0 ? '36px' : '30px', height: '13px' }} />
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div style={{ ...styles.cards, gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
@@ -56,14 +60,7 @@ export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
                         </div>
                       ))}
                     </div>
-                    <div style={{ ...styles.statPlaceholders, marginTop: '14px' }}>
-                      {[0, 1].map((stat) => (
-                        <div key={stat} style={{ ...styles.stack, gap: '5px', alignItems: 'center' }}>
-                          <Skeleton style={{ width: '46px', height: '7px' }} />
-                          <Skeleton style={{ width: '36px', height: '13px' }} />
-                        </div>
-                      ))}
-                    </div>
+                    <Skeleton style={{ width: '100%', height: '44px', marginTop: '14px', borderRadius: '10px' }} />
                   </div>
                 ) : (
                   <div key={row} style={{ ...styles.deckRow, padding: '10px 14px' }}>

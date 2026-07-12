@@ -18,12 +18,16 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const accent = theme.accent;
 
-  const openInGameLink = (style: CSSProperties) => (
+  const openInGameLink = (
+    style: CSSProperties,
+    className = 'deck-swap-btn mobile-touch-target',
+    label?: string
+  ) => (
     <a
       href={buildDeckLink(cards.map((c) => c.id))}
       target="_blank"
       rel="noopener noreferrer"
-      className="deck-swap-btn"
+      className={className}
       title="Open this deck in Clash Royale"
       aria-label="Open this deck in Clash Royale"
       style={style}
@@ -31,6 +35,7 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
       <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
         <path fill="currentColor" d="M8 5v14l11-7z" />
       </svg>
+      {label}
     </a>
   );
 
@@ -64,18 +69,28 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
         <div style={styles.panelHeader}>
           <h3 style={{ ...styles.panelTitle, color: theme.text.primary }}>Deck {deckNumber}</h3>
           <div style={styles.panelHeaderStats}>
-            {openInGameLink({ ...styles.openInGame, width: '26px', height: '26px', boxShadow: 'none', border: '1px solid', borderColor: theme.border, color: accent })}
-            <span style={{ ...styles.avgElixir, color: theme.text.secondary }}>
+            <MobileStat label="Win" value={`${(deck.winRate * 100).toFixed(1)}%`} color={accent} theme={theme} />
+            <MobileStat label="Meta" value={deck.metaScore.toFixed(3)} color={theme.text.primary} theme={theme} info />
+            <span style={{ ...styles.mobileMetric, color: theme.text.secondary }}>
+              <span style={styles.mobileMetricLabel}>Avg</span>
+              <span style={{ ...styles.mobileMetricValue, color: theme.text.primary }}>
               <ElixirDropIcon />
-              Avg {avgElixir(deck.cards).toFixed(1)}
+                {avgElixir(deck.cards).toFixed(1)}
+              </span>
             </span>
           </div>
         </div>
         <div style={styles.mobileGrid}>{cardTiles}</div>
-        <div style={styles.mobileStats}>
-          <Stat label="Win Rate" value={`${(deck.winRate * 100).toFixed(1)}%`} color={accent} theme={theme} />
-          {metaScoreStat}
-        </div>
+        {openInGameLink(
+          {
+            ...styles.openInGameFull,
+            borderColor: 'var(--row-border)',
+            backgroundColor: 'var(--raised-bg)',
+            color: accent,
+          },
+          'mobile-touch-target',
+          'Open in Clash Royale'
+        )}
       </div>
     );
   }
@@ -115,6 +130,39 @@ function Stat({ label, value, color, theme }: { label: string; value: string; co
   );
 }
 
+function MobileStat({
+  label,
+  value,
+  color,
+  theme,
+  info = false,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  theme: Theme;
+  info?: boolean;
+}) {
+  return (
+    <span style={{ ...styles.mobileMetric, color: theme.text.secondary }}>
+      <span style={styles.mobileMetricLabel}>
+        {label}
+        {info && (
+          <InfoTip
+            ariaLabel="Meta score details"
+            color={theme.text.secondary}
+            width={210}
+            align="right"
+          >
+            Confidence-adjusted win rate × popularity weight. Higher means this deck both wins more <em>and</em> is run by more top war players.
+          </InfoTip>
+        )}
+      </span>
+      <span style={{ ...styles.mobileMetricValue, color }}>{value}</span>
+    </span>
+  );
+}
+
 const styles = {
   row: {
     display: 'flex' as const,
@@ -144,15 +192,32 @@ const styles = {
   },
   panelHeaderStats: {
     display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '10px',
+    alignItems: 'flex-end' as const,
+    gap: '12px',
   },
-  avgElixir: {
+  mobileMetric: {
+    display: 'inline-flex' as const,
+    flexDirection: 'column' as const,
+    alignItems: 'center' as const,
+    gap: '2px',
+  },
+  mobileMetricLabel: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    gap: '4px',
+    gap: '3px',
+    fontSize: '9px',
+    fontWeight: 600 as const,
+    letterSpacing: '0.35px',
+    lineHeight: 1,
+    textTransform: 'uppercase' as const,
+  },
+  mobileMetricValue: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '3px',
     fontSize: '13px',
     fontWeight: 700 as const,
+    lineHeight: 1.1,
   },
   mobileGrid: {
     display: 'grid' as const,
@@ -164,10 +229,19 @@ const styles = {
     gap: '5px',
     flex: 1,
   },
-  mobileStats: {
+  openInGameFull: {
+    width: '100%',
     display: 'flex' as const,
-    justifyContent: 'space-around' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '8px',
     marginTop: '14px',
+    padding: '11px 12px',
+    border: '1px solid',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+    textDecoration: 'none',
   },
   cardCell: {
     flex: 1,

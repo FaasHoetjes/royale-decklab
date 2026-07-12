@@ -76,7 +76,7 @@ export default function Sidebar() {
       <div style={styles.footerIcons}>
         <a
           href="mailto:faashoetjes+royaledecklab@gmail.com"
-          className="nav-link"
+          className="nav-link mobile-touch-target"
           aria-label="Contact"
           title="Contact"
           style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
@@ -87,7 +87,7 @@ export default function Sidebar() {
           href="https://github.com/FaasHoetjes/royale-decklab"
           target="_blank"
           rel="noreferrer"
-          className="nav-link"
+          className="nav-link mobile-touch-target"
           aria-label="GitHub repository"
           title="GitHub"
           style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
@@ -123,7 +123,7 @@ export default function Sidebar() {
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
               aria-expanded={drawerOpen}
-              className="theme-toggle-btn"
+              className="theme-toggle-btn mobile-touch-target"
               style={{ ...styles.menuButton, color: theme.text.primary }}
             >
               <MenuIcon />
@@ -150,7 +150,7 @@ export default function Sidebar() {
               <button
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close menu"
-                className="theme-toggle-btn"
+                className="theme-toggle-btn mobile-touch-target"
                 style={{ ...styles.menuButton, ...styles.drawerClose, color: theme.text.primary }}
               >
                 <CloseIcon />

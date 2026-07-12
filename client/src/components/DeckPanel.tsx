@@ -62,6 +62,7 @@ export default function DeckPanel({
               href={buildDeckLink(deck)}
               target="_blank"
               rel="noopener noreferrer"
+              className="mobile-touch-target"
               aria-label={`Open Deck ${deckIndex + 1} in Clash Royale`}
               title="Open this deck in Clash Royale"
               style={{ ...styles.openInGameBtn, color: scoreAccent, borderColor: theme.border }}
@@ -73,6 +74,7 @@ export default function DeckPanel({
           )}
           {placedCards.length > 0 && (
             <button
+              className="mobile-touch-target"
               onClick={() => board.resetDeck(deckIndex)}
               aria-label={`Clear Deck ${deckIndex + 1}`}
               title={`Clear Deck ${deckIndex + 1}`}

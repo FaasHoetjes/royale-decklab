@@ -35,6 +35,9 @@
   --chip-bg: #f0f3ff;
   --chip-text: #3a6ea5;
   --chip-border: #dbe4f5;
+  --archetype-bg: #eceef2;
+  --archetype-text: #4b5563;
+  --archetype-border: #d7dae0;
   --raised-bg: #f6f7f9;
   --float-btn-bg: #ffffff;
   --selected-bg: #eaf3ff;
@@ -87,6 +90,9 @@
   --chip-bg: #26262a;
   --chip-text: #c4c4cc;
   --chip-border: #34343a;
+  --archetype-bg: #26262a;
+  --archetype-text: #c4c4cc;
+  --archetype-border: #34343a;
   --raised-bg: #26262a;
   --float-btn-bg: #26262a;
   --selected-bg: #26262a;
@@ -140,6 +146,35 @@ input:disabled {
 .deck-slot-btn {
   border-radius: 12px;
 }
+
+/* Keep compact iconography while giving touch users a reliably sized target. */
+@media (max-width: 768px), (pointer: coarse) {
+  .mobile-touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .mobile-touch-hitbox {
+    position: relative;
+  }
+
+  .mobile-touch-hitbox::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (max-width: 380px) {
+  .deck-mobile-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .deck-slot-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;

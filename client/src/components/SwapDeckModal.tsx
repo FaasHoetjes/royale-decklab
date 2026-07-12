@@ -65,6 +65,7 @@ export default function SwapDeckModal({
         <div style={styles.panelHeader}>
           <h3 style={{ ...styles.panelTitle, color: theme.text }}>Swap Deck {slotNumber}</h3>
           <button
+            className="mobile-touch-target"
             type="button"
             onClick={onClose}
             aria-label="Close"

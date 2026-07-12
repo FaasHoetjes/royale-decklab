@@ -23,6 +23,7 @@ export default function InfoTip({
   const lastPointerType = useRef('');
   return (
     <span
+      className="mobile-touch-hitbox"
       style={{ ...styles.icon, color }}
       onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') setShow(true); }}

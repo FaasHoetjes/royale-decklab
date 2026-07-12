@@ -56,21 +56,35 @@ export default function UpgradeAdvisor() {
           paddingBottom: isMobile ? '14px' : '20px',
         }}
       >
-        <div style={{ ...styles.titleRow, justifyContent: isMobile ? 'flex-end' : 'space-between' }}>
-          {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>}
-          {data && (
-            <span
-              style={{ ...styles.scorePill, color: theme.text.primary, borderColor: theme.border }}
-              title="Your current lineup score. Each suggestion shows how much it can raise it."
-            >
-              <span style={{ ...styles.scorePillLabel, color: theme.text.secondary }}>Current Score</span>
-              <span style={{ color: theme.accent }}>{data.baselineScore.toFixed(3)}</span>
-            </span>
-          )}
-        </div>
-        <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
-          Ranked by the increase each upgrade gives your best war lineup.
+        {!isMobile && (
+          <div style={styles.titleRow}>
+            <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>
+            {data && (
+              <ScoreSummary score={data.baselineScore} accent={theme.accent} text={theme.text.primary} muted={theme.text.secondary} border={theme.border} />
+            )}
+          </div>
+        )}
+        <p
+          style={{
+            ...styles.subtitle,
+            marginTop: isMobile ? 0 : '8px',
+            color: theme.text.secondary,
+          }}
+        >
+          Ranked by the increase each upgrade gives your best war lineup. Each result is tested
+          against a rebuilt lineup. <strong>Unlocks a new deck</strong> means the upgrade changes
+          your four decks.
         </p>
+        {isMobile && data && (
+          <ScoreSummary
+            score={data.baselineScore}
+            accent={theme.accent}
+            text={theme.text.primary}
+            muted={theme.text.secondary}
+            border={theme.border}
+            fullWidth
+          />
+        )}
       </div>
 
       {!activePlayerTag ? (
@@ -123,6 +137,7 @@ export default function UpgradeAdvisor() {
                 const active = filter === f.key;
                 return (
                   <button
+                    className="mobile-touch-target"
                     key={f.key}
                     onClick={() => {
                       setFilter(f.key);
@@ -178,6 +193,7 @@ export default function UpgradeAdvisor() {
                 ))}
                 {filtered.length > INITIAL_ROWS && (
                   <button
+                    className="mobile-touch-target"
                     onClick={() => setExpanded((e) => !e)}
                     style={{
                       ...styles.showMore,
@@ -191,13 +207,40 @@ export default function UpgradeAdvisor() {
               </>
             )}
           </div>
-          <p style={{ ...styles.footnote, color: theme.text.secondary }}>
-            Each result is tested against a rebuilt lineup. <strong>Unlocks a new deck</strong>{' '}
-            means the upgrade changes your four decks.
-          </p>
         </>
       ) : null}
     </div>
+  );
+}
+
+function ScoreSummary({
+  score,
+  accent,
+  text,
+  muted,
+  border,
+  fullWidth = false,
+}: {
+  score: number;
+  accent: string;
+  text: string;
+  muted: string;
+  border: string;
+  fullWidth?: boolean;
+}) {
+  return (
+    <span
+      style={{
+        ...styles.scorePill,
+        ...(fullWidth ? styles.scoreSummaryMobile : {}),
+        color: text,
+        borderColor: border,
+      }}
+      title="Your current lineup score. Each suggestion shows how much it can raise it."
+    >
+      <span style={{ ...styles.scorePillLabel, color: muted }}>Current Score</span>
+      <span style={{ color: accent }}>{score.toFixed(3)}</span>
+    </span>
   );
 }
 
@@ -234,9 +277,17 @@ const styles = {
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   },
+  scoreSummaryMobile: {
+    display: 'flex' as const,
+    width: 'fit-content',
+    justifyContent: 'center' as const,
+    margin: '14px auto 0',
+    boxSizing: 'border-box' as const,
+  },
   subtitle: {
     fontSize: '15px',
     marginTop: '8px',
+    lineHeight: 1.6,
   },
   message: {
     marginTop: '32px',
@@ -313,11 +364,5 @@ const styles = {
     fontSize: '13px',
     fontWeight: 700 as const,
     cursor: 'pointer' as const,
-  },
-  footnote: {
-    fontSize: '12px',
-    lineHeight: 1.5,
-    marginTop: '14px',
-    maxWidth: '640px',
   },
 };
