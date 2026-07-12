@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Clients;
+using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Options;
@@ -201,6 +202,7 @@ public sealed class MetaBuilder(
         {
             Key = $"{tag}|{battleTime}{keySuffix}",
             BattleTime = battleTime,
+            BattleTimeMs = BattleRepository.ParseBattleTime(battleTime),
             PlayerTag = tag,
             CardIds = cardIds,
             Result = result,
@@ -208,7 +210,7 @@ public sealed class MetaBuilder(
         };
     }
 
-    public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records)
+    public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records, long epochStartMs = 0)
     {
         var sampledPlayers = new HashSet<string>();
 
@@ -223,12 +225,15 @@ public sealed class MetaBuilder(
                 byDeck[deckKey] = agg;
             }
 
-            switch (record.Result)
+            var weight = epochStartMs > 0 && record.BattleTimeMs < epochStartMs ? _opt.PreEpochWeight : 1.0;
+            agg.Games++;
+            agg.WeightedGames += weight;
+            agg.WeightedWins += weight * record.Result switch
             {
-                case BattleResult.Win: agg.Wins++; break;
-                case BattleResult.Loss: agg.Losses++; break;
-                default: agg.Draws++; break;
-            }
+                BattleResult.Win => 1.0,
+                BattleResult.Draw => 0.5,
+                _ => 0.0,
+            };
             agg.Players.Add(record.PlayerTag);
 
             var comboKey = string.Join(',',
@@ -248,22 +253,20 @@ public sealed class MetaBuilder(
         var decks = new List<DeckMeta>(byDeck.Count);
         foreach (var agg in byDeck.Values)
         {
-            var total = agg.Wins + agg.Losses + agg.Draws;
-            if (total < 2)
+            if (agg.Games < 2)
             {
                 continue;
             }
 
-            var effectiveWins = agg.Wins + agg.Draws * 0.5;
-            var winRate = effectiveWins / total;
-            var confidence = WilsonLowerBound(effectiveWins, total);
+            var winRate = agg.WeightedWins / agg.WeightedGames;
+            var confidence = WilsonLowerBound(agg.WeightedWins, agg.WeightedGames);
 
             decks.Add(new DeckMeta
             {
                 CardIds = agg.CardIds,
                 WinRate = winRate,
                 Confidence = confidence,
-                Uses = total,
+                Uses = agg.Games,
                 Players = agg.Players.Count,
                 PickRate = sampledPlayers.Count > 0 ? (double)agg.Players.Count / sampledPlayers.Count : 0,
                 CardVersions = agg.Loadouts.Values
@@ -280,9 +283,9 @@ public sealed class MetaBuilder(
 
     private sealed class DeckAgg
     {
-        public int Wins;
-        public int Losses;
-        public int Draws;
+        public int Games;
+        public double WeightedGames;
+        public double WeightedWins;
         public HashSet<string> Players { get; } = [];
         public required int[] CardIds { get; init; }
         public Dictionary<string, LoadoutAgg> Loadouts { get; } = [];

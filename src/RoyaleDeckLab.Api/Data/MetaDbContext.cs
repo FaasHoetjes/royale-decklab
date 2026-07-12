@@ -56,6 +56,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             m.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             m.Property(x => x.EpochStartMs).HasColumnName("epoch_start_ms").IsRequired();
             m.Property(x => x.LastBuildMs).HasColumnName("last_build_ms").IsRequired();
+            m.Property(x => x.KnownSeasonId).HasColumnName("known_season_id").IsRequired().HasDefaultValue(0);
         });
     }
 }

@@ -63,6 +63,7 @@ builder.Services.AddScoped<MetaBuilder>();
 builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
+builder.Services.AddHostedService<SeasonWatchService>();
 
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<BestDecksBuilder>();
@@ -118,7 +119,14 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
     db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
-    db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
+    var hasSeasonColumn = db.Database.SqlQueryRaw<int>(
+        "SELECT COUNT(*) AS Value FROM pragma_table_info('meta_state') WHERE name = 'known_season_id'").Single() > 0;
+    if (!hasSeasonColumn)
+    {
+        db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN known_season_id INTEGER NOT NULL DEFAULT 0;");
+    }
+    db.Database.ExecuteSqlRaw(
+        "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms, known_season_id) VALUES (1, 0, 0, 0);");
 }
 
 if (!app.Environment.IsDevelopment())

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Options;
 using RoyaleDeckLab.Api.Services;
@@ -86,6 +87,57 @@ public sealed class AggregateBattlesTests
 
         Assert.Equal(2, result.Count);
         Assert.True(result[0].CardIds.SequenceEqual(deckA));
+    }
+
+    [Fact]
+    public void PreEpochBattles_CountAtReducedWeight()
+    {
+        var deck = Build.Eight(1);
+        var epoch = BattleRepository.ParseBattleTime("20260115T000000.000Z");
+        var battles = new[]
+        {
+            Build.Battle("#P1", deck, BattleResult.Win, "20260110T120000.000Z"),
+            Build.Battle("#P2", deck, BattleResult.Win, "20260110T130000.000Z"),
+            Build.Battle("#P3", deck, BattleResult.Loss, "20260120T120000.000Z"),
+            Build.Battle("#P4", deck, BattleResult.Loss, "20260120T130000.000Z"),
+        };
+
+        var result = Assert.Single(NewBuilder().AggregateBattles(battles, epoch));
+
+        Assert.Equal(4, result.Uses);
+        Assert.Equal(0.5 / 2.5, result.WinRate, 10);
+        Assert.Equal(MetaBuilder.WilsonLowerBound(0.5, 2.5), result.Confidence, 10);
+    }
+
+    [Fact]
+    public void BattlesAtOrAfterTheEpoch_KeepFullWeight()
+    {
+        var deck = Build.Eight(1);
+        var boundary = "20260115T000000.000Z";
+        var epoch = BattleRepository.ParseBattleTime(boundary);
+        var battles = new[]
+        {
+            Build.Battle("#P1", deck, BattleResult.Win, boundary),
+            Build.Battle("#P2", deck, BattleResult.Loss, "20260120T120000.000Z"),
+        };
+
+        var result = Assert.Single(NewBuilder().AggregateBattles(battles, epoch));
+        Assert.Equal(0.5, result.WinRate, 10);
+        Assert.Equal(MetaBuilder.WilsonLowerBound(1, 2), result.Confidence, 10);
+    }
+
+    [Fact]
+    public void WithoutAnEpoch_AllBattlesKeepFullWeight()
+    {
+        var deck = Build.Eight(1);
+        var battles = new[]
+        {
+            Build.Battle("#P1", deck, BattleResult.Win, "20200101T120000.000Z"),
+            Build.Battle("#P2", deck, BattleResult.Loss, "20260101T120000.000Z"),
+        };
+
+        var result = Assert.Single(NewBuilder().AggregateBattles(battles));
+        Assert.Equal(0.5, result.WinRate, 10);
     }
 
     [Fact]

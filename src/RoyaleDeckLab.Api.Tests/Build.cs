@@ -1,3 +1,4 @@
+using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
 
@@ -60,6 +61,7 @@ internal static class Build
         {
             Key = $"{tag}|{battleTime}|{string.Join('-', cardIds)}|{result}",
             BattleTime = battleTime,
+            BattleTimeMs = BattleRepository.ParseBattleTime(battleTime),
             PlayerTag = tag,
             CardIds = cardIds,
             Result = result,

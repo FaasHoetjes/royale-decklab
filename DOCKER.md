@@ -91,6 +91,14 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json
   -d '{"timestamp":"now"}' http://localhost:3000/api/meta/epoch
 ```
 
+Season rollovers set the boundary automatically: a background watcher probes the
+Path of Legend rankings for the next season id every hour and sets the epoch the
+moment the new season appears. The manual endpoint is only needed for mid-season
+balance hotfixes. Battles from before the boundary aren't deleted; they count at
+reduced weight (`Meta__PreEpochWeight`, default `0.25`) until they age out of the
+30-day window, so the meta stays populated between a Monday rollover and the next
+war battle days.
+
 ### The `meta.db` volume
 
 `meta.db` is **derived, regenerable data** (aggregated from the CR API), not source

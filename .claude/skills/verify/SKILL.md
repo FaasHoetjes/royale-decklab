@@ -35,8 +35,12 @@ Gotchas learned the hard way:
   against `meta.db` (python's sqlite3 works; WAL mode allows concurrent reads).
 - Rate limits (per IP, 1-min fixed windows): player endpoints 30, admin 5,
   global backstop 300. A probe burst pollutes the window for ~1 min.
-- `POST /api/meta/epoch` **deletes battles** before the boundary — never fire it
+- `POST /api/meta/epoch` down-weights battles before the boundary (it no longer
+  deletes them) and **persists the boundary in `meta_state`** — don't fire it
   against the real `meta.db` during verification.
+- Season rollovers are auto-detected hourly (`SeasonWatchService` probes
+  `pathoflegend/{season+1}/rankings/players`) and set the epoch themselves; the
+  admin endpoint remains for mid-season balance hotfixes.
 - Admin endpoints return 403 when `ADMIN_TOKEN` is unset, 401 on wrong token.
 
 ## Client

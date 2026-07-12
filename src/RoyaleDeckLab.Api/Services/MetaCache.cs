@@ -33,8 +33,8 @@ public sealed class MetaCache(
 
     public static string DeckKey(IEnumerable<int> cardIds) => string.Join(',', cardIds.OrderBy(x => x));
 
-    private long EffectiveCutoff()
-        => Math.Max(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _opt.BattleWindowMs, Interlocked.Read(ref _epochStart));
+    private long PruneCutoff()
+        => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _opt.BattleWindowMs;
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
@@ -64,9 +64,9 @@ public sealed class MetaCache(
     private async Task<List<DeckMeta>> AggregateWithinAsync(
         BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
     {
-        var cutoff = EffectiveCutoff();
+        var cutoff = PruneCutoff();
         var pruned = await store.PruneAsync(cutoff, ct);
-        var decks = builder.AggregateBattles(store.AllBattles());
+        var decks = builder.AggregateBattles(store.AllBattles(), Interlocked.Read(ref _epochStart));
         _meta = decks;
         Interlocked.Increment(ref _version);
         Interlocked.Exchange(ref _lastCacheTime, store.GetLastBuild());

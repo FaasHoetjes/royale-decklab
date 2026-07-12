@@ -18,4 +18,14 @@ public sealed class MetaOptions
     public int MaxWarClans { get; set; } = 100;
 
     public int WarRecordTarget { get; set; } = 250_000;
+
+    // Battles from before the patch boundary still count, at reduced weight,
+    // so the meta isn't empty between a season rollover (Monday) and the next
+    // war battle days (Thursday).
+    public double PreEpochWeight { get; set; } = 0.25;
+
+    public long SeasonCheckIntervalMs { get; set; } = 60L * 60 * 1000;
+
+    // Any past Path of Legend season id works as a probe floor; 141 = July 2026.
+    public int SeasonIdSeed { get; set; } = 141;
 }

@@ -71,7 +71,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
         {
             pKey.Value = r.Key;
             pTime.Value = r.BattleTime;
-            pTimeMs.Value = ParseBattleTime(r.BattleTime);
+            pTimeMs.Value = r.BattleTimeMs;
             pTag.Value = r.PlayerTag;
             pCards.Value = JsonSerializer.Serialize(r.CardIds, StorageJson.Options);
             pResult.Value = r.Result.ToString().ToLowerInvariant();
@@ -119,6 +119,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
             {
                 Key = b.Key,
                 BattleTime = b.BattleTime,
+                BattleTimeMs = b.BattleTimeMs,
                 PlayerTag = b.PlayerTag,
                 CardIds = b.CardIds,
                 Result = b.Result,
@@ -138,6 +139,23 @@ public sealed partial class BattleRepository(MetaDbContext db)
         {
             var s = State();
             s.EpochStartMs = ms;
+            await db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
+
+    public int GetKnownSeasonId() => State().KnownSeasonId;
+
+    public async Task SetKnownSeasonIdAsync(int seasonId, CancellationToken ct = default)
+    {
+        await WriteGate.WaitAsync(ct);
+        try
+        {
+            var s = State();
+            s.KnownSeasonId = seasonId;
             await db.SaveChangesAsync(ct);
         }
         finally
