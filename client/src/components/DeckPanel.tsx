@@ -8,6 +8,7 @@ import type { DeckBoard } from '../hooks/useDeckBoard';
 import DeckSlot from './DeckSlot';
 import { ElixirDropIcon } from './ElixirBadge';
 import TrashIcon from './TrashIcon';
+import DeckLinkAction from './DeckLinkAction';
 
 interface DeckPanelProps {
   deckIndex: number;
@@ -35,6 +36,7 @@ export default function DeckPanel({
     const card = id != null ? cardById.get(id) : null;
     return card ? [card] : [];
   });
+  const complete = isCompleteDeck(deck);
 
   const handleSlotClick = (slotIndex: number) => {
     if (board.consumeDragClick()) return;
@@ -57,20 +59,13 @@ export default function DeckPanel({
       <div style={{ ...styles.header, gap: isMobile ? '8px' : '14px' }}>
         <h3 style={{ ...styles.title, color: theme.text.primary }}>Deck {deckIndex + 1}</h3>
         <div style={{ ...styles.headerStats, gap: isMobile ? '10px' : '14px' }}>
-          {isCompleteDeck(deck) && (
-            <a
-              href={buildDeckLink(deck)}
-              target="_blank"
-              rel="noopener noreferrer"
+          {complete && (
+            <DeckLinkAction
+              link={buildDeckLink(deck)}
+              isMobile={isMobile}
               className="mobile-touch-target"
-              aria-label={`Open Deck ${deckIndex + 1} in Clash Royale`}
-              title="Open this deck in Clash Royale"
               style={{ ...styles.openInGameBtn, color: scoreAccent, borderColor: theme.border }}
-            >
-              <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
-                <path fill="currentColor" d="M8 5v14l11-7z" />
-              </svg>
-            </a>
+            />
           )}
           {placedCards.length > 0 && (
             <button
@@ -217,11 +212,6 @@ const styles = {
     padding: 0,
     cursor: 'pointer',
     textDecoration: 'none',
-  },
-  openInGameIcon: {
-    width: '13px',
-    height: '13px',
-    display: 'block' as const,
   },
   resetBtn: {
     display: 'inline-flex' as const,

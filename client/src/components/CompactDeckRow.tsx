@@ -6,6 +6,7 @@ import { buildDeckLink } from '../lib/deckLink';
 import CardTile from './CardTile';
 import InfoTip from './InfoTip';
 import { ElixirDropIcon } from './ElixirBadge';
+import DeckLinkAction from './DeckLinkAction';
 
 interface CompactDeckRowProps {
   deck: BestDeckEntry;
@@ -17,26 +18,20 @@ interface CompactDeckRowProps {
 export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: CompactDeckRowProps) {
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const accent = theme.accent;
+  const deckLink = buildDeckLink(cards.map((c) => c.id));
 
   const openInGameLink = (
     style: CSSProperties,
     className = 'deck-swap-btn mobile-touch-target',
     label?: string
   ) => (
-    <a
-      href={buildDeckLink(cards.map((c) => c.id))}
-      target="_blank"
-      rel="noopener noreferrer"
+    <DeckLinkAction
+      link={deckLink}
+      isMobile={isMobile}
       className={className}
-      title="Open this deck in Clash Royale"
-      aria-label="Open this deck in Clash Royale"
       style={style}
-    >
-      <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
-        <path fill="currentColor" d="M8 5v14l11-7z" />
-      </svg>
-      {label}
-    </a>
+      label={label}
+    />
   );
 
   const cardTiles = cards.map((card, index) => (
@@ -274,13 +269,10 @@ const styles = {
     justifyContent: 'center' as const,
     width: '32px',
     height: '32px',
+    padding: 0,
+    cursor: 'pointer',
     borderRadius: '50%',
     textDecoration: 'none',
     boxShadow: '0 2px 6px rgba(13, 27, 62, 0.12)',
-  },
-  openInGameIcon: {
-    width: '14px',
-    height: '14px',
-    display: 'block',
   },
 };

@@ -5,6 +5,7 @@ import { buildDeckLink } from '../lib/deckLink';
 import { useIsMobile } from '../hooks/useIsMobile';
 import CardTile from './CardTile';
 import InfoTip from './InfoTip';
+import DeckLinkAction from './DeckLinkAction';
 
 interface DeckCardProps {
   cards: DeckCardData[];
@@ -53,19 +54,13 @@ export default function DeckCard({
         <div style={styles.headerLeft}>
           <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
           {!isMobile && (
-            <a
-              href={deckLink}
-              target="_blank"
-              rel="noopener noreferrer"
+            <DeckLinkAction
+              link={deckLink}
+              isMobile={false}
               className="deck-swap-btn"
-              title="Open this deck in Clash Royale"
               style={{ ...styles.openInGame, backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }}
-            >
-              <svg viewBox="0 0 24 24" style={styles.openInGameIcon} aria-hidden="true">
-                <path fill="currentColor" d="M8 5v14l11-7z" />
-              </svg>
-              Open in game
-            </a>
+              label="Copy deck link"
+            />
           )}
         </div>
         <span style={{ ...styles.archetypeBadge, backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, color: theme.badgeText }}>
@@ -143,19 +138,13 @@ export default function DeckCard({
       </div>
       {isMobile && (
         <div className="deck-mobile-actions" style={styles.mobileActions}>
-          <a
-            href={deckLink}
-            target="_blank"
-            rel="noopener noreferrer"
+          <DeckLinkAction
+            link={deckLink}
+            isMobile
             className="mobile-touch-target"
-            title="Open this deck in Clash Royale"
             style={{ ...styles.openInGameMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
-          >
-            <svg viewBox="0 0 24 24" style={styles.actionIconMobile} aria-hidden="true">
-              <path fill="currentColor" d="M8 5v14l11-7z" />
-            </svg>
-            Open in Clash Royale
-          </a>
+            label="Open in Clash Royale"
+          />
           {canSwap && (
             <button
               className="mobile-touch-target"
@@ -226,6 +215,7 @@ const styles = {
     gap: '12px',
   },
   openInGame: {
+    width: '132px',
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '6px',
@@ -239,11 +229,6 @@ const styles = {
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
     marginTop: '2px',
-  },
-  openInGameIcon: {
-    width: '12px',
-    height: '12px',
-    display: 'block',
   },
   headerTitle: {
     margin: 0,
