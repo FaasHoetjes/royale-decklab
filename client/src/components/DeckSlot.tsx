@@ -182,7 +182,7 @@ const styles = {
     padding: '2px 5px',
     borderRadius: '999px',
     color: '#ffffff',
-    fontSize: '9px',
+    fontSize: 'var(--version-toggle-font-size)',
     fontWeight: 800 as const,
     letterSpacing: '0.3px',
     cursor: 'pointer',
@@ -198,7 +198,7 @@ const styles = {
     justifyContent: 'center' as const,
   },
   emptyName: {
-    fontSize: '10px',
+    fontSize: 'var(--card-name-font-size)',
     fontWeight: 600 as const,
     textAlign: 'center' as const,
     marginTop: '5px',

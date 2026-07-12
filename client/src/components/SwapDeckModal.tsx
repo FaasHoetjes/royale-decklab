@@ -237,7 +237,7 @@ const styles = {
     alignItems: 'center' as const,
   },
   optionStatLabel: {
-    fontSize: '10px',
+    fontSize: 'var(--metric-label-font-size)',
     fontWeight: 500 as const,
   },
   optionStatValue: {

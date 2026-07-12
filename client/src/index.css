@@ -61,6 +61,11 @@
   --banner-title: #0d1b3e;
   --skeleton-base: #d5d9e0;
   --skeleton-highlight: #eef0f4;
+
+  --card-name-font-size: 10px;
+  --metric-label-font-size: 10px;
+  --tooltip-font-size: 11px;
+  --version-toggle-font-size: 9px;
 }
 
 :root[data-theme='dark'] {
@@ -166,6 +171,15 @@ input:disabled {
     width: 44px;
     height: 44px;
     transform: translate(-50%, -50%);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --card-name-font-size: 11px;
+    --metric-label-font-size: 11px;
+    --tooltip-font-size: 12px;
+    --version-toggle-font-size: 10px;
   }
 }
 

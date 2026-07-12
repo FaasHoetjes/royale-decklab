@@ -96,7 +96,7 @@ const styles = {
     border: '1px solid var(--tooltip-border)',
     backgroundColor: 'var(--tooltip-bg)',
     color: '#ffffff',
-    fontSize: '11px',
+    fontSize: 'var(--tooltip-font-size)',
     fontWeight: 'normal' as const,
     fontStyle: 'normal' as const,
     textTransform: 'none' as const,

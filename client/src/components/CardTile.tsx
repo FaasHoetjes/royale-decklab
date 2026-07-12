@@ -85,7 +85,7 @@ const styles = {
     textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
   },
   name: {
-    fontSize: '10px',
+    fontSize: 'var(--card-name-font-size)',
     fontWeight: 600 as const,
     textAlign: 'center' as const,
     marginTop: '5px',

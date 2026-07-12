@@ -216,7 +216,7 @@ const styles = {
     textAlign: 'right' as const,
   },
   setScoreLabel: {
-    fontSize: '10px',
+    fontSize: 'var(--metric-label-font-size)',
     fontWeight: 600 as const,
     letterSpacing: '0.5px',
     textTransform: 'uppercase' as const,

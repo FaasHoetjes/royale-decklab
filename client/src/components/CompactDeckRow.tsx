@@ -205,7 +205,7 @@ const styles = {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '3px',
-    fontSize: '9px',
+    fontSize: '11px',
     fontWeight: 600 as const,
     letterSpacing: '0.35px',
     lineHeight: 1,
@@ -256,7 +256,7 @@ const styles = {
     textAlign: 'center' as const,
   },
   statLabel: {
-    fontSize: '10px',
+    fontSize: 'var(--metric-label-font-size)',
     fontWeight: 600 as const,
     letterSpacing: '0.4px',
     textTransform: 'uppercase' as const,

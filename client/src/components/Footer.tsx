@@ -5,7 +5,7 @@ import { getTheme } from '../theme';
 export default function Footer() {
   const theme = getTheme();
   return (
-    <footer style={{ ...styles.footer, color: theme.text.tertiary }}>
+    <footer style={{ ...styles.footer, color: theme.text.secondary }}>
       This material is unofficial and is not endorsed by Supercell. For more information see{' '}
       <a
         href="https://supercell.com/en/fan-content-policy/"

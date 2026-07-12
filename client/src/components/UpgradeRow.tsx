@@ -31,7 +31,7 @@ export default function UpgradeRow({
 
   return (
     <div style={{ ...styles.row, padding: isMobile ? '12px 12px' : '14px 18px' }}>
-      <div style={{ ...styles.rank, color: theme.text.tertiary }}>#{rank}</div>
+      <div style={{ ...styles.rank, color: theme.text.secondary }}>#{rank}</div>
       <div style={{ width: isMobile ? '44px' : '54px', flexShrink: 0 }}>
         <CardTile
           name={s.name ?? ''}
@@ -51,7 +51,7 @@ export default function UpgradeRow({
         )}
         {(decksLabel || s.changesLineup) && (
           <div style={styles.context}>
-            {decksLabel && <span style={{ color: theme.text.tertiary }}>In {decksLabel}</span>}
+            {decksLabel && <span style={{ color: theme.text.secondary }}>In {decksLabel}</span>}
             {s.changesLineup && (
               <span style={{ color: theme.accent, fontWeight: 600 }}>Unlocks a new deck</span>
             )}
@@ -73,7 +73,7 @@ export default function UpgradeRow({
 
       <div style={styles.delta}>
         <div style={{ ...styles.deltaValue, color: theme.accent }}>+{s.scoreDelta.toFixed(3)}</div>
-        <div style={{ ...styles.deltaPct, color: theme.text.tertiary }}>+{gainPct.toFixed(1)}%</div>
+        <div style={{ ...styles.deltaPct, color: theme.text.secondary }}>+{gainPct.toFixed(1)}%</div>
       </div>
     </div>
   );

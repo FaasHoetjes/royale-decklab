@@ -6,8 +6,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
 import { CHAMPION_SLOTS, SLOTS_PER_DECK } from '../lib/deckBoard';
-import { availableVersions, type BuilderCard } from '../lib/builderCards';
-import { slotKind } from '../lib/slotStyles';
+import type { BuilderCard } from '../lib/builderCards';
 import type { ScoreDeckCard } from '../api';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from '../components/CardPicker';
@@ -106,13 +105,6 @@ export default function WarDeckBuilder() {
     setPicker(null);
   };
 
-  const hasVersionToggle = board.decks.some((deck) =>
-    deck.some((id, slotIndex) => {
-      if (id == null || slotKind(slotIndex) !== 'both') return false;
-      const card = cardById.get(id);
-      return card ? availableVersions(card, 'both').length > 1 : false;
-    })
-  );
   const showTitleRow = !isMobile || (scores != null && scores.total > 0) || board.usedIds.size > 0;
 
   return (
@@ -175,16 +167,6 @@ export default function WarDeckBuilder() {
             />
           ))}
         </div>
-      )}
-
-      {hasVersionToggle && (
-        <p style={{ ...styles.versionNote, color: theme.text.secondary }}>
-          <span style={{ ...styles.versionNoteIcon, borderColor: theme.text.secondary }}>i</span>
-          The <strong>⇄</strong> badge lets you switch a card's Evolution / Hero art. The Clash
-          Royale API doesn't tell us which of the two you own (it only reports one combined
-          level), so both are offered whenever the data allows. Pick the version you actually
-          have; it doesn't affect anyone else's view or the deck's score.
-        </p>
       )}
 
       {error && <div style={styles.errorBanner}>{error}</div>}
@@ -267,30 +249,6 @@ const styles = {
   deckList: {
     display: 'grid' as const,
     gridTemplateColumns: '1fr',
-  },
-  versionNote: {
-    display: 'flex' as const,
-    alignItems: 'flex-start' as const,
-    gap: '8px',
-    maxWidth: '760px',
-    margin: '4px auto 0',
-    fontSize: '12px',
-    lineHeight: 1.5,
-  },
-  versionNoteIcon: {
-    flexShrink: 0,
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    width: '15px',
-    height: '15px',
-    marginTop: '1px',
-    borderRadius: '50%',
-    border: '1px solid',
-    fontSize: '10px',
-    fontStyle: 'italic' as const,
-    fontWeight: 'bold' as const,
-    lineHeight: 1,
   },
   errorBanner: {
     marginTop: '20px',
