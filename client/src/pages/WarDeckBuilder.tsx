@@ -141,7 +141,7 @@ export default function WarDeckBuilder() {
                 onClick={board.resetAll}
                 aria-label="Clear all four decks"
                 title="Clear all four decks"
-                style={{ ...styles.resetAllBtn, color: theme.text.secondary, borderColor: theme.border }}
+                style={{ ...styles.resetAllBtn, color: scoreAccent, borderColor: theme.border }}
               >
                 <TrashIcon size={16} />
               </button>
@@ -218,6 +218,7 @@ const styles = {
     justifyContent: 'space-between' as const,
     gap: '16px',
     flexWrap: 'wrap' as const,
+    minHeight: '34px',
   },
   titleRowRight: {
     display: 'flex' as const,

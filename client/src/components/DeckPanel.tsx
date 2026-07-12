@@ -76,7 +76,7 @@ export default function DeckPanel({
               onClick={() => board.resetDeck(deckIndex)}
               aria-label={`Clear Deck ${deckIndex + 1}`}
               title={`Clear Deck ${deckIndex + 1}`}
-              style={{ ...styles.resetBtn, color: theme.text.secondary, borderColor: theme.border }}
+              style={{ ...styles.resetBtn, color: scoreAccent, borderColor: theme.border }}
             >
               <TrashIcon size={13} />
             </button>
@@ -193,6 +193,7 @@ const styles = {
     justifyContent: 'space-between' as const,
     flexWrap: 'wrap' as const,
     marginBottom: '16px',
+    minHeight: '26px',
   },
   title: {
     margin: 0,
