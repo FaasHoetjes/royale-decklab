@@ -48,6 +48,10 @@ export default function Layout() {
     }
   }, [isMalformedTagLink, badTag]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   usePrefetchAppData(activePlayerTag);
 
   const isPublicPath = PUBLIC_PATHS.has(pathname.replace(/^\//, ''));
