@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 interface InfoTipProps {
   ariaLabel: string;
@@ -21,13 +21,33 @@ export default function InfoTip({
 }: InfoTipProps) {
   const [show, setShow] = useState(false);
   const lastPointerType = useRef('');
+  const hideTimer = useRef<number | null>(null);
+
+  const cancelHide = () => {
+    if (hideTimer.current != null) {
+      window.clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  };
+  // Interactive tooltips hold a link, so give the pointer a moment to bridge the
+  // gap between the icon and the tooltip before hiding.
+  const startHide = () => {
+    if (!interactive) {
+      setShow(false);
+      return;
+    }
+    cancelHide();
+    hideTimer.current = window.setTimeout(() => setShow(false), 160);
+  };
+  useEffect(() => () => cancelHide(), []);
+
   return (
     <span
       className="mobile-touch-hitbox"
       style={{ ...styles.icon, color }}
       onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
-      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setShow(true); }}
-      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setShow(false); }}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') { cancelHide(); setShow(true); } }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') startHide(); }}
       tabIndex={0}
       onFocus={(e) => { if (e.target.matches(':focus-visible')) setShow(true); }}
       onBlur={(e) => {
@@ -64,7 +84,7 @@ export default function InfoTip({
   );
 }
 
-function InfoMark() {
+export function InfoMark() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
       <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1" />

@@ -136,9 +136,14 @@ export default function WarDeckBuilder() {
                 onClick={board.resetAll}
                 aria-label="Clear all four decks"
                 title="Clear all four decks"
-                style={{ ...styles.resetAllBtn, color: scoreAccent, borderColor: theme.border }}
+                style={{
+                  ...(isMobile ? styles.resetAllBtnMobile : styles.resetAllBtn),
+                  color: scoreAccent,
+                  borderColor: theme.border,
+                }}
               >
                 <TrashIcon size={16} />
+                {isMobile && 'Clear all decks'}
               </button>
             )}
             </div>
@@ -244,6 +249,19 @@ const styles = {
     width: '34px',
     height: '34px',
     padding: 0,
+    cursor: 'pointer',
+  },
+  resetAllBtnMobile: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '6px',
+    background: 'none',
+    border: '1.5px solid',
+    borderRadius: '999px',
+    padding: '8px 14px',
+    fontSize: '13px',
+    fontWeight: 700 as const,
     cursor: 'pointer',
   },
   deckList: {

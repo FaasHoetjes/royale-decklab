@@ -91,6 +91,27 @@ export const faqItems: FaqItem[] = [
     ),
   },
   {
+    id: 'builder-score-symbols',
+    question: 'What do the ★ and ~ symbols next to a deck score mean?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          A <strong>★</strong> means the deck exactly matches a deck that top war players
+          actually run. It is scored the same way as a generated recommendation, using that
+          deck's proven win rate, how widely it is played, and your own card levels and unlocked
+          versions.
+        </p>
+        <p style={pLast}>
+          A <strong>~</strong> means the deck is not one of those known decks, so there is no real
+          record to score it on. It receives a cautious estimate that assumes a neutral fifty
+          percent win rate at your card levels and treats the deck as unproven, which keeps it
+          below any ★ deck. This is why changing a single card in a meta deck can drop the score
+          sharply: the deck stops matching a known deck and switches to the cautious estimate.
+        </p>
+      </>
+    ),
+  },
+  {
     question: 'Why does the War Deck Builder show both an Evolution and a Hero version of my card?',
     answer: (
       <p style={pLast}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -12,6 +12,20 @@ export default function Faq() {
     const linked = faqItems.findIndex((item) => item.id === hash.slice(1));
     return linked >= 0 ? linked : 0;
   });
+
+  useEffect(() => {
+    const id = hash.slice(1);
+    if (!id) return;
+    const idx = faqItems.findIndex((item) => item.id === id);
+    if (idx < 0) return;
+    setOpenIndex(idx);
+    const offset = isMobile ? 64 : 16;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+    });
+  }, [hash, isMobile]);
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>

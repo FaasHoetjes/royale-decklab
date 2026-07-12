@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { Theme } from '../theme';
 import type { BuilderCard } from '../lib/builderCards';
 import type { BuilderDeckScore } from '../api';
@@ -9,6 +10,7 @@ import DeckSlot from './DeckSlot';
 import { ElixirDropIcon } from './ElixirBadge';
 import TrashIcon from './TrashIcon';
 import DeckLinkAction from './DeckLinkAction';
+import InfoTip, { InfoMark } from './InfoTip';
 
 interface DeckPanelProps {
   deckIndex: number;
@@ -89,6 +91,7 @@ export default function DeckPanel({
             filled={placedCards.length}
             scoreAccent={scoreAccent}
             mutedColor={theme.text.secondary}
+            isMobile={isMobile}
           />
         </div>
       </div>
@@ -171,35 +174,60 @@ function DeckScore({
   filled,
   scoreAccent,
   mutedColor,
+  isMobile,
 }: {
   score?: BuilderDeckScore;
   filled: number;
   scoreAccent: string;
   mutedColor: string;
+  isMobile: boolean;
 }) {
   if (!score || score.score == null) return null;
   const winPct = ((score.winRate ?? 0) * 100).toFixed(1);
   const fieldPct = ((score.fieldability ?? 0) * 100).toFixed(0);
 
-  if (score.isMeta) {
+  const color = score.isMeta ? scoreAccent : mutedColor;
+  const label = `${score.isMeta ? '★' : '~'} ${score.score.toFixed(3)}`;
+
+  // No hover on touch, so tapping the score opens the FAQ that explains ★ and ~.
+  if (isMobile) {
     return (
-      <span
-        style={{ ...styles.score, color: scoreAccent }}
-        title={`Meta deck: same score as the auto-generated decks. ${winPct}% win rate × ${fieldPct}% fieldability × how widely it's played (${score.players} player${score.players === 1 ? '' : 's'}).`}
+      <Link
+        to="/faq#builder-score-symbols"
+        className="mobile-touch-hitbox"
+        aria-label={`${score.isMeta ? 'Meta' : 'Estimated'} deck score ${score.score.toFixed(3)}. Learn how scoring works.`}
+        style={{ ...styles.score, color, textDecoration: 'none', cursor: 'pointer' }}
       >
-        ★ {score.score.toFixed(3)}
-      </span>
+        {label}
+        <InfoMark />
+      </Link>
     );
   }
+
+  const tooltipBody = score.isMeta ? (
+    <>
+      Meta deck: same score as the auto-generated decks. {winPct}% win rate × {fieldPct}%
+      fieldability × how widely it's played ({score.players} player
+      {score.players === 1 ? '' : 's'}).
+    </>
+  ) : (
+    <>
+      Estimated{filled < SLOTS_PER_DECK ? ` (${filled}/${SLOTS_PER_DECK} cards)` : ''}: not a known
+      meta deck. Assumes a 50% win rate × {fieldPct}% fieldability (how close to maxed you can field
+      it), then dampened for being unproven (no one on record runs it) so it ranks below any proven
+      meta deck. Build a known meta deck to score higher.
+    </>
+  );
+
   return (
-    <span
-      style={{ ...styles.score, color: mutedColor }}
-      title={
-        `Estimated${filled < SLOTS_PER_DECK ? ` (${filled}/${SLOTS_PER_DECK} cards)` : ''}: not a known meta deck. Assumes a 50% win rate ` +
-        `× ${fieldPct}% fieldability (how close to maxed you can field it), then dampened for being unproven (no one on record runs it) so it ranks below any proven meta deck. Build a known meta deck to score higher.`
-      }
-    >
-      ~ {score.score.toFixed(3)}
+    <span style={{ ...styles.score, color }}>
+      {label}
+      <InfoTip ariaLabel="How this deck score is derived" color={color} width={250} align="right" interactive>
+        {tooltipBody}{' '}
+        <Link to="/faq#builder-score-symbols" style={styles.tooltipLink}>
+          Learn more in the FAQ
+        </Link>
+      </InfoTip>
     </span>
   );
 }
@@ -260,11 +288,16 @@ const styles = {
   score: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    gap: '3px',
+    gap: '5px',
     fontSize: '13px',
     fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
     cursor: 'help' as const,
+  },
+  tooltipLink: {
+    color: 'var(--accent-bright)',
+    fontWeight: 700 as const,
+    textDecoration: 'underline' as const,
   },
   slotGrid: {
     display: 'grid' as const,
