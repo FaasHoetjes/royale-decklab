@@ -26,6 +26,7 @@ export default function Landing() {
   }, [linkState]);
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showTagHelp, setShowTagHelp] = useState(false);
 
   const lastPrefetched = useRef('');
   useEffect(() => {
@@ -120,6 +121,24 @@ export default function Landing() {
           </button>
         </form>
 
+        <button
+          type="button"
+          className="mobile-touch-target"
+          onClick={() => setShowTagHelp((show) => !show)}
+          aria-expanded={showTagHelp}
+          aria-controls="player-tag-help"
+          style={{ ...styles.helpButton, color: theme.accent }}
+        >
+          Where's my player tag?
+        </button>
+        {showTagHelp && (
+          <p id="player-tag-help" style={{ ...styles.helpText, color: theme.text.secondary }}>
+            Open your Clash Royale profile by tapping your name on the home screen. Your player
+            tag appears below your name and starts with #. Tap the tag, choose <strong>Copy Tag</strong>,
+            then paste it here. Decklab accepts it with or without the #.
+          </p>
+        )}
+
         {error && <p style={styles.error}>{error}</p>}
       </div>
     </div>
@@ -199,6 +218,21 @@ const styles = {
     cursor: 'pointer',
     fontWeight: 700 as const,
     transition: 'all 0.2s ease',
+  },
+  helpButton: {
+    marginTop: '10px',
+    padding: '8px 10px',
+    border: 'none',
+    background: 'transparent',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    cursor: 'pointer',
+  },
+  helpText: {
+    maxWidth: '390px',
+    margin: '2px auto 0',
+    fontSize: '13px',
+    lineHeight: 1.5,
   },
   error: {
     color: '#ff6b6b',
