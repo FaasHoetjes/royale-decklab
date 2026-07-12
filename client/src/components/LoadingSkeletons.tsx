@@ -169,14 +169,16 @@ export function WarDecksSkeleton({ isMobile }: { isMobile: boolean }) {
             ...styles.resultHeader,
             padding: isMobile ? '18px 20px' : '28px 32px',
             marginBottom: isMobile ? '20px' : '40px',
+            gap: isMobile ? '12px' : '20px',
+            flexWrap: isMobile ? 'nowrap' : 'wrap',
           }}
         >
-          <div style={{ ...styles.stack, gap: '7px' }}>
+          <div style={{ ...styles.stack, gap: '7px', flex: isMobile ? 1 : undefined, minWidth: 0 }}>
             <Skeleton style={{ width: '82px', height: '10px' }} />
             <Skeleton style={{ width: isMobile ? '165px' : '220px', height: isMobile ? '25px' : '32px' }} />
-            <Skeleton style={{ width: '190px', height: '11px' }} />
+            <Skeleton style={{ width: isMobile ? '100%' : '190px', maxWidth: '190px', height: '11px' }} />
           </div>
-          <div style={{ ...styles.stack, gap: '6px', alignItems: 'flex-end' }}>
+          <div style={{ ...styles.stack, gap: '6px', alignItems: 'flex-end', flexShrink: isMobile ? 0 : undefined }}>
             <Skeleton style={{ width: '70px', height: '10px' }} />
             <Skeleton style={{ width: '76px', height: isMobile ? '24px' : '31px' }} />
           </div>

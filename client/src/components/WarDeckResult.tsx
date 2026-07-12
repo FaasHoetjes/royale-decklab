@@ -76,18 +76,20 @@ export default function WarDeckResult({
           ...styles.header,
           padding: isMobile ? '18px 20px' : '28px 32px',
           marginBottom: isMobile ? '20px' : '40px',
+          gap: isMobile ? '12px' : '20px',
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
           background: theme.headerGradient,
           border: `1px solid ${theme.headerBorder}`,
           boxShadow: theme.headerShadow,
           color: theme.title,
         }}
       >
-        <div style={styles.headerInfo}>
+        <div style={{ ...styles.headerInfo, ...(isMobile ? styles.headerInfoMobile : {}) }}>
           <span style={{ ...styles.eyebrow, color: theme.muted, opacity: 1 }}>WAR DECKS</span>
           <h2 style={{ ...styles.title, fontSize: isMobile ? '24px' : '32px', color: theme.title }}>{playerName}</h2>
           <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>4 battle-ready decks · no shared cards</span>
         </div>
-        <div style={styles.scoreBlock}>
+        <div style={{ ...styles.scoreBlock, flexShrink: isMobile ? 0 : undefined }}>
           <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>
             Total Score
             <InfoTip
@@ -192,6 +194,10 @@ const styles = {
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: '4px',
+  },
+  headerInfoMobile: {
+    flex: 1,
+    minWidth: 0,
   },
   eyebrow: {
     fontSize: '12px',
