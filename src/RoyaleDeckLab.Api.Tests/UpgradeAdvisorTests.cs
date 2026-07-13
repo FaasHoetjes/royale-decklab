@@ -25,6 +25,7 @@ public sealed class UpgradeAdvisorTests
         Assert.Equal(advice.BaselineScore + suggestion.ScoreDelta, suggestion.NewTotalScore, 10);
         Assert.False(suggestion.ChangesLineup);
         Assert.Equal([0], suggestion.AffectedDeckIndexes);
+        Assert.Null(suggestion.UnlockedDeck);
     }
 
     [Fact]
@@ -116,6 +117,34 @@ public sealed class UpgradeAdvisorTests
         Assert.True(suggestion.ChangesLineup);
         // Card 9 isn't in the baseline lineup, so the upgrade earns a new deck instead of affecting an existing one.
         Assert.Empty(suggestion.AffectedDeckIndexes);
+        Assert.NotNull(suggestion.UnlockedDeck);
+        Assert.Equal([1, 2, 3, 4, 5, 6, 7, 9], suggestion.UnlockedDeck!.CardIds);
+    }
+
+    [Fact]
+    public void ReportsTheUnlockedDeckContainingTheUpgradedCard_EvenWhenTheSwapReshufflesOtherDecks()
+    {
+        // Baseline lineup is decks 1-4. Maxing card 33 lifts the G deck ([33,1,17,...]) into the
+        // lineup; since it shares cards with decks 1 and 3, both drop out and the E deck ([2-5,18-21])
+        // is pulled in to backfill. Two decks enter, but only G contains card 33 - that's the one to show.
+        var cards = Enumerable.Range(1, 38).Select(id => Build.Card(id, level: id == 33 ? 1 : 14)).ToList();
+        var meta = new[]
+        {
+            Build.Deck([1, 2, 3, 4, 5, 6, 7, 8], confidence: 0.58),
+            Build.Deck([9, 10, 11, 12, 13, 14, 15, 16], confidence: 0.58),
+            Build.Deck([17, 18, 19, 20, 21, 22, 23, 24], confidence: 0.58),
+            Build.Deck([25, 26, 27, 28, 29, 30, 31, 32], confidence: 0.58),
+            Build.Deck([2, 3, 4, 5, 18, 19, 20, 21], confidence: 0.55),
+            Build.Deck([33, 1, 17, 34, 35, 36, 37, 38], confidence: 0.62),
+        };
+
+        var advice = _advisor.Advise(cards, meta);
+
+        var suggestion = Assert.Single(advice.Suggestions);
+        Assert.Equal(33, suggestion.CardId);
+        Assert.True(suggestion.ChangesLineup);
+        Assert.NotNull(suggestion.UnlockedDeck);
+        Assert.Contains(33, suggestion.UnlockedDeck!.CardIds);
     }
 
     [Fact]

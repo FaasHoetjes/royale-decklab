@@ -5,7 +5,8 @@ namespace RoyaleDeckLab.Api.Services;
 
 public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 {
-    private const double MinDelta = 1e-9;
+    private const double MinDelta = 5e-4;
+    private const int PopularityPrior = 8;
 
     public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks)
     {
@@ -56,9 +57,20 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 
         bool ChangesLineup(WarDeckResult result) => !LineupKeys(result).SetEquals(baselineKeys);
 
+        BestDeckEntry? UnlockedDeck(WarDeckResult result, int cardId)
+        {
+            var newDecks = result.Decks
+                .Where(d => !baselineKeys.Contains(MetaCache.DeckKey(d.CardIds)))
+                .ToList();
+            var deck = newDecks.FirstOrDefault(d => d.CardIds.Contains(cardId)) ?? newDecks.FirstOrDefault();
+            return deck is null ? null : ToEntry(deck);
+        }
+
         var suggestions = new List<UpgradeSuggestion>();
         void Emit(PlayerItemLevel card, string kind, int toLevel, double delta, WarDeckResult result)
-            => suggestions.Add(new UpgradeSuggestion(
+        {
+            var changesLineup = ChangesLineup(result);
+            suggestions.Add(new UpgradeSuggestion(
                 CardId: card.Id,
                 Name: card.Name,
                 Kind: kind,
@@ -69,8 +81,10 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
                 IconUrls: card.IconUrls,
                 ScoreDelta: delta,
                 NewTotalScore: result.TotalScore,
-                ChangesLineup: ChangesLineup(result),
-                AffectedDeckIndexes: AffectedIndexes(baseline, card.Id, kind)));
+                ChangesLineup: changesLineup,
+                AffectedDeckIndexes: AffectedIndexes(baseline, card.Id, kind),
+                UnlockedDeck: changesLineup ? UnlockedDeck(result, card.Id) : null));
+        }
 
         var candidates = 0;
 
@@ -164,6 +178,25 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         merged.AddRange(unchanged.Skip(i));
         merged.AddRange(changed.Skip(j));
         return merged;
+    }
+
+    private static BestDeckEntry ToEntry(ScoredDeck deck)
+    {
+        var cards = deck.Cards
+            .Select(c => new BestDeckCard(c.Id, c.Name ?? string.Empty, c.MaxLevel, c.ElixirCost,
+                c.Rarity.ToString().ToLowerInvariant(), c.IconUrls))
+            .ToList();
+        var pop = deck.Players <= 0 ? 1.0 : (double)deck.Players / (deck.Players + PopularityPrior);
+        return new BestDeckEntry(
+            CardIds: deck.CardIds,
+            WinRate: deck.MetaWinRate,
+            Confidence: deck.Confidence,
+            Uses: deck.Uses,
+            Players: deck.Players,
+            PickRate: deck.PickRate,
+            MetaScore: deck.Confidence * pop,
+            CardVersions: deck.MetaCardVersions ?? deck.CardVersions ?? [],
+            Cards: cards);
     }
 
     private static HashSet<string> LineupKeys(WarDeckResult result)

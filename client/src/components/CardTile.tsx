@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { slotKind, slotBorderStyle, CARD_FRAME } from '../lib/slotStyles';
 import ElixirBadge from './ElixirBadge';
 
@@ -29,6 +29,11 @@ export default function CardTile({
   children,
 }: CardTileProps) {
   const kind = slotIndex != null ? slotKind(slotIndex) : null;
+
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [iconUrl]);
+  const showImage = !!iconUrl && !broken;
+
   return (
     <>
       <div
@@ -38,13 +43,14 @@ export default function CardTile({
           ...artStyle,
         }}
       >
-        {iconUrl ? (
+        {showImage ? (
           <img
             src={iconUrl}
             alt={name}
             loading={lazyLoad ? 'lazy' : undefined}
             decoding={lazyLoad ? 'async' : undefined}
             style={styles.image}
+            onError={() => setBroken(true)}
           />
         ) : (
           <div style={styles.placeholder} aria-hidden="true">

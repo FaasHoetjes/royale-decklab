@@ -110,6 +110,7 @@ export interface UpgradeSuggestion {
   newTotalScore: number;
   changesLineup: boolean;
   affectedDeckIndexes: number[];
+  unlockedDeck?: BestDeckEntry;
 }
 
 export interface UpgradeAdviceResponse {

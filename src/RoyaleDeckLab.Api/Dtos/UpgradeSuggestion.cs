@@ -19,4 +19,5 @@ public sealed record UpgradeSuggestion(
     double ScoreDelta,
     double NewTotalScore,
     bool ChangesLineup,
-    IReadOnlyList<int> AffectedDeckIndexes);
+    IReadOnlyList<int> AffectedDeckIndexes,
+    BestDeckEntry? UnlockedDeck = null);
