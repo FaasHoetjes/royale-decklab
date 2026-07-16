@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -235,12 +236,30 @@ app.MapControllers();
 var spaIndex = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
 if (File.Exists(spaIndex))
 {
+    var indexHtml = File.ReadAllText(spaIndex);
+    var earlyHintLink = BuildEarlyHintLink(indexHtml);
+
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-    app.MapFallbackToFile("index.html", spaStaticFiles);
+    app.MapFallback((HttpResponse res) =>
+    {
+        res.Headers.CacheControl = "no-cache";
+        res.Headers.Link = earlyHintLink;
+        return Results.Content(indexHtml, "text/html; charset=utf-8");
+    });
 }
 else
 {
     app.MapFallback(() => Results.Json(new { error = "Not found" }, statusCode: 404));
+}
+
+static string BuildEarlyHintLink(string html)
+{
+    var links = new List<string> { "<https://api-assets.clashroyale.com>; rel=preconnect" };
+    var css = Regex.Match(html, @"/assets/[^""']+\.css");
+    if (css.Success) links.Add($"<{css.Value}>; rel=preload; as=style");
+    var js = Regex.Match(html, @"/assets/[^""']+\.js");
+    if (js.Success) links.Add($"<{js.Value}>; rel=modulepreload");
+    return string.Join(", ", links);
 }
 
 app.Logger.LogInformation("Royale DeckLab API running on http://localhost:3000");
