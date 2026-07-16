@@ -141,6 +141,7 @@ export default function WarDeckResult({
               deckNumber={slotPos + 1}
               canSwap={options.length > 1}
               onSwap={() => setSwapSlot(slotPos)}
+              priority={slotPos === 0}
             />
           );
         })}

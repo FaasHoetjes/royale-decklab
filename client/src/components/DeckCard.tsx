@@ -21,6 +21,7 @@ interface DeckCardProps {
   onSwap?: () => void;
   scoreLabel?: string;
   scoreTooltip?: React.ReactNode;
+  priority?: boolean;
 }
 
 export default function DeckCard({
@@ -37,6 +38,7 @@ export default function DeckCard({
   onSwap,
   scoreLabel,
   scoreTooltip,
+  priority,
 }: DeckCardProps) {
   const isMobile = useIsMobile();
 
@@ -119,6 +121,8 @@ export default function DeckCard({
                 elixirCost={card.elixirCost}
                 level={displayLevel(card.level, card.maxLevel)}
                 nameColor={theme.cardText}
+                lazyLoad={!priority}
+                fetchPriority={priority ? 'high' : undefined}
               />
             </div>
           ))}

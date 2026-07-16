@@ -12,6 +12,7 @@ interface CardTileProps {
   showName?: boolean;
   nameColor?: string;
   lazyLoad?: boolean;
+  fetchPriority?: 'high' | 'low' | 'auto';
   artStyle?: CSSProperties;
   children?: ReactNode;
 }
@@ -25,6 +26,7 @@ export default function CardTile({
   showName = true,
   nameColor,
   lazyLoad,
+  fetchPriority,
   artStyle,
   children,
 }: CardTileProps) {
@@ -49,6 +51,7 @@ export default function CardTile({
             alt={name}
             loading={lazyLoad ? 'lazy' : undefined}
             decoding={lazyLoad ? 'async' : undefined}
+            fetchPriority={fetchPriority}
             style={styles.image}
             onError={() => setBroken(true)}
           />
