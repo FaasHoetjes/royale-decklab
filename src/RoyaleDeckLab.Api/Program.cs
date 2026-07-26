@@ -240,11 +240,17 @@ if (File.Exists(spaIndex))
     var earlyHintLink = BuildEarlyHintLink(indexHtml);
 
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-    app.MapFallback((HttpResponse res) =>
+    app.MapFallback((HttpContext ctx) =>
     {
-        res.Headers.CacheControl = "no-cache";
-        res.Headers.Link = earlyHintLink;
-        return Results.Content(indexHtml, "text/html; charset=utf-8");
+        ctx.Response.Headers.CacheControl = "no-cache";
+        ctx.Response.Headers.Link = earlyHintLink;
+
+        var path = ctx.Request.Path.Value ?? "/";
+        var canonical = System.Net.WebUtility.HtmlEncode("https://royaledecklab.com" + path);
+        var html = indexHtml.Replace(
+            "<meta property=\"og:url\" content=\"https://royaledecklab.com/\" />",
+            $"<meta property=\"og:url\" content=\"{canonical}\" />\n    <link rel=\"canonical\" href=\"{canonical}\" />");
+        return Results.Content(html, "text/html; charset=utf-8");
     });
 }
 else
