@@ -126,23 +126,23 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             }
 
             // Champions are neither evo nor hero: owning the card IS owning the
-            // champion, and scoring never penalizes them. Ownership of evo/hero is
-            // the cumulative evolutionLevel (1 = evo, 2 = hero).
+            // champion, and scoring never penalizes them. Evo and Hero are separate
+            // bits of evolutionLevel, so unlocking one keeps the other.
             if (card.Rarity != Rarity.Champion)
             {
-                if (card.EvolutionLevel < 1 && evoFielded.Contains(card.Id))
+                if (!EvolutionBits.OwnsEvo(card.EvolutionLevel) && evoFielded.Contains(card.Id))
                 {
                     candidates++;
-                    var (delta, result) = Simulate(card with { EvolutionLevel = 1 });
+                    var (delta, result) = Simulate(card with { EvolutionLevel = card.EvolutionLevel | EvolutionBits.Evo });
                     if (delta > MinDelta)
                     {
                         Emit(card, UpgradeKind.Evo, card.Level, delta, result);
                     }
                 }
-                if (card.EvolutionLevel < 2 && heroFielded.Contains(card.Id))
+                if (!EvolutionBits.OwnsHero(card.EvolutionLevel) && heroFielded.Contains(card.Id))
                 {
                     candidates++;
-                    var (delta, result) = Simulate(card with { EvolutionLevel = 2 });
+                    var (delta, result) = Simulate(card with { EvolutionLevel = card.EvolutionLevel | EvolutionBits.Hero });
                     if (delta > MinDelta)
                     {
                         Emit(card, UpgradeKind.Hero, card.Level, delta, result);

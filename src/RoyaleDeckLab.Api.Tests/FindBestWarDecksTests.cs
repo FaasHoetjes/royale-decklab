@@ -207,6 +207,21 @@ public sealed class FindBestWarDecksTests
     }
 
     [Fact]
+    public void AHeroOnlyOwner_IsNotToldToFieldTheMetaEvo()
+    {
+        // evolutionLevel 2 is the Hero bit alone: the Evo this meta deck runs is still locked.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
+        var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
+
+        var deck = Assert.Single(Run(cards, meta).Decks);
+
+        Assert.Equal(CardVersionKind.Evo, deck.MetaCardVersions!.Single(v => v.CardId == 1).Version);
+        Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
     public void UpgradesAMetaNormalCard_ToAnOwnedHero_WhenTheHeroSlotIsFree()
     {
         // The hero slot is positional: fielding the player's owned hero there is a free upgrade.
@@ -253,7 +268,7 @@ public sealed class FindBestWarDecksTests
     [Fact]
     public void AHeroOwner_NeverClaimsAnEvoSlot()
     {
-        // Both hero slots are taken; evolutionLevel 2 proves the hero but leaves evo ownership ambiguous.
+        // Both hero slots are taken; evolutionLevel 2 is the Hero bit alone, so there's no Evo to field.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(2, CardVersionKind.Hero), new(3, CardVersionKind.Hero) };
@@ -262,6 +277,20 @@ public sealed class FindBestWarDecksTests
         var deck = Assert.Single(Run(cards, meta).Decks);
 
         Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    [Fact]
+    public void ABothOwner_FillsTheFreeEvoSlot_WhenTheHeroSlotsAreTaken()
+    {
+        // evolutionLevel 3 = Evo + Hero: with both hero slots taken, the owned Evo still fits the evo slot.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 3) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion> { new(2, CardVersionKind.Hero), new(3, CardVersionKind.Hero) };
+        var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
+
+        var deck = Assert.Single(Run(cards, meta).Decks);
+
+        Assert.Equal(CardVersionKind.Evo, deck.CardVersions!.Single(v => v.CardId == 1).Version);
     }
 
     [Fact]

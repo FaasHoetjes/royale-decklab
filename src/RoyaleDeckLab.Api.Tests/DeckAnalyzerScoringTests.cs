@@ -71,6 +71,19 @@ public sealed class DeckAnalyzerScoringTests
     }
 
     [Fact]
+    public void PlayerScore_AppliesTheMissingSpecialPenalty_ForAMetaEvo_WhenOnlyTheHeroIsOwned()
+    {
+        // evolutionLevel is a bitmask (1 = Evo, 2 = Hero): 2 alone is the Hero without the Evo.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
+            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
+        var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
+
+        var expected = 0.55 * (20.0 / 28.0) * 0.94;
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
+    }
+
+    [Fact]
     public void PlayerScore_ExemptsChampions_FromTheVersionPenalty()
     {
         // Champions have no hero/evo tier, so a "hero" meta version must not penalise them.

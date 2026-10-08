@@ -42,9 +42,9 @@ export default function WarDeckBuilder() {
         level: ownedCard?.level,
         maxLevel: ownedCard?.maxLevel ?? c.maxLevel,
         isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
-        // Ownership: the per-player evolutionLevel proves a tier is unlocked (>= 1 evo, >= 2 hero).
-        hasEvo: (ownedCard?.evolutionLevel ?? 0) >= 1,
-        ownsHero: (ownedCard?.evolutionLevel ?? 0) >= 2,
+        // Ownership: the per-player evolutionLevel is a bitmask (1 = evo, 2 = hero, 3 = both).
+        hasEvo: ((ownedCard?.evolutionLevel ?? 0) & 1) !== 0,
+        ownsHero: ((ownedCard?.evolutionLevel ?? 0) & 2) !== 0,
         iconUrls: {
           medium: c.iconUrls?.medium,
           evolutionMedium: c.iconUrls?.evolutionMedium,
@@ -84,7 +84,7 @@ export default function WarDeckBuilder() {
         id: c.id,
         level: c.level as number,
         maxLevel: c.maxLevel ?? 16,
-        evolutionLevel: c.ownsHero ? 2 : c.hasEvo ? 1 : 0,
+        evolutionLevel: (c.hasEvo ? 1 : 0) | (c.ownsHero ? 2 : 0),
         rarity: c.rarity,
       }));
   }, [board.usedIds, cardById]);

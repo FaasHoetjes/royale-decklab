@@ -81,6 +81,23 @@ public sealed class BuilderPlacementPenaltyTests
     }
 
     [Fact]
+    public void HeroOnlyOwner_OfAMetaEvo_PaysTheMissingPenalty_EvenInTheEvoSlot()
+    {
+        // evolutionLevel 2 is the Hero bit alone, so no slot can field the Evo the meta runs.
+        var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));
+        var evoOwner = Build.Collection(Ids);
+        evoOwner[0] = Build.Card(1, evo: 1);
+        var heroOnly = Build.Collection(Ids);
+        heroOnly[0] = Build.Card(1, evo: 2);
+        var inEvoSlot = Slots(1, 2, 3, 4, 5, 6, 7, 8);
+
+        var fielded = _analyzer.ScoreBuilderDeck(Build.CardMap(evoOwner), Ids, meta, inEvoSlot)!;
+        var missing = _analyzer.ScoreBuilderDeck(Build.CardMap(heroOnly), Ids, meta, inEvoSlot)!;
+
+        Assert.Equal(fielded.Score * MissingSpecial, missing.Score, 12);
+    }
+
+    [Fact]
     public void UnownedSpecial_MisplacementAddsNoSecondPenalty()
     {
         // Unowned: ScoreDeckForPlayer already applied the multiplier; placement must not stack a second one.

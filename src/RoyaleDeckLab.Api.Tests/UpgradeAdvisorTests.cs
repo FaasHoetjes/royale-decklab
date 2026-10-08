@@ -231,6 +231,26 @@ public sealed class UpgradeAdvisorTests
     }
 
     [Fact]
+    public void SuggestsAnEvoUnlock_WhenOnlyTheHeroIsOwned()
+    {
+        // evolutionLevel 2 is the Hero bit alone, so the Evo the meta fields is still locked.
+        var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 2) }
+            .Concat(Build.Collection(1, 3, 4, 5, 6, 7, 8)).ToList();
+        var meta = new[]
+        {
+            Build.Deck(Build.Eight(1), versions: [new CardVersion(2, CardVersionKind.Evo)]),
+        };
+
+        var advice = _advisor.Advise(cards, meta);
+
+        var suggestion = Assert.Single(advice.Suggestions);
+        Assert.Equal(UpgradeKind.Evo, suggestion.Kind);
+        Assert.Equal(2, suggestion.CardId);
+        Assert.Equal(advice.BaselineScore * (1 / 0.94 - 1), suggestion.ScoreDelta, 10);
+        Assert.Equal([0], suggestion.AffectedDeckIndexes);
+    }
+
+    [Fact]
     public void ReportsCollectionMaxed_OnlyWhenNothingIsSimulatable()
     {
         // Card 99 is underleveled but outside every meta deck, so it doesn't block CollectionMaxed.

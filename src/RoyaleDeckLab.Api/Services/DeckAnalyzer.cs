@@ -121,8 +121,7 @@ public sealed class DeckAnalyzer
                 continue;
             }
             var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
-            var ownsVersion = v.Version == CardVersionKind.Hero ? owned >= 2 : owned >= 1;
-            if (ownsVersion)
+            if (EvolutionBits.Owns(owned, v.Version))
             {
                 personalized.Add(v);
                 continue;
@@ -161,14 +160,14 @@ public sealed class DeckAnalyzer
                 continue;
             }
             var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
-            if (owned >= 2 && hero < MaxHero && total < MaxSpecials)
+            if (EvolutionBits.OwnsHero(owned) && hero < MaxHero && total < MaxSpecials)
             {
                 hero++;
                 total++;
                 changed = true;
                 upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Hero));
             }
-            else if (owned == 1 && evo < MaxEvo && total < MaxSpecials)
+            else if (EvolutionBits.OwnsEvo(owned) && evo < MaxEvo && total < MaxSpecials)
             {
                 evo++;
                 total++;
@@ -212,15 +211,9 @@ public sealed class DeckAnalyzer
             if (cardVersions is not null && !IsChampion(cardId, cardMap))
             {
                 var metaCardVersion = cardVersions.FirstOrDefault(c => c.CardId == cardId);
-                if (metaCardVersion is not null)
+                if (metaCardVersion is not null && !EvolutionBits.Owns(playerCard.EvolutionLevel, metaCardVersion.Version))
                 {
-                    var playerEvoLevel = playerCard.EvolutionLevel;
-                    var missingHero = metaCardVersion.Version == CardVersionKind.Hero && playerEvoLevel < 2;
-                    var missingEvo = metaCardVersion.Version == CardVersionKind.Evo && playerEvoLevel < 1;
-                    if (missingHero || missingEvo)
-                    {
-                        versionFit *= MissingSpecialMultiplier;
-                    }
+                    versionFit *= MissingSpecialMultiplier;
                 }
             }
         }
@@ -289,8 +282,7 @@ public sealed class DeckAnalyzer
                 continue;
             }
             var owned = cardMap.TryGetValue(v.CardId, out var card) ? card.EvolutionLevel : 0;
-            var ownsVersion = v.Version == CardVersionKind.Hero ? owned >= 2 : owned >= 1;
-            if (!ownsVersion)
+            if (!EvolutionBits.Owns(owned, v.Version))
             {
                 continue;
             }

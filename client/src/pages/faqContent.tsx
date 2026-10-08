@@ -115,11 +115,11 @@ export const faqItems: FaqItem[] = [
     question: 'Why does the War Deck Builder show both an Evolution and a Hero version of my card?',
     answer: (
       <p style={pLast}>
-        The Clash Royale API reports these unlocks through one cumulative{' '}
-        <code>evolutionLevel</code> value rather than separate Evolution and Hero ownership fields.
-        Level 1 means the Evolution is unlocked, while level 2 means the Hero is unlocked and also
-        includes level 1. When a card has both versions, Decklab therefore offers both in the
-        Builder. Choose the version that matches what you can use in game.
+        Knight, Valkyrie, Musketeer and Wizard have both an Evolution and a Hero, and you can unlock
+        either one without the other. The Clash Royale API reports this through one{' '}
+        <code>evolutionLevel</code> value that works like two switches: 1 means the Evolution is
+        unlocked, 2 means the Hero is unlocked, and 3 means both. When you own both, Decklab offers
+        both in the Builder. Choose the version you want to field in game.
       </p>
     ),
   },
