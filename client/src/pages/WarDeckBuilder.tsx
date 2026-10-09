@@ -76,10 +76,10 @@ export default function WarDeckBuilder() {
     });
   }, [pickerFilters, pickerSortIndex, pickerDescending]);
 
+  // The whole collection, not just placed cards: scoring compares decks against the player's own level.
   const scoreCards = useMemo<ScoreDeckCard[]>(() => {
-    return [...board.usedIds]
-      .map((id) => cardById.get(id))
-      .filter((c): c is BuilderCard => c != null && c.level != null)
+    return builderCards
+      .filter((c) => c.owned && c.level != null)
       .map((c) => ({
         id: c.id,
         level: c.level as number,
@@ -87,14 +87,14 @@ export default function WarDeckBuilder() {
         evolutionLevel: (c.hasEvo ? 1 : 0) | (c.ownsHero ? 2 : 0),
         rarity: c.rarity,
       }));
-  }, [board.usedIds, cardById]);
+  }, [builderCards]);
 
   const scoreInput = useMemo(() => ({ cards: scoreCards, decks: board.decks }), [scoreCards, board.decks]);
   const debouncedInput = useDebouncedValue(scoreInput, 300);
   const scoreQuery = useDeckScores(
     debouncedInput.cards,
     debouncedInput.decks,
-    debouncedInput.cards.length > 0
+    debouncedInput.cards.length > 0 && debouncedInput.decks.some((deck) => deck.some((id) => id != null))
   );
 
   const scores = board.usedIds.size > 0 ? scoreQuery.data ?? null : null;
@@ -124,7 +124,7 @@ export default function WarDeckBuilder() {
             {scores && scores.total > 0 && (
               <span
                 style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
-                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (based on your card levels, unlocked Evolutions/Heroes, and how widely they're played); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
+                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (based on their sample-size-adjusted win rate, your card levels and unlocked Evolutions/Heroes); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
               >
                 <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
                 <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>

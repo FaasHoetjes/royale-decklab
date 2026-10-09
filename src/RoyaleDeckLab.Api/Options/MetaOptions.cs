@@ -24,6 +24,15 @@ public sealed class MetaOptions
     // war battle days (Thursday).
     public double PreEpochWeight { get; set; } = 0.25;
 
+    // Decks rank by a cautious estimate: the RankingQuantile of their posterior win rate after adding
+    // PriorGames imaginary games at PriorWinRate (fitted on one week of war battles, Oct 2026; retune with
+    // Meta__PriorGames etc. once more data is in). 0.25 = "75% sure the deck is at least this good".
+    public double PriorGames { get; set; } = 80;
+
+    public double PriorWinRate { get; set; } = 0.52;
+
+    public double RankingQuantile { get; set; } = 0.25;
+
     public long SeasonCheckIntervalMs { get; set; } = 60L * 60 * 1000;
 
     // Any past Path of Legend season id works as a probe floor; 141 = July 2026.

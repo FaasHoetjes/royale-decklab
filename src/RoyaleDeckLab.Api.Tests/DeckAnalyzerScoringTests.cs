@@ -7,6 +7,13 @@ public sealed class DeckAnalyzerScoringTests
 {
     private readonly DeckAnalyzer _analyzer = new();
 
+    // A collection of only maxed cards expects opponents at 8.8 + 0.43 x 16 = 15.68, so a maxed deck
+    // sits 0.32 levels above them: +0.67 x 0.32 log-odds.
+    private const double MaxedDeckEdge = 0.67 * (16 - 15.68);
+
+    private static double Expected(double confidence, double levelLogit)
+        => 1 / (1 + Math.Exp(-(Math.Log(confidence / (1 - confidence)) + levelLogit)));
+
     [Fact]
     public void Fieldability_IsOne_WhenEveryCardIsMaxed()
     {
@@ -37,13 +44,13 @@ public sealed class DeckAnalyzerScoringTests
     }
 
     [Fact]
-    public void PlayerScore_ForMaxedDeck_IsConfidenceTimesPopularity()
+    public void PlayerScore_ForMaxedDeck_IsTheLevelAdjustedConfidence()
     {
         var cards = Build.Collection(Build.Eight(1));
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20);
 
-        // confidence x levelWeight(1) x versionFit(1) x popularityFactor(20) with prior 8.
-        var expected = 0.55 * (20.0 / 28.0);
+        // logit(confidence) + level edge, x versionFit(1); how many players run it no longer matters.
+        var expected = Expected(0.55, MaxedDeckEdge);
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
     }
 
@@ -54,7 +61,7 @@ public sealed class DeckAnalyzerScoringTests
         var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
-        var expected = 0.55 * (20.0 / 28.0) * 0.94;
+        var expected = Expected(0.55, MaxedDeckEdge) * 0.94;
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
     }
 
@@ -66,7 +73,7 @@ public sealed class DeckAnalyzerScoringTests
         var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
-        var expected = 0.55 * (20.0 / 28.0);
+        var expected = Expected(0.55, MaxedDeckEdge);
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
     }
 
@@ -79,7 +86,7 @@ public sealed class DeckAnalyzerScoringTests
         var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
-        var expected = 0.55 * (20.0 / 28.0) * 0.94;
+        var expected = Expected(0.55, MaxedDeckEdge) * 0.94;
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
     }
 
@@ -92,19 +99,21 @@ public sealed class DeckAnalyzerScoringTests
         var versions = new List<CardVersion> { new(1, CardVersionKind.Hero) };
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
-        var expected = 0.55 * (20.0 / 28.0);
+        var expected = Expected(0.55, MaxedDeckEdge);
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
     }
 
     [Fact]
-    public void PlayerScore_CompoundsLevelDeficits_InOddsSpace()
+    public void PlayerScore_ShiftsTheWinOdds_ByTheLevelGapToTheExpectedOpponent()
     {
-        // 8 cards one level short (S=1.1⁻¹): the deficit compounds as S⁴ on the win odds, not linearly on the score.
-        var cards = Enumerable.Range(1, 8).Select(id => Build.Card(id, level: 13)).ToList();
+        // 32 maxed cards set the opponent level to 15.68; the deck itself is one level short (15) everywhere,
+        // so it sits 0.68 levels below its opponents: -0.67 x 0.68 log-odds, no weakest-card term.
+        var cards = Enumerable.Range(1, 8).Select(id => Build.Card(id, level: 13))
+            .Concat(Build.Collection(Enumerable.Range(9, 32).ToArray()))
+            .ToList();
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20);
 
-        var odds = 0.55 / 0.45 * Math.Pow(1.10, -4);
-        var expected = odds / (1 + odds) * (20.0 / 28.0);
+        var expected = Expected(0.55, -0.67 * (15.68 - 15));
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
     }
 
@@ -127,12 +136,34 @@ public sealed class DeckAnalyzerScoringTests
     }
 
     [Fact]
-    public void PlayerScore_TreatsMissingPlayerCount_AsFullPopularity()
+    public void PlayerScore_RanksOneBadlyUnderleveledCard_BelowAnEvenOneLevelGap()
     {
+        // A card 5 levels down among maxed ones must not outrank a deck that is 1 level down everywhere:
+        // in war data the weakest card costs extra on top of the deck's average level.
+        var cards = Enumerable.Range(1, 8).Select(id => Build.Card(id, level: id == 1 ? 9 : 14))
+            .Concat(Enumerable.Range(9, 8).Select(id => Build.Card(id, level: 13)))
+            .ToList();
+        var oneBadCard = Build.Deck(Build.Eight(1), confidence: 0.55);
+        var evenGap = Build.Deck(Build.Eight(9), confidence: 0.55);
+
+        var bad = _analyzer.ScoreDeckForPlayer(cards, oneBadCard, null)!.Value;
+        var even = _analyzer.ScoreDeckForPlayer(cards, evenGap, null)!.Value;
+
+        Assert.True(even > bad, $"Expected the even 1-level gap ({even:F4}) to outrank one card 5 down ({bad:F4})");
+    }
+
+    [Fact]
+    public void PlayerScore_DoesNotReward_HowManyPlayersRunTheDeck()
+    {
+        // Popularity weighting picked decks that won less for other players; evidence size is already in
+        // the cautious confidence, so a niche deck and a popular one with equal confidence score the same.
         var cards = Build.Collection(Build.Eight(1));
-        var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: null);
-        // popularityFactor(null) == 1, so the score is just the confidence.
-        Assert.Equal(0.55, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
+        var niche = Build.Deck(Build.Eight(1), confidence: 0.55, players: 5);
+        var popular = Build.Deck(Build.Eight(1), confidence: 0.55, players: 500);
+
+        Assert.Equal(
+            _analyzer.ScoreDeckForPlayer(cards, popular, null)!.Value,
+            _analyzer.ScoreDeckForPlayer(cards, niche, null)!.Value, 10);
     }
 
     [Fact]
@@ -161,8 +192,8 @@ public sealed class DeckAnalyzerScoringTests
         Assert.False(result!.IsMeta);
         Assert.Equal(0.5, result.WinRate, 10);
         Assert.Equal(0, result.Players);
-        // 0.5 (neutral) x fieldability(1) x popularityFactor(1) with prior 8 => 0.5/9.
-        Assert.Equal(0.5 * (1.0 / 9.0), result.Score, 10);
+        // 0.5 (neutral) shifted by the maxed level edge, x the 1/9 unproven-deck dampener.
+        Assert.Equal(Expected(0.5, MaxedDeckEdge) / 9, result.Score, 10);
     }
 
     [Fact]

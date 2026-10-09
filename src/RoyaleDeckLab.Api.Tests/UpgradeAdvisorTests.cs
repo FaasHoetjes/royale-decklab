@@ -60,6 +60,19 @@ public sealed class UpgradeAdvisorTests
     }
 
     [Fact]
+    public void RanksUpgradingTheWeakestCard_AboveACardThatBarelyTrails()
+    {
+        // Card 1 trails the deck by four levels, card 2 by one: a level on the weakest card is worth more.
+        var cards = new List<PlayerItemLevel> { Build.Card(1, level: 10), Build.Card(2, level: 13) }
+            .Concat(Build.Collection(3, 4, 5, 6, 7, 8)).ToList();
+        var meta = new[] { Build.Deck(Build.Eight(1)) };
+
+        var advice = _advisor.Advise(cards, meta);
+
+        Assert.Equal(1, advice.Suggestions[0].CardId);
+    }
+
+    [Fact]
     public void ReturnsEveryPositiveSuggestion_NotJustTheTopTen()
     {
         // The client filters and paginates; the advisor itself must not truncate.
@@ -150,14 +163,15 @@ public sealed class UpgradeAdvisorTests
     [Fact]
     public void ReportsTheCheapestLevelJump_WhenOneLevelChangesNothing()
     {
-        // Same X/Y overlap as above; card 9 is three levels short. One level (S=1.1⁻²) still scores
-        // ≈0.579, below X's 0.58; only two levels (S=1.1⁻¹, ≈0.589) flip the pick, so that's the suggestion.
+        // Same X/Y overlap; card 9 is three levels short. Opponents sit at 15.54 (8.8 + 0.43 x the
+        // 9-card average). X (all 16): logit 0.323 + 0.67 x 0.46 = 0.633. Y's logit 0.663 plus its level
+        // terms: card 9 at display 14 gives -0.102 (0.561, still below X); at 15, +0.104 (0.767) flips the pick.
         var cards = Build.Collection(1, 2, 3, 4, 5, 6, 7, 8)
             .Concat([Build.Card(9, level: 11)]).ToList();
         var meta = new[]
         {
             Build.Deck(Build.Eight(1), confidence: 0.58),
-            Build.Deck([1, 2, 3, 4, 5, 6, 7, 9], confidence: 0.60),
+            Build.Deck([1, 2, 3, 4, 5, 6, 7, 9], confidence: 0.66),
         };
 
         var advice = _advisor.Advise(cards, meta);

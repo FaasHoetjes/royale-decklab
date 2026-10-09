@@ -14,6 +14,12 @@ public sealed class AggregateBattlesTests
     private static MetaBuilder NewBuilder()
         => new(null!, Microsoft.Extensions.Options.Options.Create(new MetaOptions()), NullLogger<MetaBuilder>.Instance);
 
+    private static double Cautious(double wins, double games)
+    {
+        var o = new MetaOptions();
+        return DomainMath.PosteriorQuantile(wins, games, o.PriorGames, o.PriorWinRate, o.RankingQuantile);
+    }
+
     [Fact]
     public void CountsWinsLossesAndDraws_WithDrawAsHalfAWin()
     {
@@ -56,7 +62,7 @@ public sealed class AggregateBattlesTests
     }
 
     [Fact]
-    public void ConfidenceIsTheWilsonBound_OnEffectiveWins()
+    public void ConfidenceIsTheCautiousWinRate_OnEffectiveWins()
     {
         var deck = Build.Eight(1);
         var battles = new[]
@@ -67,11 +73,11 @@ public sealed class AggregateBattlesTests
         };
 
         var result = Assert.Single(NewBuilder().AggregateBattles(battles));
-        Assert.Equal(MetaBuilder.WilsonLowerBound(2, 3), result.Confidence, 10);
+        Assert.Equal(Cautious(2, 3), result.Confidence, 10);
     }
 
     [Fact]
-    public void RanksByConfidenceWeightedByPopularity()
+    public void RanksByCautiousWinRate()
     {
         var deckA = Build.Eight(1);
         var deckB = Build.Eight(9);
@@ -87,6 +93,48 @@ public sealed class AggregateBattlesTests
 
         Assert.Equal(2, result.Count);
         Assert.True(result[0].CardIds.SequenceEqual(deckA));
+    }
+
+    [Fact]
+    public void RanksAProvenDeck_AboveASixForSixDeck()
+    {
+        // The Wilson bound ranked 6/6 (0.61) above 180/300 (0.54); the cautious estimate gives 0.518 vs 0.566.
+        var tiny = Build.Eight(1);
+        var proven = Build.Eight(9);
+        var battles = new List<BattleRecord>();
+        foreach (var i in Enumerable.Range(1, 6))
+        {
+            battles.Add(Build.Battle($"#T{i}", tiny, BattleResult.Win));
+        }
+        foreach (var i in Enumerable.Range(1, 300))
+        {
+            battles.Add(Build.Battle($"#P{i}", proven, i <= 180 ? BattleResult.Win : BattleResult.Loss));
+        }
+
+        var result = NewBuilder().AggregateBattles(battles);
+
+        Assert.True(result[0].CardIds.SequenceEqual(proven));
+    }
+
+    [Fact]
+    public void RanksAProvenDeck_AboveAHotStreak()
+    {
+        // 20/25 vs 330/550: 30-game shrinkage ranked the streak first (0.636 vs 0.595); cautious gives 0.555 vs 0.577.
+        var streak = Build.Eight(1);
+        var proven = Build.Eight(9);
+        var battles = new List<BattleRecord>();
+        foreach (var i in Enumerable.Range(1, 25))
+        {
+            battles.Add(Build.Battle($"#S{i}", streak, i <= 20 ? BattleResult.Win : BattleResult.Loss));
+        }
+        foreach (var i in Enumerable.Range(1, 550))
+        {
+            battles.Add(Build.Battle($"#P{i}", proven, i <= 330 ? BattleResult.Win : BattleResult.Loss));
+        }
+
+        var result = NewBuilder().AggregateBattles(battles);
+
+        Assert.True(result[0].CardIds.SequenceEqual(proven));
     }
 
     [Fact]
@@ -106,7 +154,7 @@ public sealed class AggregateBattlesTests
 
         Assert.Equal(4, result.Uses);
         Assert.Equal(0.5 / 2.5, result.WinRate, 10);
-        Assert.Equal(MetaBuilder.WilsonLowerBound(0.5, 2.5), result.Confidence, 10);
+        Assert.Equal(Cautious(0.5, 2.5), result.Confidence, 10);
     }
 
     [Fact]
@@ -123,7 +171,7 @@ public sealed class AggregateBattlesTests
 
         var result = Assert.Single(NewBuilder().AggregateBattles(battles, epoch));
         Assert.Equal(0.5, result.WinRate, 10);
-        Assert.Equal(MetaBuilder.WilsonLowerBound(1, 2), result.Confidence, 10);
+        Assert.Equal(Cautious(1, 2), result.Confidence, 10);
     }
 
     [Fact]

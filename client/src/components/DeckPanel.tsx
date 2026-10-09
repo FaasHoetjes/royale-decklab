@@ -184,7 +184,6 @@ function DeckScore({
 }) {
   if (!score || score.score == null) return null;
   const winPct = ((score.winRate ?? 0) * 100).toFixed(1);
-  const fieldPct = ((score.fieldability ?? 0) * 100).toFixed(0);
 
   const color = score.isMeta ? scoreAccent : mutedColor;
   const label = `${score.isMeta ? '★' : '~'} ${score.score.toFixed(3)}`;
@@ -206,16 +205,17 @@ function DeckScore({
 
   const tooltipBody = score.isMeta ? (
     <>
-      Meta deck: same score as the auto-generated decks. {winPct}% win rate × {fieldPct}%
-      fieldability × how widely it's played ({score.players} player
-      {score.players === 1 ? '' : 's'}).
+      Meta deck: same score as the auto-generated decks. {winPct}% cautious win rate (a deck with
+      few games counts as barely above average;{' '}
+      {score.players} player{score.players === 1 ? '' : 's'} on record), adjusted for your card
+      levels against players at your level.
     </>
   ) : (
     <>
       Estimated{filled < SLOTS_PER_DECK ? ` (${filled}/${SLOTS_PER_DECK} cards)` : ''}: not a known
-      meta deck. Assumes a 50% win rate × {fieldPct}% fieldability (how close to maxed you can field
-      it), then dampened for being unproven (no one on record runs it) so it ranks below any proven
-      meta deck. Build a known meta deck to score higher.
+      meta deck. Assumes a 50% win rate adjusted for your card levels, then dampened for being
+      unproven (no one on record runs it) so it ranks below any proven meta deck. Build a known meta
+      deck to score higher.
     </>
   );
 

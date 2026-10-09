@@ -16,20 +16,6 @@ public sealed class MetaBuilder(
 
     private const string WarBattleMode = "CW_Battle_1v1";
 
-    public static double WilsonLowerBound(double wins, double total, double z = 1.96)
-    {
-        if (total <= 0)
-        {
-            return 0;
-        }
-        var p = wins / total;
-        var z2 = z * z;
-        var denominator = 1 + z2 / total;
-        var center = p + z2 / (2 * total);
-        var margin = z * Math.Sqrt((p * (1 - p) + z2 / (4 * total)) / total);
-        return Math.Max(0, (center - margin) / denominator);
-    }
-
     public async Task<List<BattleRecord>> CollectWarBattleRecordsAsync(CancellationToken ct = default)
     {
         logger.LogInformation("Collecting WAR battle records...");
@@ -258,14 +244,12 @@ public sealed class MetaBuilder(
                 continue;
             }
 
-            var winRate = agg.WeightedWins / agg.WeightedGames;
-            var confidence = WilsonLowerBound(agg.WeightedWins, agg.WeightedGames);
-
             decks.Add(new DeckMeta
             {
                 CardIds = agg.CardIds,
-                WinRate = winRate,
-                Confidence = confidence,
+                WinRate = agg.WeightedWins / agg.WeightedGames,
+                Confidence = DomainMath.PosteriorQuantile(
+                    agg.WeightedWins, agg.WeightedGames, _opt.PriorGames, _opt.PriorWinRate, _opt.RankingQuantile),
                 Uses = agg.Games,
                 Players = agg.Players.Count,
                 PickRate = sampledPlayers.Count > 0 ? (double)agg.Players.Count / sampledPlayers.Count : 0,
@@ -276,8 +260,7 @@ public sealed class MetaBuilder(
             });
         }
 
-        static double MetaScore(DeckMeta d) => d.Confidence * DomainMath.PopularityWeight(d.Players ?? 1);
-        decks.Sort((a, b) => MetaScore(b).CompareTo(MetaScore(a)));
+        decks.Sort((a, b) => b.Confidence.CompareTo(a.Confidence));
         return decks;
     }
 

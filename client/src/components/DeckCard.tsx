@@ -96,7 +96,7 @@ export default function DeckCard({
                   <>
                     <strong>How well this meta deck fits your collection.</strong>
                     <br />
-                    Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), the Evolutions and Heroes you've unlocked, and how widely top players run it.
+                    Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
                   </>
                 )}
               </InfoTip>

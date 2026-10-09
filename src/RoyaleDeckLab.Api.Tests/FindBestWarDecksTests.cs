@@ -66,8 +66,10 @@ public sealed class FindBestWarDecksTests
 
         Assert.Equal(4, result.Decks.Count);
         Assert.DoesNotContain(result.Decks, d => d.CardIds.SequenceEqual(Build.Eight(1)));
-        // Maxed, equal adoption: score is confidence × popularity factor (20 players, prior 8).
-        Assert.Equal((0.58 + 0.58 + 0.50 + 0.50) * (20.0 / 28.0), result.TotalScore, 10);
+        // Maxed collection, equal adoption: each deck's confidence gets the same +0.67 x (16 - 15.68)
+        // log-odds level edge; the total is the sum of those win probabilities.
+        static double Level(double c) => 1 / (1 + Math.Exp(-(Math.Log(c / (1 - c)) + 0.67 * (16 - 15.68))));
+        Assert.Equal(Level(0.58) * 2 + Level(0.50) * 2, result.TotalScore, 10);
     }
 
     [Fact]

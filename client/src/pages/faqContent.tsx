@@ -31,10 +31,14 @@ export const faqItems: FaqItem[] = [
     question: "How is a deck's player score determined?",
     answer: (
       <p style={pLast}>
-        The score combines the deck's expected win rate at your card levels, how widely top war
-        players use it, and whether you own the required Evolution or Hero versions. Results with
-        very few games are treated cautiously, and missing versions reduce the score. The four
-        highest scoring decks with no repeated cards are selected.
+        The score is the deck's expected win rate for you: its record among top war players,
+        adjusted for your card levels and whether you own the required Evolution or Hero
+        versions. Card levels are compared with the players you typically face in war, and a
+        single card far behind the rest of the deck costs extra, both measured from real Clan War
+        battles. A deck's record is rated cautiously, so a deck with only a few games counts as
+        barely above average and a lucky streak can't outrank a proven deck. Missing versions
+        reduce the score. The four highest scoring decks with no repeated cards are selected, so
+        the total is a cautious estimate of your wins per war day.
       </p>
     ),
   },
@@ -98,8 +102,7 @@ export const faqItems: FaqItem[] = [
         <p style={pStyle}>
           A <strong>★</strong> means the deck exactly matches a deck that top war players
           actually run. It is scored the same way as a generated recommendation, using that
-          deck's proven win rate, how widely it is played, and your own card levels and unlocked
-          versions.
+          deck's proven win rate and your own card levels and unlocked versions.
         </p>
         <p style={pLast}>
           A <strong>~</strong> means the deck is not one of those known decks, so there is no real
@@ -140,7 +143,10 @@ export const faqItems: FaqItem[] = [
         Win rate comes from real Clan War battles played by roughly 5,000 players in leading war
         clans. Exact eight card decks are grouped and their results counted over the current
         thirty day window. Draws count as half a win, and the displayed percentage is the raw win
-        rate.
+        rate. For ranking, each deck's record is combined with eighty imaginary games at about
+        fifty percent, measured from war battles, and the deck is rated at the win rate it is 75%
+        likely to reach. A deck that went six for six counts as about 52%, while a deck at 60%
+        over hundreds of games keeps most of its rate.
       </p>
     ),
   },

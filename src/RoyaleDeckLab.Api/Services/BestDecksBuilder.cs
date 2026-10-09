@@ -5,7 +5,6 @@ namespace RoyaleDeckLab.Api.Services;
 
 public sealed class BestDecksBuilder
 {
-    private const int PopularityPrior = 8;
     private const int MinPlayers = 5;
     private const int ArchetypeSharedCards = 6;
     private const int MaxDeckReuse = 2;
@@ -40,7 +39,7 @@ public sealed class BestDecksBuilder
     {
         var scored = meta
             .Where(d => d.Players is null || d.Players >= MinPlayers)
-            .Select(d => (deck: d, score: ScoreMetaDeck(d)))
+            .Select(d => (deck: d, score: d.Confidence))
             .OrderByDescending(x => x.score)
             .ToList();
 
@@ -53,13 +52,6 @@ public sealed class BestDecksBuilder
                 s.decks.Select(d => ToEntry(d.deck, d.score, catalog)).ToList(),
                 s.totalScore))
             .ToList();
-    }
-
-    private static double ScoreMetaDeck(DeckMeta d)
-    {
-        var p = d.Players;
-        var pop = p is null ? 1.0 : (p <= 0 ? 0.0 : (double)p.Value / (p.Value + PopularityPrior));
-        return d.Confidence * pop;
     }
 
     private static List<(DeckMeta deck, double score)> CollapseToArchetypes(

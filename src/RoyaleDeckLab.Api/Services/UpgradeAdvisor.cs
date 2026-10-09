@@ -6,12 +6,13 @@ namespace RoyaleDeckLab.Api.Services;
 public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 {
     private const double MinDelta = 5e-4;
-    private const int PopularityPrior = 8;
 
     public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks)
     {
         var cardMap = playerCards.ToDictionary(c => c.Id);
-        var fieldable = DeckAnalyzer.SortCandidates(analyzer.ScoreFieldableDecks(metaDecks, cardMap));
+        // Upgrading your own card doesn't change who you're matched against, so simulations keep this fixed.
+        var opponentLevel = LevelModel.OpponentLevel(playerCards);
+        var fieldable = DeckAnalyzer.SortCandidates(analyzer.ScoreFieldableDecks(metaDecks, cardMap, opponentLevel));
         var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false, assumeSorted: true);
         var baselineKeys = LineupKeys(baseline);
 
@@ -43,7 +44,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             {
                 if (deck.CardIds.Contains(modified.Id))
                 {
-                    changed.Add((deck, analyzer.ScoreDeckForPlayer(simulatedMap, deck, deck.CardVersions) ?? score));
+                    changed.Add((deck, analyzer.ScoreDeckForPlayer(simulatedMap, deck, deck.CardVersions, opponentLevel) ?? score));
                 }
                 else
                 {
@@ -186,7 +187,6 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             .Select(c => new BestDeckCard(c.Id, c.Name ?? string.Empty, c.MaxLevel, c.ElixirCost,
                 c.Rarity.ToString().ToLowerInvariant(), c.IconUrls))
             .ToList();
-        var pop = deck.Players <= 0 ? 1.0 : (double)deck.Players / (deck.Players + PopularityPrior);
         return new BestDeckEntry(
             CardIds: deck.CardIds,
             WinRate: deck.MetaWinRate,
@@ -194,7 +194,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             Uses: deck.Uses,
             Players: deck.Players,
             PickRate: deck.PickRate,
-            MetaScore: deck.Confidence * pop,
+            MetaScore: deck.Confidence,
             CardVersions: deck.MetaCardVersions ?? deck.CardVersions ?? [],
             Cards: cards);
     }

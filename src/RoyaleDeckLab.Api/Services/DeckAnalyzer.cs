@@ -10,17 +10,18 @@ public sealed class DeckAnalyzer
     private const int MaxHero = 2;
     private const int MaxSpecials = 3;
 
-    // CR card stats compound ~10% per level; meta win rates are measured at maxed levels.
+    // CR card stats compound ~10% per level; only used for the builder's fieldability readout.
+    // Scoring uses the war-fitted LevelModel instead.
     private const double StatGrowthPerLevel = 1.10;
-
-    private const double BattleCompoundingExponent = 4.0;
 
     // ~6% weaker per missing special version, compounding across the deck.
     private const double MissingSpecialMultiplier = 0.94;
 
     private const int MinDistinctPlayers = 5;
-    private const int PopularityPrior = 8;
     private const double NeutralWinRate = 0.5;
+
+    // A hand-built deck nobody on record plays: damped so it ranks below any proven meta deck.
+    private const double UnprovenDeckDampener = 1.0 / 9;
     private const int AlternativePoolSize = 60;
 
     private static readonly int[] PopularityGateLadder = [MinDistinctPlayers, 3, 2, 1];
@@ -33,19 +34,6 @@ public sealed class DeckAnalyzer
 
     private static bool IsChampion(int cardId, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
         => cardMap.TryGetValue(cardId, out var card) && card.Rarity == Rarity.Champion;
-
-    private static double PopularityFactor(int? players)
-    {
-        if (players is null)
-        {
-            return 1;
-        }
-        if (players <= 0)
-        {
-            return 0;
-        }
-        return (double)players.Value / (players.Value + PopularityPrior);
-    }
 
     private static List<CardVersion> WithChampionVersions(
         IReadOnlyList<int> cardIds,
@@ -192,21 +180,28 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions)
-    {
-        double totalStatFraction = 0;
-        var versionFit = 1.0;
-        var validCards = 0;
+        => ScoreDeckForPlayer(cardMap, metaDeck, cardVersions, LevelModel.OpponentLevel(cardMap.Values));
 
-        foreach (var cardId in metaDeck.CardIds)
+    /// <param name="opponentLevel">The player's expected war opponent level; callers scoring many decks
+    /// (or simulating upgrades, which shouldn't move the opponents) compute it once.</param>
+    public double? ScoreDeckForPlayer(
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        DeckMeta metaDeck,
+        IReadOnlyList<CardVersion>? cardVersions,
+        double opponentLevel)
+    {
+        var levels = new int[metaDeck.CardIds.Length];
+        var versionFit = 1.0;
+
+        for (var i = 0; i < metaDeck.CardIds.Length; i++)
         {
+            var cardId = metaDeck.CardIds[i];
             if (!cardMap.TryGetValue(cardId, out var playerCard))
             {
                 return null;
             }
 
-            var levelsBelowMax = Math.Max(0, playerCard.MaxLevel - playerCard.Level);
-            totalStatFraction += Math.Pow(StatGrowthPerLevel, -levelsBelowMax);
-            validCards++;
+            levels[i] = LevelModel.DisplayLevel(playerCard);
 
             if (cardVersions is not null && !IsChampion(cardId, cardMap))
             {
@@ -218,23 +213,9 @@ public sealed class DeckAnalyzer
             }
         }
 
-        var avgStatFraction = totalStatFraction / validCards;
-        var expectedWinRate = LevelAdjustedWinRate(metaDeck.Confidence, avgStatFraction);
-        return expectedWinRate * versionFit * PopularityFactor(metaDeck.Players);
-    }
-
-    private static double LevelAdjustedWinRate(double winRate, double statFraction)
-    {
-        if (winRate <= 0)
-        {
-            return 0;
-        }
-        if (winRate >= 1)
-        {
-            return 1;
-        }
-        var odds = winRate / (1 - winRate) * Math.Pow(statFraction, BattleCompoundingExponent);
-        return odds / (1 + odds);
+        var expectedWinRate = LevelModel.WinProbability(
+            metaDeck.Confidence, LevelModel.LevelLogit(levels, opponentLevel));
+        return expectedWinRate * versionFit;
     }
 
     public double? FieldabilityScore(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<int> cardIds)
@@ -334,7 +315,9 @@ public sealed class DeckAnalyzer
             return new BuilderScore(score.Value * placementFit, meta.Confidence, fieldability.Value, IsMeta: true, meta.Players ?? 0);
         }
 
-        var neutral = LevelAdjustedWinRate(NeutralWinRate, fieldability.Value) * PopularityFactor(1);
+        var levels = cardIds.Select(id => LevelModel.DisplayLevel(cardMap[id])).ToList();
+        var levelLogit = LevelModel.LevelLogit(levels, LevelModel.OpponentLevel(cardMap.Values));
+        var neutral = LevelModel.WinProbability(NeutralWinRate, levelLogit) * UnprovenDeckDampener;
         return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0);
     }
 
@@ -525,12 +508,14 @@ public sealed class DeckAnalyzer
 
     public List<(DeckMeta deck, double score)> ScoreFieldableDecks(
         IReadOnlyList<DeckMeta> metaDecks,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        double? opponentLevel = null)
     {
+        var opponent = opponentLevel ?? LevelModel.OpponentLevel(cardMap.Values);
         var fieldable = new List<(DeckMeta deck, double score)>();
         foreach (var metaDeck in metaDecks)
         {
-            var score = ScoreDeckForPlayer(cardMap, metaDeck, metaDeck.CardVersions);
+            var score = ScoreDeckForPlayer(cardMap, metaDeck, metaDeck.CardVersions, opponent);
             if (score is not null)
             {
                 fieldable.Add((metaDeck, score.Value));

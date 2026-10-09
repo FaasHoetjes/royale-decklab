@@ -51,7 +51,7 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
       <div style={{ ...styles.statLabel, color: theme.text.secondary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
         Meta Score
         <InfoTip ariaLabel="Meta score details" color={theme.text.secondary} width={210}>
-          Confidence-adjusted win rate × popularity weight. Higher means this deck both wins more <em>and</em> is run by more top war players.
+          Cautious win rate: each record is weighed against 80 average games and rated at the level the deck is 75% likely to reach, so a few lucky wins can't outrank a proven deck.
         </InfoTip>
       </div>
       <div style={{ ...styles.statValue, color: theme.text.primary }}>{deck.metaScore.toFixed(3)}</div>
@@ -149,7 +149,7 @@ function MobileStat({
             width={210}
             align="right"
           >
-            Confidence-adjusted win rate × popularity weight. Higher means this deck both wins more <em>and</em> is run by more top war players.
+            Cautious win rate: each record is weighed against 80 average games and rated at the level the deck is 75% likely to reach, so a few lucky wins can't outrank a proven deck.
           </InfoTip>
         )}
       </span>
