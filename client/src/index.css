@@ -48,7 +48,6 @@
   --tooltip-bg: #1a1a1a;
   --tooltip-border: #1a1a1a;
   --search-btn-bg: #007bff;
-  --cta-btn-bg: #007bff;
 
   --card-backdrop: linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%);
   --card-frame-border: 1px solid rgba(30, 41, 59, 0.12);
@@ -61,6 +60,8 @@
   --banner-title: #0d1b3e;
   --skeleton-base: #d5d9e0;
   --skeleton-highlight: #eef0f4;
+  --ban-text: #b42318;
+  --require-text: #1a7a43;
 
   --card-name-font-size: 10px;
   --metric-label-font-size: 10px;
@@ -107,7 +108,6 @@
   --tooltip-bg: #000000;
   --tooltip-border: #3a3a3a;
   --search-btn-bg: #4a9eff;
-  --cta-btn-bg: #262626;
   --card-backdrop: linear-gradient(160deg, #2a3a6a 0%, #16213f 100%);
   --card-frame-border: 2px solid rgba(0, 0, 0, 0.15);
   --card-drop: 0 3px 8px rgba(0, 0, 0, 0.25);
@@ -118,6 +118,8 @@
   --banner-title: #ffffff;
   --skeleton-base: #28282d;
   --skeleton-highlight: #3a3a40;
+  --ban-text: #f08a8a;
+  --require-text: #6fd39b;
 }
 
 body {
@@ -257,7 +259,76 @@ input:disabled {
   to { background-position: -200% 0; }
 }
 
+/* Generator controls: pills, their menus and the phone sheet. */
+.gc-pill {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+.gc-pill:active {
+  transform: scale(0.97);
+}
+.gc-chip-in {
+  animation: gc-chip-in 0.22s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.gc-menu {
+  animation: gc-menu-in 0.16s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.gc-sheet {
+  animation: gc-sheet-in 0.26s cubic-bezier(0.32, 0.72, 0.35, 1);
+}
+.gc-backdrop {
+  animation: drawer-fade 0.2s ease;
+}
+.gc-scroll {
+  scrollbar-width: none;
+}
+.gc-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.gc-thumb {
+  transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.gc-kept {
+  transition: width 0.3s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+@media (hover: hover) {
+  .gc-pill:hover {
+    border-color: var(--text-tertiary) !important;
+    opacity: 1;
+  }
+  .gc-option:hover {
+    background-color: rgba(148, 148, 148, 0.14) !important;
+    opacity: 1;
+  }
+}
+
+@keyframes gc-chip-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes gc-menu-in {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes gc-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .gc-pill,
+  .gc-chip-in,
+  .gc-menu,
+  .gc-sheet,
+  .gc-backdrop,
+  .gc-thumb,
+  .gc-kept {
+    animation: none;
+    transition: none;
+  }
   .skeleton {
     animation: none;
     background: var(--skeleton-base);
