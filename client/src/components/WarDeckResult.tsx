@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { ScoredDeck } from '../api';
+import type { BuilderCard } from '../lib/builderCards';
+import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, type GeneratorOptions } from '../lib/generatorOptions';
 import DeckCard from './DeckCard';
+import GeneratorControls from './GeneratorControls';
 import InfoTip from './InfoTip';
 import SwapDeckModal from './SwapDeckModal';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -11,6 +14,14 @@ interface WarDeckResultProps {
   decks: ScoredDeck[];
   alternatives: ScoredDeck[];
   onNewSearch: () => void;
+  options: GeneratorOptions;
+  onOptionsChange: (options: GeneratorOptions) => void;
+  /** Catalog marked with the player's collection, for the ban / must-include pickers. */
+  cards: BuilderCard[];
+  isUpdating: boolean;
+  /** The last options change failed; the decks shown are from before it. */
+  updateFailed?: boolean;
+  onRetry?: () => void;
 }
 
 export default function WarDeckResult({
@@ -18,8 +29,17 @@ export default function WarDeckResult({
   decks,
   alternatives,
   onNewSearch,
+  options,
+  onOptionsChange,
+  cards,
+  isUpdating,
+  updateFailed,
+  onRetry,
 }: WarDeckResultProps) {
   const isMobile = useIsMobile();
+  const lockedKeys = useMemo(() => new Set(options.lock.map(deckKey)), [options.lock]);
+  // Where each deck was when it was locked: the API returns locked decks first, but they should stay put.
+  const lockPositions = useRef(new Map<string, number>());
   const allDecks = useMemo(() => [...decks, ...alternatives], [decks, alternatives]);
   const deckAt = (master: number): ScoredDeck => {
     const deck = allDecks[master];
@@ -27,10 +47,44 @@ export default function WarDeckResult({
     return deck;
   };
 
-  const [slots, setSlots] = useState<number[]>(() => decks.map((_, i) => i));
-  useEffect(() => {
-    setSlots(decks.map((_, i) => i));
-  }, [decks]);
+  const arrange = (): number[] => {
+    const order: (number | null)[] = decks.map(() => null);
+    const rest: number[] = [];
+    decks.forEach((deck, i) => {
+      const key = deckKey(deck.cardIds);
+      const pos = lockedKeys.has(key) ? lockPositions.current.get(key) : undefined;
+      if (pos != null && pos < order.length && order[pos] == null) order[pos] = i;
+      else rest.push(i);
+    });
+    return order.map((master) => master ?? rest.shift()!);
+  };
+
+  // Re-arranged in the same render a new result arrives, so old positions never index into the new list.
+  // `arranged` is the lineup as generated; `slots` also reflects swaps made since.
+  const [slotState, setSlotState] = useState(() => {
+    const arranged = arrange();
+    return { decks, arranged, slots: arranged };
+  });
+  let slots = slotState.slots;
+  if (slotState.decks !== decks) {
+    slots = arrange();
+    setSlotState({ decks, arranged: slots, slots });
+  }
+  const swapped = slots.some((master, pos) => master !== slotState.arranged[pos]);
+  const setSlots = (update: (prev: number[]) => number[]) =>
+    setSlotState((prev) => ({ ...prev, slots: update(prev.slots) }));
+
+  const toggleLock = (slotPos: number) => {
+    const deck = deckAt(slots[slotPos]!);
+    const key = deckKey(deck.cardIds);
+    if (lockedKeys.has(key)) {
+      lockPositions.current.delete(key);
+      onOptionsChange({ ...options, lock: options.lock.filter((d) => deckKey(d) !== key) });
+    } else {
+      lockPositions.current.set(key, slotPos);
+      onOptionsChange({ ...options, lock: [...options.lock, deck.cardIds] });
+    }
+  };
 
   const [swapSlot, setSwapSlot] = useState<number | null>(null);
 
@@ -54,8 +108,18 @@ export default function WarDeckResult({
   };
 
   const liveTotalScore = slots.reduce((sum, master) => sum + deckAt(master).playerScore, 0);
+  const customized = hasActiveOptions(options);
 
-  if (decks.length === 0) {
+  // Back to the plain generated lineup: undo swaps, and clear any options (which fetches it again).
+  const resetLineup = () => {
+    setSlots(() => slotState.arranged);
+    if (customized) {
+      lockPositions.current.clear();
+      onOptionsChange(DEFAULT_OPTIONS);
+    }
+  };
+
+  if (decks.length === 0 && !customized) {
     return (
       <div style={styles.container}>
         <p style={styles.error}>
@@ -69,13 +133,15 @@ export default function WarDeckResult({
     );
   }
 
+  const shortBy = options.decks - decks.length;
+
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
       <div
         style={{
           ...styles.header,
           padding: isMobile ? '18px 20px' : '28px 32px',
-          marginBottom: isMobile ? '20px' : '40px',
+          marginBottom: isMobile ? '16px' : '24px',
           gap: isMobile ? '12px' : '20px',
           flexWrap: isMobile ? 'nowrap' : 'wrap',
           background: theme.headerGradient,
@@ -87,7 +153,11 @@ export default function WarDeckResult({
         <div style={{ ...styles.headerInfo, ...(isMobile ? styles.headerInfoMobile : {}) }}>
           <span style={{ ...styles.eyebrow, color: theme.muted, opacity: 1 }}>WAR DECKS</span>
           <h2 style={{ ...styles.title, fontSize: isMobile ? '24px' : '32px', color: theme.title }}>{playerName}</h2>
-          <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>4 battle-ready decks · no shared cards</span>
+          <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>
+            {slots.length === 0
+              ? 'No decks fit your options'
+              : `${slots.length} battle-ready deck${slots.length === 1 ? '' : 's'} · no shared cards`}
+          </span>
         </div>
         <div style={{ ...styles.scoreBlock, flexShrink: isMobile ? 0 : undefined }}>
           <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>
@@ -99,7 +169,7 @@ export default function WarDeckResult({
               align="right"
               interactive={isMobile}
             >
-              The combined Player Score of all four recommended decks.{' '}
+              The combined Player Score of your recommended decks.{' '}
               {isMobile ? (
                 <>
                   See the{' '}
@@ -117,16 +187,49 @@ export default function WarDeckResult({
         </div>
       </div>
 
+      <GeneratorControls
+        options={options}
+        onChange={onOptionsChange}
+        canReset={customized || swapped}
+        onReset={resetLineup}
+        cards={cards}
+        isUpdating={isUpdating}
+        isMobile={isMobile}
+      />
+
+      {updateFailed && (
+        <p style={styles.notice} role="alert">
+          Couldn't update your decks just now; the decks below are from before your last change. Wait a few
+          seconds and{' '}
+          <button type="button" onClick={onRetry} style={styles.retry}>
+            try again
+          </button>
+          .
+        </p>
+      )}
+
+      {!updateFailed && shortBy > 0 && (
+        <p style={styles.notice} role="status">
+          {decks.length === 0
+            ? 'No lineup fits these options. '
+            : `Only ${decks.length} of ${options.decks} decks ${decks.length === 1 ? 'fits' : 'fit'} these options. `}
+          Try a lower minimum level, fewer required cards or fewer bans.
+        </p>
+      )}
+
       <div
         style={{
           ...styles.decksGrid,
           gap: isMobile ? '16px' : '30px',
           marginBottom: isMobile ? 0 : '50px',
+          opacity: isUpdating ? 0.55 : 1,
         }}
+        aria-busy={isUpdating}
       >
         {slots.map((master, slotPos) => {
           const deck = deckAt(master);
-          const options = candidatesForSlot(slotPos);
+          const locked = lockedKeys.has(deckKey(deck.cardIds));
+          const swapOptions = candidatesForSlot(slotPos);
           return (
             <DeckCard
               key={slotPos}
@@ -139,9 +242,11 @@ export default function WarDeckResult({
               metaCardVersions={deck.metaCardVersions}
               playerScore={deck.playerScore}
               deckNumber={slotPos + 1}
-              canSwap={options.length > 1}
+              canSwap={!locked && swapOptions.length > 1}
               onSwap={() => setSwapSlot(slotPos)}
               priority={slotPos === 0}
+              locked={locked}
+              onToggleLock={() => toggleLock(slotPos)}
             />
           );
         })}
@@ -257,6 +362,27 @@ const styles = {
     gridTemplateColumns: '1fr',
     gap: '30px',
     marginBottom: '50px',
+    transition: 'opacity 0.15s ease',
+  },
+  retry: {
+    border: 0,
+    background: 'none',
+    padding: 0,
+    font: 'inherit',
+    color: 'var(--accent)',
+    fontWeight: 700 as const,
+    textDecoration: 'underline' as const,
+    cursor: 'pointer',
+  },
+  notice: {
+    margin: '0 0 20px',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    fontSize: '14px',
+    lineHeight: 1.5,
+    backgroundColor: 'var(--chip-bg)',
+    border: '1px solid var(--chip-border)',
+    color: 'var(--text-primary)',
   },
   button: {
     padding: '14px 32px',

@@ -6,7 +6,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
 import { CHAMPION_SLOTS, SLOTS_PER_DECK } from '../lib/deckBoard';
-import type { BuilderCard } from '../lib/builderCards';
+import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
 import type { ScoreDeckCard } from '../api';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from '../components/CardPicker';
@@ -29,30 +29,7 @@ export default function WarDeckBuilder() {
   const loadError = cardsQuery.error ?? collectionQuery.error;
   const error = loadError instanceof Error ? loadError.message : '';
 
-  const builderCards = useMemo<BuilderCard[]>(() => {
-    const ownedById = new Map(owned.map((c) => [c.id, c]));
-    return catalog.map((c) => {
-      const ownedCard = ownedById.get(c.id);
-      return {
-        id: c.id,
-        name: c.name,
-        elixirCost: c.elixirCost,
-        rarity: c.rarity,
-        owned: !!ownedCard,
-        level: ownedCard?.level,
-        maxLevel: ownedCard?.maxLevel ?? c.maxLevel,
-        isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
-        // Ownership: the per-player evolutionLevel is a bitmask (1 = evo, 2 = hero, 3 = both).
-        hasEvo: ((ownedCard?.evolutionLevel ?? 0) & 1) !== 0,
-        ownsHero: ((ownedCard?.evolutionLevel ?? 0) & 2) !== 0,
-        iconUrls: {
-          medium: c.iconUrls?.medium,
-          evolutionMedium: c.iconUrls?.evolutionMedium,
-          heroMedium: ownedCard?.iconUrls?.heroMedium,
-        },
-      };
-    });
-  }, [catalog, owned]);
+  const builderCards = useMemo<BuilderCard[]>(() => toBuilderCards(catalog, owned), [catalog, owned]);
 
   const cardById = useMemo(
     () => new Map(builderCards.map((c) => [c.id, c])),

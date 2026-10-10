@@ -18,6 +18,13 @@ interface CardPickerProps {
   descending: boolean;
   setDescending: Dispatch<SetStateAction<boolean>>;
   allowChampions: boolean;
+  title?: string;
+  subtitle?: string;
+  /** Why a card in `usedIds` can't be picked, shown on hover. */
+  usedLabel?: string;
+  /** Multi-select mode: these cards show as picked, and clicking one again calls onSelect to un-pick it. */
+  selectedIds?: Set<number>;
+  selectedColor?: string;
 }
 
 export default function CardPicker({
@@ -32,6 +39,11 @@ export default function CardPicker({
   descending,
   setDescending,
   allowChampions,
+  title = 'Card Collection',
+  subtitle,
+  usedLabel = 'already in a deck',
+  selectedIds,
+  selectedColor,
 }: CardPickerProps) {
   const theme = getTheme();
   const isMobile = useIsMobile();
@@ -109,6 +121,7 @@ export default function CardPicker({
 
   const renderCard = (card: BuilderCard) => {
     const isUsed = usedIds.has(card.id);
+    const isSelected = !!selectedIds?.has(card.id);
     const championBlocked = !allowChampions && card.rarity === 'champion';
     const selectable = card.owned && !isUsed && !championBlocked;
     const level = ownedLevel(card);
@@ -126,15 +139,17 @@ export default function CardPicker({
           !card.owned
             ? `${card.name} (not owned)`
             : isUsed
-              ? `${card.name} (already in a deck)`
+              ? `${card.name} (${usedLabel})`
               : championBlocked
                 ? `${card.name} (no champion slot left in this deck)`
                 : card.name
         }
+        aria-pressed={selectedIds ? isSelected : undefined}
         style={{
           ...styles.cardButton,
           cursor: selectable ? 'pointer' : 'default',
           opacity: selectable ? 1 : 0.3,
+          ...(isSelected ? { ...styles.selected, outlineColor: selectedColor ?? theme.accent } : {}),
         }}
       >
         <CardTile
@@ -145,6 +160,11 @@ export default function CardPicker({
           nameColor={theme.text.primary}
           lazyLoad
         />
+        {isSelected && (
+          <span style={{ ...styles.selectedMark, backgroundColor: selectedColor ?? theme.accent }} aria-hidden="true">
+            ✓
+          </span>
+        )}
       </button>
     );
   };
@@ -186,9 +206,9 @@ export default function CardPicker({
         >
           <div style={styles.titleRow}>
             <div style={styles.titleBlock}>
-              <div style={{ ...styles.title, color: theme.text.primary }}>Card Collection</div>
-              <div style={{ ...styles.foundText, color: theme.accent }}>
-                Found: {ownedCount}/{cards.length}
+              <div style={{ ...styles.title, color: theme.text.primary }}>{title}</div>
+              <div style={{ ...styles.foundText, color: subtitle ? theme.text.secondary : theme.accent }}>
+                {subtitle ?? `Found: ${ownedCount}/${cards.length}`}
               </div>
             </div>
             {isMobile && closeButton}
@@ -429,6 +449,27 @@ const styles = {
     display: 'block',
     width: '100%',
     minWidth: 0,
+    position: 'relative' as const,
     transition: 'transform 0.15s ease, opacity 0.15s ease',
+  },
+  selected: {
+    outline: '3px solid',
+    outlineOffset: '2px',
+    borderRadius: '12px',
+  },
+  selectedMark: {
+    position: 'absolute' as const,
+    top: '-6px',
+    right: '-6px',
+    width: '22px',
+    height: '22px',
+    borderRadius: '50%',
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: 800 as const,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.35)',
   },
 };

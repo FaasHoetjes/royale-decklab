@@ -22,6 +22,9 @@ interface DeckCardProps {
   scoreLabel?: string;
   scoreTooltip?: React.ReactNode;
   priority?: boolean;
+  /** Generator only: keep this deck while the others are re-picked around it. */
+  locked?: boolean;
+  onToggleLock?: () => void;
 }
 
 export default function DeckCard({
@@ -39,6 +42,8 @@ export default function DeckCard({
   scoreLabel,
   scoreTooltip,
   priority,
+  locked,
+  onToggleLock,
 }: DeckCardProps) {
   const isMobile = useIsMobile();
 
@@ -51,7 +56,7 @@ export default function DeckCard({
   const deckLink = buildDeckLink(orderedCards.map((c) => c.id));
 
   return (
-    <div className="deck-card" style={{ ...styles.container, padding: isMobile ? '16px' : '24px', backgroundColor: theme.containerBg, borderColor: theme.containerBorder, boxShadow: theme.containerShadow }}>
+    <div className="deck-card" style={{ ...styles.container, padding: isMobile ? '16px' : '24px', backgroundColor: theme.containerBg, borderColor: locked ? theme.lockedBorder : theme.containerBorder, boxShadow: locked ? `0 0 0 1px ${theme.lockedBorder}, ${theme.containerShadow}` : theme.containerShadow }}>
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
@@ -63,6 +68,24 @@ export default function DeckCard({
               style={{ ...styles.openInGame, backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }}
               label="Copy deck link"
             />
+          )}
+          {onToggleLock && (
+            <button
+              type="button"
+              onClick={onToggleLock}
+              aria-pressed={!!locked}
+              aria-label={locked ? `Unlock deck ${deckNumber}` : `Lock deck ${deckNumber}`}
+              title={locked ? 'Locked: this deck stays when you change options. Click to unlock.' : 'Lock this deck: keep it and re-pick the other decks around it'}
+              className="mobile-touch-target"
+              style={{
+                ...styles.lockButton,
+                ...(locked
+                  ? { backgroundColor: theme.lockedBorder, color: theme.lockedText, borderColor: theme.lockedBorder }
+                  : { backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }),
+              }}
+            >
+              <LockIcon locked={!!locked} />
+            </button>
           )}
         </div>
         <span style={{ ...styles.archetypeBadge, backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, color: theme.badgeText }}>
@@ -187,7 +210,18 @@ const theme = {
   openInGameBg: 'var(--chip-bg)',
   openInGameText: 'var(--accent)',
   openInGameBorder: 'var(--chip-border)',
+  lockedBorder: 'var(--accent)',
+  lockedText: 'var(--on-accent)',
 };
+
+function LockIcon({ locked }: { locked: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d={locked ? 'M8 11V8a4 4 0 0 1 8 0v3' : 'M8 11V8a4 4 0 0 1 7.5-2'} />
+    </svg>
+  );
+}
 
 function SwapArrows({ style }: { style: React.CSSProperties }) {
   return (
@@ -233,6 +267,18 @@ const styles = {
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
     marginTop: '2px',
+  },
+  lockButton: {
+    width: '30px',
+    height: '30px',
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    padding: 0,
+    borderRadius: '50%',
+    border: '1px solid',
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   headerTitle: {
     margin: 0,

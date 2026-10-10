@@ -120,8 +120,9 @@ export interface UpgradeAdviceResponse {
   suggestions: UpgradeSuggestion[];
 }
 
-export function fetchPlayerWarDecks(playerTag: string, signal?: AbortSignal): Promise<PlayerResponse> {
-  return getJson(`/api/player/${encodeURIComponent(playerTag)}`, 'Failed to fetch player data', signal);
+export function fetchPlayerWarDecks(playerTag: string, options = '', signal?: AbortSignal): Promise<PlayerResponse> {
+  const query = options ? `?${options}` : '';
+  return getJson(`/api/player/${encodeURIComponent(playerTag)}${query}`, 'Failed to fetch player data', signal);
 }
 
 export function fetchPlayerCollection(
