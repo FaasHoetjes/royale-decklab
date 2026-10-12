@@ -209,7 +209,9 @@ export default function WarDeckResult({
               cards: d.cards,
               metaWinRate: d.metaWinRate,
               playerScore: d.playerScore,
+              uses: d.uses,
               cardVersions: d.cardVersions,
+              metaCardVersions: d.metaCardVersions,
             };
           })}
           onSelect={(master) => selectForSlot(swapSlot, master)}

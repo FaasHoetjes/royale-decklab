@@ -282,6 +282,10 @@ input:disabled {
     border-color: var(--text-tertiary) !important;
     opacity: 1;
   }
+  .swap-option:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important;
+    opacity: 1;
+  }
 }
 
 @keyframes gc-menu-in {
