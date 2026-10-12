@@ -230,7 +230,7 @@ export default function CardPicker({
             {isMobile && closeButton}
           </div>
 
-          <div style={{ ...styles.controls, ...(isMobile ? { gap: '8px' } : {}) }}>
+          <div style={{ ...styles.controls, ...(isMobile ? { gap: '8px', flexWrap: 'wrap' as const } : {}) }}>
             <input
               type="text"
               value={query}
@@ -239,19 +239,20 @@ export default function CardPicker({
               aria-label="Search cards by name"
               style={{
                 ...styles.searchInput,
-                ...(isMobile ? { flex: 1, width: 'auto', minWidth: 0 } : {}),
+                ...(isMobile ? { flex: '1 1 100%', width: 'auto', minWidth: 0 } : {}),
                 backgroundColor: theme.control.bg,
                 color: theme.control.text,
                 border: `1px solid ${theme.control.border}`,
               }}
             />
-            <div style={styles.filterWrap}>
+            <div style={{ ...styles.filterWrap, ...(isMobile ? { flex: 1 } : {}) }}>
               <button
                 className="mobile-touch-target"
                 onClick={() => setShowFilters((s) => !s)}
                 style={{
                   ...styles.filterButton,
                   ...(filters.size ? {} : { padding: '0 29px' }),
+                  ...(isMobile ? { width: '100%' } : {}),
                   backgroundColor: filters.size ? theme.accent : theme.control.bg,
                   color: filters.size ? theme.onAccent : theme.control.text,
                   border: `1px solid ${filters.size ? theme.accent : theme.control.border}`,
@@ -273,6 +274,7 @@ export default function CardPicker({
                   onClear={clearFilters}
                   onClose={() => setShowFilters(false)}
                   theme={theme}
+                  align={isMobile ? 'left' : 'right'}
                 />
               )}
             </div>
@@ -295,7 +297,7 @@ export default function CardPicker({
             <button
               className="mobile-touch-target"
               onClick={() => setSortIndex((i) => (i + 1) % SORT_TYPES.length)}
-              style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px' } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
+              style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px', flex: 1 } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
               title="Click to change sort order"
             >
               <span style={styles.sortLabels}>
@@ -399,6 +401,7 @@ const styles = {
   filterButton: {
     display: 'flex' as const,
     alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: '6px',
     height: '35px',
     padding: '0 14px',
