@@ -294,6 +294,17 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               </div>
             )
           }
+          footer={
+            <div style={styles.pickerFooter}>
+              <span style={styles.pickerCount}>
+                {picks.length === 0 ? 'No cards picked' : `${picks.length} card${picks.length === 1 ? '' : 's'} ${picker === 'ban' ? 'excluded' : 'included'}`}
+              </span>
+              {/* Closing any other way keeps the picks too; this is the obvious way to finish. */}
+              <button type="button" onClick={closePicker} style={styles.done}>
+                Done
+              </button>
+            </div>
+          }
           onSelect={togglePick}
           onClose={closePicker}
           filters={filters}
@@ -804,6 +815,31 @@ const styles = {
     alignItems: 'center' as const,
     gap: '12px',
     marginTop: '22px',
+  },
+  pickerFooter: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+    padding: '12px 16px',
+    borderTop: '1px solid var(--border)',
+  },
+  pickerCount: {
+    fontSize: '14px',
+    fontWeight: 500 as const,
+    color: 'var(--text-secondary)',
+  },
+  done: {
+    height: '44px',
+    minWidth: '120px',
+    padding: '0 22px',
+    border: 0,
+    borderRadius: '12px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--on-accent)',
+    fontSize: '15px',
+    fontWeight: 600 as const,
+    cursor: 'pointer',
   },
   apply: {
     flex: 1,

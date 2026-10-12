@@ -32,6 +32,8 @@ interface CardPickerProps {
   dimSelected?: boolean;
   /** Shown between the header and the cards, e.g. the current picks. */
   topContent?: ReactNode;
+  /** Pinned under the cards, e.g. a "Done" button for multi-select. */
+  footer?: ReactNode;
 }
 
 export default function CardPicker({
@@ -55,6 +57,7 @@ export default function CardPicker({
   selectedMarkColor = '#ffffff',
   dimSelected = false,
   topContent,
+  footer,
 }: CardPickerProps) {
   const theme = getTheme();
   const isMobile = useIsMobile();
@@ -316,6 +319,7 @@ export default function CardPicker({
             {visibleCards.map(renderCard)}
           </div>
         </div>
+        {footer}
       </div>
     </div>
   );
