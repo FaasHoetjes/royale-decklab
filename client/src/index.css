@@ -1,3 +1,12 @@
+@font-face {
+  font-family: 'Lilita One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/lilita-one-digits.woff2') format('woff2');
+  unicode-range: U+0030-0039;
+}
+
 * {
   margin: 0;
   padding: 0;
