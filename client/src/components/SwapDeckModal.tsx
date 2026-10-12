@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DeckCardData } from '../api';
 import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, inOrder, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck } from '../lib/archetypes';
@@ -34,6 +34,7 @@ export default function SwapDeckModal({
   onClose,
 }: SwapDeckModalProps) {
   const isMobile = useIsMobile();
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -94,11 +95,14 @@ export default function SwapDeckModal({
           </button>
         </div>
 
-        <div style={{ ...styles.list, padding: isMobile ? '4px 12px 14px' : '4px 22px 22px' }}>
+        <div
+          style={{ ...styles.list, padding: isMobile ? '4px 12px 14px' : '4px 22px 22px' }}
+          onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)}
+        >
           {ordered.map((opt) => {
             const isCurrent = opt === current;
             const delta = current ? opt.playerScore - current.playerScore : 0;
-            return (
+            const row = (
               <button
                 key={opt.master}
                 type="button"
@@ -145,6 +149,13 @@ export default function SwapDeckModal({
                   })}
                 </div>
               </button>
+            );
+            return isCurrent ? (
+              <div key={opt.master} style={{ ...styles.sticky, ...(scrolled && styles.stickyScrolled) }}>
+                {row}
+              </div>
+            ) : (
+              row
             );
           })}
         </div>
@@ -213,6 +224,18 @@ const styles = {
     overflowY: 'auto' as const,
     overscrollBehavior: 'contain' as const,
     flex: 1,
+  },
+  sticky: {
+    position: 'sticky' as const,
+    top: '-4px',
+    zIndex: 1,
+    marginBottom: '-12px',
+    paddingBottom: '12px',
+    backgroundColor: 'var(--modal-bg)',
+    transition: 'box-shadow 0.15s ease',
+  },
+  stickyScrolled: {
+    boxShadow: '0 12px 14px -14px rgba(0, 0, 0, 0.45)',
   },
   option: {
     width: '100%',
