@@ -1,6 +1,6 @@
 import React from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, displayLevel, avgElixir, orderBySlots, slotVersionOf, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, displayLevel, avgElixir, orderBySlots, slotVersionOf, inOrder, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck, featuredCard } from '../lib/archetypes';
 import { buildDeckLink } from '../lib/deckLink';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -16,6 +16,7 @@ interface DeckCardProps {
   pickRate: number;
   cardVersions?: CardVersionRef[];
   metaCardVersions?: CardVersionRef[];
+  cardOrder?: number[];
   playerScore: number;
   deckNumber: number;
   canSwap?: boolean;
@@ -37,6 +38,7 @@ export default function DeckCard({
   pickRate,
   cardVersions,
   metaCardVersions,
+  cardOrder,
   playerScore,
   deckNumber,
   canSwap,
@@ -51,7 +53,7 @@ export default function DeckCard({
 
   const slotVersion = slotVersionOf(metaCardVersions, cardVersions);
 
-  const orderedCards = orderBySlots(cards, slotVersion);
+  const orderedCards = cardOrder ? inOrder(cards, cardOrder) : orderBySlots(cards, slotVersion);
   const deckLink = buildDeckLink(orderedCards.map((c) => c.id));
   const archetype = classifyDeck(cards);
   const featured = featuredCard(cards);

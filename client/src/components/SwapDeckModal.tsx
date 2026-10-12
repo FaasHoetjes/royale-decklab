@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, inOrder, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck } from '../lib/archetypes';
 import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -20,6 +20,7 @@ interface SwapDeckModalProps {
   slotNumber: number;
   options: SwapOption[];
   currentMaster: number;
+  currentCardOrder?: number[];
   onSelect: (master: number) => void;
   onClose: () => void;
 }
@@ -28,6 +29,7 @@ export default function SwapDeckModal({
   slotNumber,
   options,
   currentMaster,
+  currentCardOrder,
   onSelect,
   onClose,
 }: SwapDeckModalProps) {
@@ -54,7 +56,11 @@ export default function SwapDeckModal({
     () => [...(current ? [current] : []), ...options.filter((o) => o !== current).sort((a, b) => b.playerScore - a.playerScore)],
     [options, current]
   );
-  const currentOrder = current ? orderBySlots(current.cards, slotVersionOf(current.metaCardVersions, current.cardVersions)) : [];
+  const currentOrder = !current
+    ? []
+    : currentCardOrder
+      ? inOrder(current.cards, currentCardOrder)
+      : orderBySlots(current.cards, slotVersionOf(current.metaCardVersions, current.cardVersions));
   const currentIds = new Set(currentOrder.map((c) => c.id));
   const sameAsCurrent = (opt: SwapOption, cardId: number) =>
     current != null &&

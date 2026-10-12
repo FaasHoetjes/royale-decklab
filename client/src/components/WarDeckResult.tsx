@@ -8,6 +8,7 @@ import { TrophyIcon } from './navIcons';
 import GeneratorControls from './GeneratorControls';
 import GeneratorHeader from './GeneratorHeader';
 import SwapDeckModal from './SwapDeckModal';
+import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 interface WarDeckResultProps {
@@ -64,16 +65,14 @@ export default function WarDeckResult({
   // `arranged` is the lineup as generated; `slots` also reflects swaps made since.
   const [slotState, setSlotState] = useState(() => {
     const arranged = arrange();
-    return { decks, arranged, slots: arranged };
+    return { decks, arranged, slots: arranged, orders: {} as Record<number, { master: number; ids: number[] }> };
   });
   let slots = slotState.slots;
   if (slotState.decks !== decks) {
     slots = arrange();
-    setSlotState({ decks, arranged: slots, slots });
+    setSlotState({ decks, arranged: slots, slots, orders: {} });
   }
   const swapped = slots.some((master, pos) => master !== slotState.arranged[pos]);
-  const setSlots = (update: (prev: number[]) => number[]) =>
-    setSlotState((prev) => ({ ...prev, slots: update(prev.slots) }));
 
   const toggleLock = (slotPos: number) => {
     const deck = deckAt(slots[slotPos]!);
@@ -103,8 +102,27 @@ export default function WarDeckResult({
     return valid;
   };
 
+  const cardOrderAt = (slotPos: number): number[] => {
+    const master = slots[slotPos]!;
+    const kept = slotState.orders[slotPos];
+    if (kept?.master === master) return kept.ids;
+    const deck = deckAt(master);
+    return orderBySlots(deck.cards, slotVersionOf(deck.metaCardVersions, deck.cardVersions)).map((c) => c.id);
+  };
+
   const selectForSlot = (slotPos: number, master: number) => {
-    setSlots((prev) => prev.map((m, pos) => (pos === slotPos ? master : m)));
+    const current = deckAt(slots[slotPos]!);
+    const next = deckAt(master);
+    const ids = alignToReference(
+      next.cards,
+      slotVersionOf(next.metaCardVersions, next.cardVersions),
+      inOrder(current.cards, cardOrderAt(slotPos))
+    ).map((c) => c.id);
+    setSlotState((prev) => ({
+      ...prev,
+      slots: prev.slots.map((m, pos) => (pos === slotPos ? master : m)),
+      orders: { ...prev.orders, [slotPos]: { master, ids } },
+    }));
     setSwapSlot(null);
   };
 
@@ -113,7 +131,7 @@ export default function WarDeckResult({
 
   // Back to the plain generated lineup: undo swaps, and clear any options (which fetches it again).
   const resetLineup = () => {
-    setSlots(() => slotState.arranged);
+    setSlotState((prev) => ({ ...prev, slots: prev.arranged, orders: {} }));
     if (customized) {
       lockPositions.current.clear();
       onOptionsChange(DEFAULT_OPTIONS);
@@ -186,6 +204,7 @@ export default function WarDeckResult({
               pickRate={deck.pickRate}
               cardVersions={deck.cardVersions}
               metaCardVersions={deck.metaCardVersions}
+              cardOrder={cardOrderAt(slotPos)}
               playerScore={deck.playerScore}
               deckNumber={slotPos + 1}
               canSwap={!locked && swapOptions.length > 1}
@@ -202,6 +221,7 @@ export default function WarDeckResult({
         <SwapDeckModal
           slotNumber={swapSlot + 1}
           currentMaster={slots[swapSlot] ?? -1}
+          currentCardOrder={cardOrderAt(swapSlot)}
           options={candidatesForSlot(swapSlot).map((master) => {
             const d = deckAt(master);
             return {
