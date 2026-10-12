@@ -83,9 +83,8 @@ export default function DeckCard({
         <span style={styles.deckNumber}>Deck {deckNumber}</span>
         <h3 style={{ ...styles.name, fontSize: isMobile ? '21px' : '26px', paddingRight: isMobile ? '84px' : '130px' }}>{archetype.name}</h3>
 
-        {/* Label over value in equal columns, so each number sits in the same spot on every deck. */}
-        <div style={{ ...styles.stats, paddingRight: isMobile ? '84px' : '130px' }}>
-          <div style={{ ...styles.stat, paddingRight: isMobile ? '12px' : '22px', borderLeft: 0 }}>
+        <div style={{ ...styles.stats, gap: isMobile ? '16px' : '22px', paddingRight: isMobile ? '84px' : '130px' }}>
+          <div style={styles.lead}>
             <span style={styles.statLabel}>
               {scoreLabel ?? 'Score'}
               {!isMobile && (
@@ -100,11 +99,11 @@ export default function DeckCard({
                 </InfoTip>
               )}
             </span>
-            <span style={{ ...styles.statValue, fontSize: isMobile ? '16px' : '19px' }}>{playerScore.toFixed(3)}</span>
+            <span style={{ ...styles.leadValue, fontSize: isMobile ? '18px' : '20px' }}>{playerScore.toFixed(3)}</span>
           </div>
-          <div style={{ ...styles.stat, padding: isMobile ? '0 12px' : '0 22px' }}>
-            <span style={styles.statLabel}>
-              Win rate
+          <div style={{ ...styles.rest, gap: isMobile ? '12px' : '16px', fontSize: isMobile ? '13px' : '14px' }}>
+            <span style={styles.restStat}>
+              <b style={styles.restValue}>{(metaWinRate * 100).toFixed(1)}%</b> win rate
               {!isMobile && (
                 <InfoTip ariaLabel="Win rate details" color={theme.bannerMuted} placement="bottom">
                   <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
@@ -115,11 +114,9 @@ export default function DeckCard({
                 </InfoTip>
               )}
             </span>
-            <span style={{ ...styles.statValue, fontSize: isMobile ? '16px' : '19px' }}>{(metaWinRate * 100).toFixed(1)}%</span>
-          </div>
-          <div style={{ ...styles.stat, padding: isMobile ? '0 12px' : '0 22px' }}>
-            <span style={styles.statLabel}>Elixir</span>
-            <span style={{ ...styles.statValue, fontSize: isMobile ? '16px' : '19px' }}>{avgElixir(cards).toFixed(1)}</span>
+            <span style={styles.restStat}>
+              <b style={styles.restValue}>{avgElixir(cards).toFixed(1)}</b> elixir
+            </span>
           </div>
         </div>
       </div>
@@ -268,17 +265,18 @@ const styles = {
     fontWeight: 700 as const,
     letterSpacing: '-0.2px',
     lineHeight: 1.15,
-    textShadow: 'var(--hero-text-shadow)',
   },
   stats: {
     display: 'flex' as const,
+    alignItems: 'flex-end' as const,
+    flexWrap: 'wrap' as const,
+    rowGap: '8px',
     marginTop: '6px',
   },
-  stat: {
+  lead: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
-    gap: '6px',
-    borderLeft: '1px solid var(--hero-divider)',
+    gap: '5px',
   },
   statLabel: {
     display: 'inline-flex' as const,
@@ -289,13 +287,28 @@ const styles = {
     color: theme.bannerMuted,
     whiteSpace: 'nowrap' as const,
   },
-  statValue: {
+  leadValue: {
     fontWeight: 700 as const,
     lineHeight: 1,
     color: 'var(--hero-text)',
-    textShadow: 'var(--hero-text-shadow)',
     fontVariantNumeric: 'tabular-nums' as const,
     whiteSpace: 'nowrap' as const,
+  },
+  rest: {
+    display: 'flex' as const,
+    paddingBottom: '1px',
+    color: theme.bannerMuted,
+  },
+  restStat: {
+    display: 'inline-flex' as const,
+    alignItems: 'baseline' as const,
+    gap: '4px',
+    whiteSpace: 'nowrap' as const,
+  },
+  restValue: {
+    fontWeight: 600 as const,
+    color: 'color-mix(in srgb, var(--hero-text) 86%, transparent)',
+    fontVariantNumeric: 'tabular-nums' as const,
   },
   cards: {
     display: 'grid' as const,

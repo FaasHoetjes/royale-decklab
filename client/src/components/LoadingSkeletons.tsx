@@ -203,13 +203,13 @@ export function WarDecksSkeleton({ isMobile }: { isMobile: boolean }) {
               >
                 <Skeleton style={{ width: '52px', height: '12px' }} />
                 <Skeleton style={{ width: isMobile ? '150px' : '220px', height: isMobile ? '22px' : '28px' }} />
-                <div style={{ ...styles.inline, gap: isMobile ? '24px' : '44px', marginTop: '4px' }}>
-                  {[0, 1, 2].map((stat) => (
-                    <div key={stat} style={{ ...styles.stack, gap: '6px' }}>
-                      <Skeleton style={{ width: '40px', height: '9px' }} />
-                      <Skeleton style={{ width: '52px', height: isMobile ? '16px' : '19px' }} />
-                    </div>
-                  ))}
+                <div style={{ ...styles.inline, alignItems: 'flex-end', gap: isMobile ? '16px' : '22px', marginTop: '4px' }}>
+                  <div style={{ ...styles.stack, gap: '6px' }}>
+                    <Skeleton style={{ width: '40px', height: '9px' }} />
+                    <Skeleton style={{ width: '56px', height: isMobile ? '18px' : '20px' }} />
+                  </div>
+                  <Skeleton style={{ width: '96px', height: '12px', marginBottom: '2px' }} />
+                  <Skeleton style={{ width: '60px', height: '12px', marginBottom: '2px' }} />
                 </div>
               </div>
               <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 24px 18px' }}>
