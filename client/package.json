@@ -5,6 +5,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc",
+    "test": "bun test",
     "preview": "vite preview"
   },
   "dependencies": {
