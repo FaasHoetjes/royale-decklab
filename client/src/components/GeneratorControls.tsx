@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { BuilderCard } from '../lib/builderCards';
 import { cardIconUrl, displayLevel } from '../lib/cardDisplay';
-import { MAX_DECKS, MAX_LEVEL, type GeneratorOptions } from '../lib/generatorOptions';
+import { LOWEST_LEVEL_CHOICE, MAX_DECKS, MAX_LEVEL, type GeneratorOptions } from '../lib/generatorOptions';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from './CardPicker';
 
@@ -21,7 +21,6 @@ type PickerKind = 'ban' | 'require';
 type Menu = 'decks' | 'level';
 type Tone = 'plain' | 'active' | 'add';
 
-const LOWEST_LEVEL_CHOICE = 10;
 const LEVEL_CHOICES: (number | null)[] = [
   null,
   ...Array.from({ length: MAX_LEVEL - LOWEST_LEVEL_CHOICE + 1 }, (_, i) => LOWEST_LEVEL_CHOICE + i),

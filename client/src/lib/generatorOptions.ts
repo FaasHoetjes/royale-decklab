@@ -3,6 +3,8 @@
 
 export const MAX_DECKS = 4;
 export const MAX_LEVEL = 16;
+/** The lowest minimum level on offer; below it a minimum barely rules anything out. */
+export const LOWEST_LEVEL_CHOICE = 10;
 const CARDS_PER_DECK = 8;
 const DEFAULTS_KEY = 'generator_defaults';
 
