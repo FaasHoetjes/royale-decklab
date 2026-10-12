@@ -59,9 +59,9 @@ export const faqItems: FaqItem[] = [
       <>
         <p style={pStyle}>
           Yes. Above your decks you can choose how many decks to generate (one to four), set a
-          minimum card level, ban cards you don't want to play, and require cards you do want to
-          play. Every option is applied to the search itself, so you get the best decks that meet
-          all of them, with no shared cards.
+          minimum card level, include cards you want to play, and exclude cards you don't. Every
+          option is applied to the search itself, so you get the best decks that meet all of them,
+          with no shared cards.
         </p>
         <p style={pStyle}>
           The padlock on a deck locks it: it stays when you change options, and the other decks
@@ -70,7 +70,7 @@ export const faqItems: FaqItem[] = [
         <p style={pLast}>
           Your choices are saved in the page address, so you can bookmark or share a setup. The
           number of decks and minimum level are also remembered for your next search. If no lineup
-          fits, try a lower minimum level or fewer required cards.
+          fits, try a lower minimum level or fewer included cards.
         </p>
       </>
     ),

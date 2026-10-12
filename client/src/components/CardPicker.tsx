@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { BuilderCard } from '../lib/builderCards';
@@ -25,6 +25,13 @@ interface CardPickerProps {
   /** Multi-select mode: these cards show as picked, and clicking one again calls onSelect to un-pick it. */
   selectedIds?: Set<number>;
   selectedColor?: string;
+  /** Badge on picked cards, drawn in `selectedColor` with this text colour. */
+  selectedMark?: ReactNode;
+  selectedMarkColor?: string;
+  /** Grey out picked cards (for picks that remove a card rather than add it). */
+  dimSelected?: boolean;
+  /** Shown between the header and the cards, e.g. the current picks. */
+  topContent?: ReactNode;
 }
 
 export default function CardPicker({
@@ -44,6 +51,10 @@ export default function CardPicker({
   usedLabel = 'already in a deck',
   selectedIds,
   selectedColor,
+  selectedMark = '✓',
+  selectedMarkColor = '#ffffff',
+  dimSelected = false,
+  topContent,
 }: CardPickerProps) {
   const theme = getTheme();
   const isMobile = useIsMobile();
@@ -152,17 +163,19 @@ export default function CardPicker({
           ...(isSelected ? { ...styles.selected, outlineColor: selectedColor ?? theme.accent } : {}),
         }}
       >
-        <CardTile
-          name={card.name}
-          iconUrl={pickerIconUrl(card, filters)}
-          elixirCost={card.elixirCost}
-          level={level >= 0 ? level : undefined}
-          nameColor={theme.text.primary}
-          lazyLoad
-        />
+        <div style={isSelected && dimSelected ? styles.dimmed : undefined}>
+          <CardTile
+            name={card.name}
+            iconUrl={pickerIconUrl(card, filters)}
+            elixirCost={card.elixirCost}
+            level={level >= 0 ? level : undefined}
+            nameColor={theme.text.primary}
+            lazyLoad
+          />
+        </div>
         {isSelected && (
-          <span style={{ ...styles.selectedMark, backgroundColor: selectedColor ?? theme.accent }} aria-hidden="true">
-            ✓
+          <span style={{ ...styles.selectedMark, backgroundColor: selectedColor ?? theme.accent, color: selectedMarkColor }} aria-hidden="true">
+            {selectedMark}
           </span>
         )}
       </button>
@@ -287,6 +300,7 @@ export default function CardPicker({
           </div>
         </div>
 
+        {topContent}
         <div style={{ ...styles.scrollViewport, padding: isMobile ? '12px' : '20px' }}>
           <div
             style={{
@@ -457,6 +471,9 @@ const styles = {
     outlineOffset: '2px',
     borderRadius: '12px',
   },
+  dimmed: {
+    filter: 'grayscale(1) brightness(0.6)',
+  },
   selectedMark: {
     position: 'absolute' as const,
     top: '-6px',
@@ -464,7 +481,6 @@ const styles = {
     width: '22px',
     height: '22px',
     borderRadius: '50%',
-    color: '#ffffff',
     fontSize: '13px',
     fontWeight: 800 as const,
     display: 'flex' as const,

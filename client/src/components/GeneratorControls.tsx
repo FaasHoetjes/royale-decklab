@@ -18,8 +18,8 @@ interface GeneratorControlsProps {
 }
 
 type PickerKind = 'ban' | 'require';
-type Menu = 'decks' | 'level' | 'add';
-type Tone = 'plain' | 'active' | 'ban' | 'require' | 'add';
+type Menu = 'decks' | 'level';
+type Tone = 'plain' | 'active' | 'add';
 
 const LOWEST_LEVEL_CHOICE = 10;
 const LEVEL_CHOICES: (number | null)[] = [
@@ -27,9 +27,11 @@ const LEVEL_CHOICES: (number | null)[] = [
   ...Array.from({ length: MAX_LEVEL - LOWEST_LEVEL_CHOICE + 1 }, (_, i) => LOWEST_LEVEL_CHOICE + i),
 ];
 const DECK_CHOICES = Array.from({ length: MAX_DECKS }, (_, i) => i + 1);
-// The picker outlines picked cards in these; the pills use the theme's --ban-text / --require-text.
-const BAN_COLOR = '#d64545';
-const REQUIRE_COLOR = '#1f8a4c';
+// Include uses the accent; Exclude stays grey with a ⊘, so the two read apart without extra colours.
+const RULES: Record<PickerKind, { label: string; subtitle: string; usedLabel: string }> = {
+  require: { label: 'Include', subtitle: 'Each of these cards goes in one of your decks.', usedLabel: 'excluded' },
+  ban: { label: 'Exclude', subtitle: 'Decks with these cards are skipped.', usedLabel: 'included' },
+};
 
 const decksLabel = (n: number) => `${n} deck${n === 1 ? '' : 's'}`;
 const levelLabel = (min: number | null) => (min == null ? 'Any level' : `Level ${min}+`);
@@ -48,16 +50,33 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
     savePickerPrefs({ filters: [...filters], sortIndex, descending });
   }, [filters, sortIndex, descending]);
 
+  // The phone pill row scrolls sideways; a fade on the right hints at the pills past the edge.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [moreRight, setMoreRight] = useState(false);
+  useEffect(() => {
+    const row = scrollRef.current;
+    if (!row) return;
+    const update = () => setMoreRight(row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+    update();
+    row.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(row);
+    return () => {
+      row.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [isMobile]);
+
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
   const ownedLevels = useMemo(() => cards.map(levelOf).filter((l): l is number => l != null), [cards]);
   const cardsLoaded = cards.length > 0;
 
   // Menus close on a click outside them or on Escape, which also returns focus to the pill.
-  const anchors = useRef<Record<Menu, HTMLSpanElement | null>>({ decks: null, level: null, add: null });
+  const anchors = useRef<Record<Menu, HTMLSpanElement | null>>({ decks: null, level: null });
   useEffect(() => {
     if (!menu) return;
     const anchor = anchors.current[menu];
-    anchor?.querySelector<HTMLElement>('[role="menu"] [role="menuitem"], [aria-checked="true"]')?.focus();
+    anchor?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     const onPointer = (e: PointerEvent) => {
       if (!anchor?.contains(e.target as Node)) setMenu(null);
     };
@@ -84,40 +103,54 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
     setSheetOpen(false);
     setPicker(kind);
   };
+  const cardName = (id: number) => cardById.get(id)?.name ?? `Card ${id}`;
 
   const tooLow = options.minLevel == null
     ? []
     : options.require.filter((id) => (levelOf(cardById.get(id)) ?? 0) < (options.minLevel ?? 0));
 
-  const cardPill = (kind: PickerKind, id: number) => {
-    const card = cardById.get(id);
-    const name = card?.name ?? `Card ${id}`;
+  // One pill per rule, showing its cards; it opens the picker straight away.
+  const rulePill = (kind: PickerKind) => {
+    const ids = options[kind];
+    const { label } = RULES[kind];
     return (
-      <span key={`${kind}-${id}`} className="gc-chip-in" style={{ ...pill(kind, isMobile), paddingLeft: '4px', cursor: 'default' }}>
-        {card ? (
-          <img src={cardIconUrl(card.iconUrls, 'normal')} alt="" style={{ ...styles.avatar, filter: kind === 'ban' ? 'grayscale(0.85)' : undefined }} />
-        ) : null}
-        {kind === 'ban' ? `No ${name}` : `With ${name}`}
-        <button
-          type="button"
-          onClick={() => toggleCard(kind, id)}
-          aria-label={kind === 'ban' ? `Allow ${name} again` : `Stop requiring ${name}`}
-          className="mobile-touch-hitbox"
-          style={styles.remove}
-        >
-          <CrossIcon />
-        </button>
-      </span>
+      <button
+        key={kind}
+        type="button"
+        className="gc-pill"
+        aria-haspopup="dialog"
+        aria-label={ids.length ? `${label}: ${ids.map(cardName).join(', ')}` : `${label} a card`}
+        disabled={!cardsLoaded}
+        onClick={() => openPicker(kind)}
+        style={{
+          ...pill(ids.length === 0 ? 'add' : kind === 'require' ? 'active' : 'plain', isMobile),
+          ...(ids.length ? { padding: '0 12px 0 6px' } : {}),
+        }}
+      >
+        {ids.length ? (
+          <span style={styles.stack} aria-hidden="true">
+            {ids.slice(0, 3).map((id, i) => (
+              <CardAvatar key={id} card={cardById.get(id)} dim={kind === 'ban'} style={i > 0 ? styles.stacked : undefined} />
+            ))}
+          </span>
+        ) : kind === 'require' ? (
+          <PlusIcon />
+        ) : (
+          <BanIcon />
+        )}
+        {label}
+        {ids.length > 0 && <span style={{ ...styles.count, ...(kind === 'ban' ? styles.countMuted : {}) }}>{ids.length}</span>}
+      </button>
     );
   };
-  const cardPills = [...options.ban.map((id) => cardPill('ban', id)), ...options.require.map((id) => cardPill('require', id))];
+  const rulePills = [rulePill('require'), rulePill('ban')];
 
-  const menuPill = (key: Menu, label: ReactNode, tone: Tone, content: ReactNode, width: number, hasPopup: 'dialog' | 'menu' = 'dialog') => (
+  const menuPill = (key: Menu, label: ReactNode, tone: Tone, content: ReactNode, width: number) => (
     <span ref={(el) => { anchors.current[key] = el; }} style={styles.anchor}>
       <button
         type="button"
         className="gc-pill"
-        aria-haspopup={hasPopup}
+        aria-haspopup="dialog"
         aria-expanded={menu === key}
         disabled={key !== 'decks' && !cardsLoaded}
         onClick={() => setMenu((m) => (m === key ? null : key))}
@@ -143,7 +176,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
   return (
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
       {isMobile ? (
-        <div role="group" aria-label="Customize your decks" className="gc-scroll" style={styles.scrollRow}>
+        <div ref={scrollRef} role="group" aria-label="Customize your decks" className="gc-scroll" style={{ ...styles.scrollRow, ...(moreRight && styles.scrollFade) }}>
           <button type="button" className="gc-pill" onClick={() => setSheetOpen(true)} aria-label="Customize your decks" style={pill('plain', true)}>
             <SlidersIcon />
             Customize
@@ -154,7 +187,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           <button type="button" className="gc-pill" onClick={() => setSheetOpen(true)} style={pill(options.minLevel != null ? 'active' : 'plain', true)}>
             {levelLabel(options.minLevel)}
           </button>
-          {cardPills}
+          {rulePills}
           {reset}
         </div>
       ) : (
@@ -184,27 +217,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
             </>,
             360
           )}
-          {cardPills}
-          {menuPill(
-            'add',
-            <>
-              <PlusIcon />
-              Add card
-            </>,
-            'add',
-            <div role="menu" aria-label="Add a card rule">
-              <button type="button" role="menuitem" className="gc-option" onClick={() => openPicker('require')} style={styles.option}>
-                <span style={{ ...styles.optionIcon, color: 'var(--require-text)' }}><PlusIcon /></span>
-                Always use a card…
-              </button>
-              <button type="button" role="menuitem" className="gc-option" onClick={() => openPicker('ban')} style={styles.option}>
-                <span style={{ ...styles.optionIcon, color: 'var(--ban-text)' }}><BanIcon /></span>
-                Never use a card…
-              </button>
-            </div>,
-            230,
-            'menu'
-          )}
+          {rulePills}
           <span style={styles.status}>
             {isUpdating && <span style={styles.updating}>Updating…</span>}
             {reset}
@@ -216,7 +229,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
         <p style={styles.warning} role="status">
           {tooLow.map((id) => `${cardById.get(id)?.name ?? 'A card'} (level ${levelOf(cardById.get(id))})`).join(', ')}{' '}
           {tooLow.length === 1 ? 'is' : 'are'} below your minimum level of {options.minLevel}, so no deck can include{' '}
-          {tooLow.length === 1 ? 'it' : 'them'}. Lower the minimum level or remove the requirement.
+          {tooLow.length === 1 ? 'it' : 'them'}. Lower the minimum level or stop including {tooLow.length === 1 ? 'it' : 'them'}.
         </p>
       )}
 
@@ -250,14 +263,28 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
         <CardPicker
           cards={cards}
           usedIds={new Set(picker === 'ban' ? options.require : options.ban)}
-          usedLabel={picker === 'ban' ? 'required' : 'banned'}
+          usedLabel={RULES[picker].usedLabel}
           selectedIds={new Set(options[picker])}
-          selectedColor={picker === 'ban' ? BAN_COLOR : REQUIRE_COLOR}
-          title={picker === 'ban' ? 'Never use' : 'Always use'}
-          subtitle={
-            picker === 'ban'
-              ? 'Decks with these cards are never picked.'
-              : 'Each of these cards is used in one of your decks.'
+          selectedColor={picker === 'ban' ? 'var(--text-secondary)' : 'var(--accent)'}
+          selectedMarkColor={picker === 'ban' ? 'var(--bg-primary)' : 'var(--on-accent)'}
+          selectedMark={picker === 'ban' ? <BanIcon /> : <PlusIcon />}
+          dimSelected={picker === 'ban'}
+          title={RULES[picker].label}
+          subtitle={RULES[picker].subtitle}
+          topContent={
+            options[picker].length > 0 && (
+              <div style={styles.picks} aria-label={`${RULES[picker].label}d cards`}>
+                {options[picker].map((id) => (
+                  <span key={id} style={styles.pick}>
+                    <CardAvatar card={cardById.get(id)} dim={picker === 'ban'} small />
+                    {cardName(id)}
+                    <button type="button" onClick={() => toggleCard(picker, id)} aria-label={`Remove ${cardName(id)}`} className="mobile-touch-hitbox" style={styles.remove}>
+                      <CrossIcon />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )
           }
           onSelect={(id) => toggleCard(picker, id)}
           onClose={() => setPicker(null)}
@@ -405,12 +432,12 @@ function OptionsSheet({ options, levels, cardsLoaded, canReset, onApply, onPickC
         <div style={{ ...styles.label, marginTop: '18px' }}>Cards</div>
         <div style={styles.cardButtons}>
           <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('require', { decks, minLevel })} style={styles.cardButton}>
-            <span style={{ color: 'var(--require-text)' }}><PlusIcon /></span>
-            Always use…
+            <PlusIcon />
+            Include…
           </button>
           <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('ban', { decks, minLevel })} style={styles.cardButton}>
-            <span style={{ color: 'var(--ban-text)' }}><BanIcon /></span>
-            Never use…
+            <BanIcon />
+            Exclude…
           </button>
         </div>
 
@@ -456,22 +483,23 @@ function pill(tone: Tone, isMobile: boolean): CSSProperties {
         borderColor: 'color-mix(in srgb, var(--accent) 50%, transparent)',
         backgroundColor: 'color-mix(in srgb, var(--accent) 13%, var(--bg-secondary))',
       };
-    case 'ban':
-    case 'require': {
-      const ink = tone === 'ban' ? 'var(--ban-text)' : 'var(--require-text)';
-      return {
-        ...base,
-        color: ink,
-        borderColor: `color-mix(in srgb, ${ink} 40%, transparent)`,
-        backgroundColor: `color-mix(in srgb, ${ink} 12%, var(--bg-secondary))`,
-        paddingRight: '4px',
-      };
-    }
     case 'add':
       return { ...base, borderStyle: 'dashed', backgroundColor: 'transparent' };
     default:
       return base;
   }
+}
+
+function CardAvatar({ card, dim, small, style }: { card: BuilderCard | undefined; dim?: boolean; small?: boolean; style?: CSSProperties }) {
+  const size = small ? '24px' : '28px';
+  if (!card) return <span style={{ ...styles.avatar, width: size, height: size, backgroundColor: 'var(--bg-tertiary)', ...style }} />;
+  return (
+    <img
+      src={cardIconUrl(card.iconUrls, 'normal')}
+      alt=""
+      style={{ ...styles.avatar, width: size, height: size, filter: dim ? 'grayscale(1) brightness(0.8)' : undefined, ...style }}
+    />
+  );
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -530,8 +558,10 @@ const styles = {
     gap: '8px',
     overflowX: 'auto' as const,
     paddingBottom: '2px',
-    WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
-    maskImage: 'linear-gradient(90deg, #000 calc(100% - 28px), transparent)',
+  },
+  scrollFade: {
+    WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 56px), transparent)',
+    maskImage: 'linear-gradient(90deg, #000 calc(100% - 56px), transparent)',
   },
   anchor: {
     position: 'relative' as const,
@@ -556,35 +586,14 @@ const styles = {
     margin: '2px 4px 10px',
   },
   label: {
-    fontSize: '11px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.4px',
-    textTransform: 'uppercase' as const,
-    color: 'var(--stat-label)',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    color: 'var(--text-secondary)',
   },
   keptCount: {
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     color: 'var(--accent)',
-  },
-  option: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '12px',
-    width: '100%',
-    padding: '10px',
-    border: 0,
-    borderRadius: '10px',
-    background: 'none',
-    color: 'var(--text-primary)',
-    fontSize: '14px',
-    textAlign: 'left' as const,
-    cursor: 'pointer',
-  },
-  optionIcon: {
-    display: 'inline-flex' as const,
-    width: '22px',
-    justifyContent: 'center' as const,
   },
   keptTrack: {
     height: '6px',
@@ -605,6 +614,50 @@ const styles = {
     borderRadius: '50%',
     objectFit: 'cover' as const,
     objectPosition: 'top',
+  },
+  stack: {
+    display: 'inline-flex' as const,
+  },
+  stacked: {
+    marginLeft: '-10px',
+    boxShadow: '0 0 0 2px var(--bg-secondary)',
+  },
+  count: {
+    minWidth: '20px',
+    height: '20px',
+    padding: '0 6px',
+    borderRadius: '99px',
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: 'var(--accent)',
+    color: 'var(--on-accent)',
+    fontSize: '12px',
+    fontWeight: 700 as const,
+  },
+  countMuted: {
+    backgroundColor: 'var(--bg-tertiary)',
+    color: 'var(--text-primary)',
+  },
+  picks: {
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    gap: '8px',
+    padding: '12px 20px',
+    borderBottom: '1px solid var(--border)',
+  },
+  pick: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '6px',
+    height: '34px',
+    padding: '0 2px 0 4px',
+    borderRadius: '99px',
+    border: '1px solid var(--border)',
+    backgroundColor: 'var(--bg-tertiary)',
+    color: 'var(--text-primary)',
+    fontSize: '13px',
+    fontWeight: 600 as const,
   },
   remove: {
     width: '28px',
@@ -635,7 +688,7 @@ const styles = {
     background: 'none',
     color: 'var(--accent)',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
     padding: '4px 6px',
   },
@@ -681,7 +734,7 @@ const styles = {
   sheetTitle: {
     margin: 0,
     fontSize: '18px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
   },
   close: {
     display: 'inline-flex' as const,
@@ -714,7 +767,7 @@ const styles = {
     border: 0,
     background: 'none',
     fontSize: '16px',
-    fontWeight: 800 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
     transition: 'color 0.2s ease',
   },
@@ -752,7 +805,7 @@ const styles = {
     backgroundColor: 'var(--accent)',
     color: 'var(--on-accent)',
     fontSize: '16px',
-    fontWeight: 800 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
   },
 };

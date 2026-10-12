@@ -207,7 +207,7 @@ export default function WarDeckResult({
           {decks.length === 0
             ? 'No lineup fits these options. '
             : `Only ${decks.length} of ${options.decks} decks ${decks.length === 1 ? 'fits' : 'fit'} these options. `}
-          Try a lower minimum level, fewer required cards or fewer bans.
+          Try a lower minimum level, or fewer included or excluded cards.
         </p>
       )}
 
