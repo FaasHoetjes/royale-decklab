@@ -32,6 +32,17 @@ export function avgElixir(cards: Array<{ elixirCost?: number }>): number {
   return cards.reduce((sum, c) => sum + (c.elixirCost ?? 0), 0) / cards.length;
 }
 
+/** Which version decides a card's slot: the meta deck's Evolution/Hero, else the player's own. */
+export function slotVersionOf(
+  metaVersions: CardVersionRef[] | undefined,
+  playerVersions: CardVersionRef[] | undefined
+): (cardId: number) => CardVersion {
+  return (cardId) => {
+    const meta = metaVersions?.find((v) => v.cardId === cardId)?.version;
+    return meta && meta !== 'normal' ? meta : versionOf(playerVersions, cardId);
+  };
+}
+
 /** In-game slots are positional: 1 = evo, 2 = hero, 3 = whichever is left. */
 export function orderBySlots<T extends { id: number }>(
   cards: T[],

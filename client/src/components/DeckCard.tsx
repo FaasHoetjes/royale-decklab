@@ -1,6 +1,6 @@
 import React from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, displayLevel, avgElixir, orderBySlots, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, displayLevel, avgElixir, orderBySlots, slotVersionOf, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck, featuredCard } from '../lib/archetypes';
 import { buildDeckLink } from '../lib/deckLink';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -49,10 +49,7 @@ export default function DeckCard({
 }: DeckCardProps) {
   const isMobile = useIsMobile();
 
-  const slotVersion = (cardId: number) => {
-    const meta = metaCardVersions?.find((v) => v.cardId === cardId)?.version;
-    return meta && meta !== 'normal' ? meta : versionOf(cardVersions, cardId);
-  };
+  const slotVersion = slotVersionOf(metaCardVersions, cardVersions);
 
   const orderedCards = orderBySlots(cards, slotVersion);
   const deckLink = buildDeckLink(orderedCards.map((c) => c.id));
