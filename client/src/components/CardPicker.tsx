@@ -346,12 +346,12 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '20px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     lineHeight: 1.1,
   },
   foundText: {
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     marginTop: '2px',
   },
   controls: {
@@ -380,7 +380,7 @@ const styles = {
     boxSizing: 'border-box' as const,
     borderRadius: '8px',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -393,7 +393,7 @@ const styles = {
     padding: '0 4px',
     borderRadius: '8px',
     fontSize: '11px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   arrowButton: {
@@ -418,7 +418,7 @@ const styles = {
     border: 'none',
     borderRadius: '8px',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },

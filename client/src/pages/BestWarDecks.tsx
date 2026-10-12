@@ -116,10 +116,10 @@ export default function BestWarDecks() {
               <div style={{ ...styles.setHeader, borderBottomColor: theme.border }}>
                 <div style={styles.setRank}>
                   <span style={{ ...styles.setRankNumber, color: theme.accent }}>#{setIdx + 1}</span>
-                  <span style={{ ...styles.setRankLabel, color: theme.text.secondary }}>War Deck Set</span>
+                  <span style={{ ...styles.setRankLabel, color: theme.text.secondary }}>War deck set</span>
                 </div>
                 <div style={styles.setScore}>
-                  <div style={{ ...styles.setScoreLabel, color: theme.text.secondary }}>Total Score</div>
+                  <div style={{ ...styles.setScoreLabel, color: theme.text.secondary }}>Total score</div>
                   <div style={{ ...styles.setScoreValue, color: theme.accent }}>{set.totalScore.toFixed(3)}</div>
                 </div>
               </div>
@@ -201,30 +201,26 @@ const styles = {
     gap: '10px',
   },
   setRankNumber: {
-    fontSize: '28px',
-    fontWeight: 900 as const,
+    fontSize: '26px',
+    fontWeight: 700 as const,
     lineHeight: 1,
-    letterSpacing: '-0.5px',
+    letterSpacing: '-0.3px',
   },
   setRankLabel: {
-    fontSize: '12px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.8px',
-    textTransform: 'uppercase' as const,
+    fontSize: '14px',
+    fontWeight: 500 as const,
   },
   setScore: {
     textAlign: 'right' as const,
   },
   setScoreLabel: {
-    fontSize: 'var(--metric-label-font-size)',
-    fontWeight: 600 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
+    fontSize: '12px',
+    fontWeight: 500 as const,
     marginBottom: '2px',
   },
   setScoreValue: {
     fontSize: '20px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     lineHeight: 1,
   },
   rowList: {

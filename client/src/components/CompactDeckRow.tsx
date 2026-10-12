@@ -49,12 +49,13 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
   const metaScoreStat = (
     <div style={styles.stat}>
       <div style={{ ...styles.statLabel, color: theme.text.secondary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-        Meta Score
+        Meta score
         <InfoTip ariaLabel="Meta score details" color={theme.text.secondary} width={210}>
           Cautious win rate: each record is weighed against 80 average games and rated at the level the deck is 75% likely to reach, so a few lucky wins can't outrank a proven deck.
         </InfoTip>
       </div>
-      <div style={{ ...styles.statValue, color: theme.text.primary }}>{deck.metaScore.toFixed(3)}</div>
+      {/* The meta score is what the sets are ranked by, so it's the one number that stands out. */}
+      <div style={{ ...styles.statValue, ...styles.leadValue, color: accent }}>{deck.metaScore.toFixed(3)}</div>
     </div>
   );
 
@@ -64,8 +65,8 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
         <div style={styles.panelHeader}>
           <h3 style={{ ...styles.panelTitle, color: theme.text.primary }}>Deck {deckNumber}</h3>
           <div style={styles.panelHeaderStats}>
-            <MobileStat label="Win" value={`${(deck.winRate * 100).toFixed(1)}%`} color={accent} theme={theme} />
-            <MobileStat label="Meta" value={deck.metaScore.toFixed(3)} color={theme.text.primary} theme={theme} info />
+            <MobileStat label="Win" value={`${(deck.winRate * 100).toFixed(1)}%`} color={theme.text.primary} theme={theme} />
+            <MobileStat label="Meta" value={deck.metaScore.toFixed(3)} color={accent} theme={theme} info lead />
             <span style={{ ...styles.mobileMetric, color: theme.text.secondary }}>
               <span style={styles.mobileMetricLabel}>Avg</span>
               <span style={{ ...styles.mobileMetricValue, color: theme.text.primary }}>
@@ -101,9 +102,9 @@ export default function CompactDeckRow({ deck, theme, isMobile, deckNumber }: Co
       <div style={styles.desktopGrid}>{cardTiles}</div>
 
       <div style={styles.stats}>
-        <Stat label="Win Rate" value={`${(deck.winRate * 100).toFixed(1)}%`} color={accent} theme={theme} />
+        <Stat label="Win rate" value={`${(deck.winRate * 100).toFixed(1)}%`} color={theme.text.primary} theme={theme} />
         {metaScoreStat}
-        <Stat label="Avg Elixir" value={avgElixir(deck.cards).toFixed(1)} color={theme.text.primary} theme={theme} />
+        <Stat label="Avg elixir" value={avgElixir(deck.cards).toFixed(1)} color={theme.text.primary} theme={theme} />
       </div>
 
       {openInGameLink({
@@ -131,12 +132,15 @@ function MobileStat({
   color,
   theme,
   info = false,
+  lead = false,
 }: {
   label: string;
   value: string;
   color: string;
   theme: Theme;
   info?: boolean;
+  /** The one number in the row that should stand out. */
+  lead?: boolean;
 }) {
   return (
     <span style={{ ...styles.mobileMetric, color: theme.text.secondary }}>
@@ -153,7 +157,7 @@ function MobileStat({
           </InfoTip>
         )}
       </span>
-      <span style={{ ...styles.mobileMetricValue, color }}>{value}</span>
+      <span style={{ ...styles.mobileMetricValue, ...(lead ? styles.leadValue : {}), color }}>{value}</span>
     </span>
   );
 }
@@ -201,17 +205,15 @@ const styles = {
     alignItems: 'center' as const,
     gap: '3px',
     fontSize: '11px',
-    fontWeight: 600 as const,
-    letterSpacing: '0.35px',
+    fontWeight: 500 as const,
     lineHeight: 1,
-    textTransform: 'uppercase' as const,
   },
   mobileMetricValue: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '3px',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     lineHeight: 1.1,
   },
   mobileGrid: {
@@ -235,7 +237,7 @@ const styles = {
     border: '1px solid',
     borderRadius: '10px',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     textDecoration: 'none',
   },
   cardCell: {
@@ -251,16 +253,17 @@ const styles = {
     textAlign: 'center' as const,
   },
   statLabel: {
-    fontSize: 'var(--metric-label-font-size)',
-    fontWeight: 600 as const,
-    letterSpacing: '0.4px',
-    textTransform: 'uppercase' as const,
+    fontSize: '12px',
+    fontWeight: 500 as const,
     marginBottom: '3px',
   },
   statValue: {
     fontSize: '15px',
-    fontWeight: 800 as const,
+    fontWeight: 600 as const,
     lineHeight: 1.1,
+  },
+  leadValue: {
+    fontWeight: 700 as const,
   },
   openInGame: {
     flexShrink: 0,

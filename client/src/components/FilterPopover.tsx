@@ -108,7 +108,7 @@ const styles = {
     border: 'none',
     borderRadius: 0,
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
   },
 };

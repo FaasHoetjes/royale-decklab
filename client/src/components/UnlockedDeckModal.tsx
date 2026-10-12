@@ -70,9 +70,9 @@ export default function UnlockedDeckModal({ deck, cardName, onClose }: UnlockedD
         )}
 
         <div style={{ ...styles.stats, backgroundColor: theme.statsBg, borderColor: theme.statsBorder }}>
-          <Stat label="Win Rate" value={`${(deck.winRate * 100).toFixed(1)}%`} valueColor={theme.accent} />
-          <Stat label="Meta Score" value={deck.metaScore.toFixed(3)} valueColor={theme.text} border />
-          <Stat label="Avg Elixir" value={avgElixir(deck.cards).toFixed(1)} valueColor={theme.text} border />
+          <Stat label="Win rate" value={`${(deck.winRate * 100).toFixed(1)}%`} valueColor={theme.text} />
+          <Stat label="Meta score" value={deck.metaScore.toFixed(3)} valueColor={theme.accent} border lead />
+          <Stat label="Avg elixir" value={avgElixir(deck.cards).toFixed(1)} valueColor={theme.text} border />
         </div>
 
         <div style={{ ...styles.grid, gap: isMobile ? '10px 8px' : '14px' }}>
@@ -111,16 +111,19 @@ function Stat({
   value,
   valueColor,
   border,
+  lead,
 }: {
   label: string;
   value: string;
   valueColor: string;
   border?: boolean;
+  /** The one number that should stand out. */
+  lead?: boolean;
 }) {
   return (
     <div style={{ ...styles.stat, borderLeft: border ? `1px solid ${theme.divider}` : undefined }}>
       <span style={{ ...styles.statLabel, color: theme.subtext }}>{label}</span>
-      <span style={{ ...styles.statValue, color: valueColor }}>{value}</span>
+      <span style={{ ...styles.statValue, ...(lead ? styles.leadValue : {}), color: valueColor }}>{value}</span>
     </div>
   );
 }
@@ -195,16 +198,17 @@ const styles = {
     flex: 1,
   },
   statLabel: {
-    fontSize: '11px',
+    fontSize: '12px',
     marginBottom: '5px',
-    fontWeight: 600 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
+    fontWeight: 500 as const,
   },
   statValue: {
     fontSize: '20px',
-    fontWeight: 800 as const,
+    fontWeight: 600 as const,
     lineHeight: 1.1,
+  },
+  leadValue: {
+    fontWeight: 700 as const,
   },
   grid: {
     display: 'grid' as const,
@@ -221,7 +225,7 @@ const styles = {
     border: '1px solid',
     borderRadius: '10px',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     textDecoration: 'none',
     cursor: 'pointer' as const,
   },

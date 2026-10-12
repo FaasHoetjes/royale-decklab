@@ -76,7 +76,7 @@ const styles = {
     padding: '11px',
     borderRadius: '10px',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
   },
   circleWrap: {
     position: 'relative' as const,

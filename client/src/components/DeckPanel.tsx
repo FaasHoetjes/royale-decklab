@@ -283,7 +283,7 @@ const styles = {
     alignItems: 'center' as const,
     gap: '4px',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
   },
   score: {
     display: 'inline-flex' as const,
@@ -296,7 +296,7 @@ const styles = {
   },
   tooltipLink: {
     color: 'var(--accent-bright)',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     textDecoration: 'underline' as const,
   },
   slotGrid: {
@@ -318,7 +318,7 @@ const styles = {
     border: '1px solid',
     borderRadius: '10px',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     textDecoration: 'none',
     whiteSpace: 'nowrap' as const,
     cursor: 'pointer' as const,

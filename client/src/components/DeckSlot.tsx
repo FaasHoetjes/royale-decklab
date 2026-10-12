@@ -184,7 +184,7 @@ const styles = {
     borderRadius: '999px',
     color: '#ffffff',
     fontSize: 'var(--version-toggle-font-size)',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     letterSpacing: '0.3px',
     cursor: 'pointer',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.5)',

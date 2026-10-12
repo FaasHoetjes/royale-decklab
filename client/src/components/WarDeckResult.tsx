@@ -340,7 +340,7 @@ const styles = {
   },
   eyebrow: {
     fontSize: '12px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     letterSpacing: '2px',
     opacity: 0.8,
   },
@@ -434,7 +434,7 @@ const styles = {
   emptyTitle: {
     margin: '22px 0 6px',
     fontSize: '20px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     color: 'var(--text-primary)',
   },
   emptyText: {
@@ -465,7 +465,7 @@ const styles = {
     backgroundColor: 'var(--bg-secondary)',
     color: 'var(--text-primary)',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     textDecoration: 'none',
     cursor: 'pointer',
   },
