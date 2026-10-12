@@ -6,7 +6,7 @@ import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, type GeneratorOptions } fro
 import DeckCard from './DeckCard';
 import { TrophyIcon } from './navIcons';
 import GeneratorControls from './GeneratorControls';
-import InfoTip from './InfoTip';
+import GeneratorHeader from './GeneratorHeader';
 import SwapDeckModal from './SwapDeckModal';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -131,55 +131,12 @@ export default function WarDeckResult({
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
-      <div
-        style={{
-          ...styles.header,
-          padding: isMobile ? '18px 20px' : '28px 32px',
-          marginBottom: isMobile ? '16px' : '24px',
-          gap: isMobile ? '12px' : '20px',
-          flexWrap: isMobile ? 'nowrap' : 'wrap',
-          background: theme.headerGradient,
-          border: `1px solid ${theme.headerBorder}`,
-          boxShadow: theme.headerShadow,
-          color: theme.title,
-        }}
-      >
-        <div style={{ ...styles.headerInfo, ...(isMobile ? styles.headerInfoMobile : {}) }}>
-          <span style={{ ...styles.eyebrow, color: theme.muted, opacity: 1 }}>WAR DECKS</span>
-          <h2 style={{ ...styles.title, fontSize: isMobile ? '24px' : '32px', color: theme.title }}>{playerName}</h2>
-          <span style={{ ...styles.subtitle, color: theme.muted, opacity: 1 }}>
-            {slots.length === 0
-              ? 'No decks fit your options'
-              : `${slots.length} battle-ready deck${slots.length === 1 ? '' : 's'} · no shared cards`}
-          </span>
-        </div>
-        <div style={{ ...styles.scoreBlock, flexShrink: isMobile ? 0 : undefined }}>
-          <span style={{ ...styles.scoreLabel, color: theme.muted, opacity: 1 }}>
-            Total Score
-            <InfoTip
-              ariaLabel="How the total score is derived"
-              color={theme.muted}
-              placement="bottom"
-              align="right"
-              interactive={isMobile}
-            >
-              The combined Player Score of your recommended decks.{' '}
-              {isMobile ? (
-                <>
-                  See the{' '}
-                  <Link to="/faq#player-score" style={styles.tooltipLink}>
-                    FAQ
-                  </Link>{' '}
-                  for how each individual score is calculated.
-                </>
-              ) : (
-                <>See a deck's Player Score tooltip for how each individual score is calculated.</>
-              )}
-            </InfoTip>
-          </span>
-          <span style={{ ...styles.scoreValue, fontSize: isMobile ? '24px' : '32px', color: theme.accent }}>{liveTotalScore.toFixed(3)}</span>
-        </div>
-      </div>
+      <GeneratorHeader
+        playerName={playerName}
+        decks={slots.map(deckAt)}
+        totalScore={liveTotalScore}
+        isMobile={isMobile}
+      />
 
       <GeneratorControls
         options={options}
@@ -268,15 +225,6 @@ export default function WarDeckResult({
   );
 }
 
-const theme = {
-  headerGradient: 'var(--banner-bg)',
-  headerBorder: 'var(--banner-border)',
-  headerShadow: 'var(--banner-shadow)',
-  muted: 'var(--banner-muted)',
-  title: 'var(--banner-title)',
-  accent: 'var(--accent)',
-};
-
 /** Shown when not one popular war deck can be built from the player's cards. */
 function NoDecks({ onNewSearch, isMobile }: { onNewSearch: () => void; isMobile: boolean }) {
   return (
@@ -317,73 +265,6 @@ const styles = {
     maxWidth: '900px',
     margin: '0 auto',
   },
-  header: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: '20px',
-    flexWrap: 'wrap' as const,
-    marginBottom: '40px',
-    padding: '28px 32px',
-    borderRadius: '20px',
-    color: '#ffffff',
-    boxShadow: '0 10px 30px rgba(0, 123, 255, 0.25)',
-  },
-  headerInfo: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    gap: '4px',
-  },
-  headerInfoMobile: {
-    flex: 1,
-    minWidth: 0,
-  },
-  eyebrow: {
-    fontSize: '12px',
-    fontWeight: 600 as const,
-    letterSpacing: '2px',
-    opacity: 0.8,
-  },
-  title: {
-    margin: 0,
-    fontSize: '32px',
-    fontWeight: 800 as const,
-    lineHeight: 1.1,
-    color: '#ffffff',
-  },
-  subtitle: {
-    fontSize: '13px',
-    fontWeight: 500 as const,
-    opacity: 0.85,
-    marginTop: '2px',
-  },
-  scoreBlock: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    alignItems: 'flex-end' as const,
-  },
-  scoreLabel: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    gap: '5px',
-    fontSize: '11px',
-    fontWeight: 700 as const,
-    letterSpacing: '1px',
-    textTransform: 'uppercase' as const,
-    opacity: 0.85,
-  },
-  tooltipLink: {
-    color: 'var(--accent-bright)',
-    fontWeight: 700 as const,
-    textDecoration: 'underline' as const,
-  },
-  scoreValue: {
-    fontSize: '32px',
-    fontWeight: 800 as const,
-    lineHeight: 1.1,
-    color: '#ffffff',
-    marginTop: '2px',
-  },
   decksGrid: {
     display: 'grid' as const,
     gridTemplateColumns: '1fr',
@@ -397,7 +278,7 @@ const styles = {
     padding: 0,
     font: 'inherit',
     color: 'var(--accent)',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     textDecoration: 'underline' as const,
     cursor: 'pointer',
   },

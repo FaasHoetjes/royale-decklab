@@ -11,6 +11,10 @@ interface CardTileProps {
   level?: number | null;
   showName?: boolean;
   nameColor?: string;
+  /** Overrides the shared card-name size, for places with roomier tiles. */
+  nameSize?: string;
+  /** Lets long names wrap instead of being cut off, up to this many lines. */
+  nameLines?: number;
   lazyLoad?: boolean;
   fetchPriority?: 'high' | 'low' | 'auto';
   artStyle?: CSSProperties;
@@ -25,6 +29,8 @@ export default function CardTile({
   level,
   showName = true,
   nameColor,
+  nameSize,
+  nameLines = 1,
   lazyLoad,
   fetchPriority,
   artStyle,
@@ -64,9 +70,20 @@ export default function CardTile({
         {level != null && <div style={styles.level}>Level {level}</div>}
         {children}
       </div>
-      {showName && <div style={{ ...styles.name, color: nameColor }}>{name}</div>}
+      {showName && <div style={{ ...styles.name, color: nameColor, ...(nameSize && { fontSize: nameSize }), ...(nameLines > 1 && wrappedName(nameLines)) }}>{name}</div>}
     </>
   );
+}
+
+function wrappedName(lines: number): CSSProperties {
+  return {
+    whiteSpace: 'normal',
+    display: '-webkit-box',
+    WebkitLineClamp: lines,
+    WebkitBoxOrient: 'vertical',
+    lineHeight: 1.15,
+    minHeight: `${lines * 1.15}em`,
+  };
 }
 
 function placeholderInitials(name: string): string {

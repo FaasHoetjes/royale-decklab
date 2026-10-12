@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, displayLevel, avgElixir, deckArchetype, orderBySlots, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, displayLevel, avgElixir, orderBySlots, type CardVersionRef } from '../lib/cardDisplay';
+import { classifyDeck, featuredCard } from '../lib/archetypes';
 import { buildDeckLink } from '../lib/deckLink';
 import { useIsMobile } from '../hooks/useIsMobile';
 import CardTile from './CardTile';
@@ -27,6 +28,7 @@ interface DeckCardProps {
   onToggleLock?: () => void;
 }
 
+/** One generated deck: a banner named after its win condition, its eight cards, and its actions. */
 export default function DeckCard({
   cards,
   metaWinRate,
@@ -54,87 +56,79 @@ export default function DeckCard({
 
   const orderedCards = orderBySlots(cards, slotVersion);
   const deckLink = buildDeckLink(orderedCards.map((c) => c.id));
+  const archetype = classifyDeck(cards);
+  const featured = featuredCard(cards);
+  const featuredArt = featured ? cardIconUrl(featured.iconUrls, versionOf(cardVersions, featured.id)) : '';
 
   return (
-    <div className="deck-card" style={{ ...styles.container, padding: isMobile ? '16px' : '24px', backgroundColor: theme.containerBg, borderColor: locked ? theme.lockedBorder : theme.containerBorder, boxShadow: locked ? `0 0 0 1px ${theme.lockedBorder}, ${theme.containerShadow}` : theme.containerShadow }}>
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h3 style={{ ...styles.headerTitle, color: theme.headerText }}>Deck {deckNumber}</h3>
-          {!isMobile && (
-            <DeckLinkAction
-              link={deckLink}
-              isMobile={false}
-              className="deck-swap-btn"
-              style={{ ...styles.openInGame, backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }}
-              label="Copy deck link"
+    <div
+      className="deck-card"
+      style={{
+        ...styles.container,
+        borderColor: locked ? theme.lockedBorder : theme.containerBorder,
+        boxShadow: locked ? `0 0 0 1px ${theme.lockedBorder}, ${theme.containerShadow}` : theme.containerShadow,
+      }}
+    >
+      <div style={{ ...styles.banner, padding: isMobile ? '16px 16px 18px' : '18px 24px' }}>
+        {/* Art layers are clipped on their own, so the stat tooltips can still overflow the banner. */}
+        <div style={styles.bannerArt} aria-hidden="true">
+          {featuredArt && <img src={featuredArt} alt="" style={styles.bannerBlur} />}
+          <div style={styles.bannerShade} />
+          {featuredArt && (
+            <img
+              src={featuredArt}
+              alt=""
+              style={{ ...styles.bannerCard, width: isMobile ? '78px' : '108px', right: isMobile ? '14px' : '26px' }}
             />
           )}
-          {onToggleLock && (
-            <button
-              type="button"
-              onClick={onToggleLock}
-              aria-pressed={!!locked}
-              aria-label={locked ? `Unlock deck ${deckNumber}` : `Lock deck ${deckNumber}`}
-              title={locked ? 'Locked: this deck stays when you change options. Click to unlock.' : 'Lock this deck: keep it and re-pick the other decks around it'}
-              className="mobile-touch-target"
-              style={{
-                ...styles.lockButton,
-                ...(locked
-                  ? { backgroundColor: theme.lockedBorder, color: theme.lockedText, borderColor: theme.lockedBorder }
-                  : { backgroundColor: theme.openInGameBg, color: theme.openInGameText, borderColor: theme.openInGameBorder }),
-              }}
-            >
-              <LockIcon locked={!!locked} />
-            </button>
-          )}
         </div>
-        <span style={{ ...styles.archetypeBadge, backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, color: theme.badgeText }}>
-          {deckArchetype(cards)}
-        </span>
-      </div>
 
-      <div style={{ ...styles.stats, backgroundColor: theme.statsBg, borderColor: theme.statsBorder }}>
-        <div style={{ ...styles.stat, position: 'relative' as const }}>
-          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
-            Win Rate
-            {!isMobile && (
-              <InfoTip ariaLabel="Win rate details" color={theme.statsLabel}>
-                <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
-                <br />
-                Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
-                <br />
-                Ranking uses a confidence-adjusted version of this so small-sample decks don't dominate.
-              </InfoTip>
-            )}
-          </span>
-          <span style={{ ...styles.statValue, color: theme.statsValueAccent }}>{(metaWinRate * 100).toFixed(1)}%</span>
-          <span style={{ ...styles.statSubtext, color: theme.statsLabel }}>{uses} game{uses === 1 ? '' : 's'}</span>
-        </div>
-        <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}`, position: 'relative' as const }}>
-          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>
-            {scoreLabel ?? 'Player Score'}
-            {!isMobile && (
-              <InfoTip ariaLabel="How the score is derived" color={theme.statsLabel}>
-                {scoreTooltip ?? (
-                  <>
-                    <strong>How well this meta deck fits your collection.</strong>
-                    <br />
-                    Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
-                  </>
-                )}
-              </InfoTip>
-            )}
-          </span>
-          <span style={{ ...styles.statValue, color: theme.statsValue }}>{playerScore.toFixed(3)}</span>
-        </div>
-        <div style={{ ...styles.stat, borderLeft: `1px solid ${theme.divider}` }}>
-          <span style={{ ...styles.statLabel, color: theme.statsLabel }}>Avg Elixir</span>
-          <span style={{ ...styles.statValue, color: theme.statsValue }}>{avgElixir(cards).toFixed(1)}</span>
+        <span style={styles.deckNumber}>Deck {deckNumber}</span>
+        <h3 style={{ ...styles.name, fontSize: isMobile ? '21px' : '26px', paddingRight: isMobile ? '84px' : '130px' }}>{archetype.name}</h3>
+
+        {/* Label over value in equal columns, so each number sits in the same spot on every deck. */}
+        <div style={{ ...styles.stats, paddingRight: isMobile ? '84px' : '130px' }}>
+          <div style={{ ...styles.stat, paddingRight: isMobile ? '12px' : '22px', borderLeft: 0 }}>
+            <span style={styles.statLabel}>
+              {scoreLabel ?? 'Score'}
+              {!isMobile && (
+                <InfoTip ariaLabel="How the score is derived" color={theme.bannerMuted} placement="bottom">
+                  {scoreTooltip ?? (
+                    <>
+                      <strong>How well this meta deck fits your collection.</strong>
+                      <br />
+                      Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
+                    </>
+                  )}
+                </InfoTip>
+              )}
+            </span>
+            <span style={{ ...styles.statValue, fontSize: isMobile ? '16px' : '19px' }}>{playerScore.toFixed(3)}</span>
+          </div>
+          <div style={{ ...styles.stat, padding: isMobile ? '0 12px' : '0 22px' }}>
+            <span style={styles.statLabel}>
+              Win rate
+              {!isMobile && (
+                <InfoTip ariaLabel="Win rate details" color={theme.bannerMuted} placement="bottom">
+                  <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
+                  <br />
+                  Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
+                  <br />
+                  Ranking uses a confidence-adjusted version of this so small-sample decks don't dominate.
+                </InfoTip>
+              )}
+            </span>
+            <span style={{ ...styles.statValue, fontSize: isMobile ? '16px' : '19px' }}>{(metaWinRate * 100).toFixed(1)}%</span>
+          </div>
+          <div style={{ ...styles.stat, padding: isMobile ? '0 12px' : '0 22px' }}>
+            <span style={styles.statLabel}>Elixir</span>
+            <span style={{ ...styles.statValue, fontSize: isMobile ? '16px' : '19px' }}>{avgElixir(cards).toFixed(1)}</span>
+          </div>
         </div>
       </div>
 
-      <div style={styles.cardsRow}>
-        <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '22px' }}>
+      <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 24px 18px' }}>
+        <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '14px 22px' }}>
           {orderedCards.map((card, index) => (
             <div key={card.id} style={{ minWidth: 0 }} title={`${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`}>
               <CardTile
@@ -144,263 +138,211 @@ export default function DeckCard({
                 elixirCost={card.elixirCost}
                 level={displayLevel(card.level, card.maxLevel)}
                 nameColor={theme.cardText}
+                nameSize={isMobile ? '11.5px' : '12px'}
+                nameLines={isMobile ? 2 : 1}
                 lazyLoad={!priority}
                 fetchPriority={priority ? 'high' : undefined}
               />
             </div>
           ))}
         </div>
-        {canSwap && !isMobile && (
-          <button
-            type="button"
-            onClick={onSwap}
-            aria-label={`Swap deck ${deckNumber}`}
-            title="See alternatives for this deck"
-            className="deck-swap-btn mobile-touch-target"
-            style={{ ...styles.swapButton, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
-          >
-            <SwapArrows style={styles.swapIcon} />
-          </button>
-        )}
-      </div>
-      {isMobile && (
-        <div className="deck-mobile-actions" style={styles.mobileActions}>
+
+        <div className="deck-actions" style={{ ...styles.actions, marginTop: isMobile ? '14px' : '18px' }}>
           <DeckLinkAction
             link={deckLink}
-            isMobile
+            isMobile={isMobile}
             className="mobile-touch-target"
-            style={{ ...styles.openInGameMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
-            label="Open in Clash Royale"
+            style={{ ...styles.action, ...(isMobile ? styles.actionGrow : {}) }}
+            label={isMobile ? 'Open in game' : 'Copy deck link'}
           />
+          {!isMobile && <span style={{ flex: 1 }} />}
+          {onToggleLock && (
+            <button
+              type="button"
+              onClick={onToggleLock}
+              aria-pressed={!!locked}
+              aria-label={locked ? `Unlock deck ${deckNumber}` : `Lock deck ${deckNumber}`}
+              title={locked ? 'Locked: this deck stays when you change options. Click to unlock.' : 'Lock this deck: keep it and re-pick the other decks around it'}
+              className="mobile-touch-target"
+              style={{ ...styles.action, ...styles.iconAction, ...(locked ? styles.actionOn : {}) }}
+            >
+              <LockIcon locked={!!locked} />
+            </button>
+          )}
           {canSwap && (
             <button
-              className="mobile-touch-target"
               type="button"
               onClick={onSwap}
               aria-label={`Swap deck ${deckNumber}`}
-              style={{ ...styles.swapButtonMobile, backgroundColor: theme.swapBg, color: theme.swapIcon, borderColor: theme.divider }}
+              title="See alternatives for this deck"
+              className="mobile-touch-target"
+              style={{ ...styles.action, ...(isMobile ? styles.actionGrow : {}) }}
             >
-              <SwapArrows style={styles.actionIconMobile} />
+              <SwapArrows />
               Swap deck
             </button>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 const theme = {
-  containerBg: 'var(--bg-secondary)',
   containerBorder: 'var(--panel-border)',
   containerShadow: 'var(--panel-shadow)',
-  headerText: 'var(--text-heading)',
-  badgeBg: 'var(--archetype-bg)',
-  badgeText: 'var(--archetype-text)',
-  badgeBorder: 'var(--archetype-border)',
-  statsBg: 'var(--inset-bg)',
-  statsBorder: 'var(--row-border)',
-  statsLabel: 'var(--stat-label)',
-  statsValue: 'var(--text-heading)',
-  statsValueAccent: 'var(--accent)',
   cardText: 'var(--text-primary)',
-  swapBg: 'var(--raised-bg)',
-  swapIcon: 'var(--accent)',
-  divider: 'var(--row-border)',
-  openInGameBg: 'var(--chip-bg)',
-  openInGameText: 'var(--accent)',
-  openInGameBorder: 'var(--chip-border)',
   lockedBorder: 'var(--accent)',
-  lockedText: 'var(--on-accent)',
+  bannerMuted: 'var(--hero-muted)',
 };
 
 function LockIcon({ locked }: { locked: boolean }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
       <rect x="5" y="11" width="14" height="10" rx="2" />
       <path d={locked ? 'M8 11V8a4 4 0 0 1 8 0v3' : 'M8 11V8a4 4 0 0 1 7.5-2'} />
     </svg>
   );
 }
 
-function SwapArrows({ style }: { style: React.CSSProperties }) {
+function SwapArrows() {
   return (
-    <svg viewBox="0 0 512 512" style={style} aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M32 96l320 0 0-64c0-12.9 7.8-24.6 19.8-29.6s25.7-2.2 34.9 6.9l96 96c6 6 9.4 14.1 9.4 22.6s-3.4 16.6-9.4 22.6l-96 96c-9.2 9.2-22.9 11.9-34.9 6.9s-19.8-16.6-19.8-29.6l0-64L32 160c-17.7 0-32-14.3-32-32s14.3-32 32-32zM480 416l-320 0 0 64c0 12.9-7.8 24.6-19.8 29.6s-25.7 2.2-34.9-6.9l-96-96c-6-6-9.4-14.1-9.4-22.6s3.4-16.6 9.4-22.6l96-96c9.2-9.2 22.9-11.9 34.9-6.9s19.8 16.6 19.8 29.6l0 64 320 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"
-      />
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8h13l-3-3M20 16H7l3 3" />
     </svg>
   );
 }
 
 const styles = {
   container: {
+    // Lets the deck list's grid column shrink to the screen instead of growing to fit the content.
+    minWidth: 0,
     border: '1px solid',
     borderRadius: '18px',
+    backgroundColor: 'var(--bg-secondary)',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
   },
-  header: {
-    marginBottom: '18px',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    flexWrap: 'wrap' as const,
-    gap: '10px 12px',
-  },
-  headerLeft: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '12px',
-  },
-  openInGame: {
-    width: '132px',
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    gap: '6px',
-    padding: '5px 12px',
-    borderRadius: '999px',
-    border: '1px solid',
-    fontSize: '11px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.3px',
-    textDecoration: 'none',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap' as const,
-    marginTop: '2px',
-  },
-  lockButton: {
-    width: '30px',
-    height: '30px',
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    padding: 0,
-    borderRadius: '50%',
-    border: '1px solid',
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  headerTitle: {
-    margin: 0,
-    fontSize: '19px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.2px',
-  },
-  cardsRow: {
+  banner: {
     position: 'relative' as const,
+    isolation: 'isolate' as const,
+    minHeight: '112px',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    justifyContent: 'flex-end' as const,
+    gap: '8px',
+    color: 'var(--hero-text)',
   },
-  swapButton: {
+  bannerArt: {
     position: 'absolute' as const,
-    right: '8px',
-    top: '50%',
-    marginTop: '-22px',
-    width: '44px',
-    height: '44px',
-    border: '1px solid',
-    borderRadius: '50%',
-    cursor: 'pointer',
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    padding: 0,
-    boxShadow: '0 3px 10px rgba(13, 27, 62, 0.18)',
+    inset: 0,
+    zIndex: -1,
+    overflow: 'hidden' as const,
+    borderRadius: '17px 17px 0 0',
+    backgroundColor: 'var(--hero-bg)',
   },
-  swapIcon: {
-    width: '20px',
-    height: '20px',
-    display: 'block',
+  bannerBlur: {
+    position: 'absolute' as const,
+    inset: '-24px',
+    width: 'calc(100% + 48px)',
+    height: 'calc(100% + 48px)',
+    objectFit: 'cover' as const,
+    objectPosition: '50% 25%',
+    filter: 'var(--hero-art)',
+    opacity: 'var(--hero-art-opacity)',
   },
-  swapButtonMobile: {
-    width: '100%',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '8px',
-    padding: '11px',
-    border: '1px solid',
-    borderRadius: '10px',
+  bannerShade: {
+    position: 'absolute' as const,
+    inset: 0,
+    background: 'var(--hero-fade)',
+  },
+  bannerCard: {
+    position: 'absolute' as const,
+    bottom: '-18px',
+    borderRadius: '12px',
+    transform: 'rotate(6deg)',
+    filter: 'var(--hero-card-shadow)',
+  },
+  deckNumber: {
     fontSize: '13px',
+    fontWeight: 500 as const,
+    color: theme.bannerMuted,
+  },
+  name: {
+    margin: 0,
     fontWeight: 700 as const,
-    cursor: 'pointer',
-  },
-  mobileActions: {
-    display: 'grid' as const,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: '10px',
-    marginTop: '14px',
-  },
-  openInGameMobile: {
-    minWidth: 0,
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '8px',
-    padding: '11px 12px',
-    border: '1px solid',
-    borderRadius: '10px',
-    fontSize: '13px',
-    fontWeight: 700 as const,
-    textDecoration: 'none',
-    whiteSpace: 'nowrap' as const,
-  },
-  actionIconMobile: {
-    width: '15px',
-    height: '15px',
-    display: 'block',
-    flexShrink: 0,
-  },
-  archetypeBadge: {
-    fontSize: '12px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
-    padding: '4px 10px',
-    borderRadius: '999px',
-    border: '1.5px solid',
+    letterSpacing: '-0.2px',
+    lineHeight: 1.15,
+    textShadow: 'var(--hero-text-shadow)',
   },
   stats: {
     display: 'flex' as const,
-    justifyContent: 'space-around',
-    marginBottom: '24px',
-    padding: '14px 10px 26px',
-    border: '1px solid',
-    borderRadius: '12px',
-    gap: '8px',
+    marginTop: '6px',
   },
   stat: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-    flex: 1,
+    gap: '6px',
+    borderLeft: '1px solid var(--hero-divider)',
   },
   statLabel: {
-    fontSize: '11px',
-    marginBottom: '6px',
-    fontWeight: 600 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    gap: '5px',
+    gap: '4px',
+    fontSize: '12px',
+    fontWeight: 500 as const,
+    color: theme.bannerMuted,
+    whiteSpace: 'nowrap' as const,
   },
   statValue: {
-    fontSize: '22px',
-    fontWeight: 800 as const,
-    lineHeight: 1.1,
-  },
-  statSubtext: {
-    fontSize: '11px',
-    position: 'absolute' as const,
-    top: '100%',
-    left: 0,
-    right: 0,
-    textAlign: 'center' as const,
-    marginTop: '1px',
+    fontWeight: 700 as const,
+    lineHeight: 1,
+    color: 'var(--hero-text)',
+    textShadow: 'var(--hero-text-shadow)',
+    fontVariantNumeric: 'tabular-nums' as const,
+    whiteSpace: 'nowrap' as const,
   },
   cards: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
     maxWidth: '560px',
     margin: '0 auto',
+  },
+  actions: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '8px',
+  },
+  action: {
+    height: '38px',
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '7px',
+    padding: '0 14px',
+    borderRadius: '10px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'var(--border)',
+    backgroundColor: 'var(--bg-tertiary)',
+    color: 'var(--text-primary)',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap' as const,
+    cursor: 'pointer',
+  },
+  actionGrow: {
+    flex: 1,
+    minWidth: 0,
+  },
+  iconAction: {
+    width: '38px',
+    padding: 0,
+    flexShrink: 0,
+  },
+  actionOn: {
+    backgroundColor: 'var(--accent)',
+    borderColor: 'var(--accent)',
+    color: 'var(--on-accent)',
   },
 };

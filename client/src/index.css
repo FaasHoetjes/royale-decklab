@@ -25,7 +25,6 @@
   --control-text: #1a1a1a;
   --control-border: #d0d0d0;
 
-  --text-heading: #0d1b3e;
   --stat-label: #6b7280;
   --panel-border: #e8ecf5;
   --panel-shadow: 0 6px 20px rgba(13, 27, 62, 0.06);
@@ -35,9 +34,6 @@
   --chip-bg: #f0f3ff;
   --chip-text: #3a6ea5;
   --chip-border: #dbe4f5;
-  --archetype-bg: #eceef2;
-  --archetype-text: #4b5563;
-  --archetype-border: #d7dae0;
   --raised-bg: #f6f7f9;
   --float-btn-bg: #ffffff;
   --selected-bg: #eaf3ff;
@@ -53,11 +49,17 @@
   --card-frame-border: 1px solid rgba(30, 41, 59, 0.12);
   --card-drop: 0 2px 8px rgba(30, 41, 59, 0.13);
 
-  --banner-bg: var(--bg-secondary);
-  --banner-border: #e8ecf5;
   --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
-  --banner-muted: #6b7280;
-  --banner-title: #0d1b3e;
+  /* Banners on the generator (header and deck cards): card art as a colour wash behind a fade that keeps the text readable. */
+  --hero-bg: #f6f7f9;
+  --hero-art: blur(36px) saturate(1.6) brightness(1.1);
+  --hero-art-opacity: 0.5;
+  --hero-fade: linear-gradient(90deg, #f6f7f9 30%, rgba(246, 247, 249, 0.35) 75%, rgba(246, 247, 249, 0));
+  --hero-text: #0d1b3e;
+  --hero-muted: #5b6474;
+  --hero-divider: rgba(13, 27, 62, 0.14);
+  --hero-text-shadow: none;
+  --hero-card-shadow: drop-shadow(0 8px 16px rgba(13, 27, 62, 0.28));
   --skeleton-base: #d5d9e0;
   --skeleton-highlight: #eef0f4;
 
@@ -84,7 +86,6 @@
   --control-bg: #161618;
   --control-text: #f4f4f5;
   --control-border: #2a2a2e;
-  --text-heading: #f4f4f5;
   --stat-label: #8a8a93;
   --panel-border: #2a2a2e;
   --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -94,9 +95,6 @@
   --chip-bg: #26262a;
   --chip-text: #c4c4cc;
   --chip-border: #34343a;
-  --archetype-bg: #26262a;
-  --archetype-text: #c4c4cc;
-  --archetype-border: #34343a;
   --raised-bg: #26262a;
   --float-btn-bg: #26262a;
   --selected-bg: #26262a;
@@ -109,11 +107,16 @@
   --card-backdrop: linear-gradient(160deg, #2a3a6a 0%, #16213f 100%);
   --card-frame-border: 2px solid rgba(0, 0, 0, 0.15);
   --card-drop: 0 3px 8px rgba(0, 0, 0, 0.25);
-  --banner-bg: #161618;
-  --banner-border: #33333a;
   --banner-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
-  --banner-muted: #a1a1aa;
-  --banner-title: #ffffff;
+  --hero-bg: #161618;
+  --hero-art: blur(36px) saturate(1.4) brightness(1.05);
+  --hero-art-opacity: 0.85;
+  --hero-fade: linear-gradient(90deg, #161618 26%, rgba(22, 22, 24, 0.4) 70%, rgba(22, 22, 24, 0.05));
+  --hero-text: #ffffff;
+  --hero-muted: rgba(255, 255, 255, 0.72);
+  --hero-divider: rgba(255, 255, 255, 0.16);
+  --hero-text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --hero-card-shadow: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
   --skeleton-base: #28282d;
   --skeleton-highlight: #3a3a40;
 }
@@ -178,12 +181,6 @@ input:disabled {
     --metric-label-font-size: 11px;
     --tooltip-font-size: 12px;
     --version-toggle-font-size: 10px;
-  }
-}
-
-@media (max-width: 380px) {
-  .deck-mobile-actions {
-    grid-template-columns: 1fr !important;
   }
 }
 

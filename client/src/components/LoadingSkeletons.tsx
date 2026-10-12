@@ -164,54 +164,77 @@ export function WarDecksSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <LoadingRegion label="Loading your war decks">
       <div style={{ ...styles.resultContainer, padding: isMobile ? '8px 0' : '40px 20px' }}>
+        {/* Mirrors GeneratorHeader: the player's name, tag and lineup stats on a banner. */}
         <section
           style={{
             ...styles.resultHeader,
-            padding: isMobile ? '18px 20px' : '28px 32px',
-            marginBottom: isMobile ? '20px' : '40px',
-            gap: isMobile ? '12px' : '20px',
-            flexWrap: isMobile ? 'nowrap' : 'wrap',
+            padding: isMobile ? '16px 16px' : '20px 28px',
+            marginBottom: isMobile ? '16px' : '24px',
           }}
         >
-          <div style={{ ...styles.stack, gap: '7px', flex: isMobile ? 1 : undefined, minWidth: 0 }}>
-            <Skeleton style={{ width: '82px', height: '10px' }} />
-            <Skeleton style={{ width: isMobile ? '165px' : '220px', height: isMobile ? '25px' : '32px' }} />
-            <Skeleton style={{ width: isMobile ? '100%' : '190px', maxWidth: '190px', height: '11px' }} />
-          </div>
-          <div style={{ ...styles.stack, gap: '6px', alignItems: 'flex-end', flexShrink: isMobile ? 0 : undefined }}>
-            <Skeleton style={{ width: '70px', height: '10px' }} />
-            <Skeleton style={{ width: '76px', height: isMobile ? '24px' : '31px' }} />
+          <Skeleton style={{ width: '110px', height: '10px' }} />
+          <Skeleton style={{ width: isMobile ? '120px' : '150px', height: isMobile ? '24px' : '30px' }} />
+          <div style={{ ...styles.inline, gap: '8px', alignItems: 'flex-end', marginTop: '6px' }}>
+            <Skeleton style={{ width: isMobile ? '72px' : '84px', height: isMobile ? '20px' : '24px' }} />
+            <Skeleton style={{ width: '72px', height: '10px' }} />
           </div>
         </section>
 
+        {/* The generator controls row. */}
+        <div style={{ ...styles.inline, gap: '8px', overflow: 'hidden', marginBottom: isMobile ? '16px' : '24px' }}>
+          {[96, 104, 100, 104].map((width, pill) => (
+            <Skeleton key={pill} style={{ width: `${width}px`, height: isMobile ? '44px' : '40px', borderRadius: '999px', flexShrink: 0 }} />
+          ))}
+        </div>
+
         <div style={{ ...styles.stack, gap: isMobile ? '16px' : '30px' }}>
           {[0, 1, 2, 3].map((deck) => (
-            <section
-              key={deck}
-              style={{ ...styles.panel, padding: isMobile ? '16px' : '24px', borderRadius: '18px' }}
-            >
-              <div style={{ ...styles.inline, justifyContent: 'space-between', marginBottom: '18px' }}>
-                <div style={styles.inline}>
-                  <Skeleton style={{ width: '58px', height: '19px' }} />
-                  <Skeleton style={{ width: '90px', height: '24px', borderRadius: '999px' }} />
+            <section key={deck} style={{ ...styles.panel, borderRadius: '18px', overflow: 'hidden' }}>
+              {/* Mirrors DeckCard: a banner with the deck's name and stats, then the cards and actions. */}
+              <div
+                style={{
+                  ...styles.stack,
+                  justifyContent: 'flex-end',
+                  gap: '10px',
+                  minHeight: '112px',
+                  padding: isMobile ? '16px 16px 18px' : '18px 24px',
+                  backgroundColor: 'var(--bg-tertiary)',
+                }}
+              >
+                <Skeleton style={{ width: '52px', height: '12px' }} />
+                <Skeleton style={{ width: isMobile ? '150px' : '220px', height: isMobile ? '22px' : '28px' }} />
+                <div style={{ ...styles.inline, gap: isMobile ? '24px' : '44px', marginTop: '4px' }}>
+                  {[0, 1, 2].map((stat) => (
+                    <div key={stat} style={{ ...styles.stack, gap: '6px' }}>
+                      <Skeleton style={{ width: '40px', height: '9px' }} />
+                      <Skeleton style={{ width: '52px', height: isMobile ? '16px' : '19px' }} />
+                    </div>
+                  ))}
                 </div>
-                <Skeleton style={{ width: '70px', height: '23px', borderRadius: '999px' }} />
               </div>
-              <div style={styles.statsStrip}>
-                {[0, 1, 2].map((stat) => (
-                  <div key={stat} style={{ ...styles.stack, gap: '7px', alignItems: 'center', flex: 1 }}>
-                    <Skeleton style={{ width: '64px', height: '9px' }} />
-                    <Skeleton style={{ width: '52px', height: '21px' }} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ ...styles.cards, gridTemplateColumns: 'repeat(4, 1fr)', maxWidth: '560px', margin: '0 auto', gap: isMobile ? '10px 8px' : '22px' }}>
-                {Array.from({ length: 8 }, (_, card) => (
-                  <div key={card}>
-                    <Skeleton style={styles.cardArt} />
-                    <Skeleton style={{ width: '68%', height: '8px', margin: '5px auto 0' }} />
-                  </div>
-                ))}
+              <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 24px 18px' }}>
+                <div
+                  style={{
+                    ...styles.cards,
+                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                    gap: isMobile ? '10px 8px' : '14px 22px',
+                    maxWidth: '560px',
+                    margin: '0 auto',
+                  }}
+                >
+                  {Array.from({ length: 8 }, (_, card) => (
+                    <div key={card}>
+                      <Skeleton style={styles.cardArt} />
+                      <Skeleton style={{ width: '68%', height: '8px', margin: '5px auto 0' }} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ ...styles.inline, gap: '8px', marginTop: isMobile ? '14px' : '18px' }}>
+                  <Skeleton style={{ width: isMobile ? undefined : '140px', flex: isMobile ? 1 : undefined, height: '38px', borderRadius: '10px' }} />
+                  {!isMobile && <span style={{ flex: 1 }} />}
+                  <Skeleton style={{ width: '38px', height: '38px', borderRadius: '10px' }} />
+                  <Skeleton style={{ width: isMobile ? undefined : '116px', flex: isMobile ? 1 : undefined, height: '38px', borderRadius: '10px' }} />
+                </div>
               </div>
             </section>
           ))}
@@ -296,23 +319,11 @@ const styles = {
   },
   resultHeader: {
     display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: '20px',
-    flexWrap: 'wrap' as const,
-    borderRadius: '20px',
-    border: '1px solid var(--banner-border)',
-    backgroundColor: 'var(--banner-bg)',
-    boxShadow: 'var(--banner-shadow)',
-  },
-  statsStrip: {
-    display: 'flex' as const,
-    justifyContent: 'space-around' as const,
+    flexDirection: 'column' as const,
+    justifyContent: 'flex-end' as const,
     gap: '8px',
-    marginBottom: '24px',
-    padding: '14px 10px 26px',
-    border: '1px solid var(--row-border)',
-    borderRadius: '12px',
-    backgroundColor: 'var(--inset-bg)',
+    borderRadius: '20px',
+    backgroundColor: 'var(--bg-tertiary)',
+    boxShadow: 'var(--banner-shadow)',
   },
 };

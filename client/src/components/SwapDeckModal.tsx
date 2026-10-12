@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, avgElixir, deckArchetype, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, avgElixir, type CardVersionRef } from '../lib/cardDisplay';
 import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -93,16 +93,13 @@ export default function SwapDeckModal({
                 }}
               >
                 <div style={styles.optionStats}>
-                  <span style={{ ...styles.optionArchetype, borderColor: theme.rowBorder, color: theme.subtext }}>
-                    {deckArchetype(opt.cards)}
-                  </span>
                   {isActive && (
                     <span style={{ ...styles.activeTag, color: theme.accent }}>● Current</span>
                   )}
                   <span style={styles.statSpacer} />
-                  <OptionStat label="Win Rate" value={`${(opt.metaWinRate * 100).toFixed(1)}%`} labelColor={theme.subtext} valueColor={theme.accent} />
-                  <OptionStat label="Score" value={opt.playerScore.toFixed(3)} labelColor={theme.subtext} valueColor={theme.text} />
-                  <OptionStat label="Avg Elixir" value={avgElixir(opt.cards).toFixed(1)} labelColor={theme.subtext} valueColor={theme.text} />
+                  <OptionStat label="Win rate" value={`${(opt.metaWinRate * 100).toFixed(1)}%`} labelColor={theme.subtext} valueColor={theme.text} />
+                  <OptionStat label="Score" value={opt.playerScore.toFixed(3)} labelColor={theme.subtext} valueColor={theme.accent} />
+                  <OptionStat label="Avg elixir" value={avgElixir(opt.cards).toFixed(1)} labelColor={theme.subtext} valueColor={theme.text} />
                 </div>
                 <div style={styles.optionCards}>
                   {opt.cards.map((card) => {
@@ -215,18 +212,9 @@ const styles = {
     flexWrap: 'wrap' as const,
     gap: '8px 14px',
   },
-  optionArchetype: {
-    fontSize: '11px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
-    padding: '3px 9px',
-    borderRadius: '999px',
-    border: '1.5px solid',
-  },
   activeTag: {
     fontSize: '11px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
   },
   statSpacer: {
     flex: 1,

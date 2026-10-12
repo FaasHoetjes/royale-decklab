@@ -32,14 +32,6 @@ export function avgElixir(cards: Array<{ elixirCost?: number }>): number {
   return cards.reduce((sum, c) => sum + (c.elixirCost ?? 0), 0) / cards.length;
 }
 
-const BEATDOWN_TANKS = ['Golem', 'Lava Hound', 'Electro Giant', 'Giant', 'Goblin Giant'];
-
-export function deckArchetype(cards: Array<{ name: string; elixirCost?: number }>): string {
-  const avg = avgElixir(cards);
-  const hasTank = cards.some((c) => BEATDOWN_TANKS.includes(c.name));
-  return hasTank && avg >= 3.8 ? 'Beatdown' : avg <= 3.2 ? 'Cycle' : 'Control';
-}
-
 /** In-game slots are positional: 1 = evo, 2 = hero, 3 = whichever is left. */
 export function orderBySlots<T extends { id: number }>(
   cards: T[],
