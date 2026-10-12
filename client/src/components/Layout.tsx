@@ -91,7 +91,10 @@ export default function Layout() {
       >
         {!isMobile && <CornerThemeToggle />}
         <ElixirGradientDefs />
-        <Outlet />
+        {/* Grows to fill the screen, so the footer stays at the bottom even on short pages. */}
+        <div style={styles.page}>
+          <Outlet />
+        </div>
         <Footer />
       </main>
     </div>
@@ -109,6 +112,11 @@ const styles = {
     minWidth: 0,
     padding: '20px',
     position: 'relative' as const,
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+  },
+  page: {
+    flex: '1 0 auto',
   },
   themeToggle: {
     position: 'fixed' as const,
