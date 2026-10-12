@@ -251,6 +251,7 @@ export default function CardPicker({
                 onClick={() => setShowFilters((s) => !s)}
                 style={{
                   ...styles.filterButton,
+                  ...(filters.size ? {} : { padding: '0 29px' }),
                   backgroundColor: filters.size ? theme.accent : theme.control.bg,
                   color: filters.size ? theme.onAccent : theme.control.text,
                   border: `1px solid ${filters.size ? theme.accent : theme.control.border}`,
@@ -406,15 +407,15 @@ const styles = {
     fontSize: '14px',
     fontWeight: 600 as const,
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    transition: 'background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease',
   },
   filterCount: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    minWidth: '16px',
+    width: '24px',
     height: '16px',
-    padding: '0 4px',
+    boxSizing: 'border-box' as const,
     borderRadius: '8px',
     fontSize: '11px',
     fontWeight: 700 as const,
