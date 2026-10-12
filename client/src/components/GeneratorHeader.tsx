@@ -112,7 +112,6 @@ const theme = {
 const styles = {
   banner: {
     position: 'relative' as const,
-    // Above the controls row, so the score tooltip isn't drawn under it.
     zIndex: 1,
     isolation: 'isolate' as const,
     display: 'flex' as const,

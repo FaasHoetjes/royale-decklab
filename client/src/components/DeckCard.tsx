@@ -215,7 +215,6 @@ function SwapArrows() {
 
 const styles = {
   container: {
-    // Lets the deck list's grid column shrink to the screen instead of growing to fit the content.
     minWidth: 0,
     border: '1px solid',
     borderRadius: '18px',

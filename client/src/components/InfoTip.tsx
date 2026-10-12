@@ -154,7 +154,6 @@ const styles = {
     lineHeight: 1.4,
     textAlign: 'left' as const,
     whiteSpace: 'normal' as const,
-    // Above everything, including the phone options sheet and modals.
     zIndex: 10000,
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     pointerEvents: 'none' as const,

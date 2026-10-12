@@ -50,7 +50,6 @@
   --card-drop: 0 2px 8px rgba(30, 41, 59, 0.13);
 
   --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
-  /* Banners on the generator (header and deck cards): card art as a colour wash behind a fade that keeps the text readable. */
   --hero-bg: #f6f7f9;
   --hero-art: blur(36px) saturate(1.6) brightness(1.1);
   --hero-art-opacity: 0.5;
@@ -153,7 +152,6 @@ input:disabled {
   border-radius: 12px;
 }
 
-/* Keep compact iconography while giving touch users a reliably sized target. */
 @media (max-width: 768px), (pointer: coarse) {
   .mobile-touch-target {
     min-width: 44px;
@@ -193,8 +191,6 @@ input:disabled {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Hover-capable devices only: on touch screens a tap would otherwise leave
-   the element stuck in its :hover state until the next tap elsewhere. */
 @media (hover: hover) {
   button:hover {
     opacity: 0.9;
@@ -252,7 +248,6 @@ input:disabled {
   to { background-position: -200% 0; }
 }
 
-/* Generator controls: pills, their menus and the phone sheet. */
 .gc-pill {
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }

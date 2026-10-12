@@ -287,8 +287,6 @@ function Shortfall({ found, options, onChange, isMobile }: {
 /** Shown when not one popular war deck can be built from the player's cards. */
 function NoDecks({ onNewSearch, isMobile }: { onNewSearch: () => void; isMobile: boolean }) {
   return (
-    // Fills the screen above the footer so the content sits in the middle: the page's own padding and the
-    // footer take about 100px on desktop; on phones the top bar and a taller, wrapped footer take about 180px.
     <div style={{ ...styles.empty, minHeight: isMobile ? 'calc(100dvh - 180px)' : 'calc(100dvh - 100px)' }} role="status">
       <div style={styles.emptyIcon} aria-hidden="true">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -360,7 +358,6 @@ const styles = {
     gap: '12px 14px',
     borderRadius: '14px',
     border: '1px dashed var(--border-strong)',
-    // Half see-through: sits between the page and the deck cards, so it reads as a note rather than a card.
     backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 50%, transparent)',
     boxShadow: 'var(--panel-shadow)',
   },
@@ -374,7 +371,6 @@ const styles = {
     color: 'var(--accent)',
   },
   shortfallText: {
-    // Takes the free room; once the buttons no longer fit beside it, they wrap underneath.
     flex: '1 1 260px',
     minWidth: 0,
   },
