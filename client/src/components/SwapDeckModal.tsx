@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, avgElixir, orderBySlots, slotVersionOf, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck } from '../lib/archetypes';
 import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -54,7 +54,12 @@ export default function SwapDeckModal({
     () => [...(current ? [current] : []), ...options.filter((o) => o !== current).sort((a, b) => b.playerScore - a.playerScore)],
     [options, current]
   );
-  const currentIds = new Set(current?.cards.map((c) => c.id));
+  const currentOrder = current ? orderBySlots(current.cards, slotVersionOf(current.metaCardVersions, current.cardVersions)) : [];
+  const currentIds = new Set(currentOrder.map((c) => c.id));
+  const sameAsCurrent = (opt: SwapOption, cardId: number) =>
+    current != null &&
+    currentIds.has(cardId) &&
+    versionOf(opt.cardVersions, cardId) === versionOf(current.cardVersions, cardId);
   const others = ordered.length - (current ? 1 : 0);
 
   return (
@@ -73,7 +78,7 @@ export default function SwapDeckModal({
           <div>
             <h3 style={styles.title}>Swap deck {slotNumber}</h3>
             <p style={styles.subtitle}>
-              {others} deck{others === 1 ? '' : 's'} that don't share cards with your other decks. New cards are outlined.
+              {others} deck{others === 1 ? '' : 's'} that don't share cards with your other decks. New and changed cards are outlined.
             </p>
           </div>
           <button className="mobile-touch-target" type="button" onClick={onClose} aria-label="Close" style={styles.close}>
@@ -118,9 +123,9 @@ export default function SwapDeckModal({
                   </span>
                 </div>
                 <div style={{ ...styles.cards, gap: isMobile ? '4px' : '6px' }}>
-                  {orderBySlots(opt.cards, slotVersionOf(opt.metaCardVersions, opt.cardVersions)).map((card) => {
+                  {(isCurrent ? currentOrder : alignToReference(opt.cards, slotVersionOf(opt.metaCardVersions, opt.cardVersions), currentOrder)).map((card) => {
                     const icon = cardIconUrl(card.iconUrls, versionOf(opt.cardVersions, card.id));
-                    const isNew = !isCurrent && current != null && !currentIds.has(card.id);
+                    const isNew = !isCurrent && current != null && !sameAsCurrent(opt, card.id);
                     const isSame = !isCurrent && current != null && !isNew;
                     return (
                       <div
