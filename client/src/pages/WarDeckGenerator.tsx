@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import WarDeckResult from '../components/WarDeckResult';
 import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } from '../queries';
 import { toBuilderCards } from '../lib/builderCards';
-import { parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
-import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
@@ -19,11 +18,21 @@ export default function WarDeckGenerator() {
 
   const tag = playerId ? `#${playerId}` : null;
 
-  // Options live in the URL (shareable); a short pause after each change avoids one request per click.
+  // Options live in the URL (shareable). Each change loads at once: deck count and level are single
+  // clicks, and the card picker applies its picks in one go when it closes.
   const [searchParams] = useSearchParams();
   const options = useMemo(() => parseOptions(searchParams), [searchParams]);
   const query = toQuery(options);
-  const debouncedQuery = useDebouncedValue(query, 350);
+
+  // Locking or unlocking a deck doesn't change the lineup on screen, so it doesn't fetch: the locks
+  // go along with the next request that does (a different level, include or exclude). Clearing every
+  // option does fetch, so Reset always gets the plain lineup even if the one shown was built around a lock.
+  const [fetched, setFetched] = useState({ options, query });
+  let apiQuery = fetched.query;
+  if (fetched.options !== options) {
+    if (!onlyLocksChanged(fetched.options, options) || !hasActiveOptions(options)) apiQuery = query;
+    setFetched({ options, query: apiQuery });
+  }
 
   // Write remembered defaults and cleaned-up values back, so the address bar always matches what is shown.
   const showOptions = (next: string) => navigate({ search: next ? `?${next}` : '' }, { replace: true });
@@ -39,7 +48,7 @@ export default function WarDeckGenerator() {
   const meta = useMetaStatus();
   const metaReady = meta.isSuccess;
 
-  const warDecks = usePlayerWarDecks(tag, metaReady, debouncedQuery);
+  const warDecks = usePlayerWarDecks(tag, metaReady, apiQuery);
   // If changing options fails (e.g. the rate limit), keep showing this player's last decks instead of leaving the page.
   const lastLoaded = useRef<{ tag: string; data: NonNullable<typeof warDecks.data> } | null>(null);
   if (tag && warDecks.data && !warDecks.isPlaceholderData) lastLoaded.current = { tag, data: warDecks.data };
@@ -118,7 +127,7 @@ export default function WarDeckGenerator() {
       options={options}
       onOptionsChange={handleOptionsChange}
       cards={pickerCards}
-      isUpdating={!optionsFailed && (query !== debouncedQuery || warDecks.isPlaceholderData)}
+      isUpdating={!optionsFailed && warDecks.isPlaceholderData}
       updateFailed={optionsFailed}
       onRetry={() => warDecks.refetch()}
     />
@@ -127,6 +136,12 @@ export default function WarDeckGenerator() {
   ) : (
     <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} />
   );
+}
+
+const sameIds = (a: number[], b: number[]) => a.length === b.length && a.every((id, i) => id === b[i]);
+
+function onlyLocksChanged(a: GeneratorOptions, b: GeneratorOptions): boolean {
+  return a.decks === b.decks && a.minLevel === b.minLevel && sameIds(a.ban, b.ban) && sameIds(a.require, b.require);
 }
 
 const styles = {

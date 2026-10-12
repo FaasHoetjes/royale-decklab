@@ -93,14 +93,23 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
   }, [menu]);
 
   const set = (patch: Partial<GeneratorOptions>) => onChange({ ...options, ...patch });
-  const toggleCard = (kind: PickerKind, id: number) => {
-    const list = options[kind];
-    set({ [kind]: list.includes(id) ? list.filter((x) => x !== id) : [...list, id] });
-  };
+  // The picker collects its picks and applies them once when it closes: the decks are hidden behind it,
+  // so fetching after every tap would only spend requests on lineups nobody sees.
+  const [picks, setPicks] = useState<number[]>([]);
+  const togglePick = (id: number) =>
+    setPicks((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
   const openPicker = (kind: PickerKind) => {
     setMenu(null);
     setSheetOpen(false);
+    setPicks(options[kind]);
     setPicker(kind);
+  };
+  const closePicker = () => {
+    if (picker) {
+      const before = options[picker];
+      if (picks.length !== before.length || picks.some((id, i) => id !== before[i])) set({ [picker]: picks });
+    }
+    setPicker(null);
   };
   const cardName = (id: number) => cardById.get(id)?.name ?? `Card ${id}`;
 
@@ -263,7 +272,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           cards={cards}
           usedIds={new Set(picker === 'ban' ? options.require : options.ban)}
           usedLabel={RULES[picker].usedLabel}
-          selectedIds={new Set(options[picker])}
+          selectedIds={new Set(picks)}
           selectedColor={picker === 'ban' ? 'var(--text-secondary)' : 'var(--accent)'}
           selectedMarkColor={picker === 'ban' ? 'var(--bg-primary)' : 'var(--on-accent)'}
           selectedMark={picker === 'ban' ? <BanIcon /> : <PlusIcon />}
@@ -271,13 +280,13 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           title={RULES[picker].label}
           subtitle={RULES[picker].subtitle}
           topContent={
-            options[picker].length > 0 && (
+            picks.length > 0 && (
               <div style={styles.picks} aria-label={`${RULES[picker].label}d cards`}>
-                {options[picker].map((id) => (
+                {picks.map((id) => (
                   <span key={id} style={styles.pick}>
                     <CardAvatar card={cardById.get(id)} dim={picker === 'ban'} small />
                     {cardName(id)}
-                    <button type="button" onClick={() => toggleCard(picker, id)} aria-label={`Remove ${cardName(id)}`} className="mobile-touch-hitbox" style={styles.remove}>
+                    <button type="button" onClick={() => togglePick(id)} aria-label={`Remove ${cardName(id)}`} className="mobile-touch-hitbox" style={styles.remove}>
                       <CrossIcon />
                     </button>
                   </span>
@@ -285,8 +294,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               </div>
             )
           }
-          onSelect={(id) => toggleCard(picker, id)}
-          onClose={() => setPicker(null)}
+          onSelect={togglePick}
+          onClose={closePicker}
           filters={filters}
           setFilters={setFilters}
           sortIndex={sortIndex}
