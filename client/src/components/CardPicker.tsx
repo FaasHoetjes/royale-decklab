@@ -297,7 +297,13 @@ export default function CardPicker({
               style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px' } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
               title="Click to change sort order"
             >
-              By {sortType}
+              <span style={styles.sortLabels}>
+                {SORT_TYPES.map((type) => (
+                  <span key={type} style={{ ...styles.sortLabel, visibility: type === sortType ? 'visible' : 'hidden' }} aria-hidden={type !== sortType}>
+                    By {type}
+                  </span>
+                ))}
+              </span>
             </button>
             {!isMobile && closeButton}
           </div>
@@ -439,6 +445,13 @@ const styles = {
     fontWeight: 600 as const,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
+  },
+  sortLabels: {
+    display: 'grid' as const,
+  },
+  sortLabel: {
+    gridArea: '1 / 1',
+    textAlign: 'center' as const,
   },
   closeButton: {
     border: 'none',
