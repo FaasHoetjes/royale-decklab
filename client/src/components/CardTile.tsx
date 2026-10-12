@@ -81,8 +81,8 @@ function wrappedName(lines: number): CSSProperties {
     display: '-webkit-box',
     WebkitLineClamp: lines,
     WebkitBoxOrient: 'vertical',
-    lineHeight: 1.15,
-    minHeight: `${lines * 1.15}em`,
+    lineHeight: 1.35,
+    minHeight: `${lines * 1.35}em`,
   };
 }
 
@@ -139,8 +139,8 @@ const styles = {
     fontSize: 'var(--card-name-font-size)',
     fontWeight: 500 as const,
     textAlign: 'center' as const,
-    marginTop: '5px',
-    lineHeight: 1.1,
+    marginTop: '3px',
+    lineHeight: 1.4,
     minHeight: '12px',
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden' as const,
