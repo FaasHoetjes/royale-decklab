@@ -43,7 +43,7 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
       style={{
         ...styles.banner,
         padding: isMobile ? '16px 16px' : '20px 28px',
-        ...(isMobile && !title ? { paddingTop: '104px' } : {}),
+        ...(isMobile && !title ? { paddingTop: '40px' } : {}),
         marginBottom: isMobile ? '16px' : '24px',
         ...style,
       }}
