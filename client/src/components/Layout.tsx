@@ -54,7 +54,11 @@ export default function Layout() {
   }, [isMalformedTagLink, badTag]);
 
   useEffect(() => {
-    const save = () => scrollPositions.set(key, window.scrollY);
+    // Leaving a long page for a shorter one clamps the scroll, and that event can arrive after the
+    // URL has changed; only positions taken while this entry is still current count.
+    const save = () => {
+      if ((window.history.state?.key ?? 'default') === key) scrollPositions.set(key, window.scrollY);
+    };
     window.addEventListener('scroll', save, { passive: true });
     return () => window.removeEventListener('scroll', save);
   }, [key]);
