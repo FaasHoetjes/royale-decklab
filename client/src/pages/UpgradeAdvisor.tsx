@@ -228,7 +228,7 @@ function ScoreSummary({
       }}
       title="Your current lineup score. Each suggestion shows how much it can raise it."
     >
-      <span style={{ ...styles.scorePillLabel, color: muted }}>Current Score</span>
+      <span style={{ ...styles.scorePillLabel, color: muted }}>Current score</span>
       <span style={{ color: accent }}>{score.toFixed(3)}</span>
     </span>
   );
@@ -257,15 +257,13 @@ const styles = {
     borderRadius: '999px',
     border: '1.5px solid',
     fontSize: '16px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
     cursor: 'help' as const,
   },
   scorePillLabel: {
-    fontSize: '11px',
-    fontWeight: 600 as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
+    fontSize: '12px',
+    fontWeight: 500 as const,
   },
   subtitle: {
     fontSize: '15px',
@@ -283,7 +281,7 @@ const styles = {
   },
   panelTitle: {
     fontSize: '17px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     margin: '0 0 8px',
   },
   panelText: {
@@ -298,7 +296,7 @@ const styles = {
     borderRadius: '8px',
     textDecoration: 'none',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
   },
   tabRow: {
     display: 'flex' as const,
@@ -319,7 +317,7 @@ const styles = {
   },
   tabCount: {
     fontSize: '11px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     fontVariantNumeric: 'tabular-nums' as const,
     padding: '1px 7px',
     borderRadius: '999px',
@@ -345,7 +343,7 @@ const styles = {
     borderTop: '1px solid',
     background: 'none',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer' as const,
   },
 };

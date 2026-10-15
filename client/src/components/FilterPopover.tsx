@@ -7,13 +7,14 @@ interface FilterPopoverProps {
   onClear: () => void;
   onClose: () => void;
   theme: Theme;
+  align?: 'left' | 'right';
 }
 
-export default function FilterPopover({ filters, onToggle, onClear, onClose, theme }: FilterPopoverProps) {
+export default function FilterPopover({ filters, onToggle, onClear, onClose, theme, align = 'right' }: FilterPopoverProps) {
   return (
     <>
       <div style={styles.backdrop} onClick={onClose} />
-      <div style={{ ...styles.popover, backgroundColor: theme.bg.secondary, border: `1px solid ${theme.border}` }}>
+      <div style={{ ...styles.popover, ...(align === 'left' ? { left: 0, right: 'auto' } : {}), backgroundColor: theme.bg.secondary, border: `1px solid ${theme.border}` }}>
         {FILTER_OPTIONS.map((opt) => {
           const on = filters.has(opt.key);
           return (
@@ -108,7 +109,7 @@ const styles = {
     border: 'none',
     borderRadius: 0,
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
   },
 };

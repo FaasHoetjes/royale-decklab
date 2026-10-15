@@ -327,10 +327,8 @@ const styles = {
     borderTop: '1px solid',
   },
   playerLabel: {
-    fontSize: '11px',
-    fontWeight: 600 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
+    fontSize: '12px',
+    fontWeight: 500 as const,
   },
   playerTag: {
     fontSize: '16px',

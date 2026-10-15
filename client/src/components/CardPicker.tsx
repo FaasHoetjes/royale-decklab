@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { BuilderCard } from '../lib/builderCards';
@@ -18,6 +18,22 @@ interface CardPickerProps {
   descending: boolean;
   setDescending: Dispatch<SetStateAction<boolean>>;
   allowChampions: boolean;
+  title?: string;
+  subtitle?: string;
+  /** Why a card in `usedIds` can't be picked, shown on hover. */
+  usedLabel?: string;
+  /** Multi-select mode: these cards show as picked, and clicking one again calls onSelect to un-pick it. */
+  selectedIds?: Set<number>;
+  selectedColor?: string;
+  /** Badge on picked cards, drawn in `selectedColor` with this text colour. */
+  selectedMark?: ReactNode;
+  selectedMarkColor?: string;
+  /** Grey out picked cards (for picks that remove a card rather than add it). */
+  dimSelected?: boolean;
+  /** Shown between the header and the cards, e.g. the current picks. */
+  topContent?: ReactNode;
+  /** Pinned under the cards, e.g. a "Done" button for multi-select. */
+  footer?: ReactNode;
 }
 
 export default function CardPicker({
@@ -32,6 +48,16 @@ export default function CardPicker({
   descending,
   setDescending,
   allowChampions,
+  title = 'Card Collection',
+  subtitle,
+  usedLabel = 'already in a deck',
+  selectedIds,
+  selectedColor,
+  selectedMark = '✓',
+  selectedMarkColor = '#ffffff',
+  dimSelected = false,
+  topContent,
+  footer,
 }: CardPickerProps) {
   const theme = getTheme();
   const isMobile = useIsMobile();
@@ -109,6 +135,7 @@ export default function CardPicker({
 
   const renderCard = (card: BuilderCard) => {
     const isUsed = usedIds.has(card.id);
+    const isSelected = !!selectedIds?.has(card.id);
     const championBlocked = !allowChampions && card.rarity === 'champion';
     const selectable = card.owned && !isUsed && !championBlocked;
     const level = ownedLevel(card);
@@ -126,25 +153,34 @@ export default function CardPicker({
           !card.owned
             ? `${card.name} (not owned)`
             : isUsed
-              ? `${card.name} (already in a deck)`
+              ? `${card.name} (${usedLabel})`
               : championBlocked
                 ? `${card.name} (no champion slot left in this deck)`
                 : card.name
         }
+        aria-pressed={selectedIds ? isSelected : undefined}
         style={{
           ...styles.cardButton,
           cursor: selectable ? 'pointer' : 'default',
           opacity: selectable ? 1 : 0.3,
+          ...(isSelected ? { ...styles.selected, outlineColor: selectedColor ?? theme.accent } : {}),
         }}
       >
-        <CardTile
-          name={card.name}
-          iconUrl={pickerIconUrl(card, filters)}
-          elixirCost={card.elixirCost}
-          level={level >= 0 ? level : undefined}
-          nameColor={theme.text.primary}
-          lazyLoad
-        />
+        <div style={isSelected && dimSelected ? styles.dimmed : undefined}>
+          <CardTile
+            name={card.name}
+            iconUrl={pickerIconUrl(card, filters)}
+            elixirCost={card.elixirCost}
+            level={level >= 0 ? level : undefined}
+            nameColor={theme.text.primary}
+            lazyLoad
+          />
+        </div>
+        {isSelected && (
+          <span style={{ ...styles.selectedMark, backgroundColor: selectedColor ?? theme.accent, color: selectedMarkColor }} aria-hidden="true">
+            {selectedMark}
+          </span>
+        )}
       </button>
     );
   };
@@ -186,15 +222,15 @@ export default function CardPicker({
         >
           <div style={styles.titleRow}>
             <div style={styles.titleBlock}>
-              <div style={{ ...styles.title, color: theme.text.primary }}>Card Collection</div>
-              <div style={{ ...styles.foundText, color: theme.accent }}>
-                Found: {ownedCount}/{cards.length}
+              <div style={{ ...styles.title, color: theme.text.primary }}>{title}</div>
+              <div style={{ ...styles.foundText, color: subtitle ? theme.text.secondary : theme.accent }}>
+                {subtitle ?? `Found: ${ownedCount}/${cards.length}`}
               </div>
             </div>
             {isMobile && closeButton}
           </div>
 
-          <div style={{ ...styles.controls, ...(isMobile ? { gap: '8px' } : {}) }}>
+          <div style={{ ...styles.controls, ...(isMobile ? { gap: '8px', flexWrap: 'wrap' as const } : {}) }}>
             <input
               type="text"
               value={query}
@@ -203,18 +239,20 @@ export default function CardPicker({
               aria-label="Search cards by name"
               style={{
                 ...styles.searchInput,
-                ...(isMobile ? { flex: 1, width: 'auto', minWidth: 0 } : {}),
+                ...(isMobile ? { flex: '1 1 100%', width: 'auto', minWidth: 0 } : {}),
                 backgroundColor: theme.control.bg,
                 color: theme.control.text,
                 border: `1px solid ${theme.control.border}`,
               }}
             />
-            <div style={styles.filterWrap}>
+            <div style={{ ...styles.filterWrap, ...(isMobile ? { flex: 1 } : {}) }}>
               <button
                 className="mobile-touch-target"
                 onClick={() => setShowFilters((s) => !s)}
                 style={{
                   ...styles.filterButton,
+                  ...(filters.size ? {} : { padding: '0 29px' }),
+                  ...(isMobile ? { width: '100%' } : {}),
                   backgroundColor: filters.size ? theme.accent : theme.control.bg,
                   color: filters.size ? theme.onAccent : theme.control.text,
                   border: `1px solid ${filters.size ? theme.accent : theme.control.border}`,
@@ -236,6 +274,7 @@ export default function CardPicker({
                   onClear={clearFilters}
                   onClose={() => setShowFilters(false)}
                   theme={theme}
+                  align={isMobile ? 'left' : 'right'}
                 />
               )}
             </div>
@@ -258,15 +297,22 @@ export default function CardPicker({
             <button
               className="mobile-touch-target"
               onClick={() => setSortIndex((i) => (i + 1) % SORT_TYPES.length)}
-              style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px' } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
+              style={{ ...styles.sortButton, ...(isMobile ? { padding: '0 12px', flex: 1 } : {}), backgroundColor: theme.control.bg, color: theme.control.text, border: `1px solid ${theme.control.border}` }}
               title="Click to change sort order"
             >
-              By {sortType}
+              <span style={styles.sortLabels}>
+                {SORT_TYPES.map((type) => (
+                  <span key={type} style={{ ...styles.sortLabel, visibility: type === sortType ? 'visible' : 'hidden' }} aria-hidden={type !== sortType}>
+                    By {type}
+                  </span>
+                ))}
+              </span>
             </button>
             {!isMobile && closeButton}
           </div>
         </div>
 
+        {topContent}
         <div style={{ ...styles.scrollViewport, padding: isMobile ? '12px' : '20px' }}>
           <div
             style={{
@@ -282,6 +328,7 @@ export default function CardPicker({
             {visibleCards.map(renderCard)}
           </div>
         </div>
+        {footer}
       </div>
     </div>
   );
@@ -326,12 +373,12 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '20px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     lineHeight: 1.1,
   },
   foundText: {
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     marginTop: '2px',
   },
   controls: {
@@ -354,26 +401,27 @@ const styles = {
   filterButton: {
     display: 'flex' as const,
     alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: '6px',
     height: '35px',
     padding: '0 14px',
     boxSizing: 'border-box' as const,
     borderRadius: '8px',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    transition: 'background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease',
   },
   filterCount: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    minWidth: '16px',
+    width: '24px',
     height: '16px',
-    padding: '0 4px',
+    boxSizing: 'border-box' as const,
     borderRadius: '8px',
     fontSize: '11px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   arrowButton: {
@@ -398,9 +446,16 @@ const styles = {
     border: 'none',
     borderRadius: '8px',
     fontSize: '14px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
+  },
+  sortLabels: {
+    display: 'grid' as const,
+  },
+  sortLabel: {
+    gridArea: '1 / 1',
+    textAlign: 'center' as const,
   },
   closeButton: {
     border: 'none',
@@ -429,6 +484,29 @@ const styles = {
     display: 'block',
     width: '100%',
     minWidth: 0,
+    position: 'relative' as const,
     transition: 'transform 0.15s ease, opacity 0.15s ease',
+  },
+  selected: {
+    outline: '3px solid',
+    outlineOffset: '2px',
+    borderRadius: '12px',
+  },
+  dimmed: {
+    filter: 'grayscale(1) brightness(0.6)',
+  },
+  selectedMark: {
+    position: 'absolute' as const,
+    top: '-6px',
+    right: '-6px',
+    width: '22px',
+    height: '22px',
+    borderRadius: '50%',
+    fontSize: '13px',
+    fontWeight: 800 as const,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.35)',
   },
 };

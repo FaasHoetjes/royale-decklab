@@ -1,3 +1,12 @@
+@font-face {
+  font-family: 'Lilita One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/lilita-one-digits.woff2') format('woff2');
+  unicode-range: U+0030-0039;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,7 +19,7 @@
   --bg-tertiary: #edeef2;
   --bg-elevated: #f6f7f9;
 
-  --text-primary: #000000;
+  --text-primary: #0d1b3e;
   --text-secondary: #666666;
   --text-tertiary: #9aa0ab;
   --border: #e0e0e0;
@@ -25,7 +34,6 @@
   --control-text: #1a1a1a;
   --control-border: #d0d0d0;
 
-  --text-heading: #0d1b3e;
   --stat-label: #6b7280;
   --panel-border: #e8ecf5;
   --panel-shadow: 0 6px 20px rgba(13, 27, 62, 0.06);
@@ -35,9 +43,6 @@
   --chip-bg: #f0f3ff;
   --chip-text: #3a6ea5;
   --chip-border: #dbe4f5;
-  --archetype-bg: #eceef2;
-  --archetype-text: #4b5563;
-  --archetype-border: #d7dae0;
   --raised-bg: #f6f7f9;
   --float-btn-bg: #ffffff;
   --selected-bg: #eaf3ff;
@@ -48,17 +53,21 @@
   --tooltip-bg: #1a1a1a;
   --tooltip-border: #1a1a1a;
   --search-btn-bg: #007bff;
-  --cta-btn-bg: #007bff;
 
   --card-backdrop: linear-gradient(160deg, #eef1f6 0%, #dde2ea 100%);
   --card-frame-border: 1px solid rgba(30, 41, 59, 0.12);
   --card-drop: 0 2px 8px rgba(30, 41, 59, 0.13);
 
-  --banner-bg: var(--bg-secondary);
-  --banner-border: #e8ecf5;
   --banner-shadow: 0 10px 30px rgba(13, 27, 62, 0.08);
-  --banner-muted: #6b7280;
-  --banner-title: #0d1b3e;
+  --hero-bg: #f6f7f9;
+  --hero-art: blur(36px) saturate(1.6) brightness(1.1);
+  --hero-art-opacity: 0.5;
+  --hero-fade: linear-gradient(90deg, #f6f7f9 30%, rgba(246, 247, 249, 0.35) 75%, rgba(246, 247, 249, 0));
+  --hero-text: #0d1b3e;
+  --hero-muted: #5b6474;
+  --hero-divider: rgba(13, 27, 62, 0.14);
+  --hero-text-shadow: none;
+  --hero-card-shadow: drop-shadow(0 8px 16px rgba(13, 27, 62, 0.28));
   --skeleton-base: #d5d9e0;
   --skeleton-highlight: #eef0f4;
 
@@ -85,7 +94,6 @@
   --control-bg: #161618;
   --control-text: #f4f4f5;
   --control-border: #2a2a2e;
-  --text-heading: #f4f4f5;
   --stat-label: #8a8a93;
   --panel-border: #2a2a2e;
   --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -95,9 +103,6 @@
   --chip-bg: #26262a;
   --chip-text: #c4c4cc;
   --chip-border: #34343a;
-  --archetype-bg: #26262a;
-  --archetype-text: #c4c4cc;
-  --archetype-border: #34343a;
   --raised-bg: #26262a;
   --float-btn-bg: #26262a;
   --selected-bg: #26262a;
@@ -107,15 +112,19 @@
   --tooltip-bg: #000000;
   --tooltip-border: #3a3a3a;
   --search-btn-bg: #4a9eff;
-  --cta-btn-bg: #262626;
   --card-backdrop: linear-gradient(160deg, #2a3a6a 0%, #16213f 100%);
   --card-frame-border: 2px solid rgba(0, 0, 0, 0.15);
   --card-drop: 0 3px 8px rgba(0, 0, 0, 0.25);
-  --banner-bg: #161618;
-  --banner-border: #33333a;
   --banner-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
-  --banner-muted: #a1a1aa;
-  --banner-title: #ffffff;
+  --hero-bg: #161618;
+  --hero-art: blur(36px) saturate(1.4) brightness(1.05);
+  --hero-art-opacity: 0.85;
+  --hero-fade: linear-gradient(90deg, #161618 26%, rgba(22, 22, 24, 0.4) 70%, rgba(22, 22, 24, 0.05));
+  --hero-text: #ffffff;
+  --hero-muted: rgba(255, 255, 255, 0.72);
+  --hero-divider: rgba(255, 255, 255, 0.16);
+  --hero-text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --hero-card-shadow: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
   --skeleton-base: #28282d;
   --skeleton-highlight: #3a3a40;
 }
@@ -152,7 +161,6 @@ input:disabled {
   border-radius: 12px;
 }
 
-/* Keep compact iconography while giving touch users a reliably sized target. */
 @media (max-width: 768px), (pointer: coarse) {
   .mobile-touch-target {
     min-width: 44px;
@@ -183,12 +191,6 @@ input:disabled {
   }
 }
 
-@media (max-width: 380px) {
-  .deck-mobile-actions {
-    grid-template-columns: 1fr !important;
-  }
-}
-
 .deck-slot-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -198,8 +200,6 @@ input:disabled {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Hover-capable devices only: on touch screens a tap would otherwise leave
-   the element stuck in its :hover state until the next tap elsewhere. */
 @media (hover: hover) {
   button:hover {
     opacity: 0.9;
@@ -257,7 +257,66 @@ input:disabled {
   to { background-position: -200% 0; }
 }
 
+.gc-pill {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+.gc-pill:active {
+  transform: scale(0.97);
+}
+.gc-menu {
+  animation: gc-menu-in 0.16s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.gc-sheet {
+  animation: gc-sheet-in 0.26s cubic-bezier(0.32, 0.72, 0.35, 1);
+}
+.gc-backdrop {
+  animation: drawer-fade 0.2s ease;
+}
+.gc-scroll {
+  scrollbar-width: none;
+}
+.gc-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.gc-thumb {
+  transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.gc-kept {
+  transition: width 0.3s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+@media (hover: hover) {
+  .gc-pill:hover {
+    border-color: var(--text-tertiary) !important;
+    opacity: 1;
+  }
+  .swap-option:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important;
+    opacity: 1;
+  }
+}
+
+@keyframes gc-menu-in {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes gc-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .gc-pill,
+  .gc-menu,
+  .gc-sheet,
+  .gc-backdrop,
+  .gc-thumb,
+  .gc-kept {
+    animation: none;
+    transition: none;
+  }
   .skeleton {
     animation: none;
     background: var(--skeleton-base);

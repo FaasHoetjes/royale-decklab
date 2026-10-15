@@ -6,7 +6,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
 import { CHAMPION_SLOTS, SLOTS_PER_DECK } from '../lib/deckBoard';
-import type { BuilderCard } from '../lib/builderCards';
+import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
 import type { ScoreDeckCard } from '../api';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from '../components/CardPicker';
@@ -29,30 +29,7 @@ export default function WarDeckBuilder() {
   const loadError = cardsQuery.error ?? collectionQuery.error;
   const error = loadError instanceof Error ? loadError.message : '';
 
-  const builderCards = useMemo<BuilderCard[]>(() => {
-    const ownedById = new Map(owned.map((c) => [c.id, c]));
-    return catalog.map((c) => {
-      const ownedCard = ownedById.get(c.id);
-      return {
-        id: c.id,
-        name: c.name,
-        elixirCost: c.elixirCost,
-        rarity: c.rarity,
-        owned: !!ownedCard,
-        level: ownedCard?.level,
-        maxLevel: ownedCard?.maxLevel ?? c.maxLevel,
-        isHero: !!ownedCard?.iconUrls?.heroMedium || (c.maxEvolutionLevel ?? 0) >= 2,
-        // Ownership: the per-player evolutionLevel is a bitmask (1 = evo, 2 = hero, 3 = both).
-        hasEvo: ((ownedCard?.evolutionLevel ?? 0) & 1) !== 0,
-        ownsHero: ((ownedCard?.evolutionLevel ?? 0) & 2) !== 0,
-        iconUrls: {
-          medium: c.iconUrls?.medium,
-          evolutionMedium: c.iconUrls?.evolutionMedium,
-          heroMedium: ownedCard?.iconUrls?.heroMedium,
-        },
-      };
-    });
-  }, [catalog, owned]);
+  const builderCards = useMemo<BuilderCard[]>(() => toBuilderCards(catalog, owned), [catalog, owned]);
 
   const cardById = useMemo(
     () => new Map(builderCards.map((c) => [c.id, c])),
@@ -126,7 +103,7 @@ export default function WarDeckBuilder() {
                 style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
                 title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (based on their sample-size-adjusted win rate, your card levels and unlocked Evolutions/Heroes); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
               >
-                <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total Score</span>
+                <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total score</span>
                 <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
               </span>
             )}
@@ -229,15 +206,13 @@ const styles = {
     borderRadius: '999px',
     border: '1.5px solid',
     fontSize: '16px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
     cursor: 'help' as const,
   },
   totalScoreLabel: {
-    fontSize: '11px',
-    fontWeight: 600 as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
+    fontSize: '12px',
+    fontWeight: 500 as const,
   },
   resetAllBtn: {
     display: 'inline-flex' as const,
@@ -261,7 +236,7 @@ const styles = {
     borderRadius: '999px',
     padding: '8px 14px',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer',
   },
   deckList: {

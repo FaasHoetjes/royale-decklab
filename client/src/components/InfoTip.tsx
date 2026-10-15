@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface InfoTipProps {
   ariaLabel: string;
@@ -20,6 +21,9 @@ export default function InfoTip({
   children,
 }: InfoTipProps) {
   const [show, setShow] = useState(false);
+  const [position, setPosition] = useState<CSSProperties | null>(null);
+  const iconRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
   const lastPointerType = useRef('');
   const hideTimer = useRef<number | null>(null);
 
@@ -41,8 +45,40 @@ export default function InfoTip({
   };
   useEffect(() => () => cancelHide(), []);
 
+  // The tooltip is rendered on <body> with fixed positioning, so no card, banner or stacking context
+  // can cover or clip it. It follows the icon while the page scrolls or resizes.
+  useLayoutEffect(() => {
+    if (!show) {
+      setPosition(null);
+      return;
+    }
+    const place = () => {
+      const icon = iconRef.current?.getBoundingClientRect();
+      if (!icon) return;
+      const margin = 8;
+      const tipWidth = Math.min(width, window.innerWidth - margin * 2);
+      const preferred = align === 'right' ? icon.right + 4 - tipWidth : icon.left + icon.width / 2 - tipWidth / 2;
+      const left = Math.max(margin, Math.min(preferred, window.innerWidth - tipWidth - margin));
+      setPosition({
+        left: `${left}px`,
+        width: `${tipWidth}px`,
+        ...(placement === 'bottom'
+          ? { top: `${icon.bottom + 8}px` }
+          : { bottom: `${window.innerHeight - icon.top + 8}px` }),
+      });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [show, width, placement, align]);
+
   return (
     <span
+      ref={iconRef}
       className="mobile-touch-hitbox"
       style={{ ...styles.icon, color }}
       onPointerDown={(e) => { lastPointerType.current = e.pointerType; }}
@@ -51,7 +87,8 @@ export default function InfoTip({
       tabIndex={0}
       onFocus={(e) => { if (e.target.matches(':focus-visible')) setShow(true); }}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setShow(false);
+        const next = e.relatedTarget as Node | null;
+        if (!e.currentTarget.contains(next) && !tipRef.current?.contains(next)) setShow(false);
       }}
       onClick={() => { if (lastPointerType.current !== 'mouse') setShow((prev) => !prev); }}
       onKeyDown={(e) => {
@@ -61,24 +98,20 @@ export default function InfoTip({
       aria-label={ariaLabel}
     >
       <InfoMark />
-      {show && (
+      {show && position && createPortal(
         <span
+          ref={tipRef}
           onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => e.stopPropagation()}
           style={{
             ...styles.tooltip,
-            width: `${width}px`,
-            ...(placement === 'bottom'
-              ? { top: 'calc(100% + 8px)', bottom: 'auto' }
-              : {}),
-            ...(align === 'right'
-              ? { left: 'auto', right: '-4px', transform: 'none' }
-              : {}),
+            ...position,
             ...(interactive ? { pointerEvents: 'auto' as const } : {}),
           }}
         >
           {children}
-        </span>
+        </span>,
+        document.body,
       )}
     </span>
   );
@@ -107,10 +140,7 @@ const styles = {
     flexShrink: 0,
   },
   tooltip: {
-    position: 'absolute' as const,
-    bottom: 'calc(100% + 8px)',
-    left: '50%',
-    transform: 'translateX(-50%)',
+    position: 'fixed' as const,
     padding: '10px 12px',
     borderRadius: '6px',
     border: '1px solid var(--tooltip-border)',
@@ -124,7 +154,7 @@ const styles = {
     lineHeight: 1.4,
     textAlign: 'left' as const,
     whiteSpace: 'normal' as const,
-    zIndex: 10,
+    zIndex: 10000,
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     pointerEvents: 'none' as const,
   },

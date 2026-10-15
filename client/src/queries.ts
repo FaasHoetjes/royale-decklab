@@ -20,7 +20,7 @@ export const queryKeys = {
   metaStatus: ['meta', 'status'] as const,
   cards: ['cards'] as const,
   bestDecks: ['best-decks'] as const,
-  playerWarDecks: (tag: string) => ['player', tag, 'war-decks'] as const,
+  playerWarDecks: (tag: string, options = '') => ['player', tag, 'war-decks', options] as const,
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
@@ -42,17 +42,20 @@ export function useMetaStatus() {
   });
 }
 
-export function playerWarDecksOptions(tag: string) {
+/** `options` is the generator's query string (see lib/generatorOptions); '' = no options. */
+export function playerWarDecksOptions(tag: string, options = '') {
   return {
-    queryKey: queryKeys.playerWarDecks(tag),
-    queryFn: ({ signal }: { signal: AbortSignal }) => fetchPlayerWarDecks(tag, signal),
+    queryKey: queryKeys.playerWarDecks(tag, options),
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchPlayerWarDecks(tag, options, signal),
   };
 }
 
-export function usePlayerWarDecks(tag: string | null, enabled = true) {
+export function usePlayerWarDecks(tag: string | null, enabled = true, options = '') {
   return useQuery({
-    ...playerWarDecksOptions(tag ?? ''),
+    ...playerWarDecksOptions(tag ?? '', options),
     enabled: !!tag && enabled,
+    // Keep showing the current decks while new options load, but never another player's decks.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === tag ? previous : undefined),
   });
 }
 

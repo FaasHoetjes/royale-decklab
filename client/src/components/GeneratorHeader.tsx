@@ -1,0 +1,202 @@
+import { Link } from 'react-router-dom';
+import type { ScoredDeck } from '../api';
+import { featuredCard } from '../lib/archetypes';
+import { cardIconUrl, versionOf } from '../lib/cardDisplay';
+import InfoTip from './InfoTip';
+
+interface GeneratorHeaderProps {
+  playerName: string;
+  /** The lineup as shown, swaps included. */
+  decks: ScoredDeck[];
+  totalScore: number;
+  isMobile: boolean;
+}
+
+/** The banner above the generator controls: the player, their decks' win conditions, and the total score. */
+export default function GeneratorHeader({ playerName, decks, totalScore, isMobile }: GeneratorHeaderProps) {
+  const art = decks
+    .map((deck) => {
+      const card = featuredCard(deck.cards);
+      return card ? cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id)) : '';
+    })
+    .filter(Boolean);
+
+  // The win conditions fan out from the middle, like cards held in a hand.
+  const cardWidth = isMobile ? 52 : 80;
+  const step = isMobile ? 30 : 48;
+  const middle = (art.length - 1) / 2;
+
+  return (
+    <section
+      style={{
+        ...styles.banner,
+        padding: isMobile ? '16px 16px' : '20px 28px',
+        marginBottom: isMobile ? '16px' : '24px',
+      }}
+    >
+      {/* Art layers are clipped on their own, so the score tooltip can still overflow the banner. */}
+      <div style={styles.art} aria-hidden="true">
+        <div style={{ ...styles.blur, gridTemplateColumns: `repeat(${Math.max(art.length, 1)}, 1fr)` }}>
+          {art.map((src, i) => (
+            <div key={i} style={{ ...styles.blurTile, backgroundImage: `url("${src}")` }} />
+          ))}
+        </div>
+        <div style={styles.shade} />
+        <div
+          style={{
+            ...styles.fan,
+            width: `${cardWidth + step * Math.max(art.length - 1, 0)}px`,
+            height: `${cardWidth * 1.7}px`,
+            ...(isMobile ? { top: '14px', right: '-10px', opacity: 0.9 } : { bottom: '-30px', right: '34px' }),
+          }}
+        >
+          {art.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              style={{
+                ...styles.fanCard,
+                width: `${cardWidth}px`,
+                left: `${i * step}px`,
+                ...(isMobile ? { top: 0 } : { bottom: 0 }),
+                transform: `rotate(${(i - middle) * 8}deg) translateY(${Math.abs(i - middle) * (isMobile ? 5 : 8)}px)`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <span style={styles.eyebrow}>Your war decks</span>
+      <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
+        {playerName}
+      </h2>
+
+      {decks.length === 0 ? (
+        <span style={styles.empty}>No decks fit your options</span>
+      ) : (
+        <div style={styles.lead}>
+          <span style={{ ...styles.leadValue, fontSize: isMobile ? '22px' : '26px' }}>{totalScore.toFixed(3)}</span>
+          <span style={styles.leadLabel}>
+            total score
+            <InfoTip
+              ariaLabel="How the total score is derived"
+              color={theme.muted}
+              placement="bottom"
+              interactive={isMobile}
+            >
+              The combined Player Score of your recommended decks.{' '}
+              {isMobile ? (
+                <>
+                  See the{' '}
+                  <Link to="/faq#player-score" style={styles.tooltipLink}>
+                    FAQ
+                  </Link>{' '}
+                  for how each individual score is calculated.
+                </>
+              ) : (
+                <>See a deck's Player Score tooltip for how each individual score is calculated.</>
+              )}
+            </InfoTip>
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+const theme = {
+  muted: 'var(--hero-muted)',
+};
+
+const styles = {
+  banner: {
+    position: 'relative' as const,
+    zIndex: 1,
+    isolation: 'isolate' as const,
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    justifyContent: 'flex-end' as const,
+    gap: '6px',
+    borderRadius: '20px',
+    border: '1px solid var(--panel-border)',
+    boxShadow: 'var(--banner-shadow)',
+    color: 'var(--hero-text)',
+  },
+  art: {
+    position: 'absolute' as const,
+    inset: 0,
+    zIndex: -1,
+    overflow: 'hidden' as const,
+    borderRadius: '19px',
+    backgroundColor: 'var(--hero-bg)',
+  },
+  blur: {
+    position: 'absolute' as const,
+    inset: '-60px',
+    display: 'grid' as const,
+    filter: 'var(--hero-art)',
+    opacity: 'var(--hero-art-opacity)',
+  },
+  blurTile: {
+    backgroundSize: 'cover',
+    backgroundPosition: '50% 30%',
+  },
+  shade: {
+    position: 'absolute' as const,
+    inset: 0,
+    background: 'var(--hero-fade)',
+  },
+  fan: {
+    position: 'absolute' as const,
+  },
+  fanCard: {
+    position: 'absolute' as const,
+    borderRadius: '10px',
+    transformOrigin: '50% 120%',
+    filter: 'var(--hero-card-shadow)',
+  },
+  eyebrow: {
+    fontSize: '13px',
+    fontWeight: 500 as const,
+    color: theme.muted,
+  },
+  name: {
+    margin: 0,
+    fontWeight: 700 as const,
+    lineHeight: 1.1,
+    overflowWrap: 'anywhere' as const,
+    textShadow: 'var(--hero-text-shadow)',
+  },
+  empty: {
+    marginTop: '10px',
+    fontSize: '13px',
+    color: theme.muted,
+  },
+  lead: {
+    display: 'flex' as const,
+    alignItems: 'baseline' as const,
+    gap: '8px',
+    marginTop: '8px',
+  },
+  leadValue: {
+    fontWeight: 700 as const,
+    lineHeight: 1,
+    color: 'var(--hero-text)',
+    textShadow: 'var(--hero-text-shadow)',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  leadLabel: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+    fontSize: '13px',
+    fontWeight: 500 as const,
+    color: theme.muted,
+  },
+  tooltipLink: {
+    color: 'var(--accent-bright)',
+    fontWeight: 600 as const,
+    textDecoration: 'underline' as const,
+  },
+};

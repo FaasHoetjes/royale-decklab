@@ -48,7 +48,7 @@ export default function UpgradeRow({
         <div style={styles.info}>
           <div style={{ ...styles.name, color: theme.text.primary }}>{s.name}</div>
           {unlock ? (
-            <div style={{ ...styles.levels, color: unlock.color, fontWeight: 700 }}>{unlock.text}</div>
+            <div style={{ ...styles.levels, color: unlock.color, fontWeight: 600 }}>{unlock.text}</div>
           ) : (
             <div style={{ ...styles.levels, color: theme.text.secondary }}>
               Level {displayLevel(s.fromLevel, s.maxLevel)} → {displayLevel(s.toLevel, s.maxLevel)}
@@ -135,7 +135,7 @@ const styles = {
     width: '26px',
     flexShrink: 0,
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     fontVariantNumeric: 'tabular-nums' as const,
   },
   infoWrap: {
@@ -193,7 +193,7 @@ const styles = {
   },
   deltaValue: {
     fontSize: '15px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
   },
   deltaPct: {

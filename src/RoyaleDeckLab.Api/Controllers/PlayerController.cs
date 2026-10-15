@@ -57,11 +57,22 @@ public sealed class PlayerController(
     }
 
     [HttpGet("api/player/{tag}")]
-    public async Task<IActionResult> WarDecks(string tag, CancellationToken ct)
+    public async Task<IActionResult> WarDecks(
+        string tag,
+        [FromQuery] string? decks,
+        [FromQuery] string? minLevel,
+        [FromQuery] string? ban,
+        [FromQuery] string? require,
+        [FromQuery(Name = "lock")] string[]? locks,
+        CancellationToken ct)
     {
         if (!PlayerTag.IsValid(tag))
         {
             return BadRequest(new { error = "Invalid player tag" });
+        }
+        if (!LineupOptions.TryParse(decks, minLevel, ban, require, locks, out var options, out var optionsError))
+        {
+            return BadRequest(new { error = optionsError });
         }
 
         try
@@ -79,7 +90,7 @@ public sealed class PlayerController(
                 cardMap[card.Id] = card;
             }
 
-            var warDecks = analyzer.FindBestWarDecks(cache.Meta, cardMap);
+            var warDecks = analyzer.FindBestWarDecks(cache.Meta, cardMap, options);
 
             return Ok(new
             {

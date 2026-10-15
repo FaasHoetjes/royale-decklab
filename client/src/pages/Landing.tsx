@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { playerWarDecksOptions } from '../queries';
+import { startingQuery } from '../lib/generatorOptions';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
@@ -34,7 +35,7 @@ export default function Landing() {
     if (code.length < 8 || !isValidTag(code) || lastPrefetched.current === code) return;
     const timer = setTimeout(() => {
       lastPrefetched.current = code;
-      queryClient.prefetchQuery({ ...playerWarDecksOptions(`#${code}`), retry: false });
+      queryClient.prefetchQuery({ ...playerWarDecksOptions(`#${code}`, startingQuery()), retry: false });
     }, 500);
     return () => clearTimeout(timer);
   }, [value, queryClient]);
@@ -60,7 +61,7 @@ export default function Landing() {
     const tag = `#${code}`;
     setLoading(true);
     try {
-      await queryClient.fetchQuery(playerWarDecksOptions(tag));
+      await queryClient.fetchQuery(playerWarDecksOptions(tag, startingQuery()));
       setActivePlayerTag(tag);
       navigate(`/${code}`);
     } catch {

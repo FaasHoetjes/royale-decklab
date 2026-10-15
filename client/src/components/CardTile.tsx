@@ -11,6 +11,10 @@ interface CardTileProps {
   level?: number | null;
   showName?: boolean;
   nameColor?: string;
+  /** Overrides the shared card-name size, for places with roomier tiles. */
+  nameSize?: string;
+  /** Lets long names wrap instead of being cut off, up to this many lines. */
+  nameLines?: number;
   lazyLoad?: boolean;
   fetchPriority?: 'high' | 'low' | 'auto';
   artStyle?: CSSProperties;
@@ -25,6 +29,8 @@ export default function CardTile({
   level,
   showName = true,
   nameColor,
+  nameSize,
+  nameLines = 1,
   lazyLoad,
   fetchPriority,
   artStyle,
@@ -61,12 +67,23 @@ export default function CardTile({
           </div>
         )}
         {elixirCost != null && <ElixirBadge cost={elixirCost} />}
-        {level != null && <div style={styles.level}>LEVEL {level}</div>}
+        {level != null && <div style={styles.level}>Level {level}</div>}
         {children}
       </div>
-      {showName && <div style={{ ...styles.name, color: nameColor }}>{name}</div>}
+      {showName && <div style={{ ...styles.name, color: nameColor, ...(nameSize && { fontSize: nameSize }), ...(nameLines > 1 && wrappedName(nameLines)) }}>{name}</div>}
     </>
   );
+}
+
+function wrappedName(lines: number): CSSProperties {
+  return {
+    whiteSpace: 'normal',
+    display: '-webkit-box',
+    WebkitLineClamp: lines,
+    WebkitBoxOrient: 'vertical',
+    lineHeight: 1.35,
+    minHeight: `${lines * 1.35}em`,
+  };
 }
 
 function placeholderInitials(name: string): string {
@@ -112,18 +129,18 @@ const styles = {
     background: 'linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent)',
     color: 'white',
     fontSize: '11px',
-    fontWeight: 800 as const,
-    letterSpacing: '0.5px',
+    fontWeight: 700 as const,
+    letterSpacing: '0.2px',
     textAlign: 'center' as const,
     padding: '12px 0 4px',
     textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
   },
   name: {
     fontSize: 'var(--card-name-font-size)',
-    fontWeight: 600 as const,
+    fontWeight: 500 as const,
     textAlign: 'center' as const,
-    marginTop: '5px',
-    lineHeight: 1.1,
+    marginTop: '3px',
+    lineHeight: 1.4,
     minHeight: '12px',
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden' as const,

@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, avgElixir, deckArchetype, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, inOrder, type CardVersion, type CardVersionRef } from '../lib/cardDisplay';
+import { classifyDeck } from '../lib/archetypes';
 import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -9,13 +10,26 @@ export interface SwapOption {
   cards: DeckCardData[];
   metaWinRate: number;
   playerScore: number;
+  /** Games the win rate is based on. */
+  uses: number;
   cardVersions?: CardVersionRef[];
+  metaCardVersions?: CardVersionRef[];
+}
+
+const SPECIAL_COLOR = { evo: '#a03cf0', hero: '#f5a623' } as const;
+const SPECIAL_LABEL = { evo: 'Evo', hero: 'Hero' } as const;
+
+/** The Evolution or Hero the meta deck runs on this card that the player hasn't unlocked. */
+function missingVersion(opt: SwapOption, cardId: number): Exclude<CardVersion, 'normal'> | null {
+  const meta = versionOf(opt.metaCardVersions, cardId);
+  return meta !== 'normal' && versionOf(opt.cardVersions, cardId) !== meta ? meta : null;
 }
 
 interface SwapDeckModalProps {
   slotNumber: number;
   options: SwapOption[];
   currentMaster: number;
+  currentCardOrder?: number[];
   onSelect: (master: number) => void;
   onClose: () => void;
 }
@@ -24,10 +38,12 @@ export default function SwapDeckModal({
   slotNumber,
   options,
   currentMaster,
+  currentCardOrder,
   onSelect,
   onClose,
 }: SwapDeckModalProps) {
   const isMobile = useIsMobile();
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -44,6 +60,24 @@ export default function SwapDeckModal({
     };
   }, []);
 
+  // The current deck first, then the rest by score; each is compared with the current deck.
+  const current = options.find((o) => o.master === currentMaster);
+  const ordered = useMemo(
+    () => [...(current ? [current] : []), ...options.filter((o) => o !== current).sort((a, b) => b.playerScore - a.playerScore)],
+    [options, current]
+  );
+  const currentOrder = !current
+    ? []
+    : currentCardOrder
+      ? inOrder(current.cards, currentCardOrder)
+      : orderBySlots(current.cards, slotVersionOf(current.metaCardVersions, current.cardVersions));
+  const currentIds = new Set(currentOrder.map((c) => c.id));
+  const sameAsCurrent = (opt: SwapOption, cardId: number) =>
+    current != null &&
+    currentIds.has(cardId) &&
+    versionOf(opt.cardVersions, cardId) === versionOf(current.cardVersions, cardId);
+  const others = ordered.length - (current ? 1 : 0);
+
   return (
     <div
       style={{ ...styles.overlay, padding: isMobile ? '14px 10px' : '40px 20px' }}
@@ -53,68 +87,102 @@ export default function SwapDeckModal({
       aria-label={`Choose a deck for slot ${slotNumber}`}
     >
       <div
-        style={{
-          ...styles.panel,
-          padding: isMobile ? '16px 14px' : '24px',
-          maxHeight: isMobile ? 'calc(100dvh - 28px)' : 'calc(100vh - 80px)',
-          backgroundColor: theme.panelBg,
-          borderColor: theme.panelBorder,
-        }}
+        style={{ ...styles.panel, maxHeight: isMobile ? 'calc(100dvh - 28px)' : 'calc(100vh - 80px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={styles.panelHeader}>
-          <h3 style={{ ...styles.panelTitle, color: theme.text }}>Swap Deck {slotNumber}</h3>
-          <button
-            className="mobile-touch-target"
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ ...styles.closeButton, color: theme.subtext }}
-          >
-            ✕
+        <div style={{ ...styles.header, padding: isMobile ? '16px 16px 10px' : '20px 22px 12px' }}>
+          <div>
+            <h3 style={styles.title}>Swap deck {slotNumber}</h3>
+            <p style={styles.subtitle}>
+              {others} deck{others === 1 ? '' : 's'} that don't share cards with your other decks. New and changed cards are outlined.
+            </p>
+          </div>
+          <button className="mobile-touch-target" type="button" onClick={onClose} aria-label="Close" style={styles.close}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
           </button>
         </div>
-        <p style={{ ...styles.panelSubtitle, color: theme.subtext }}>
-          {options.length} option{options.length === 1 ? '' : 's'} that don't share cards with your other decks. Click one to use it.
-        </p>
 
-        <div style={styles.optionList}>
-          {options.map((opt) => {
-            const isActive = opt.master === currentMaster;
-            return (
+        <div
+          style={{ ...styles.list, padding: isMobile ? '4px 12px 14px' : '4px 22px 22px' }}
+          onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)}
+        >
+          {ordered.map((opt) => {
+            const isCurrent = opt === current;
+            const delta = current ? opt.playerScore - current.playerScore : 0;
+            const missing = opt.cards.flatMap((card) => {
+              const version = missingVersion(opt, card.id);
+              return version ? [{ card, version }] : [];
+            });
+            const row = (
               <button
                 key={opt.master}
                 type="button"
+                className="swap-option"
                 onClick={() => onSelect(opt.master)}
-                style={{
-                  ...styles.option,
-                  backgroundColor: isActive ? theme.activeBg : theme.rowBg,
-                  borderColor: isActive ? theme.activeBorder : theme.rowBorder,
-                }}
+                aria-current={isCurrent || undefined}
+                style={{ ...styles.option, ...(isCurrent && styles.optionCurrent) }}
               >
-                <div style={styles.optionStats}>
-                  <span style={{ ...styles.optionArchetype, borderColor: theme.rowBorder, color: theme.subtext }}>
-                    {deckArchetype(opt.cards)}
+                <div style={styles.line}>
+                  <span style={styles.name}>{classifyDeck(opt.cards).name}</span>
+                  {isCurrent && <span style={styles.currentBadge}>Current</span>}
+                  {missing.map(({ card, version }) => (
+                    <span
+                      key={card.id}
+                      title={`This deck's win rate is with ${SPECIAL_LABEL[version]} ${card.name}, which you haven't unlocked`}
+                      style={{ ...styles.missingChip, ...missingChipColors(version) }}
+                    >
+                      <span style={styles.missingChipDot} />
+                      {SPECIAL_LABEL[version]} {card.name} missing
+                    </span>
+                  ))}
+                  <span style={{ ...styles.stats, ...(isMobile && styles.statsMobile) }}>
+                    <span style={styles.stat}>
+                      Score <b style={styles.statValue}>{opt.playerScore.toFixed(3)}</b>
+                      {!isCurrent && current && (
+                        <span style={{ ...styles.delta, color: delta >= 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                          {delta >= 0 ? '+' : '−'}{Math.abs(delta).toFixed(3)}
+                        </span>
+                      )}
+                    </span>
+                    <span style={styles.stat}>
+                      Win rate <b style={styles.statValue}>{(opt.metaWinRate * 100).toFixed(1)}%</b>
+                      <span style={styles.games}>{opt.uses} game{opt.uses === 1 ? '' : 's'}</span>
+                    </span>
+                    <span style={styles.stat}>
+                      Elixir <b style={styles.statValue}>{avgElixir(opt.cards).toFixed(1)}</b>
+                    </span>
                   </span>
-                  {isActive && (
-                    <span style={{ ...styles.activeTag, color: theme.accent }}>● Current</span>
-                  )}
-                  <span style={styles.statSpacer} />
-                  <OptionStat label="Win Rate" value={`${(opt.metaWinRate * 100).toFixed(1)}%`} labelColor={theme.subtext} valueColor={theme.accent} />
-                  <OptionStat label="Score" value={opt.playerScore.toFixed(3)} labelColor={theme.subtext} valueColor={theme.text} />
-                  <OptionStat label="Avg Elixir" value={avgElixir(opt.cards).toFixed(1)} labelColor={theme.subtext} valueColor={theme.text} />
                 </div>
-                <div style={styles.optionCards}>
-                  {opt.cards.map((card) => {
+                <div style={{ ...styles.cards, gap: isMobile ? '4px' : '6px' }}>
+                  {(isCurrent ? currentOrder : alignToReference(opt.cards, slotVersionOf(opt.metaCardVersions, opt.cardVersions), currentOrder)).map((card) => {
                     const icon = cardIconUrl(card.iconUrls, versionOf(opt.cardVersions, card.id));
+                    const isNew = !isCurrent && current != null && !sameAsCurrent(opt, card.id);
+                    const isSame = !isCurrent && current != null && !isNew;
+                    const missingAs = missingVersion(opt, card.id);
                     return (
-                      <div key={card.id} style={{ ...styles.miniCard, background: CARD_BACKDROP }} title={card.name}>
-                        {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
+                      <div
+                        key={card.id}
+                        title={card.name}
+                        style={{ ...styles.miniCard, ...(isNew && styles.miniNew) }}
+                      >
+                        <div style={{ ...styles.miniCardFace, background: CARD_BACKDROP, ...(isSame && styles.miniSame) }}>
+                          {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
+                        </div>
+                        {missingAs && <span style={{ ...styles.missingDot, backgroundColor: SPECIAL_COLOR[missingAs] }} />}
                       </div>
                     );
                   })}
                 </div>
               </button>
+            );
+            return isCurrent ? (
+              <div key={opt.master} style={{ ...styles.sticky, ...(scrolled && styles.stickyScrolled) }}>
+                {row}
+              </div>
+            ) : (
+              row
             );
           })}
         </div>
@@ -123,25 +191,13 @@ export default function SwapDeckModal({
   );
 }
 
-const theme = {
-  panelBg: 'var(--modal-bg)',
-  panelBorder: 'var(--border)',
-  text: 'var(--text-primary)',
-  subtext: 'var(--text-secondary)',
-  accent: 'var(--accent)',
-  rowBg: 'var(--row-bg)',
-  rowBorder: 'var(--border)',
-  activeBorder: 'var(--accent)',
-  activeBg: 'var(--selected-bg)',
-};
-
-function OptionStat({ label, value, labelColor, valueColor }: { label: string; value: string; labelColor: string; valueColor: string }) {
-  return (
-    <span style={styles.optionStat}>
-      <span style={{ ...styles.optionStatLabel, color: labelColor }}>{label}</span>
-      <span style={{ ...styles.optionStatValue, color: valueColor }}>{value}</span>
-    </span>
-  );
+function missingChipColors(version: Exclude<CardVersion, 'normal'>) {
+  const color = SPECIAL_COLOR[version];
+  return {
+    borderColor: `color-mix(in srgb, ${color} 50%, transparent)`,
+    backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`,
+    color: `color-mix(in srgb, ${color} 80%, var(--text-primary))`,
+  };
 }
 
 const styles = {
@@ -159,105 +215,190 @@ const styles = {
   panel: {
     width: '100%',
     maxWidth: '640px',
-    borderRadius: '12px',
-    border: '1px solid',
-    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)',
+    borderRadius: '18px',
+    border: '1px solid var(--border)',
+    backgroundColor: 'var(--modal-bg)',
+    color: 'var(--text-primary)',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)',
     display: 'flex' as const,
     flexDirection: 'column' as const,
     overflow: 'hidden' as const,
   },
-  panelHeader: {
+  header: {
     display: 'flex' as const,
-    alignItems: 'center' as const,
+    alignItems: 'flex-start' as const,
     justifyContent: 'space-between' as const,
+    gap: '12px',
   },
-  panelTitle: {
+  title: {
     margin: 0,
     fontSize: '20px',
+    fontWeight: 700 as const,
   },
-  closeButton: {
+  subtitle: {
+    margin: '4px 0 0',
+    fontSize: '14px',
+    lineHeight: 1.45,
+    color: 'var(--text-secondary)',
+  },
+  close: {
+    flex: 'none',
+    width: '36px',
+    height: '36px',
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    border: 0,
+    borderRadius: '10px',
     background: 'transparent',
-    border: 'none',
-    fontSize: '18px',
+    color: 'var(--text-secondary)',
     cursor: 'pointer',
-    lineHeight: 1,
-    padding: '4px',
   },
-  panelSubtitle: {
-    margin: '6px 0 20px',
-    fontSize: '13px',
-  },
-  optionList: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
+  list: {
+    display: 'grid' as const,
+    gridAutoRows: 'max-content',
     gap: '12px',
     overflowY: 'auto' as const,
     overscrollBehavior: 'contain' as const,
     flex: 1,
-    margin: '0 -4px',
-    padding: '4px',
+  },
+  sticky: {
+    position: 'sticky' as const,
+    top: '-4px',
+    zIndex: 1,
+    marginBottom: '-12px',
+    paddingBottom: '12px',
+    backgroundColor: 'var(--modal-bg)',
+    transition: 'box-shadow 0.15s ease',
+  },
+  stickyScrolled: {
+    boxShadow: '0 12px 14px -14px rgba(0, 0, 0, 0.45)',
   },
   option: {
     width: '100%',
     textAlign: 'left' as const,
-    border: '2px solid',
-    borderRadius: '10px',
-    padding: '14px 16px',
-    cursor: 'pointer',
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
+    padding: '16px',
+    display: 'grid' as const,
     gap: '12px',
-    transition: 'border-color 0.15s ease, background-color 0.15s ease',
+    border: '1px solid var(--panel-border)',
+    borderRadius: '14px',
+    backgroundColor: 'var(--bg-secondary)',
+    boxShadow: 'var(--panel-shadow)',
+    color: 'inherit',
+    font: 'inherit',
+    cursor: 'pointer',
+    transition: 'border-color 0.15s ease',
   },
-  optionStats: {
+  optionCurrent: {
+    borderColor: 'var(--accent)',
+    boxShadow: '0 0 0 1px var(--accent), var(--panel-shadow)',
+  },
+  line: {
     display: 'flex' as const,
-    alignItems: 'center' as const,
+    alignItems: 'baseline' as const,
     flexWrap: 'wrap' as const,
-    gap: '8px 14px',
+    gap: '4px 10px',
   },
-  optionArchetype: {
-    fontSize: '11px',
-    fontWeight: 700 as const,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase' as const,
-    padding: '3px 9px',
-    borderRadius: '999px',
-    border: '1.5px solid',
-  },
-  activeTag: {
-    fontSize: '11px',
-    fontWeight: 700 as const,
-  },
-  statSpacer: {
-    flex: 1,
-  },
-  optionStat: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-  },
-  optionStatLabel: {
-    fontSize: 'var(--metric-label-font-size)',
-    fontWeight: 500 as const,
-  },
-  optionStatValue: {
+  name: {
     fontSize: '15px',
     fontWeight: 700 as const,
   },
-  optionCards: {
+  currentBadge: {
+    padding: '2px 8px',
+    borderRadius: '999px',
+    border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+    color: 'var(--accent)',
+    fontSize: '12px',
+    fontWeight: 600 as const,
+  },
+  stats: {
+    marginLeft: 'auto',
+    display: 'flex' as const,
+    alignItems: 'baseline' as const,
+    flexWrap: 'wrap' as const,
+    gap: '4px 14px',
+    fontSize: '13px',
+    color: 'var(--text-secondary)',
+  },
+  statsMobile: {
+    marginLeft: 0,
+    width: '100%',
+    gap: '4px 12px',
+    fontSize: '12px',
+  },
+  stat: {
+    whiteSpace: 'nowrap' as const,
+  },
+  statValue: {
+    fontSize: '15px',
+    fontWeight: 700 as const,
+    color: 'var(--text-primary)',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  delta: {
+    marginLeft: '5px',
+    fontSize: '12px',
+    fontWeight: 600 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  games: {
+    marginLeft: '5px',
+    fontSize: '12px',
+    fontWeight: 500 as const,
+    color: 'var(--text-tertiary)',
+  },
+  cards: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(8, 1fr)',
-    gap: '6px',
+    gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
   },
   miniCard: {
+    position: 'relative' as const,
     aspectRatio: '0.82',
     borderRadius: '6px',
-    overflow: 'hidden' as const,
+  },
+  miniCardFace: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 'inherit',
+  },
+  miniSame: {
+    opacity: 0.32,
+    filter: 'grayscale(0.6)',
+  },
+  miniNew: {
+    boxShadow: '0 0 0 2px var(--accent)',
   },
   miniCardImage: {
     width: '100%',
     height: '100%',
     objectFit: 'cover' as const,
     display: 'block',
+    borderRadius: 'inherit',
+  },
+  missingChip: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+    padding: '2px 8px',
+    borderRadius: '999px',
+    border: '1px solid',
+    fontSize: '12px',
+    fontWeight: 600 as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  missingChipDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '999px',
+    backgroundColor: 'currentColor',
+  },
+  missingDot: {
+    position: 'absolute' as const,
+    top: '-3px',
+    right: '-3px',
+    width: '11px',
+    height: '11px',
+    borderRadius: '999px',
+    border: '2px solid var(--bg-secondary)',
   },
 };
