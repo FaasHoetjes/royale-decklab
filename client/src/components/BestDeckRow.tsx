@@ -9,21 +9,17 @@ import DeckLinkAction from './DeckLinkAction';
 interface BestDeckRowProps {
   deck: BestDeckEntry;
   name: string;
-  deckNumber: number;
   theme: Theme;
   isMobile: boolean;
 }
 
 /** One deck of a best set: its name and stats, the eight cards, and the link to open it in game. */
-export default function BestDeckRow({ deck, name, deckNumber, theme, isMobile }: BestDeckRowProps) {
+export default function BestDeckRow({ deck, name, theme, isMobile }: BestDeckRowProps) {
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const deckLink = buildDeckLink(cards.map((c) => c.id));
 
   const title = (
-    <div style={{ minWidth: 0 }}>
-      <h3 style={{ ...styles.name, color: theme.text.primary }}>{name}</h3>
-      <span style={{ ...styles.deckNumber, color: theme.text.tertiary }}>Deck {deckNumber}</span>
-    </div>
+    <h3 style={{ ...styles.name, minWidth: 0, color: theme.text.primary }}>{name}</h3>
   );
 
   const stats = (
@@ -130,12 +126,6 @@ const styles = {
     fontWeight: 700 as const,
     lineHeight: 1.2,
     overflowWrap: 'anywhere' as const,
-  },
-  deckNumber: {
-    display: 'block' as const,
-    marginTop: '2px',
-    fontSize: '12px',
-    fontWeight: 500 as const,
   },
   stats: {
     display: 'flex' as const,

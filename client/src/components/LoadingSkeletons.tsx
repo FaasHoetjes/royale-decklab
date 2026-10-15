@@ -51,7 +51,6 @@ export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
                   <div style={isMobile ? { ...styles.inline, justifyContent: 'space-between', alignItems: 'flex-start' } : { ...styles.stack, gap: '10px' }}>
                     <div style={{ ...styles.stack, gap: '6px' }}>
                       <Skeleton style={{ width: '120px', height: '15px' }} />
-                      <Skeleton style={{ width: '44px', height: '9px' }} />
                     </div>
                     <div style={{ ...styles.stack, gap: '6px', alignItems: isMobile ? 'flex-end' : 'flex-start' }}>
                       <Skeleton style={{ width: '64px', height: '9px' }} />

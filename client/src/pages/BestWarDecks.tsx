@@ -119,11 +119,7 @@ export default function BestWarDecks() {
             return (
               <section key={setIdx}>
                 <GeneratorHeader
-                  eyebrow={
-                    <>
-                      <b style={{ ...styles.rank, color: theme.accent }}>#{setIdx + 1}</b> War deck set
-                    </>
-                  }
+                  rank={setIdx + 1}
                   decks={set.decks}
                   totalScore={set.totalScore}
                   scoreTip="The four decks' meta scores added up. Sets are ranked by it."
@@ -172,7 +168,6 @@ export default function BestWarDecks() {
                           key={deckIdx}
                           deck={deck}
                           name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
-                          deckNumber={deckIdx + 1}
                           theme={theme}
                           isMobile={isMobile}
                         />
@@ -222,10 +217,6 @@ const styles = {
   setList: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
-  },
-  rank: {
-    fontSize: '15px',
-    fontWeight: 700 as const,
   },
   useButton: {
     alignSelf: 'flex-start' as const,
