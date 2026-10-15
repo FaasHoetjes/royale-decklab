@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { classifyDeck } from './archetypes';
+import { classifyDeck, distinctDeckNames } from './archetypes';
 
 const COST: Record<string, number> = {
   'Archer Queen': 5, Archers: 3, Arrows: 3, 'Baby Dragon': 4, Balloon: 5, Bandit: 3, 'Barbarian Barrel': 2,
@@ -65,5 +65,20 @@ describe('classifyDeck', () => {
   test('falls back to the play style when no win condition is recognised', () => {
     const archetype = classify(['Knight', 'Archers', 'Skeletons', 'Ice Spirit', 'Cannon', 'Musketeer', 'Fireball', 'The Log']);
     expect(archetype).toEqual({ name: 'Cycle deck', style: 'Cycle' });
+  });
+});
+
+describe('distinctDeckNames', () => {
+  const deck = (names: string[]) => names.map((name) => ({ name, elixirCost: COST[name] ?? 4 }));
+  const inferno = deck(['Knight', 'Skeleton Army', 'Princess', 'Dart Goblin', 'Wall Breakers', 'Inferno Tower', 'Goblin Barrel', 'The Log']);
+  const bombTower = deck(['Knight', 'Skeleton Army', 'Princess', 'Ice Spirit', 'Dart Goblin', 'Wall Breakers', 'Bomb Tower', 'Goblin Barrel']);
+  const hog = deck(['Goblins', 'Hog Rider', 'Firecracker', 'Mighty Miner', 'Electro Spirit', 'Cannon', 'The Log', 'Earthquake']);
+
+  test('leaves names that are already unique alone', () => {
+    expect(distinctDeckNames([inferno, hog])).toEqual(['Log Bait', 'Hog EQ']);
+  });
+
+  test('adds the priciest card only one of the twins runs', () => {
+    expect(distinctDeckNames([inferno, bombTower, hog])).toEqual(['Log Bait · Inferno Tower', 'Log Bait · Bomb Tower', 'Hog EQ']);
   });
 });

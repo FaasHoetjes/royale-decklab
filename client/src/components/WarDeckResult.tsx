@@ -150,7 +150,7 @@ export default function WarDeckResult({
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
       <GeneratorHeader
-        playerName={playerName}
+        title={playerName}
         decks={slots.map(deckAt)}
         totalScore={liveTotalScore}
         isMobile={isMobile}

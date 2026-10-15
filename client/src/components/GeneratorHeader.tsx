@@ -1,19 +1,34 @@
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { ScoredDeck } from '../api';
 import { featuredCard } from '../lib/archetypes';
-import { cardIconUrl, versionOf } from '../lib/cardDisplay';
+import { cardIconUrl, versionOf, type CardIconUrls, type CardVersionRef } from '../lib/cardDisplay';
 import InfoTip from './InfoTip';
 
+interface BannerDeck {
+  cards: Array<{ id: number; name: string; elixirCost?: number; iconUrls?: CardIconUrls }>;
+  cardVersions?: CardVersionRef[];
+}
+
 interface GeneratorHeaderProps {
-  playerName: string;
+  /** The player's name on the generator; left out, the score sits right under the eyebrow. */
+  title?: string;
+  /** Pass null to leave it out. */
+  eyebrow?: ReactNode;
   /** The lineup as shown, swaps included. */
-  decks: ScoredDeck[];
+  decks: BannerDeck[];
   totalScore: number;
+  /** Replaces the generator's explanation of the total score. */
+  scoreTip?: ReactNode;
+  /** Actions under the score, e.g. a button. */
+  children?: ReactNode;
+  style?: CSSProperties;
+  /** Makes the whole banner a button that folds the content it controls. */
+  toggle?: { expanded: boolean; onToggle: () => void; controls: string; label: string };
   isMobile: boolean;
 }
 
-/** The banner above the generator controls: the player, their decks' win conditions, and the total score. */
-export default function GeneratorHeader({ playerName, decks, totalScore, isMobile }: GeneratorHeaderProps) {
+/** The banner above a lineup: its title, the decks' win conditions fanned out, and the total score. */
+export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
   const art = decks
     .map((deck) => {
       const card = featuredCard(deck.cards);
@@ -22,8 +37,9 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
     .filter(Boolean);
 
   // The win conditions fan out from the middle, like cards held in a hand.
-  const cardWidth = isMobile ? 52 : 80;
-  const step = isMobile ? 30 : 48;
+  // A toggle's arrow takes the top right corner, so the fan moves in and, on a phone, tightens.
+  const cardWidth = isMobile ? (toggle ? 48 : 52) : 80;
+  const step = isMobile ? (toggle ? 26 : 30) : 48;
   const middle = (art.length - 1) / 2;
 
   return (
@@ -31,7 +47,9 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
       style={{
         ...styles.banner,
         padding: isMobile ? '16px 16px' : '20px 28px',
+        ...(isMobile && !title ? { paddingTop: eyebrow == null ? '16px' : '40px' } : {}),
         marginBottom: isMobile ? '16px' : '24px',
+        ...style,
       }}
     >
       {/* Art layers are clipped on their own, so the score tooltip can still overflow the banner. */}
@@ -47,7 +65,9 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
             ...styles.fan,
             width: `${cardWidth + step * Math.max(art.length - 1, 0)}px`,
             height: `${cardWidth * 1.7}px`,
-            ...(isMobile ? { top: '14px', right: '-10px', opacity: 0.9 } : { bottom: '-30px', right: '34px' }),
+            ...(isMobile
+              ? { top: toggle ? '12px' : '14px', right: toggle ? '48px' : '-10px', opacity: 0.9 }
+              : { bottom: '-30px', right: toggle ? '74px' : '34px' }),
           }}
         >
           {art.map((src, i) => (
@@ -67,38 +87,81 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
         </div>
       </div>
 
-      <span style={styles.eyebrow}>Your war decks</span>
-      <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
-        {playerName}
-      </h2>
+      {/* Stretched over the banner so a click anywhere toggles it; the score tip and actions sit above it. */}
+      {toggle && (
+        <button
+          type="button"
+          className="banner-toggle"
+          aria-expanded={toggle.expanded}
+          aria-controls={toggle.controls}
+          aria-label={toggle.label}
+          onClick={toggle.onToggle}
+          style={styles.toggle}
+        >
+          <span style={{ ...styles.chevron, ...(isMobile ? { top: '12px', right: '10px', width: '32px', height: '32px' } : {}) }}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              style={{ ...styles.chevronIcon, transform: toggle.expanded ? 'rotate(180deg)' : undefined }}
+            >
+              <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </button>
+      )}
+
+      {eyebrow != null && <span style={styles.eyebrow}>{eyebrow}</span>}
+      {title && (
+        <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
+          {title}
+        </h2>
+      )}
 
       {decks.length === 0 ? (
         <span style={styles.empty}>No decks fit your options</span>
       ) : (
-        <div style={styles.lead}>
+        <div style={{ ...styles.lead, ...(toggle ? { ...styles.aboveToggle, pointerEvents: 'none' } : {}) }}>
           <span style={{ ...styles.leadValue, fontSize: isMobile ? '22px' : '26px' }}>{totalScore.toFixed(3)}</span>
           <span style={styles.leadLabel}>
             total score
-            <InfoTip
-              ariaLabel="How the total score is derived"
-              color={theme.muted}
-              placement="bottom"
-              interactive={isMobile}
-            >
-              The combined Player Score of your recommended decks.{' '}
-              {isMobile ? (
-                <>
-                  See the{' '}
-                  <Link to="/faq#player-score" style={styles.tooltipLink}>
-                    FAQ
-                  </Link>{' '}
-                  for how each individual score is calculated.
-                </>
-              ) : (
-                <>See a deck's Player Score tooltip for how each individual score is calculated.</>
-              )}
-            </InfoTip>
+            {/* With a toggle, clicks on the score fall through to it; only the tip stays clickable. */}
+            <span style={{ display: 'inline-flex', pointerEvents: 'auto' }}>
+              <InfoTip
+                ariaLabel="How the total score is derived"
+                color={theme.muted}
+                placement="bottom"
+                interactive={isMobile}
+              >
+                {scoreTip ?? (
+                  <>
+                    The combined Player Score of your recommended decks.{' '}
+                    {isMobile ? (
+                      <>
+                        See the{' '}
+                        <Link to="/faq#player-score" style={styles.tooltipLink}>
+                          FAQ
+                        </Link>{' '}
+                        for how each individual score is calculated.
+                      </>
+                    ) : (
+                      <>See a deck's Player Score tooltip for how each individual score is calculated.</>
+                    )}
+                  </>
+                )}
+              </InfoTip>
+            </span>
           </span>
+        </div>
+      )}
+      {children && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            ...(toggle ? { ...styles.aboveToggle, alignSelf: isMobile ? 'stretch' : 'flex-start' } : {}),
+          }}
+        >
+          {children}
         </div>
       )}
     </section>
@@ -193,6 +256,41 @@ const styles = {
     fontSize: '13px',
     fontWeight: 500 as const,
     color: theme.muted,
+  },
+  toggle: {
+    position: 'absolute' as const,
+    inset: 0,
+    zIndex: 1,
+    padding: 0,
+    border: 'none',
+    borderRadius: '19px',
+    background: 'transparent',
+    cursor: 'pointer',
+    color: 'var(--hero-text)',
+  },
+  chevron: {
+    position: 'absolute' as const,
+    top: '14px',
+    right: '14px',
+    width: '34px',
+    height: '34px',
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    borderRadius: '50%',
+    border: '1px solid color-mix(in srgb, var(--hero-text) 22%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 62%, transparent)',
+    backdropFilter: 'blur(10px)',
+  },
+  chevronIcon: {
+    width: '16px',
+    height: '16px',
+    display: 'block' as const,
+    transition: 'transform 0.25s ease',
+  },
+  aboveToggle: {
+    position: 'relative' as const,
+    zIndex: 2,
+    alignSelf: 'flex-start' as const,
   },
   tooltipLink: {
     color: 'var(--accent-bright)',

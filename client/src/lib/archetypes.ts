@@ -148,3 +148,24 @@ export function featuredCard<T extends { name: string; elixirCost?: number }>(ca
   const { winCondition } = classifyDeck(cards);
   return cards.find((c) => c.name === winCondition) ?? [...cards].sort((a, b) => (b.elixirCost ?? 0) - (a.elixirCost ?? 0))[0];
 }
+
+type NamedCard = { name: string; elixirCost?: number };
+
+/**
+ * Archetype names for decks shown side by side, made unique: a deck that shares its name with another
+ * gets its most telling card added ("Log Bait · Inferno Tower"), the priciest card the others don't run.
+ */
+export function distinctDeckNames(decks: NamedCard[][]): string[] {
+  const classified = decks.map((cards) => ({ cards, ...classifyDeck(cards) }));
+  return classified.map(({ cards, name, winCondition }, i) => {
+    const twins = classified.filter((other, j) => j !== i && other.name === name).map((other) => other.cards);
+    if (twins.length === 0) return name;
+    const runs = (deck: NamedCard[], card: NamedCard) => deck.some((c) => c.name === card.name);
+    const candidates = cards.filter((c) => c.name !== winCondition);
+    const own = candidates.filter((c) => twins.every((t) => !runs(t, c)));
+    const tell = [...(own.length ? own : candidates.filter((c) => twins.some((t) => !runs(t, c))))].sort(
+      (a, b) => (b.elixirCost ?? 0) - (a.elixirCost ?? 0)
+    )[0];
+    return tell ? `${name} · ${tell.name}` : name;
+  });
+}

@@ -44,7 +44,7 @@
   --chip-text: #3a6ea5;
   --chip-border: #dbe4f5;
   --raised-bg: #f6f7f9;
-  --float-btn-bg: #ffffff;
+  --icon-btn-bg: #ffffff;
   --selected-bg: #eaf3ff;
   --modal-bg: #ffffff;
   --nav-active-bg: #edeef2;
@@ -104,7 +104,7 @@
   --chip-text: #c4c4cc;
   --chip-border: #34343a;
   --raised-bg: #26262a;
-  --float-btn-bg: #26262a;
+  --icon-btn-bg: #0c0c0d;
   --selected-bg: #26262a;
   --modal-bg: #161618;
   --nav-active-bg: #26262a;
@@ -191,13 +191,18 @@ input:disabled {
   }
 }
 
+.banner-toggle {
+  transition: box-shadow 0.2s ease;
+}
+
+.banner-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .deck-slot-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-}
-
-.deck-swap-btn {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 @media (hover: hover) {
@@ -210,13 +215,17 @@ input:disabled {
   .nav-link:not(.active):hover {
     background-color: rgba(148, 148, 148, 0.12);
   }
+  .glass-btn:hover {
+    opacity: 1;
+    background-color: color-mix(in srgb, var(--bg-secondary) 85%, transparent) !important;
+  }
+  .banner-toggle:hover {
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
   .theme-toggle-btn:hover {
     background-color: rgba(148, 148, 148, 0.16) !important;
     opacity: 1 !important;
-  }
-  .deck-swap-btn:hover {
-    transform: scale(1.08);
-    box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
   }
 }
 
