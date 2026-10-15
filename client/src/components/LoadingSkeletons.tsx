@@ -28,15 +28,14 @@ export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
                 ...styles.stack,
                 justifyContent: 'flex-end',
                 gap: '8px',
-                minHeight: isMobile ? '196px' : '118px',
+                minHeight: isMobile ? '102px' : '118px',
                 padding: isMobile ? '16px' : '20px 28px',
                 marginBottom: '12px',
                 borderRadius: '20px',
               }}
             >
-              <Skeleton style={{ width: '104px', height: '11px' }} />
               <Skeleton style={{ width: '150px', height: '24px' }} />
-              <Skeleton style={{ width: isMobile ? '100%' : '160px', height: '40px', marginTop: '4px', borderRadius: '10px' }} />
+              <Skeleton style={{ width: '150px', height: '34px', marginTop: '2px', borderRadius: '999px' }} />
             </div>
             <div style={{ ...styles.stack, gap: '10px' }}>
               {[0, 1, 2, 3].map((row) => (

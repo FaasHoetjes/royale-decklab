@@ -134,7 +134,7 @@ export default function BestWarDecks() {
             return (
               <section key={key}>
                 <GeneratorHeader
-                  rank={setIdx + 1}
+                  eyebrow={null}
                   decks={set.decks}
                   totalScore={set.totalScore}
                   scoreTip="The four decks' meta scores added up. Sets are ranked by it."
@@ -149,14 +149,11 @@ export default function BestWarDecks() {
                 >
                   <button
                     type="button"
-                    className="mobile-touch-target"
+                    className="glass-btn mobile-touch-target"
                     onClick={() => copySetToBuilder(set, setIdx)}
                     disabled={copyingSetIdx !== null}
                     style={{
                       ...styles.useButton,
-                      ...(isMobile ? { alignSelf: 'stretch' } : {}),
-                      backgroundColor: theme.accent,
-                      color: theme.onAccent,
                       cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
                       opacity: copyingSetIdx !== null && copyingSetIdx !== setIdx ? 0.6 : 1,
                     }}
@@ -237,23 +234,26 @@ const styles = {
     alignSelf: 'flex-start' as const,
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '8px',
+    gap: '7px',
     marginTop: '10px',
-    height: '40px',
-    padding: '0 16px',
-    border: 'none',
-    borderRadius: '10px',
+    height: '34px',
+    padding: '0 13px',
+    border: '1px solid color-mix(in srgb, var(--hero-text) 20%, transparent)',
+    borderRadius: '999px',
+    backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 62%, transparent)',
+    backdropFilter: 'blur(10px)',
+    color: 'var(--hero-text)',
     fontFamily: 'inherit',
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: 600 as const,
     whiteSpace: 'nowrap' as const,
   },
   icon: {
-    width: '16px',
-    height: '16px',
+    width: '14px',
+    height: '14px',
     display: 'block' as const,
     flexShrink: 0,
+    color: 'var(--accent)',
   },
   fold: {
     display: 'grid' as const,

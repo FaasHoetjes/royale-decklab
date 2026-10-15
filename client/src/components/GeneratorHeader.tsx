@@ -12,9 +12,8 @@ interface BannerDeck {
 interface GeneratorHeaderProps {
   /** The player's name on the generator; left out, the score sits right under the eyebrow. */
   title?: string;
+  /** Pass null to leave it out. */
   eyebrow?: ReactNode;
-  /** A ranking position; it replaces the eyebrow and leads the score. */
-  rank?: number;
   /** The lineup as shown, swaps included. */
   decks: BannerDeck[];
   totalScore: number;
@@ -29,7 +28,7 @@ interface GeneratorHeaderProps {
 }
 
 /** The banner above a lineup: its title, the decks' win conditions fanned out, and the total score. */
-export default function GeneratorHeader({ title, eyebrow = 'Your war decks', rank, decks, totalScore, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
+export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
   const art = decks
     .map((deck) => {
       const card = featuredCard(deck.cards);
@@ -48,7 +47,7 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', ran
       style={{
         ...styles.banner,
         padding: isMobile ? '16px 16px' : '20px 28px',
-        ...(isMobile && !title ? { paddingTop: rank != null ? '18px' : '40px' } : {}),
+        ...(isMobile && !title ? { paddingTop: eyebrow == null ? '16px' : '40px' } : {}),
         marginBottom: isMobile ? '16px' : '24px',
         ...style,
       }}
@@ -111,9 +110,7 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', ran
         </button>
       )}
 
-      {rank == null && <span style={styles.eyebrow}>{eyebrow}</span>}
-      {/* On a phone the rank takes its own line, in the room beside the fanned cards. */}
-      {rank != null && isMobile && <span style={{ ...styles.rank, fontSize: '26px' }}>#{rank}</span>}
+      {eyebrow != null && <span style={styles.eyebrow}>{eyebrow}</span>}
       {title && (
         <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
           {title}
@@ -123,39 +120,36 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', ran
       {decks.length === 0 ? (
         <span style={styles.empty}>No decks fit your options</span>
       ) : (
-        <div style={{ ...styles.lead, ...(toggle ? styles.aboveToggle : {}) }}>
-          {rank != null && !isMobile && (
-            <>
-              <span style={{ ...styles.rank, fontSize: '26px' }}>#{rank}</span>
-              <span style={styles.rankDivider} aria-hidden="true" />
-            </>
-          )}
+        <div style={{ ...styles.lead, ...(toggle ? { ...styles.aboveToggle, pointerEvents: 'none' } : {}) }}>
           <span style={{ ...styles.leadValue, fontSize: isMobile ? '22px' : '26px' }}>{totalScore.toFixed(3)}</span>
           <span style={styles.leadLabel}>
             total score
-            <InfoTip
-              ariaLabel="How the total score is derived"
-              color={theme.muted}
-              placement="bottom"
-              interactive={isMobile}
-            >
-              {scoreTip ?? (
-                <>
-                  The combined Player Score of your recommended decks.{' '}
-                  {isMobile ? (
-                    <>
-                      See the{' '}
-                      <Link to="/faq#player-score" style={styles.tooltipLink}>
-                        FAQ
-                      </Link>{' '}
-                      for how each individual score is calculated.
-                    </>
-                  ) : (
-                    <>See a deck's Player Score tooltip for how each individual score is calculated.</>
-                  )}
-                </>
-              )}
-            </InfoTip>
+            {/* With a toggle, clicks on the score fall through to it; only the tip stays clickable. */}
+            <span style={{ display: 'inline-flex', pointerEvents: 'auto' }}>
+              <InfoTip
+                ariaLabel="How the total score is derived"
+                color={theme.muted}
+                placement="bottom"
+                interactive={isMobile}
+              >
+                {scoreTip ?? (
+                  <>
+                    The combined Player Score of your recommended decks.{' '}
+                    {isMobile ? (
+                      <>
+                        See the{' '}
+                        <Link to="/faq#player-score" style={styles.tooltipLink}>
+                          FAQ
+                        </Link>{' '}
+                        for how each individual score is calculated.
+                      </>
+                    ) : (
+                      <>See a deck's Player Score tooltip for how each individual score is calculated.</>
+                    )}
+                  </>
+                )}
+              </InfoTip>
+            </span>
           </span>
         </div>
       )}
@@ -247,19 +241,6 @@ const styles = {
     alignItems: 'baseline' as const,
     gap: '8px',
     marginTop: '8px',
-  },
-  rank: {
-    fontWeight: 800 as const,
-    lineHeight: 1,
-    color: 'var(--accent)',
-    fontVariantNumeric: 'tabular-nums' as const,
-  },
-  rankDivider: {
-    width: '1px',
-    height: '22px',
-    margin: '0 4px',
-    alignSelf: 'center' as const,
-    backgroundColor: 'color-mix(in srgb, var(--hero-text) 25%, transparent)',
   },
   leadValue: {
     fontWeight: 700 as const,
