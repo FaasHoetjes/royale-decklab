@@ -44,7 +44,6 @@
   --chip-text: #3a6ea5;
   --chip-border: #dbe4f5;
   --raised-bg: #f6f7f9;
-  --float-btn-bg: #ffffff;
   --selected-bg: #eaf3ff;
   --modal-bg: #ffffff;
   --nav-active-bg: #edeef2;
@@ -104,7 +103,6 @@
   --chip-text: #c4c4cc;
   --chip-border: #34343a;
   --raised-bg: #26262a;
-  --float-btn-bg: #26262a;
   --selected-bg: #26262a;
   --modal-bg: #161618;
   --nav-active-bg: #26262a;
@@ -196,10 +194,6 @@ input:disabled {
   outline-offset: 3px;
 }
 
-.deck-swap-btn {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
 @media (hover: hover) {
   button:hover {
     opacity: 0.9;
@@ -213,10 +207,6 @@ input:disabled {
   .theme-toggle-btn:hover {
     background-color: rgba(148, 148, 148, 0.16) !important;
     opacity: 1 !important;
-  }
-  .deck-swap-btn:hover {
-    transform: scale(1.08);
-    box-shadow: 0 5px 14px rgba(13, 27, 62, 0.28);
   }
 }
 

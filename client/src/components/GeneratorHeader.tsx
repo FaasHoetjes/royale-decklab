@@ -1,19 +1,31 @@
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { ScoredDeck } from '../api';
 import { featuredCard } from '../lib/archetypes';
-import { cardIconUrl, versionOf } from '../lib/cardDisplay';
+import { cardIconUrl, versionOf, type CardIconUrls, type CardVersionRef } from '../lib/cardDisplay';
 import InfoTip from './InfoTip';
 
+interface BannerDeck {
+  cards: Array<{ id: number; name: string; elixirCost?: number; iconUrls?: CardIconUrls }>;
+  cardVersions?: CardVersionRef[];
+}
+
 interface GeneratorHeaderProps {
-  playerName: string;
+  /** The player's name on the generator; left out, the score sits right under the eyebrow. */
+  title?: string;
+  eyebrow?: ReactNode;
   /** The lineup as shown, swaps included. */
-  decks: ScoredDeck[];
+  decks: BannerDeck[];
   totalScore: number;
+  /** Replaces the generator's explanation of the total score. */
+  scoreTip?: ReactNode;
+  /** Actions under the score, e.g. a button. */
+  children?: ReactNode;
+  style?: CSSProperties;
   isMobile: boolean;
 }
 
-/** The banner above the generator controls: the player, their decks' win conditions, and the total score. */
-export default function GeneratorHeader({ playerName, decks, totalScore, isMobile }: GeneratorHeaderProps) {
+/** The banner above a lineup: its title, the decks' win conditions fanned out, and the total score. */
+export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, isMobile }: GeneratorHeaderProps) {
   const art = decks
     .map((deck) => {
       const card = featuredCard(deck.cards);
@@ -31,7 +43,9 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
       style={{
         ...styles.banner,
         padding: isMobile ? '16px 16px' : '20px 28px',
+        ...(isMobile && !title ? { paddingTop: '104px' } : {}),
         marginBottom: isMobile ? '16px' : '24px',
+        ...style,
       }}
     >
       {/* Art layers are clipped on their own, so the score tooltip can still overflow the banner. */}
@@ -67,10 +81,12 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
         </div>
       </div>
 
-      <span style={styles.eyebrow}>Your war decks</span>
-      <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
-        {playerName}
-      </h2>
+      <span style={styles.eyebrow}>{eyebrow}</span>
+      {title && (
+        <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
+          {title}
+        </h2>
+      )}
 
       {decks.length === 0 ? (
         <span style={styles.empty}>No decks fit your options</span>
@@ -85,22 +101,27 @@ export default function GeneratorHeader({ playerName, decks, totalScore, isMobil
               placement="bottom"
               interactive={isMobile}
             >
-              The combined Player Score of your recommended decks.{' '}
-              {isMobile ? (
+              {scoreTip ?? (
                 <>
-                  See the{' '}
-                  <Link to="/faq#player-score" style={styles.tooltipLink}>
-                    FAQ
-                  </Link>{' '}
-                  for how each individual score is calculated.
+                  The combined Player Score of your recommended decks.{' '}
+                  {isMobile ? (
+                    <>
+                      See the{' '}
+                      <Link to="/faq#player-score" style={styles.tooltipLink}>
+                        FAQ
+                      </Link>{' '}
+                      for how each individual score is calculated.
+                    </>
+                  ) : (
+                    <>See a deck's Player Score tooltip for how each individual score is calculated.</>
+                  )}
                 </>
-              ) : (
-                <>See a deck's Player Score tooltip for how each individual score is calculated.</>
               )}
             </InfoTip>
           </span>
         </div>
       )}
+      {children}
     </section>
   );
 }

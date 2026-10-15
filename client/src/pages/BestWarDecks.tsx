@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
@@ -6,9 +6,10 @@ import { getTheme } from '../theme';
 import { useBestDecks, fetchCollectionOnce } from '../queries';
 import type { BestDeckSet } from '../api';
 import { versionOf, orderBySlots } from '../lib/cardDisplay';
+import { distinctDeckNames } from '../lib/archetypes';
 import { useIsMobile } from '../hooks/useIsMobile';
-import CompactDeckRow from '../components/CompactDeckRow';
-import UseInBuilderButton from '../components/UseInBuilderButton';
+import GeneratorHeader from '../components/GeneratorHeader';
+import BestDeckRow from '../components/BestDeckRow';
 import { BestDecksSkeleton } from '../components/LoadingSkeletons';
 import {
   DECK_COUNT,
@@ -20,6 +21,8 @@ import {
   type SlotVersionMap,
 } from '../lib/deckBoard';
 
+const deckKey = (cardIds: number[]) => [...cardIds].sort((a, b) => a - b).join(',');
+
 export default function BestWarDecks() {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
@@ -28,6 +31,15 @@ export default function BestWarDecks() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
+
+  // A deck can show up in several sets; it keeps one name, unique across the whole page.
+  const deckNames = useMemo(() => {
+    const unique = new Map<string, BestDeckSet['decks'][number]>();
+    data?.sets.forEach((set) => set.decks.forEach((deck) => unique.set(deckKey(deck.cardIds), deck)));
+    const keys = [...unique.keys()];
+    const names = distinctDeckNames([...unique.values()].map((deck) => deck.cards));
+    return new Map(keys.map((key, i) => [key, names[i]]));
+  }, [data]);
 
   // Cards the active player doesn't own are left as empty slots; the builder
   // re-scores the board itself once mounted.
@@ -76,14 +88,7 @@ export default function BestWarDecks() {
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div
-        style={{
-          ...styles.header,
-          marginBottom: isMobile ? '20px' : '30px',
-          paddingBottom: isMobile ? '14px' : '20px',
-          borderBottomColor: theme.border,
-        }}
-      >
+      <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
         {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Best War Deck Sets</h2>}
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           The strongest four deck war sets in the current meta. Assumes a maxed collection with all Evolutions and Heroes.
@@ -98,63 +103,51 @@ export default function BestWarDecks() {
       )}
 
       {data && (
-        <div style={{ ...styles.setList, gap: isMobile ? '28px' : '24px' }}>
+        <div style={{ ...styles.setList, gap: isMobile ? '32px' : '36px' }}>
           {data.sets.map((set, setIdx) => (
-            <section
-              key={setIdx}
-              style={
-                isMobile
-                  ? undefined
-                  : {
-                      ...styles.setCard,
-                      padding: '20px 24px',
-                      borderColor: theme.border,
-                      backgroundColor: theme.bg.secondary,
-                    }
-              }
-            >
-              <div style={{ ...styles.setHeader, borderBottomColor: theme.border }}>
-                <div style={styles.setRank}>
-                  <span style={{ ...styles.setRankNumber, color: theme.accent }}>#{setIdx + 1}</span>
-                  <span style={{ ...styles.setRankLabel, color: theme.text.secondary }}>War deck set</span>
-                </div>
-                <div style={styles.setScore}>
-                  <div style={{ ...styles.setScoreLabel, color: theme.text.secondary }}>Total score</div>
-                  <div style={{ ...styles.setScoreValue, color: theme.accent }}>{set.totalScore.toFixed(3)}</div>
-                </div>
-              </div>
+            <section key={setIdx}>
+              <GeneratorHeader
+                eyebrow={
+                  <>
+                    <b style={{ ...styles.rank, color: theme.accent }}>#{setIdx + 1}</b> War deck set
+                  </>
+                }
+                decks={set.decks}
+                totalScore={set.totalScore}
+                scoreTip="The four decks' meta scores added up. Sets are ranked by it."
+                isMobile={isMobile}
+                style={{ marginBottom: '12px', ...(isMobile ? {} : { minHeight: '118px' }) }}
+              >
+                <button
+                  type="button"
+                  className="mobile-touch-target"
+                  onClick={() => copySetToBuilder(set, setIdx)}
+                  disabled={copyingSetIdx !== null}
+                  style={{
+                    ...styles.useButton,
+                    ...(isMobile ? { alignSelf: 'stretch' } : {}),
+                    backgroundColor: theme.accent,
+                    color: theme.onAccent,
+                    cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
+                    opacity: copyingSetIdx !== null && copyingSetIdx !== setIdx ? 0.6 : 1,
+                  }}
+                >
+                  <BuilderIcon spinning={copyingSetIdx === setIdx} />
+                  Use set in builder
+                </button>
+              </GeneratorHeader>
 
-              <div style={{ position: 'relative', paddingRight: isMobile ? 0 : '60px' }}>
-                <div style={{ ...styles.rowList, gap: isMobile ? '14px' : '8px' }}>
-                  {set.decks.map((deck, deckIdx) => (
-                    <CompactDeckRow
-                      key={deckIdx}
-                      deck={deck}
-                      theme={theme}
-                      isMobile={isMobile}
-                      deckNumber={deckIdx + 1}
-                    />
-                  ))}
-                </div>
-                {isMobile ? (
-                  <UseInBuilderButton
-                    onClick={() => copySetToBuilder(set, setIdx)}
-                    busy={copyingSetIdx !== null}
-                    spinning={copyingSetIdx === setIdx}
-                    accent={theme.accent}
-                    variant="full"
+              <div style={styles.rowList}>
+                {set.decks.map((deck, deckIdx) => (
+                  <BestDeckRow
+                    key={deckIdx}
+                    deck={deck}
+                    name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
+                    deckNumber={deckIdx + 1}
+                    theme={theme}
+                    isMobile={isMobile}
                   />
-                ) : (
-                  <div style={styles.gutter}>
-                    <UseInBuilderButton
-                      onClick={() => copySetToBuilder(set, setIdx)}
-                      busy={copyingSetIdx !== null}
-                      spinning={copyingSetIdx === setIdx}
-                      accent={theme.accent}
-                      variant="circle"
-                    />
-                  </div>
-                )}
+                ))}
               </div>
             </section>
           ))}
@@ -164,13 +157,28 @@ export default function BestWarDecks() {
   );
 }
 
+function BuilderIcon({ spinning }: { spinning: boolean }) {
+  if (spinning) {
+    return (
+      <svg viewBox="0 0 24 24" style={{ ...styles.icon, animation: 'spin 1s linear infinite' }} aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" style={styles.icon} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="9" rx="1.5" />
+      <rect x="3" y="15" width="7" height="6" rx="1.5" />
+      <rect x="14" y="15" width="7" height="6" rx="1.5" />
+    </svg>
+  );
+}
+
 const styles = {
   container: {
     maxWidth: '1100px',
     margin: '0 auto',
-  },
-  header: {
-    borderBottom: '1px solid',
   },
   subtitle: {
     fontSize: '15px',
@@ -183,58 +191,35 @@ const styles = {
     display: 'flex' as const,
     flexDirection: 'column' as const,
   },
-  setCard: {
-    border: '1px solid',
-    borderRadius: '16px',
+  rank: {
+    fontSize: '15px',
+    fontWeight: 700 as const,
   },
-  setHeader: {
-    display: 'flex' as const,
+  useButton: {
+    alignSelf: 'flex-start' as const,
+    display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: '16px',
-    paddingBottom: '14px',
-    borderBottom: '1px solid',
-  },
-  setRank: {
-    display: 'flex' as const,
-    alignItems: 'baseline' as const,
-    gap: '10px',
-  },
-  setRankNumber: {
-    fontSize: '26px',
-    fontWeight: 700 as const,
-    lineHeight: 1,
-    letterSpacing: '-0.3px',
-  },
-  setRankLabel: {
+    justifyContent: 'center' as const,
+    gap: '8px',
+    marginTop: '10px',
+    height: '40px',
+    padding: '0 16px',
+    border: 'none',
+    borderRadius: '10px',
+    fontFamily: 'inherit',
     fontSize: '14px',
-    fontWeight: 500 as const,
+    fontWeight: 600 as const,
+    whiteSpace: 'nowrap' as const,
   },
-  setScore: {
-    textAlign: 'right' as const,
-  },
-  setScoreLabel: {
-    fontSize: '12px',
-    fontWeight: 500 as const,
-    marginBottom: '2px',
-  },
-  setScoreValue: {
-    fontSize: '20px',
-    fontWeight: 700 as const,
-    lineHeight: 1,
+  icon: {
+    width: '16px',
+    height: '16px',
+    display: 'block' as const,
+    flexShrink: 0,
   },
   rowList: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
-  },
-  gutter: {
-    position: 'absolute' as const,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: '52px',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    gap: '10px',
   },
 };
