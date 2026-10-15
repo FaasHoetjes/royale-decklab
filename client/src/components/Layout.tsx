@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import Footer from './Footer';
@@ -19,13 +19,18 @@ function CornerThemeToggle() {
   );
 }
 
+// Where each history entry was scrolled to, so going back returns there.
+const scrollPositions = new Map<string, number>();
+
 const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades']);
 const PUBLIC_PATHS = new Set(['faq', 'best-decks']);
 
 export default function Layout() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, key } = useLocation();
+  const navigationType = useNavigationType();
+  const lastPathname = useRef(pathname);
   const theme = getTheme();
   const isMobile = useIsMobile();
 
@@ -49,8 +54,18 @@ export default function Layout() {
   }, [isMalformedTagLink, badTag]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    const save = () => scrollPositions.set(key, window.scrollY);
+    window.addEventListener('scroll', save, { passive: true });
+    return () => window.removeEventListener('scroll', save);
+  }, [key]);
+
+  // Back and forward return to where that page was left; a new page starts at the top.
+  useEffect(() => {
+    const saved = scrollPositions.get(key);
+    if (navigationType === 'POP' && saved != null) window.scrollTo(0, saved);
+    else if (pathname !== lastPathname.current) window.scrollTo(0, 0);
+    lastPathname.current = pathname;
+  }, [key]);
 
   usePrefetchAppData(activePlayerTag);
 

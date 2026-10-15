@@ -22,6 +22,19 @@ import {
 } from '../lib/deckBoard';
 
 const deckKey = (cardIds: number[]) => [...cardIds].sort((a, b) => a - b).join(',');
+// A set is remembered by its decks, not its rank, so it stays folded when the ranking shifts.
+const setKey = (set: BestDeckSet) => set.decks.map((d) => deckKey(d.cardIds)).sort().join('|');
+
+const FOLDED_KEY = 'bestDecks_folded';
+
+function loadFolded(): ReadonlySet<string> {
+  try {
+    const saved: unknown = JSON.parse(sessionStorage.getItem(FOLDED_KEY) ?? '[]');
+    return new Set(Array.isArray(saved) ? saved.filter((k): k is string => typeof k === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
 
 export default function BestWarDecks() {
   const { activePlayerTag } = useApp();
@@ -31,14 +44,15 @@ export default function BestWarDecks() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
-  const [foldedSets, setFoldedSets] = useState<ReadonlySet<number>>(new Set());
+  const [foldedSets, setFoldedSets] = useState(loadFolded);
 
-  function toggleSet(setIdx: number) {
-    setFoldedSets((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(setIdx)) next.add(setIdx);
-      return next;
-    });
+  function toggleSet(key: string) {
+    const next = new Set(foldedSets);
+    if (!next.delete(key)) next.add(key);
+    setFoldedSets(next);
+    try {
+      sessionStorage.setItem(FOLDED_KEY, JSON.stringify([...next]));
+    } catch {}
   }
 
   // A deck can show up in several sets; it keeps one name, unique across the whole page.
@@ -114,10 +128,11 @@ export default function BestWarDecks() {
       {data && (
         <div style={{ ...styles.setList, gap: isMobile ? '14px' : '16px' }}>
           {data.sets.map((set, setIdx) => {
-            const expanded = !foldedSets.has(setIdx);
+            const key = setKey(set);
+            const expanded = !foldedSets.has(key);
             const rowsId = `best-set-${setIdx + 1}-decks`;
             return (
-              <section key={setIdx}>
+              <section key={key}>
                 <GeneratorHeader
                   rank={setIdx + 1}
                   decks={set.decks}
@@ -127,7 +142,7 @@ export default function BestWarDecks() {
                   style={{ marginBottom: 0, ...(isMobile ? {} : { minHeight: '118px' }) }}
                   toggle={{
                     expanded,
-                    onToggle: () => toggleSet(setIdx),
+                    onToggle: () => toggleSet(key),
                     controls: rowsId,
                     label: `${expanded ? 'Hide' : 'Show'} the decks of set ${setIdx + 1}`,
                   }}
