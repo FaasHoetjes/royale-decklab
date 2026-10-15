@@ -90,7 +90,7 @@ export default function BestDeckRow({ deck, name, deckNumber, theme, isMobile }:
         {stats}
       </div>
       {cardTiles}
-      <DeckLinkAction link={deckLink} isMobile={false} style={{ ...styles.openInGame, color: theme.accent }} />
+      <DeckLinkAction link={deckLink} isMobile={false} linkIcon style={{ ...styles.copyLink, color: theme.accent }} />
     </div>
   );
 }
@@ -188,16 +188,17 @@ const styles = {
     gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
     gap: '10px 8px',
   },
-  openInGame: {
+  copyLink: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    width: '36px',
-    height: '36px',
+    width: '40px',
+    height: '40px',
     padding: 0,
-    borderRadius: '50%',
-    border: '1px solid var(--chip-border)',
-    backgroundColor: 'var(--bg-tertiary)',
+    borderRadius: '12px',
+    border: 'none',
+    backgroundColor: 'var(--icon-btn-bg)',
+    boxShadow: '0 1px 3px rgba(13, 27, 62, 0.12)',
     cursor: 'pointer',
   },
   openInGameFull: {

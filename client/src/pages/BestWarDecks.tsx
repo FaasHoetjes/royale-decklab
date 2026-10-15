@@ -31,6 +31,15 @@ export default function BestWarDecks() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
+  const [foldedSets, setFoldedSets] = useState<ReadonlySet<number>>(new Set());
+
+  function toggleSet(setIdx: number) {
+    setFoldedSets((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(setIdx)) next.add(setIdx);
+      return next;
+    });
+  }
 
   // A deck can show up in several sets; it keeps one name, unique across the whole page.
   const deckNames = useMemo(() => {
@@ -103,54 +112,77 @@ export default function BestWarDecks() {
       )}
 
       {data && (
-        <div style={{ ...styles.setList, gap: isMobile ? '32px' : '36px' }}>
-          {data.sets.map((set, setIdx) => (
-            <section key={setIdx}>
-              <GeneratorHeader
-                eyebrow={
-                  <>
-                    <b style={{ ...styles.rank, color: theme.accent }}>#{setIdx + 1}</b> War deck set
-                  </>
-                }
-                decks={set.decks}
-                totalScore={set.totalScore}
-                scoreTip="The four decks' meta scores added up. Sets are ranked by it."
-                isMobile={isMobile}
-                style={{ marginBottom: '12px', ...(isMobile ? {} : { minHeight: '118px' }) }}
-              >
-                <button
-                  type="button"
-                  className="mobile-touch-target"
-                  onClick={() => copySetToBuilder(set, setIdx)}
-                  disabled={copyingSetIdx !== null}
-                  style={{
-                    ...styles.useButton,
-                    ...(isMobile ? { alignSelf: 'stretch' } : {}),
-                    backgroundColor: theme.accent,
-                    color: theme.onAccent,
-                    cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
-                    opacity: copyingSetIdx !== null && copyingSetIdx !== setIdx ? 0.6 : 1,
+        <div style={{ ...styles.setList, gap: isMobile ? '14px' : '16px' }}>
+          {data.sets.map((set, setIdx) => {
+            const expanded = !foldedSets.has(setIdx);
+            const rowsId = `best-set-${setIdx + 1}-decks`;
+            return (
+              <section key={setIdx}>
+                <GeneratorHeader
+                  eyebrow={
+                    <>
+                      <b style={{ ...styles.rank, color: theme.accent }}>#{setIdx + 1}</b> War deck set
+                    </>
+                  }
+                  decks={set.decks}
+                  totalScore={set.totalScore}
+                  scoreTip="The four decks' meta scores added up. Sets are ranked by it."
+                  isMobile={isMobile}
+                  style={{ marginBottom: 0, ...(isMobile ? {} : { minHeight: '118px' }) }}
+                  toggle={{
+                    expanded,
+                    onToggle: () => toggleSet(setIdx),
+                    controls: rowsId,
+                    label: `${expanded ? 'Hide' : 'Show'} the decks of set ${setIdx + 1}`,
                   }}
                 >
-                  <BuilderIcon spinning={copyingSetIdx === setIdx} />
-                  Use set in builder
-                </button>
-              </GeneratorHeader>
+                  <button
+                    type="button"
+                    className="mobile-touch-target"
+                    onClick={() => copySetToBuilder(set, setIdx)}
+                    disabled={copyingSetIdx !== null}
+                    style={{
+                      ...styles.useButton,
+                      ...(isMobile ? { alignSelf: 'stretch' } : {}),
+                      backgroundColor: theme.accent,
+                      color: theme.onAccent,
+                      cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
+                      opacity: copyingSetIdx !== null && copyingSetIdx !== setIdx ? 0.6 : 1,
+                    }}
+                  >
+                    <BuilderIcon spinning={copyingSetIdx === setIdx} />
+                    Use set in builder
+                  </button>
+                </GeneratorHeader>
 
-              <div style={styles.rowList}>
-                {set.decks.map((deck, deckIdx) => (
-                  <BestDeckRow
-                    key={deckIdx}
-                    deck={deck}
-                    name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
-                    deckNumber={deckIdx + 1}
-                    theme={theme}
-                    isMobile={isMobile}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+                <div
+                  id={rowsId}
+                  style={{
+                    ...styles.fold,
+                    gridTemplateRows: expanded ? '1fr' : '0fr',
+                    opacity: expanded ? 1 : 0,
+                    visibility: expanded ? 'visible' : 'hidden',
+                    transition: expanded ? styles.fold.transition : `${styles.fold.transition}, visibility 0s linear 0.3s`,
+                  }}
+                >
+                  <div style={{ minHeight: 0, overflow: 'hidden' }}>
+                    <div style={{ ...styles.rowList, padding: isMobile ? '12px 0 18px' : '12px 0 20px' }}>
+                      {set.decks.map((deck, deckIdx) => (
+                        <BestDeckRow
+                          key={deckIdx}
+                          deck={deck}
+                          name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
+                          deckNumber={deckIdx + 1}
+                          theme={theme}
+                          isMobile={isMobile}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
     </div>
@@ -216,6 +248,10 @@ const styles = {
     height: '16px',
     display: 'block' as const,
     flexShrink: 0,
+  },
+  fold: {
+    display: 'grid' as const,
+    transition: 'grid-template-rows 0.3s ease, opacity 0.25s ease',
   },
   rowList: {
     display: 'flex' as const,

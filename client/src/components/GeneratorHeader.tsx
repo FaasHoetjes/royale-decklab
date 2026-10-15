@@ -21,11 +21,13 @@ interface GeneratorHeaderProps {
   /** Actions under the score, e.g. a button. */
   children?: ReactNode;
   style?: CSSProperties;
+  /** Makes the whole banner a button that folds the content it controls. */
+  toggle?: { expanded: boolean; onToggle: () => void; controls: string; label: string };
   isMobile: boolean;
 }
 
 /** The banner above a lineup: its title, the decks' win conditions fanned out, and the total score. */
-export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, isMobile }: GeneratorHeaderProps) {
+export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
   const art = decks
     .map((deck) => {
       const card = featuredCard(deck.cards);
@@ -34,8 +36,9 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
     .filter(Boolean);
 
   // The win conditions fan out from the middle, like cards held in a hand.
-  const cardWidth = isMobile ? 52 : 80;
-  const step = isMobile ? 30 : 48;
+  // A toggle's arrow takes the top right corner, so the fan moves in and, on a phone, tightens.
+  const cardWidth = isMobile ? (toggle ? 48 : 52) : 80;
+  const step = isMobile ? (toggle ? 26 : 30) : 48;
   const middle = (art.length - 1) / 2;
 
   return (
@@ -61,7 +64,9 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
             ...styles.fan,
             width: `${cardWidth + step * Math.max(art.length - 1, 0)}px`,
             height: `${cardWidth * 1.7}px`,
-            ...(isMobile ? { top: '14px', right: '-10px', opacity: 0.9 } : { bottom: '-30px', right: '34px' }),
+            ...(isMobile
+              ? { top: toggle ? '12px' : '14px', right: toggle ? '48px' : '-10px', opacity: 0.9 }
+              : { bottom: '-30px', right: toggle ? '74px' : '34px' }),
           }}
         >
           {art.map((src, i) => (
@@ -81,6 +86,29 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
         </div>
       </div>
 
+      {/* Stretched over the banner so a click anywhere toggles it; the score tip and actions sit above it. */}
+      {toggle && (
+        <button
+          type="button"
+          className="banner-toggle"
+          aria-expanded={toggle.expanded}
+          aria-controls={toggle.controls}
+          aria-label={toggle.label}
+          onClick={toggle.onToggle}
+          style={styles.toggle}
+        >
+          <span style={{ ...styles.chevron, ...(isMobile ? { top: '12px', right: '10px', width: '32px', height: '32px' } : {}) }}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              style={{ ...styles.chevronIcon, transform: toggle.expanded ? 'rotate(180deg)' : undefined }}
+            >
+              <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </button>
+      )}
+
       <span style={styles.eyebrow}>{eyebrow}</span>
       {title && (
         <h2 style={{ ...styles.name, fontSize: isMobile ? '23px' : '30px', paddingRight: isMobile ? '120px' : '280px' }}>
@@ -91,7 +119,7 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
       {decks.length === 0 ? (
         <span style={styles.empty}>No decks fit your options</span>
       ) : (
-        <div style={styles.lead}>
+        <div style={{ ...styles.lead, ...(toggle ? styles.aboveToggle : {}) }}>
           <span style={{ ...styles.leadValue, fontSize: isMobile ? '22px' : '26px' }}>{totalScore.toFixed(3)}</span>
           <span style={styles.leadLabel}>
             total score
@@ -121,7 +149,17 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
           </span>
         </div>
       )}
-      {children}
+      {children && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            ...(toggle ? { ...styles.aboveToggle, alignSelf: isMobile ? 'stretch' : 'flex-start' } : {}),
+          }}
+        >
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -214,6 +252,41 @@ const styles = {
     fontSize: '13px',
     fontWeight: 500 as const,
     color: theme.muted,
+  },
+  toggle: {
+    position: 'absolute' as const,
+    inset: 0,
+    zIndex: 1,
+    padding: 0,
+    border: 'none',
+    borderRadius: '19px',
+    background: 'transparent',
+    cursor: 'pointer',
+    color: 'var(--hero-text)',
+  },
+  chevron: {
+    position: 'absolute' as const,
+    top: '14px',
+    right: '14px',
+    width: '34px',
+    height: '34px',
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    borderRadius: '50%',
+    border: '1px solid color-mix(in srgb, var(--hero-text) 22%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 62%, transparent)',
+    backdropFilter: 'blur(10px)',
+  },
+  chevronIcon: {
+    width: '16px',
+    height: '16px',
+    display: 'block' as const,
+    transition: 'transform 0.25s ease',
+  },
+  aboveToggle: {
+    position: 'relative' as const,
+    zIndex: 2,
+    alignSelf: 'flex-start' as const,
   },
   tooltipLink: {
     color: 'var(--accent-bright)',
