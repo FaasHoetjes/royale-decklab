@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DeckCardData } from '../api';
-import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, inOrder, type CardVersionRef } from '../lib/cardDisplay';
+import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, inOrder, type CardVersion, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck } from '../lib/archetypes';
 import { CARD_BACKDROP } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -14,6 +14,15 @@ export interface SwapOption {
   uses: number;
   cardVersions?: CardVersionRef[];
   metaCardVersions?: CardVersionRef[];
+}
+
+const SPECIAL_COLOR = { evo: '#a03cf0', hero: '#f5a623' } as const;
+const SPECIAL_LABEL = { evo: 'Evo', hero: 'Hero' } as const;
+
+/** The Evolution or Hero the meta deck runs on this card that the player hasn't unlocked. */
+function missingVersion(opt: SwapOption, cardId: number): Exclude<CardVersion, 'normal'> | null {
+  const meta = versionOf(opt.metaCardVersions, cardId);
+  return meta !== 'normal' && versionOf(opt.cardVersions, cardId) !== meta ? meta : null;
 }
 
 interface SwapDeckModalProps {
@@ -102,6 +111,10 @@ export default function SwapDeckModal({
           {ordered.map((opt) => {
             const isCurrent = opt === current;
             const delta = current ? opt.playerScore - current.playerScore : 0;
+            const missing = opt.cards.flatMap((card) => {
+              const version = missingVersion(opt, card.id);
+              return version ? [{ card, version }] : [];
+            });
             const row = (
               <button
                 key={opt.master}
@@ -114,6 +127,16 @@ export default function SwapDeckModal({
                 <div style={styles.line}>
                   <span style={styles.name}>{classifyDeck(opt.cards).name}</span>
                   {isCurrent && <span style={styles.currentBadge}>Current</span>}
+                  {missing.map(({ card, version }) => (
+                    <span
+                      key={card.id}
+                      title={`This deck's win rate is with ${SPECIAL_LABEL[version]} ${card.name}, which you haven't unlocked`}
+                      style={{ ...styles.missingChip, ...missingChipColors(version) }}
+                    >
+                      <span style={styles.missingChipDot} />
+                      {SPECIAL_LABEL[version]} {card.name} missing
+                    </span>
+                  ))}
                   <span style={{ ...styles.stats, ...(isMobile && styles.statsMobile) }}>
                     <span style={styles.stat}>
                       Score <b style={styles.statValue}>{opt.playerScore.toFixed(3)}</b>
@@ -137,13 +160,17 @@ export default function SwapDeckModal({
                     const icon = cardIconUrl(card.iconUrls, versionOf(opt.cardVersions, card.id));
                     const isNew = !isCurrent && current != null && !sameAsCurrent(opt, card.id);
                     const isSame = !isCurrent && current != null && !isNew;
+                    const missingAs = missingVersion(opt, card.id);
                     return (
                       <div
                         key={card.id}
                         title={card.name}
-                        style={{ ...styles.miniCard, background: CARD_BACKDROP, ...(isSame && styles.miniSame), ...(isNew && styles.miniNew) }}
+                        style={{ ...styles.miniCard, ...(isNew && styles.miniNew) }}
                       >
-                        {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
+                        <div style={{ ...styles.miniCardFace, background: CARD_BACKDROP, ...(isSame && styles.miniSame) }}>
+                          {icon && <img src={icon} alt={card.name} style={styles.miniCardImage} />}
+                        </div>
+                        {missingAs && <span style={{ ...styles.missingDot, backgroundColor: SPECIAL_COLOR[missingAs] }} />}
                       </div>
                     );
                   })}
@@ -162,6 +189,15 @@ export default function SwapDeckModal({
       </div>
     </div>
   );
+}
+
+function missingChipColors(version: Exclude<CardVersion, 'normal'>) {
+  const color = SPECIAL_COLOR[version];
+  return {
+    borderColor: `color-mix(in srgb, ${color} 50%, transparent)`,
+    backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`,
+    color: `color-mix(in srgb, ${color} 80%, var(--text-primary))`,
+  };
 }
 
 const styles = {
@@ -316,9 +352,14 @@ const styles = {
     gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
   },
   miniCard: {
+    position: 'relative' as const,
     aspectRatio: '0.82',
     borderRadius: '6px',
-    overflow: 'hidden' as const,
+  },
+  miniCardFace: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 'inherit',
   },
   miniSame: {
     opacity: 0.32,
@@ -332,5 +373,32 @@ const styles = {
     height: '100%',
     objectFit: 'cover' as const,
     display: 'block',
+    borderRadius: 'inherit',
+  },
+  missingChip: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+    padding: '2px 8px',
+    borderRadius: '999px',
+    border: '1px solid',
+    fontSize: '12px',
+    fontWeight: 600 as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  missingChipDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '999px',
+    backgroundColor: 'currentColor',
+  },
+  missingDot: {
+    position: 'absolute' as const,
+    top: '-3px',
+    right: '-3px',
+    width: '11px',
+    height: '11px',
+    borderRadius: '999px',
+    border: '2px solid var(--bg-secondary)',
   },
 };
