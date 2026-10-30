@@ -15,6 +15,8 @@ interface DeckSlotProps {
   isDragging: boolean;
   isDropTarget: boolean;
   isInvalidDropTarget: boolean;
+  /** The empty slot the next picked card goes into. */
+  isTarget?: boolean;
   onClick: () => void;
   onToggleVersion: (versions: SpecialVersion[]) => void;
   onDragStart: (e: DragEvent) => void;
@@ -37,6 +39,7 @@ export default function DeckSlot({
   isDragging,
   isDropTarget,
   isInvalidDropTarget,
+  isTarget = false,
   onClick,
   onToggleVersion,
   onDragStart,
@@ -87,7 +90,9 @@ export default function DeckSlot({
       title={
         card
           ? `${card.name}${level != null ? ` · Level ${level}/16` : ''} (drag to swap · click to remove)`
-          : 'Click to add a card'
+          : isTarget
+            ? 'The next card you pick goes here'
+            : 'Click to fill this slot next'
       }
     >
       {card ? (
@@ -131,6 +136,7 @@ export default function DeckSlot({
       ) : (
         <>
           <div
+            className={isTarget ? 'wdb-target' : undefined}
             style={{
               ...styles.empty,
               ...(kind

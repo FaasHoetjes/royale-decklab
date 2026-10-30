@@ -89,31 +89,47 @@ export function BestDecksSkeleton({ isMobile }: { isMobile: boolean }) {
 export function BuilderSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <LoadingRegion label="Loading your war deck builder">
-      <div style={{ ...styles.stack, gap: isMobile ? '14px' : '24px' }}>
-        {[0, 1, 2, 3].map((deck) => (
-          <section
-            key={deck}
-            style={{ ...styles.panel, padding: isMobile ? '14px 12px' : '20px', borderRadius: '12px' }}
-          >
-            <div style={{ ...styles.inline, justifyContent: 'space-between', marginBottom: '16px' }}>
-              <Skeleton style={{ width: '58px', height: '16px' }} />
-              <Skeleton style={{ width: '76px', height: '13px' }} />
-            </div>
-            <div
-              style={{
-                ...styles.cards,
-                gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
-                gap: isMobile ? '8px' : '10px',
-              }}
-            >
-              {Array.from({ length: 8 }, (_, card) => (
-                <div key={card}>
-                  <Skeleton style={styles.cardArt} />
-                  <Skeleton style={{ width: '60%', height: '8px', margin: '5px auto 0' }} />
-                </div>
-              ))}
-            </div>
-          </section>
+      {/* Mirrors the builder: the four deck tabs, the open deck with its stats, then your cards. */}
+      <div style={{ ...styles.builderTabs, gap: isMobile ? '6px' : '10px' }}>
+        {[0, 1, 2, 3].map((tab) => (
+          <Skeleton key={tab} style={{ height: isMobile ? '62px' : '58px', borderRadius: '12px' }} />
+        ))}
+      </div>
+      <div
+        style={{
+          ...styles.builderStage,
+          gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 250px',
+          gap: isMobile ? '18px' : '36px',
+          margin: isMobile ? '14px 0 26px' : '30px 0 40px',
+        }}
+      >
+        <div>
+          <Skeleton style={{ width: '200px', height: isMobile ? '19px' : '24px', marginBottom: isMobile ? '12px' : '18px' }} />
+          <div style={{ ...styles.cards, gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: isMobile ? '10px 8px' : '14px', maxWidth: '500px' }}>
+            {Array.from({ length: 8 }, (_, card) => (
+              <div key={card}>
+                <Skeleton style={styles.cardArt} />
+                <Skeleton style={{ width: '60%', height: '8px', margin: '5px auto 0' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ ...styles.stack, gap: '12px' }}>
+          <Skeleton style={{ width: '130px', height: isMobile ? '34px' : '44px' }} />
+          <Skeleton style={{ width: '150px', height: '12px' }} />
+          {!isMobile && <Skeleton style={{ width: '100%', height: '64px', marginTop: '18px' }} />}
+        </div>
+      </div>
+      <Skeleton style={{ width: '100%', height: '38px', borderRadius: '10px', marginBottom: '18px' }} />
+      <div
+        style={{
+          ...styles.cards,
+          gridTemplateColumns: isMobile ? 'repeat(4, minmax(0, 1fr))' : 'repeat(auto-fill, minmax(84px, 1fr))',
+          gap: isMobile ? '10px 8px' : '14px 12px',
+        }}
+      >
+        {Array.from({ length: isMobile ? 8 : 20 }, (_, card) => (
+          <Skeleton key={card} style={styles.cardArt} />
         ))}
       </div>
     </LoadingRegion>
@@ -285,6 +301,14 @@ const styles = {
     width: '100%',
     aspectRatio: '0.82',
     borderRadius: '10px',
+  },
+  builderTabs: {
+    display: 'grid' as const,
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  },
+  builderStage: {
+    display: 'grid' as const,
+    alignItems: 'start' as const,
   },
   upgradeSlots: {
     display: 'grid' as const,

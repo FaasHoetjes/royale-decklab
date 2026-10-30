@@ -1,16 +1,20 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
-import { CHAMPION_SLOTS, SLOTS_PER_DECK } from '../lib/deckBoard';
+import { useTween } from '../hooks/useTween';
 import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
+import { builderDeckNames, championFits, nextSlot, placeInDeck } from '../lib/builderDecks';
+import { flyCard, replayAnimation } from '../lib/flyCard';
 import type { ScoreDeckCard } from '../api';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
-import CardPicker from '../components/CardPicker';
-import DeckPanel from '../components/DeckPanel';
+import BuilderDeckTabs from '../components/BuilderDeckTabs';
+import BuilderStage from '../components/BuilderStage';
+import CardCollection from '../components/CardCollection';
 import TrashIcon from '../components/TrashIcon';
 import { BuilderSkeleton } from '../components/LoadingSkeletons';
 import LoadError from '../components/LoadError';
@@ -19,7 +23,6 @@ export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
-  const scoreAccent = 'var(--accent)';
 
   const cardsQuery = useAllCards();
   const catalog = cardsQuery.data ?? [];
@@ -42,20 +45,60 @@ export default function WarDeckBuilder() {
 
   const board = useDeckBoard(cardById);
 
-  const [picker, setPicker] = useState<{ deckIndex: number; slotIndex: number } | null>(null);
-  const [initialPrefs] = useState(loadPickerPrefs);
-  const [pickerFilters, setPickerFilters] = useState<Set<FilterKey>>(
-    () => new Set(initialPrefs.filters)
-  );
-  const [pickerSortIndex, setPickerSortIndex] = useState(initialPrefs.sortIndex);
-  const [pickerDescending, setPickerDescending] = useState(initialPrefs.descending);
+  // Start on the first deck that still has room, so a half-built lineup picks up where it left off.
+  const [active, setActive] = useState(() => Math.max(0, board.decks.findIndex((d) => d.includes(null))));
+  // The empty slot the player clicked; without one, cards fill the deck in order.
+  const [chosenSlot, setChosenSlot] = useState<number | null>(null);
+  const activeDeck = board.decks[active] ?? [];
+  const targetSlot = nextSlot(activeDeck, chosenSlot);
+
+  // A complete deck has nowhere to put a card, so the collection folds away unless the player opens it.
+  const deckFull = !activeDeck.includes(null);
+  const [browsing, setBrowsing] = useState(false);
+  const wantCards = !deckFull || browsing;
+  const [cardsOpen, setCardsOpen] = useState(wantCards);
+  const filledLast = useRef(false);
+  const stageRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    savePickerPrefs({
-      filters: [...pickerFilters],
-      sortIndex: pickerSortIndex,
-      descending: pickerDescending,
-    });
-  }, [pickerFilters, pickerSortIndex, pickerDescending]);
+    if (wantCards || !filledLast.current) {
+      setCardsOpen(wantCards);
+      return;
+    }
+    // Let the last card land before the collection folds, then bring the finished deck into view.
+    filledLast.current = false;
+    const timer = window.setTimeout(() => {
+      setCardsOpen(false);
+      const stage = stageRef.current;
+      if (!stage) return;
+      const tabs = document.querySelector<HTMLElement>('[role="tablist"]');
+      const offset = isMobile ? 62 + (tabs?.offsetHeight ?? 0) + 12 : 24;
+      const top = stage.getBoundingClientRect().top;
+      if (top >= offset) return;
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // On desktop the header, tabs and deck fit on screen together, so go all the way up.
+      window.scrollTo({ top: isMobile ? window.scrollY + top - offset : 0, behavior: smooth ? 'smooth' : 'auto' });
+    }, 430);
+    return () => window.clearTimeout(timer);
+  }, [wantCards, isMobile]);
+
+  const [initialPrefs] = useState(loadPickerPrefs);
+  const [filters, setFilters] = useState<Set<FilterKey>>(() => new Set(initialPrefs.filters));
+  const [sortIndex, setSortIndex] = useState(initialPrefs.sortIndex);
+  const [descending, setDescending] = useState(initialPrefs.descending);
+  useEffect(() => {
+    savePickerPrefs({ filters: [...filters], sortIndex, descending });
+  }, [filters, sortIndex, descending]);
+
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<number | null>(null);
+  const showNotice = (text: string) => {
+    setNotice(text);
+    if (noticeTimer.current != null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 2600);
+  };
+  useEffect(() => () => {
+    if (noticeTimer.current != null) window.clearTimeout(noticeTimer.current);
+  }, []);
 
   // The whole collection, not just placed cards: scoring compares decks against the player's own level.
   const scoreCards = useMemo<ScoreDeckCard[]>(() => {
@@ -79,60 +122,118 @@ export default function WarDeckBuilder() {
   );
 
   const scores = board.usedIds.size > 0 ? scoreQuery.data ?? null : null;
+  const total = useTween(scores?.total ?? 0);
+  const names = useMemo(() => builderDeckNames(board.decks, cardById), [board.decks, cardById]);
 
-  const handleSelectCard = (cardId: number) => {
-    if (!picker) return;
-    board.placeCard(picker, cardId);
-    setPicker(null);
+  const usedIn = useMemo(() => {
+    const map = new Map<number, number>();
+    board.decks.forEach((deck, i) => deck.forEach((id) => id != null && map.set(id, i)));
+    return map;
+  }, [board.decks]);
+
+  // A lineup score change floats off the total; a deck that just matched a meta deck lights up.
+  const [gain, setGain] = useState<{ delta: number; key: number } | null>(null);
+  const lastScores = useRef(scores);
+  useEffect(() => {
+    const prev = lastScores.current;
+    lastScores.current = scores;
+    if (!prev || !scores || prev === scores) return;
+    const delta = scores.total - prev.total;
+    if (Math.abs(delta) >= 0.01) setGain((g) => ({ delta, key: (g?.key ?? 0) + 1 }));
+    scores.decks.forEach((s, i) => {
+      if (s.isMeta && !prev.decks[i]?.isMeta) {
+        replayAnimation(document.querySelector(`[data-deck-tab="${i}"]`), 'wdb-matched');
+      }
+    });
+  }, [scores]);
+
+  const flights = useRef<{ deckIndex: number; slotIndex: number; from: DOMRect }[]>([]);
+  useLayoutEffect(() => {
+    flights.current.forEach((f) => {
+      const art = slotArt(f.deckIndex, f.slotIndex);
+      if (art) flyCard(f.from, art);
+    });
+    flights.current = [];
+  }, [board.decks]);
+
+  const pickCard = (cardId: number, from: DOMRect) => {
+    const card = cardById.get(cardId);
+    const placement = placeInDeck(activeDeck, card, chosenSlot, cardById);
+    if (!placement) {
+      showNotice(
+        card?.rarity === 'champion' && activeDeck.includes(null)
+          ? 'This deck already has two champions'
+          : 'This deck is full. Click a card in it to remove it.'
+      );
+      return;
+    }
+    const { slot, bump } = placement;
+    const bumpedFrom = bump && slotArt(active, bump.from)?.getBoundingClientRect();
+    if (bump) board.swapSlots({ deckIndex: active, slotIndex: bump.from }, { deckIndex: active, slotIndex: bump.to });
+    board.setSlot(active, slot, cardId);
+    setChosenSlot(null);
+    setBrowsing(false);
+    filledLast.current = activeDeck.filter((id) => id == null).length === 1;
+    flights.current = [{ deckIndex: active, slotIndex: slot, from }];
+    if (bump && bumpedFrom) flights.current.push({ deckIndex: active, slotIndex: bump.to, from: bumpedFrom });
   };
 
-  const showTitleRow = !isMobile || (scores != null && scores.total > 0) || board.usedIds.size > 0;
+  const handleSlotClick = (slotIndex: number) => {
+    if (board.consumeDragClick()) return;
+    if (activeDeck[slotIndex] != null) board.setSlot(active, slotIndex, null);
+    setChosenSlot(slotIndex);
+  };
+
+  const selectDeck = (deckIndex: number) => {
+    setActive(deckIndex);
+    setChosenSlot(null);
+    setBrowsing(false);
+  };
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div
-        style={{
-          ...styles.header,
-          borderBottomColor: theme.border,
-          marginBottom: isMobile ? '20px' : '30px',
-          paddingBottom: isMobile ? '14px' : '20px',
-        }}
-      >
-        {showTitleRow && (
-          <div style={{ ...styles.titleRow, justifyContent: isMobile ? 'flex-end' : 'space-between' }}>
-            {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>}
-            <div style={styles.titleRowRight}>
-            {scores && scores.total > 0 && (
-              <span
-                style={{ ...styles.totalScore, color: theme.text.primary, borderColor: theme.border }}
-                title="Sum of all four deck scores. Meta decks (★) are scored exactly like the auto-generated recommendations (based on their sample-size-adjusted win rate, your card levels and unlocked Evolutions/Heroes); the rest (~) are unproven estimates, dampened to sit below any proven meta deck. An owned Evolution or Hero placed outside its colored slot costs a small penalty: the game would field it as the normal version there."
-              >
-                <span style={{ ...styles.totalScoreLabel, color: theme.text.secondary }}>Total score</span>
-                <span style={{ color: scoreAccent }}>{scores.total.toFixed(3)}</span>
+      <div style={{ ...styles.header, marginBottom: isMobile ? '14px' : '22px' }}>
+        <div style={{ minWidth: 0 }}>
+          {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>}
+          <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
+            Build four war decks that don't share a card.
+          </p>
+        </div>
+        <div style={styles.headerRight}>
+          <div style={styles.total}>
+            {gain && (
+              <span key={gain.key} className="ua-float" style={{ ...styles.float, color: theme.text.primary }} aria-hidden="true">
+                {gain.delta > 0 ? '+' : '−'}
+                {Math.abs(gain.delta).toFixed(3)}
               </span>
             )}
-            {board.usedIds.size > 0 && (
-              <button
-                className="mobile-touch-target"
-                onClick={board.resetAll}
-                aria-label="Clear all four decks"
-                title="Clear all four decks"
-                style={{
-                  ...(isMobile ? styles.resetAllBtnMobile : styles.resetAllBtn),
-                  color: scoreAccent,
-                  borderColor: theme.border,
-                }}
-              >
-                <TrashIcon size={16} />
-                {isMobile && 'Clear all decks'}
-              </button>
-            )}
+            <div style={{ ...styles.totalValue, fontSize: isMobile ? '26px' : '34px', color: theme.text.primary }}>
+              {total.toFixed(3)}
             </div>
+            <div style={{ ...styles.totalLabel, color: theme.text.tertiary }}>lineup score</div>
           </div>
-        )}
-        <p style={{ ...styles.subtitle, color: theme.text.secondary }}>
-          Click a slot to choose a card; drag a card to swap it with another slot; click a filled card to remove it.
-        </p>
+          {board.usedIds.size > 0 && (
+            <button
+              type="button"
+              className="mobile-touch-target"
+              onClick={() => {
+                board.resetAll();
+                setChosenSlot(null);
+              }}
+              aria-label="Clear all four decks"
+              title="Clear all four decks"
+              style={{
+                ...styles.resetAll,
+                ...(isMobile && { width: '36px', padding: 0, justifyContent: 'center' as const }),
+                color: theme.text.primary,
+                borderColor: theme.borderStrong,
+              }}
+            >
+              <TrashIcon size={13} />
+              {!isMobile && 'Clear all'}
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -146,40 +247,68 @@ export default function WarDeckBuilder() {
           retryLabel="Retry connection"
         />
       ) : (
-        <div style={{ ...styles.deckList, gap: isMobile ? '14px' : '24px' }}>
-          {board.decks.map((_, deckIndex) => (
-            <DeckPanel
-              key={deckIndex}
-              deckIndex={deckIndex}
-              board={board}
-              cardById={cardById}
-              score={scores?.decks[deckIndex]}
-              scoreAccent={scoreAccent}
+        <>
+          <BuilderDeckTabs
+            decks={board.decks}
+            names={names}
+            scores={scores?.decks ?? null}
+            active={active}
+            onSelect={selectDeck}
+            cardById={cardById}
+            theme={theme}
+            isMobile={isMobile}
+          />
+          <BuilderStage
+            ref={stageRef}
+            deckIndex={active}
+            name={names[active] ?? `Deck ${active + 1}`}
+            score={scores?.decks[active]}
+            board={board}
+            cardById={cardById}
+            target={targetSlot}
+            onSlotClick={handleSlotClick}
+            theme={theme}
+            isMobile={isMobile}
+          />
+          {activePlayerTag ? (
+            <CardCollection
+              cards={builderCards}
+              usedIn={usedIn}
+              championFits={championFits(activeDeck, cardById)}
+              onPick={pickCard}
+              filters={filters}
+              setFilters={setFilters}
+              sortIndex={sortIndex}
+              setSortIndex={setSortIndex}
+              descending={descending}
+              setDescending={setDescending}
+              notice={notice}
+              deckFull={deckFull}
+              open={cardsOpen}
+              onToggle={() => setBrowsing(!cardsOpen)}
               theme={theme}
               isMobile={isMobile}
-              onOpenPicker={(slotIndex) => setPicker({ deckIndex, slotIndex })}
             />
-          ))}
-        </div>
-      )}
-
-      {picker && (
-        <CardPicker
-          cards={builderCards}
-          usedIds={board.usedIds}
-          onSelect={handleSelectCard}
-          onClose={() => setPicker(null)}
-          filters={pickerFilters}
-          setFilters={setPickerFilters}
-          sortIndex={pickerSortIndex}
-          setSortIndex={setPickerSortIndex}
-          descending={pickerDescending}
-          setDescending={setPickerDescending}
-          allowChampions={CHAMPION_SLOTS.some((i) => board.decks[picker.deckIndex]?.[i] == null)}
-        />
+          ) : (
+            <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
+              <p style={{ ...styles.panelText, color: theme.text.secondary }}>
+                The builder uses your card collection. Search your player tag first.
+              </p>
+              <Link to="/" style={{ ...styles.panelButton, backgroundColor: theme.text.primary, color: theme.bg.primary }}>
+                Search your player tag
+              </Link>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
+}
+
+/** The card art inside a deck slot, to fly cards to and from. */
+function slotArt(deckIndex: number, slotIndex: number): HTMLElement | null {
+  const art = document.querySelector(`[data-deck-index="${deckIndex}"][data-slot-index="${slotIndex}"]`)?.firstElementChild;
+  return art instanceof HTMLElement ? art : null;
 }
 
 const styles = {
@@ -188,69 +317,81 @@ const styles = {
     margin: '0 auto',
   },
   header: {
-    borderBottom: '1px solid',
-  },
-  titleRow: {
     display: 'flex' as const,
-    alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
+    alignItems: 'flex-end' as const,
     gap: '16px',
-    flexWrap: 'wrap' as const,
-    minHeight: '34px',
-  },
-  titleRowRight: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '12px',
-    flexWrap: 'wrap' as const,
   },
   subtitle: {
     fontSize: '15px',
-    marginTop: '8px',
+    lineHeight: 1.5,
+    margin: 0,
   },
-  totalScore: {
-    display: 'inline-flex' as const,
+  headerRight: {
+    display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: '8px',
-    padding: '6px 14px',
-    borderRadius: '999px',
-    border: '1.5px solid',
-    fontSize: '16px',
+    gap: '14px',
+    flexShrink: 0,
+  },
+  total: {
+    position: 'relative' as const,
+    textAlign: 'right' as const,
+  },
+  totalValue: {
+    fontWeight: 700 as const,
+    lineHeight: 1,
+    letterSpacing: '-0.5px',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  totalLabel: {
+    fontSize: '12.5px',
+    marginTop: '5px',
+    whiteSpace: 'nowrap' as const,
+  },
+  float: {
+    position: 'absolute' as const,
+    right: 0,
+    top: '-22px',
+    fontSize: '18px',
     fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
-    cursor: 'help' as const,
+    pointerEvents: 'none' as const,
+    opacity: 0,
   },
-  totalScoreLabel: {
-    fontSize: '12px',
-    fontWeight: 500 as const,
-  },
-  resetAllBtn: {
+  resetAll: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    background: 'none',
-    border: '1.5px solid',
-    borderRadius: '50%',
-    width: '34px',
-    height: '34px',
-    padding: 0,
-    cursor: 'pointer',
-  },
-  resetAllBtnMobile: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '6px',
-    background: 'none',
-    border: '1.5px solid',
-    borderRadius: '999px',
-    padding: '8px 14px',
+    gap: '7px',
+    boxSizing: 'border-box' as const,
+    height: '36px',
+    padding: '0 14px',
+    border: '1px solid',
+    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    fontFamily: 'inherit',
     fontSize: '13px',
     fontWeight: 600 as const,
-    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    cursor: 'pointer' as const,
   },
-  deckList: {
-    display: 'grid' as const,
-    gridTemplateColumns: '1fr',
+  panel: {
+    border: '1px solid',
+    borderRadius: '12px',
+    padding: '28px 24px',
+    textAlign: 'center' as const,
+  },
+  panelText: {
+    fontSize: '15px',
+    lineHeight: 1.6,
+    margin: '0 0 4px',
+  },
+  panelButton: {
+    display: 'inline-block' as const,
+    marginTop: '14px',
+    padding: '10px 22px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: 600 as const,
   },
 };

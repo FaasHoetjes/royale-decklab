@@ -230,6 +230,7 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     dragSource,
     dragOver,
     setSlot,
+    swapSlots,
     placeCard,
     resetDeck,
     resetAll,

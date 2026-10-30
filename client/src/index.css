@@ -48,7 +48,7 @@
   --selected-bg: #eaf3ff;
   --modal-bg: #ffffff;
   --nav-active-bg: #edeef2;
-  --empty-slot-border: #e0e0e0;
+  --empty-slot-border: #c2c6ce;
 
   --tooltip-bg: #1a1a1a;
   --tooltip-border: #1a1a1a;
@@ -230,6 +230,12 @@ input:disabled {
   .ua-row:hover {
     opacity: 1;
   }
+  .wdb-card:hover:not(:disabled) {
+    transform: translateY(-3px);
+  }
+  .wdb-tab:hover {
+    opacity: 1;
+  }
   .ua-row:hover:not([aria-pressed='true']) {
     background-color: rgba(148, 148, 148, 0.08);
   }
@@ -309,6 +315,36 @@ input:disabled {
   to { transform: none; opacity: 1; }
 }
 
+.wdb-tab {
+  transition: opacity 0.2s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+.wdb-tab[aria-selected='false'] {
+  opacity: 0.6;
+}
+.wdb-card {
+  transition: transform 0.15s ease;
+}
+.wdb-target {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+  animation: wdb-breathe 1.4s ease-in-out infinite;
+}
+.wdb-matched {
+  animation: wdb-ring 1.2s ease-out;
+}
+.wdb-bar {
+  transition: height 0.35s ease;
+}
+
+@keyframes wdb-breathe {
+  50% { outline-color: transparent; }
+}
+
+@keyframes wdb-ring {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  to { box-shadow: 0 0 0 18px transparent; }
+}
+
 .gc-pill {
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
@@ -368,7 +404,12 @@ input:disabled {
   .gc-kept,
   .ua-row,
   .ua-slot-hit,
-  .ua-pop {
+  .ua-pop,
+  .wdb-tab,
+  .wdb-card,
+  .wdb-target,
+  .wdb-matched,
+  .wdb-bar {
     animation: none;
     transition: none;
   }
