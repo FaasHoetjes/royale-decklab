@@ -13,6 +13,7 @@ import CardPicker from '../components/CardPicker';
 import DeckPanel from '../components/DeckPanel';
 import TrashIcon from '../components/TrashIcon';
 import { BuilderSkeleton } from '../components/LoadingSkeletons';
+import LoadError from '../components/LoadError';
 
 export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();
@@ -26,8 +27,11 @@ export default function WarDeckBuilder() {
   const owned = collectionQuery.data ?? [];
 
   const loading = cardsQuery.isLoading || collectionQuery.isLoading;
-  const loadError = cardsQuery.error ?? collectionQuery.error;
-  const error = loadError instanceof Error ? loadError.message : '';
+  const loadFailed = cardsQuery.isError || collectionQuery.isError;
+  const retryLoad = () => {
+    if (cardsQuery.isError) cardsQuery.refetch();
+    if (collectionQuery.isError) collectionQuery.refetch();
+  };
 
   const builderCards = useMemo<BuilderCard[]>(() => toBuilderCards(catalog, owned), [catalog, owned]);
 
@@ -133,6 +137,14 @@ export default function WarDeckBuilder() {
 
       {loading ? (
         <BuilderSkeleton isMobile={isMobile} />
+      ) : loadFailed ? (
+        <LoadError
+          title="Can't reach the server"
+          message="Royale DeckLab is unreachable right now. Please try again in a moment."
+          onRetry={retryLoad}
+          retrying={cardsQuery.isFetching || collectionQuery.isFetching}
+          retryLabel="Retry connection"
+        />
       ) : (
         <div style={{ ...styles.deckList, gap: isMobile ? '14px' : '24px' }}>
           {board.decks.map((_, deckIndex) => (
@@ -150,8 +162,6 @@ export default function WarDeckBuilder() {
           ))}
         </div>
       )}
-
-      {error && <div style={styles.errorBanner}>{error}</div>}
 
       {picker && (
         <CardPicker
@@ -242,12 +252,5 @@ const styles = {
   deckList: {
     display: 'grid' as const,
     gridTemplateColumns: '1fr',
-  },
-  errorBanner: {
-    marginTop: '20px',
-    backgroundColor: '#ff6b6b',
-    color: 'white',
-    padding: '12px 16px',
-    borderRadius: '8px',
   },
 };
