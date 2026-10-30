@@ -4,7 +4,6 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { GridIcon, SearchIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
-import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 import { faqItems, type FaqPage } from './faqContent';
 
 // Pages behind a player tag send visitors without one to the tag search instead.
@@ -134,40 +133,6 @@ export default function Faq() {
           );
         })}
       </div>
-
-      <div
-        style={{
-          ...styles.contact,
-          padding: isMobile ? '16px' : '18px 22px',
-          backgroundColor: theme.bg.secondary,
-          borderColor: theme.border,
-        }}
-      >
-        <div>
-          <p style={{ ...styles.contactTitle, color: theme.text.primary }}>Still have a question?</p>
-          <p style={{ ...styles.contactText, color: theme.text.secondary }}>
-            Send an email or open an issue on GitHub.
-          </p>
-        </div>
-        <div style={styles.contactButtons}>
-          <a
-            href={CONTACT_EMAIL_URL}
-            className="mobile-touch-target"
-            style={{ ...styles.contactButton, backgroundColor: theme.accent, borderColor: theme.accent, color: theme.onAccent }}
-          >
-            Email
-          </a>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mobile-touch-target"
-            style={{ ...styles.contactButton, borderColor: theme.borderStrong, color: theme.text.primary }}
-          >
-            GitHub
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
@@ -233,37 +198,6 @@ const styles = {
     height: '16px',
     flexShrink: 0,
     transition: 'transform 0.2s ease',
-  },
-  contact: {
-    marginTop: '16px',
-    border: '1px solid',
-    borderRadius: '12px',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: '14px',
-    flexWrap: 'wrap' as const,
-  },
-  contactTitle: {
-    margin: 0,
-    fontSize: '16px',
-    fontWeight: 600 as const,
-  },
-  contactText: {
-    margin: '2px 0 0',
-    fontSize: '14px',
-  },
-  contactButtons: {
-    display: 'flex' as const,
-    gap: '8px',
-  },
-  contactButton: {
-    padding: '8px 16px',
-    border: '1px solid',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: 600 as const,
-    textDecoration: 'none',
   },
   fold: {
     display: 'grid' as const,
