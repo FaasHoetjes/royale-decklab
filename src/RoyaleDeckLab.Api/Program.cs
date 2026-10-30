@@ -66,6 +66,9 @@ builder.Services.AddSingleton<PlayerProfileCache>();
 
 builder.Services.AddScoped<MetaBuilder>();
 builder.Services.AddSingleton<CardCatalog>();
+builder.Services.AddHttpClient(CardArtCache.HttpClientName, http => http.MaxResponseContentBufferSize = 4 * 1024 * 1024)
+    .AddStandardResilienceHandler();
+builder.Services.AddSingleton<CardArtCache>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddHostedService<SeasonWatchService>();
@@ -264,7 +267,7 @@ else
 
 static string BuildEarlyHintLink(string html)
 {
-    var links = new List<string> { "<https://api-assets.clashroyale.com>; rel=preconnect" };
+    var links = new List<string>();
     var css = Regex.Match(html, @"/assets/[^""']+\.css");
     if (css.Success) links.Add($"<{css.Value}>; rel=preload; as=style");
     var js = Regex.Match(html, @"/assets/[^""']+\.js");

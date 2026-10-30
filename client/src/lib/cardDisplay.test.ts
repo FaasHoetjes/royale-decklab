@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { alignToReference, orderBySlots, type CardVersion } from './cardDisplay';
+import { alignToReference, cardIconUrl, localArtUrl, orderBySlots, type CardVersion } from './cardDisplay';
 
 const deck = (...ids: number[]) => ids.map((id) => ({ id }));
 const versions = (map: Record<number, CardVersion>) => (id: number): CardVersion => map[id] ?? 'normal';
@@ -38,5 +38,28 @@ describe('alignToReference', () => {
     const reference = deck(1, 2, 3, 4, 5, 6, 7, 9);
     const aligned = ids(alignToReference(deck(1, 2, 3, 4, 5, 6, 7, 9), v, reference));
     expect([1, 2]).toContain(aligned.indexOf(9));
+  });
+});
+
+describe('localArtUrl', () => {
+  const knight = 'jAj1Q5rclXxU9kVImGqSJxa4wEMfEhvwNQ_4jiGUuqg';
+
+  test('serves CR card art from /img as WebP', () => {
+    expect(localArtUrl(`https://api-assets.clashroyale.com/cards/300/${knight}.png`)).toBe(`/img/cards/${knight}.webp`);
+    expect(localArtUrl(`https://api-assets.clashroyale.com/cardheroes/300/${knight}.png`)).toBe(`/img/cardheroes/${knight}.webp`);
+  });
+
+  test('leaves other URLs alone', () => {
+    expect(localArtUrl('')).toBe('');
+    expect(localArtUrl(`https://api-assets.clashroyale.com/badges/300/${knight}.png`)).toBe(`https://api-assets.clashroyale.com/badges/300/${knight}.png`);
+  });
+
+  test('cardIconUrl picks the version, then rewrites it', () => {
+    const iconUrls = {
+      medium: `https://api-assets.clashroyale.com/cards/300/${knight}.png`,
+      evolutionMedium: `https://api-assets.clashroyale.com/cardevolutions/300/${knight}.png`,
+    };
+    expect(cardIconUrl(iconUrls, 'evo')).toBe(`/img/cardevolutions/${knight}.webp`);
+    expect(cardIconUrl(iconUrls, 'hero')).toBe(`/img/cardevolutions/${knight}.webp`);
   });
 });

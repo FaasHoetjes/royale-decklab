@@ -17,9 +17,17 @@ export function versionOf(refs: CardVersionRef[] | undefined, cardId: number): C
 
 export function cardIconUrl(iconUrls: CardIconUrls | undefined, version: CardVersion): string {
   const { medium, evolutionMedium, heroMedium } = iconUrls ?? {};
-  if (version === 'hero') return heroMedium || evolutionMedium || medium || '';
-  if (version === 'evo') return evolutionMedium || medium || '';
-  return medium || '';
+  if (version === 'hero') return localArtUrl(heroMedium || evolutionMedium || medium || '');
+  if (version === 'evo') return localArtUrl(evolutionMedium || medium || '');
+  return localArtUrl(medium || '');
+}
+
+const CR_ART = /^https:\/\/api-assets\.clashroyale\.com\/(cards|cardevolutions|cardheroes)\/300\/([A-Za-z0-9_-]+)\.png$/;
+
+/** The CR CDN serves ~200 KB PNGs; /img serves the same art as ~15 KB WebPs. Other URLs pass through. */
+export function localArtUrl(url: string): string {
+  const match = CR_ART.exec(url);
+  return match ? `/img/${match[1]}/${match[2]}.webp` : url;
 }
 
 /** Normalizes to the unified /16 king-level scale (rarities cap below 16). */
