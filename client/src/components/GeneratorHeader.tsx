@@ -153,12 +153,14 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
           </span>
         </div>
       )}
+      {/* With a toggle, only the actions themselves take clicks; the space around them folds the banner. */}
       {children && (
         <div
+          className={toggle ? 'banner-actions' : undefined}
           style={{
             display: 'flex',
             flexDirection: 'column',
-            ...(toggle ? { ...styles.aboveToggle, alignSelf: isMobile ? 'stretch' : 'flex-start' } : {}),
+            ...(toggle ? { ...styles.aboveToggle, pointerEvents: 'none' } : {}),
           }}
         >
           {children}

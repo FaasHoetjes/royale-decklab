@@ -195,6 +195,10 @@ input:disabled {
   transition: box-shadow 0.2s ease;
 }
 
+.banner-actions > * {
+  pointer-events: auto;
+}
+
 .banner-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
