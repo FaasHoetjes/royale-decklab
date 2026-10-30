@@ -227,6 +227,12 @@ input:disabled {
     background-color: rgba(148, 148, 148, 0.16) !important;
     opacity: 1 !important;
   }
+  .ua-row:hover {
+    opacity: 1;
+  }
+  .ua-row:hover:not([aria-pressed='true']) {
+    background-color: rgba(148, 148, 148, 0.08);
+  }
   .faq-page-link:hover .faq-page-link-label {
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -271,6 +277,36 @@ input:disabled {
 @keyframes skeleton-shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
+}
+
+.ua-row {
+  transition: background-color 0.15s ease;
+}
+.ua-float {
+  animation: ua-float 1.1s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.ua-slot-hit {
+  animation: ua-ring 0.9s ease-out;
+}
+.ua-pop {
+  animation: ua-pop 0.42s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+@keyframes ua-float {
+  0% { transform: translateY(14px) scale(0.7); opacity: 0; }
+  25% { transform: translateY(-6px) scale(1.15); opacity: 1; }
+  60% { transform: translateY(-16px); opacity: 1; }
+  100% { transform: translateY(-30px); opacity: 0; }
+}
+
+@keyframes ua-ring {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  to { box-shadow: 0 0 0 12px transparent; }
+}
+
+@keyframes ua-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 .gc-pill {
@@ -329,9 +365,15 @@ input:disabled {
   .gc-sheet,
   .gc-backdrop,
   .gc-thumb,
-  .gc-kept {
+  .gc-kept,
+  .ua-row,
+  .ua-slot-hit,
+  .ua-pop {
     animation: none;
     transition: none;
+  }
+  .ua-float {
+    animation: none;
   }
   .skeleton {
     animation: none;

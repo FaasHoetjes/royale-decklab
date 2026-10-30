@@ -1,54 +1,72 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { useUpgradeAdvice } from '../queries';
+import { usePlayerWarDecks, useUpgradeAdvice } from '../queries';
 import UpgradeRow from '../components/UpgradeRow';
+import UpgradePreview, { type LineupDeck } from '../components/UpgradePreview';
 import { UpgradeAdvisorSkeleton } from '../components/LoadingSkeletons';
 import LoadError from '../components/LoadError';
+import { classifyDeck, distinctDeckNames, featuredCard } from '../lib/archetypes';
+import { cardIconUrl, versionOf } from '../lib/cardDisplay';
 import type { UpgradeSuggestion } from '../api';
 
 const INITIAL_ROWS = 10;
 
-type Filter = 'all' | 'lineup' | 'new';
-
-const FILTERS: { key: Filter; label: string; shortLabel: string; empty: string }[] = [
-  { key: 'all', label: 'All', shortLabel: 'All', empty: '' },
-  {
-    key: 'lineup',
-    label: 'Current decks',
-    shortLabel: 'Current',
-    empty: 'No upgrade improves a deck in your current lineup. Those cards are already maxed.',
-  },
-  {
-    key: 'new',
-    label: 'Unlocks new deck',
-    shortLabel: 'New deck',
-    empty: 'No upgrade brings a new deck into your lineup right now.',
-  },
-];
-
-function matches(s: UpgradeSuggestion, filter: Filter): boolean {
-  if (filter === 'lineup') return s.affectedDeckIndexes.length > 0;
-  if (filter === 'new') return s.changesLineup;
-  return true;
+function effectOf(s: UpgradeSuggestion, lineup: LineupDeck[] | null, unlockedName: string): string {
+  if (s.changesLineup && s.unlockedDeck) return `brings in ${unlockedName}`;
+  if (s.changesLineup) return 'changes your lineup';
+  const decks = s.affectedDeckIndexes.map((i) => lineup?.[i]?.name ?? `Deck ${i + 1}`);
+  return decks.length ? `strengthens ${decks.join(' and ')}` : 'raises your lineup score';
 }
 
 export default function UpgradeAdvisor() {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
-  const isPhone = useIsMobile(560);
-  const [filter, setFilter] = useState<Filter>('all');
   const [expanded, setExpanded] = useState(false);
+  const [selected, setSelected] = useState(0);
+  const [pick, setPick] = useState(0);
+  useEffect(() => setSelected(0), [activePlayerTag]);
 
   const advice = useUpgradeAdvice(activePlayerTag);
+  // The advice is measured against the default lineup, so the deck indexes point into it.
+  const warDecks = usePlayerWarDecks(activePlayerTag);
   const data = advice.data;
-  const filtered = data?.suggestions.filter((s) => matches(s, filter)) ?? [];
-  const visible = expanded ? filtered : filtered.slice(0, INITIAL_ROWS);
-  const maxDelta = filtered[0]?.scoreDelta ?? 0;
-  const countFor = (f: Filter) => data?.suggestions.filter((s) => matches(s, f)).length ?? 0;
+  const suggestions = data?.suggestions ?? [];
+  const visible = expanded ? suggestions : suggestions.slice(0, INITIAL_ROWS);
+
+  const lineupDecks = warDecks.data?.warDecks.decks;
+  const lineup = useMemo<LineupDeck[] | null>(() => {
+    if (!lineupDecks?.length) return null;
+    const names = distinctDeckNames(lineupDecks.map((d) => d.cards));
+    return lineupDecks.map((deck, i) => {
+      const card = featuredCard(deck.cards);
+      return {
+        name: names[i] ?? classifyDeck(deck.cards).name,
+        score: deck.playerScore,
+        iconUrl: card ? cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id)) : '',
+      };
+    });
+  }, [lineupDecks]);
+
+  // A new deck is named next to the lineup it joins, so a second Royal Giant deck gets told apart.
+  const unlockedNames = useMemo(
+    () =>
+      suggestions.map((s) => {
+        if (!s.unlockedDeck) return '';
+        if (!lineupDecks?.length) return classifyDeck(s.unlockedDeck.cards).name;
+        return distinctDeckNames([...lineupDecks.map((d) => d.cards), s.unlockedDeck.cards]).at(-1) ?? '';
+      }),
+    [suggestions, lineupDecks]
+  );
+
+  const current = suggestions[Math.min(selected, suggestions.length - 1)];
+  const choose = (i: number) => {
+    setSelected(i);
+    setPick((p) => p + 1);
+  };
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -56,28 +74,15 @@ export default function UpgradeAdvisor() {
         style={{
           ...styles.header,
           borderBottomColor: theme.border,
-          marginBottom: isMobile ? '20px' : '30px',
-          paddingBottom: isMobile ? '14px' : '20px',
+          marginBottom: isMobile ? '18px' : '24px',
+          paddingBottom: isMobile ? '14px' : '18px',
         }}
       >
-        {!isMobile && (
-          <div style={styles.titleRow}>
-            <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>
-            {data && (
-              <ScoreSummary score={data.baselineScore} accent={theme.accent} text={theme.text.primary} muted={theme.text.secondary} border={theme.border} />
-            )}
-          </div>
-        )}
-        <p
-          style={{
-            ...styles.subtitle,
-            marginTop: isMobile ? 0 : '8px',
-            color: theme.text.secondary,
-          }}
-        >
-          Ranked by the increase each upgrade gives your best war lineup. Each result is tested
-          against a rebuilt lineup. <strong>Unlocks a new deck</strong> means the upgrade changes
-          your four decks.
+        {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>}
+        <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
+          {data && suggestions.length > 0
+            ? 'Pick an upgrade to see what it does to your war lineup.'
+            : 'Which card upgrade raises your war lineup the most.'}
         </p>
       </div>
 
@@ -88,7 +93,7 @@ export default function UpgradeAdvisor() {
           </p>
           <Link
             to="/"
-            style={{ ...styles.panelButton, backgroundColor: theme.accent, color: theme.onAccent }}
+            style={{ ...styles.panelButton, backgroundColor: theme.text.primary, color: theme.bg.primary }}
           >
             Search your player tag
           </Link>
@@ -102,7 +107,7 @@ export default function UpgradeAdvisor() {
           onRetry={() => advice.refetch()}
           retrying={advice.isFetching}
         />
-      ) : data && data.suggestions.length === 0 ? (
+      ) : data && suggestions.length === 0 ? (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           {data.collectionMaxed ? (
             <>
@@ -126,115 +131,49 @@ export default function UpgradeAdvisor() {
             </>
           )}
         </div>
-      ) : data ? (
+      ) : data && current ? (
         <>
-          <div style={{ ...styles.list, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
-            <div style={{ ...styles.tabRow, borderBottomColor: theme.border }}>
-              {FILTERS.map((f) => {
-                const active = filter === f.key;
-                return (
-                  <button
-                    className="mobile-touch-target"
-                    key={f.key}
-                    onClick={() => {
-                      setFilter(f.key);
-                      setExpanded(false);
-                    }}
-                    style={{
-                      ...styles.tab,
-                      padding: isMobile ? '12px 6px' : '13px 12px',
-                      fontSize: isMobile ? '12px' : '13px',
-                      color: active ? theme.accent : theme.text.secondary,
-                      borderBottomColor: active ? theme.accent : 'transparent',
-                      fontWeight: active ? 700 : 600,
-                    }}
-                  >
-                    {isPhone ? f.shortLabel : f.label}
-                    <span
-                      style={{
-                        ...styles.tabCount,
-                        backgroundColor: active ? theme.accent : theme.bg.tertiary,
-                        color: active ? theme.onAccent : theme.text.secondary,
-                      }}
-                    >
-                      {countFor(f.key)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          <UpgradePreview
+            suggestion={current}
+            pick={pick}
+            baselineScore={data.baselineScore}
+            lineup={lineup}
+            unlockedName={unlockedNames[selected] ?? ''}
+            effect={effectOf(current, lineup, unlockedNames[selected] ?? '')}
+            theme={theme}
+            isMobile={isMobile}
+          />
 
-            {filtered.length === 0 ? (
-              <p style={{ ...styles.emptyTab, color: theme.text.secondary }}>
-                {FILTERS.find((f) => f.key === filter)?.empty}
-              </p>
-            ) : (
-              <>
-                {visible.map((s, i) => (
-                  <div
-                    key={`${s.cardId}-${s.kind}-${s.toLevel}`}
-                    style={{
-                      borderBottom:
-                        i === visible.length - 1 ? 'none' : `1px solid ${theme.border}`,
-                    }}
-                  >
-                    <UpgradeRow
-                      rank={i + 1}
-                      suggestion={s}
-                      relativeGain={maxDelta > 0 ? s.scoreDelta / maxDelta : 0}
-                      baselineScore={data.baselineScore}
-                      theme={theme}
-                      isMobile={isMobile}
-                    />
-                  </div>
-                ))}
-                {filtered.length > INITIAL_ROWS && (
-                  <button
-                    className="mobile-touch-target"
-                    onClick={() => setExpanded((e) => !e)}
-                    style={{
-                      ...styles.showMore,
-                      color: theme.accent,
-                      borderTopColor: theme.border,
-                    }}
-                  >
-                    {expanded ? 'Show fewer' : `Show all ${filtered.length}`}
-                  </button>
-                )}
-              </>
-            )}
+          <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>
+            All {suggestions.length} upgrades, best first
+          </h3>
+          <div>
+            {visible.map((s, i) => (
+              <UpgradeRow
+                key={`${s.cardId}-${s.kind}-${s.toLevel}`}
+                rank={i + 1}
+                suggestion={s}
+                effect={effectOf(s, lineup, unlockedNames[i] ?? '')}
+                selected={i === selected}
+                onSelect={() => choose(i)}
+                theme={theme}
+                isMobile={isMobile}
+              />
+            ))}
           </div>
+          {suggestions.length > INITIAL_ROWS && (
+            <button
+              type="button"
+              className="mobile-touch-target"
+              onClick={() => setExpanded((e) => !e)}
+              style={{ ...styles.showMore, color: theme.text.primary }}
+            >
+              {expanded ? 'Show fewer' : `Show all ${suggestions.length}`}
+            </button>
+          )}
         </>
       ) : null}
     </div>
-  );
-}
-
-function ScoreSummary({
-  score,
-  accent,
-  text,
-  muted,
-  border,
-}: {
-  score: number;
-  accent: string;
-  text: string;
-  muted: string;
-  border: string;
-}) {
-  return (
-    <span
-      style={{
-        ...styles.scorePill,
-        color: text,
-        borderColor: border,
-      }}
-      title="Your current lineup score. Each suggestion shows how much it can raise it."
-    >
-      <span style={{ ...styles.scorePillLabel, color: muted }}>Current score</span>
-      <span style={{ color: accent }}>{score.toFixed(3)}</span>
-    </span>
   );
 }
 
@@ -246,33 +185,10 @@ const styles = {
   header: {
     borderBottom: '1px solid',
   },
-  titleRow: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: '16px',
-    flexWrap: 'wrap' as const,
-  },
-  scorePill: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    gap: '8px',
-    padding: '6px 14px',
-    borderRadius: '999px',
-    border: '1.5px solid',
-    fontSize: '16px',
-    fontWeight: 700 as const,
-    fontVariantNumeric: 'tabular-nums' as const,
-    cursor: 'help' as const,
-  },
-  scorePillLabel: {
-    fontSize: '12px',
-    fontWeight: 500 as const,
-  },
   subtitle: {
     fontSize: '15px',
-    marginTop: '8px',
     lineHeight: 1.6,
+    margin: 0,
   },
   panel: {
     border: '1px solid',
@@ -299,50 +215,18 @@ const styles = {
     fontSize: '14px',
     fontWeight: 600 as const,
   },
-  tabRow: {
-    display: 'flex' as const,
-    borderBottom: '1px solid',
-  },
-  tab: {
-    flex: 1,
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '6px',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    marginBottom: '-1px',
-    background: 'none',
-    cursor: 'pointer' as const,
-    whiteSpace: 'nowrap' as const,
-  },
-  tabCount: {
-    fontSize: '11px',
-    fontWeight: 600 as const,
-    fontVariantNumeric: 'tabular-nums' as const,
-    padding: '1px 7px',
-    borderRadius: '999px',
-    lineHeight: 1.5,
-  },
-  emptyTab: {
+  listTitle: {
+    margin: '0 0 6px',
     fontSize: '14px',
-    lineHeight: 1.6,
-    margin: 0,
-    padding: '24px 20px',
-    textAlign: 'center' as const,
-  },
-  list: {
-    border: '1px solid',
-    borderRadius: '12px',
-    overflow: 'hidden' as const,
+    fontWeight: 700 as const,
   },
   showMore: {
-    display: 'block' as const,
-    width: '100%',
-    padding: '12px',
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    marginTop: '14px',
+    padding: 0,
     border: 'none',
-    borderTop: '1px solid',
-    background: 'none',
+    backgroundColor: 'transparent',
     fontSize: '13px',
     fontWeight: 600 as const,
     cursor: 'pointer' as const,
