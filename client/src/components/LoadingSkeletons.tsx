@@ -123,34 +123,45 @@ export function BuilderSkeleton({ isMobile }: { isMobile: boolean }) {
 export function UpgradeAdvisorSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <LoadingRegion label="Simulating your upgrades">
-      <section style={{ ...styles.panel, borderRadius: '12px', overflow: 'hidden' }}>
-        <div style={styles.tabs}>
-          {[0, 1, 2].map((tab) => (
-            <div key={tab} style={styles.tabPlaceholder}>
-              <Skeleton style={{ width: isMobile ? '54px' : '72px', height: '12px' }} />
-              <Skeleton style={{ width: '24px', height: '18px', borderRadius: '999px' }} />
-            </div>
+      {/* Mirrors UpgradePreview: the picked card and score, then the four lineup decks. */}
+      <section
+        style={{
+          ...styles.panel,
+          borderRadius: '18px',
+          padding: isMobile ? '14px' : '22px 22px 20px',
+          marginBottom: '28px',
+        }}
+      >
+        <div style={{ ...styles.inline, gap: isMobile ? '12px' : '16px' }}>
+          <Skeleton style={{ width: isMobile ? '46px' : '60px', aspectRatio: '0.82', borderRadius: '10px', flexShrink: 0 }} />
+          <div style={{ ...styles.stack, gap: '7px', flex: 1, minWidth: 0 }}>
+            <Skeleton style={{ width: '70px', height: '10px' }} />
+            <Skeleton style={{ width: isMobile ? '120px' : '190px', maxWidth: '100%', height: isMobile ? '16px' : '19px' }} />
+            {!isMobile && <Skeleton style={{ width: '220px', maxWidth: '100%', height: '12px' }} />}
+          </div>
+          <div style={{ ...styles.stack, gap: '6px', alignItems: 'flex-end' }}>
+            <Skeleton style={{ width: isMobile ? '70px' : '94px', height: isMobile ? '28px' : '36px' }} />
+            <Skeleton style={{ width: isMobile ? '46px' : '96px', height: '10px' }} />
+          </div>
+        </div>
+        <div style={{ ...styles.upgradeSlots, gap: isMobile ? '6px' : '10px', marginTop: isMobile ? '14px' : '20px' }}>
+          {[0, 1, 2, 3].map((slot) => (
+            <Skeleton key={slot} style={{ height: isMobile ? '40px' : '58px', borderRadius: '12px' }} />
           ))}
         </div>
-        {Array.from({ length: 8 }, (_, row) => (
-          <div
-            key={row}
-            style={{ ...styles.upgradeRow, padding: isMobile ? '12px' : '14px 18px' }}
-          >
-            <Skeleton style={{ width: '22px', height: '12px' }} />
-            <Skeleton style={{ width: isMobile ? '44px' : '54px', aspectRatio: '0.82', borderRadius: '10px' }} />
-            <div style={{ ...styles.stack, gap: '6px', flex: 1 }}>
-              <Skeleton style={{ width: row % 2 ? '110px' : '145px', maxWidth: '100%', height: '14px' }} />
-              <Skeleton style={{ width: '94px', height: '11px' }} />
-            </div>
-            {!isMobile && <Skeleton style={{ width: '140px', height: '6px' }} />}
-            <div style={{ ...styles.stack, gap: '5px', alignItems: 'flex-end' }}>
-              <Skeleton style={{ width: '55px', height: '14px' }} />
-              <Skeleton style={{ width: '38px', height: '9px' }} />
-            </div>
-          </div>
-        ))}
       </section>
+      <Skeleton style={{ width: '160px', height: '12px', marginBottom: '10px' }} />
+      {Array.from({ length: 8 }, (_, row) => (
+        <div key={row} style={{ ...styles.upgradeRow, padding: isMobile ? '11px 8px' : '11px 10px' }}>
+          <Skeleton style={{ width: '14px', height: '12px' }} />
+          <Skeleton style={{ width: '36px', aspectRatio: '0.82', borderRadius: '8px' }} />
+          <div style={{ ...styles.stack, gap: '6px', flex: 1 }}>
+            <Skeleton style={{ width: row % 2 ? '90px' : '120px', maxWidth: '100%', height: '13px' }} />
+            <Skeleton style={{ width: isMobile ? '150px' : '260px', maxWidth: '100%', height: '10px' }} />
+          </div>
+          <Skeleton style={{ width: '48px', height: '14px' }} />
+        </div>
+      ))}
     </LoadingRegion>
   );
 }
@@ -275,17 +286,9 @@ const styles = {
     aspectRatio: '0.82',
     borderRadius: '10px',
   },
-  tabs: {
-    display: 'flex' as const,
-    borderBottom: '1px solid var(--border)',
-  },
-  tabPlaceholder: {
-    flex: 1,
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '6px',
-    padding: '13px 6px',
+  upgradeSlots: {
+    display: 'grid' as const,
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   },
   upgradeRow: {
     display: 'flex' as const,
