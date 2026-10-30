@@ -11,11 +11,15 @@ export interface NavItem {
   icon: ReactNode;
 }
 
+/** The generator is home: the player's own page, or the landing page until a player is picked. */
+export function homePath(activePlayerTag: string | null): string {
+  return activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
+}
+
 /** The four tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
 export function toolItems(activePlayerTag: string | null): NavItem[] {
-  const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
   return [
-    { to: generatorTo, label: 'War Deck Generator', tab: 'Generator', end: true, icon: <ZapIcon /> },
+    { to: homePath(activePlayerTag), label: 'War Deck Generator', tab: 'Generator', end: true, icon: <ZapIcon /> },
     { to: '/best-decks', label: 'Best War Decks', tab: 'Best decks', end: false, icon: <TrophyIcon /> },
     { to: '/builder', label: 'War Deck Builder', tab: 'Builder', end: false, icon: <GridIcon /> },
     { to: '/upgrades', label: 'Upgrade Advisor', tab: 'Upgrades', end: false, icon: <TrendingUpIcon /> },

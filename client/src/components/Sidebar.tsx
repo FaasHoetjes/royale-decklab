@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PlayerMenu, { Avatar, PlayerText } from './PlayerMenu';
-import { toolItems, FAQ_ITEM, type NavItem } from './navItems';
+import { homePath, toolItems, FAQ_ITEM, type NavItem } from './navItems';
 import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
@@ -44,10 +44,15 @@ export default function Sidebar() {
     >
       <span ref={glideRef} className="nav-glide" style={{ ...styles.glide, boxShadow: `inset 3px 0 0 ${theme.accent}` }} />
 
-      <div style={{ ...styles.brand, color: theme.text.primary }}>
+      <Link
+        to={homePath(activePlayerTag)}
+        className="brand-link"
+        aria-label="Royale Decklab, home"
+        style={{ ...styles.brand, color: theme.text.primary }}
+      >
         <div style={styles.brandTop}>ROYALE</div>
         <div style={styles.brandBottom}>DECKLAB</div>
-      </div>
+      </Link>
 
       <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].map(renderNavLink)}</div>
 
@@ -224,7 +229,10 @@ const styles = {
     alignSelf: 'flex-start' as const,
     marginBottom: '32px',
     paddingLeft: '8px',
+    paddingRight: '4px',
+    borderRadius: '8px',
     lineHeight: 1.05,
+    textDecoration: 'none',
   },
   brandTop: {
     fontSize: '28px',

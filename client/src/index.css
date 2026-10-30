@@ -273,6 +273,7 @@ input:disabled {
 }
 
 .nav-link:focus-visible,
+.brand-link:focus-visible,
 .tab-link:focus-visible,
 .theme-toggle-btn:focus-visible {
   outline: 2px solid var(--accent);
