@@ -19,7 +19,7 @@
   --bg-tertiary: #edeef2;
   --bg-elevated: #f6f7f9;
 
-  --text-primary: #0d1b3e;
+  --text-primary: #000000;
   --text-secondary: #666666;
   --text-tertiary: #9aa0ab;
   --border: #e0e0e0;
@@ -63,7 +63,7 @@
   --hero-art: blur(36px) saturate(1.6) brightness(1.1);
   --hero-art-opacity: 0.5;
   --hero-fade: linear-gradient(90deg, #f6f7f9 30%, rgba(246, 247, 249, 0.35) 75%, rgba(246, 247, 249, 0));
-  --hero-text: #0d1b3e;
+  --hero-text: #000000;
   --hero-muted: #5b6474;
   --hero-divider: rgba(13, 27, 62, 0.14);
   --hero-text-shadow: none;
