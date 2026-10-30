@@ -90,21 +90,35 @@ export function SearchIcon() {
   );
 }
 
-export function MenuIcon() {
+export function SwitchIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="18" x2="20" y2="18" />
+    <svg {...iconProps()} width={15} height={15}>
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
     </svg>
   );
 }
 
-export function CloseIcon() {
+export function CheckIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
+    <svg {...iconProps()} width={16} height={16}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+export function PlusIcon() {
+  return (
+    <svg {...iconProps()} width={16} height={16}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function SmallCloseIcon() {
+  return (
+    <svg {...iconProps()} width={14} height={14}>
+      <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }

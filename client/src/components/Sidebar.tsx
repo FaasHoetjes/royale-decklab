@@ -1,70 +1,30 @@
-import { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { useIsMobile } from '../hooks/useIsMobile';
+import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
-import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, GitHubIcon, MenuIcon, CloseIcon } from './navIcons';
+import PlayerMenu, { Avatar, PlayerText } from './PlayerMenu';
+import { toolItems, FAQ_ITEM, type NavItem } from './navItems';
+import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
 export default function Sidebar() {
-  const { activePlayerTag, setActivePlayerTag } = useApp();
-  const navigate = useNavigate();
-  const theme = getTheme();
-  const isMobile = useIsMobile();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isMobile && drawerOpen) setDrawerOpen(false);
-  }, [isMobile, drawerOpen]);
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [drawerOpen]);
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [drawerOpen]);
-
-  const generatorTo = activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
+  const { activePlayerTag } = useApp();
   const { pathname } = useLocation();
+  const theme = getTheme();
+  const navRef = useRef<HTMLElement>(null);
+  const glideRef = useGlide(navRef, pathname);
 
-  const activeBg = 'var(--nav-active-bg)';
-
-  const navItems = [
-    { to: generatorTo, label: 'War Deck Generator', end: true, icon: <ZapIcon /> },
-    { to: '/best-decks', label: 'Best War Decks', end: false, icon: <TrophyIcon /> },
-    { to: '/builder', label: 'War Deck Builder', end: false, icon: <GridIcon /> },
-    { to: '/upgrades', label: 'Upgrade Advisor', end: false, icon: <TrendingUpIcon /> },
-    { to: '/faq', label: 'FAQ', end: false, icon: <HelpIcon /> },
-  ];
-
-  const activeTitle = navItems.find((item) =>
-    item.end ? pathname === item.to : pathname.startsWith(item.to)
-  )?.label;
-
-  const renderNavLink = (item: (typeof navItems)[number]) => (
+  const renderNavLink = (item: NavItem) => (
     <NavLink
       key={item.label}
       to={item.to}
       end={item.end}
       className="nav-link"
-      onClick={() => setDrawerOpen(false)}
       style={({ isActive }) => ({
         ...styles.navLink,
         color: isActive ? theme.accent : theme.text.secondary,
-        backgroundColor: isActive ? activeBg : undefined,
-        boxShadow: isActive ? `inset 3px 0 0 ${theme.accent}` : 'none',
       })}
     >
       <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
@@ -72,117 +32,168 @@ export default function Sidebar() {
     </NavLink>
   );
 
-  const footer = (
-    <div style={styles.footer}>
-      <div style={styles.footerIcons}>
-        <a
-          href={CONTACT_EMAIL_URL}
-          className="nav-link mobile-touch-target"
-          aria-label="Contact"
-          title="Contact"
-          style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
-        >
-          <MailIcon />
-        </a>
-        <a
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="nav-link mobile-touch-target"
-          aria-label="GitHub repository"
-          title="GitHub"
-          style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
-        >
-          <GitHubIcon />
-        </a>
-      </div>
-      {activePlayerTag && (
-        <div style={{ ...styles.playerBox, borderTopColor: theme.border }}>
-          <div style={{ ...styles.playerLabel, color: theme.text.secondary }}>Player</div>
-          <div style={{ ...styles.playerTag, color: theme.text.primary }}>{activePlayerTag}</div>
-          <button
-            onClick={() => {
-              setDrawerOpen(false);
-              setActivePlayerTag(null);
-              navigate('/');
-            }}
-            style={{ ...styles.changeButton, color: theme.accent }}
-          >
-            Change player
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <>
-        <header style={{ ...styles.bar, backgroundColor: theme.bg.secondary, borderBottomColor: theme.border }}>
-          <div style={styles.barLeft}>
-            <button
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open menu"
-              aria-expanded={drawerOpen}
-              className="theme-toggle-btn mobile-touch-target"
-              style={{ ...styles.menuButton, color: theme.text.primary }}
-            >
-              <MenuIcon />
-            </button>
-            {activeTitle && (
-              <span style={{ ...styles.barTitle, color: theme.text.primary }}>{activeTitle}</span>
-            )}
-          </div>
-          <ThemeToggle size={22} />
-        </header>
-
-        {drawerOpen && (
-          <div
-            className="drawer-backdrop"
-            style={styles.drawerBackdrop}
-            onClick={() => setDrawerOpen(false)}
-          >
-            <nav
-              className="drawer-panel"
-              style={{ ...styles.drawer, backgroundColor: theme.bg.secondary }}
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Main menu"
-            >
-              <button
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close menu"
-                className="theme-toggle-btn mobile-touch-target"
-                style={{ ...styles.menuButton, ...styles.drawerClose, color: theme.text.primary }}
-              >
-                <CloseIcon />
-              </button>
-              <div style={styles.drawerHeader}>
-                <div style={{ ...styles.drawerBrand, color: theme.text.primary }}>
-                  <div style={{ ...styles.brandTop, fontSize: '36px' }}>ROYALE</div>
-                  <div style={{ ...styles.brandBottom, fontSize: '48px' }}>DECKLAB</div>
-                </div>
-              </div>
-
-              <div style={styles.navList}>{navItems.map(renderNavLink)}</div>
-              {footer}
-            </nav>
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
-    <nav style={{ ...styles.sidebar, backgroundColor: theme.bg.secondary, borderRightColor: theme.border }}>
+    <nav
+      ref={navRef}
+      aria-label="Main menu"
+      style={{
+        ...styles.sidebar,
+        backgroundColor: theme.bg.secondary,
+        borderRightColor: theme.border,
+      }}
+    >
+      <span ref={glideRef} className="nav-glide" style={{ ...styles.glide, boxShadow: `inset 3px 0 0 ${theme.accent}` }} />
+
       <div style={{ ...styles.brand, color: theme.text.primary }}>
         <div style={styles.brandTop}>ROYALE</div>
         <div style={styles.brandBottom}>DECKLAB</div>
       </div>
 
-      <div style={styles.navList}>{navItems.map(renderNavLink)}</div>
-      {footer}
+      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].map(renderNavLink)}</div>
+
+      <div style={styles.footer}>
+        <div style={styles.footerIcons}>
+          <a
+            href={CONTACT_EMAIL_URL}
+            className="nav-link"
+            aria-label="Contact"
+            title="Contact"
+            style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
+          >
+            <MailIcon />
+          </a>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="nav-link"
+            aria-label="GitHub repository"
+            title="GitHub"
+            style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border }}
+          >
+            <GitHubIcon />
+          </a>
+          <span style={{ flex: 1 }} />
+          <ThemeToggle
+            size={18}
+            style={{ ...styles.iconButton, color: theme.text.secondary, borderColor: theme.border, padding: 0 }}
+          />
+        </div>
+
+        {activePlayerTag && <PlayerCard />}
+      </div>
     </nav>
   );
+}
+
+/** The active player, with a menu above it to switch to another one. */
+function PlayerCard() {
+  const theme = getTheme();
+  const switcher = usePlayerSwitcher();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  if (!switcher.tag) return null;
+
+  return (
+    <div ref={wrapRef} style={{ ...styles.playerWrap, borderTopColor: theme.border }}>
+      {open && (
+        <div
+          id="player-menu"
+          className="gc-menu"
+          style={{
+            ...styles.popover,
+            borderColor: 'var(--border-strong)',
+          }}
+        >
+          <PlayerMenu switcher={switcher} theme={theme} onDone={() => setOpen(false)} />
+        </div>
+      )}
+      <button
+        ref={buttonRef}
+        type="button"
+        className="nav-link"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="player-menu"
+        aria-label={`Player ${switcher.name ?? switcher.tag}, switch player`}
+        style={{ ...styles.playerCard, ...styles.plainButton, backgroundColor: open ? 'var(--nav-active-bg)' : 'transparent' }}
+      >
+        <Avatar name={switcher.name} size={32} />
+        <span style={styles.playerText}>
+          <PlayerText name={switcher.name} tag={switcher.tag} theme={theme} />
+        </span>
+        <span style={{ ...styles.switchIcon, color: theme.text.tertiary }} aria-hidden="true">
+          <SwitchIcon />
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/**
+ * One highlight behind the active link that glides to the next one when the page changes.
+ * Anything else that moves the links, such as resizing the window, places it without a glide.
+ */
+function useGlide(navRef: RefObject<HTMLElement | null>, pathname: string) {
+  const glideRef = useRef<HTMLSpanElement>(null);
+  const shownRef = useRef(false);
+
+  const place = (glide: boolean) => {
+    const nav = navRef.current;
+    const el = glideRef.current;
+    if (!nav || !el) return;
+    const link = nav.querySelector<HTMLElement>('.nav-link.active');
+    if (!link) {
+      el.style.opacity = '0';
+      shownRef.current = false;
+      return;
+    }
+    const n = nav.getBoundingClientRect();
+    const l = link.getBoundingClientRect();
+    const instant = !glide || !shownRef.current;
+    if (instant) el.style.transition = 'none';
+    el.style.transform = `translate(${l.left - n.left}px, ${l.top - n.top}px)`;
+    el.style.width = `${l.width}px`;
+    el.style.height = `${l.height}px`;
+    el.style.opacity = '1';
+    if (instant) {
+      void el.offsetWidth;
+      el.style.transition = '';
+    }
+    shownRef.current = true;
+  };
+
+  useLayoutEffect(() => place(true), [pathname]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const observer = new ResizeObserver(() => place(false));
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
+
+  return glideRef;
 }
 
 const styles = {
@@ -191,78 +202,23 @@ const styles = {
     flexShrink: 0,
     minHeight: '100vh',
     borderRight: '1px solid',
-    padding: '24px 16px',
+    padding: '24px 16px 16px',
     boxSizing: 'border-box' as const,
     position: 'sticky' as const,
     top: 0,
+    zIndex: 20,
     alignSelf: 'flex-start' as const,
     display: 'flex' as const,
     flexDirection: 'column' as const,
   },
-  bar: {
-    width: '100%',
-    boxSizing: 'border-box' as const,
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: '12px',
-    padding: '8px 10px 8px 6px',
-    borderBottom: '1px solid',
-    position: 'sticky' as const,
+  glide: {
+    position: 'absolute' as const,
     top: 0,
-    zIndex: 900,
-  },
-  barLeft: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '4px',
-    minWidth: 0,
-  },
-  barTitle: {
-    fontSize: '16px',
-    fontWeight: 700 as const,
-    whiteSpace: 'nowrap' as const,
-    overflow: 'hidden' as const,
-    textOverflow: 'ellipsis' as const,
-  },
-  menuButton: {
-    border: 'none',
-    background: 'transparent',
-    cursor: 'pointer',
-    padding: '8px',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  drawerBackdrop: {
-    position: 'fixed' as const,
-    inset: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 1100,
-  },
-  drawer: {
-    position: 'absolute' as const,
-    inset: 0,
-    width: '100%',
-    boxSizing: 'border-box' as const,
-    padding: '12px 16px 24px',
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    overflowY: 'auto' as const,
-  },
-  drawerHeader: {
-    display: 'flex' as const,
-    justifyContent: 'center' as const,
-    padding: '36px 0 8px',
-    marginBottom: '24px',
-  },
-  drawerClose: {
-    position: 'absolute' as const,
-    top: '8px',
-    left: '6px',
-  },
-  drawerBrand: {
-    lineHeight: 1.05,
+    left: 0,
+    opacity: 0,
+    borderRadius: '8px',
+    backgroundColor: 'var(--nav-active-bg)',
+    pointerEvents: 'none' as const,
   },
   brand: {
     alignSelf: 'flex-start' as const,
@@ -287,6 +243,7 @@ const styles = {
     gap: '6px',
   },
   navLink: {
+    position: 'relative' as const,
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: '11px',
@@ -295,7 +252,14 @@ const styles = {
     textDecoration: 'none',
     fontSize: '15px',
     fontWeight: 600 as const,
-    transition: 'all 0.2s ease',
+  },
+  plainButton: {
+    width: '100%',
+    border: 'none',
+    backgroundColor: 'transparent',
+    fontFamily: 'inherit',
+    textAlign: 'left' as const,
+    cursor: 'pointer',
   },
   navIcon: {
     display: 'inline-flex' as const,
@@ -310,7 +274,7 @@ const styles = {
   footerIcons: {
     display: 'flex' as const,
     gap: '8px',
-    padding: '0 8px 12px',
+    padding: '12px 8px',
   },
   iconButton: {
     display: 'inline-flex' as const,
@@ -318,31 +282,43 @@ const styles = {
     justifyContent: 'center' as const,
     width: '36px',
     height: '36px',
+    boxSizing: 'border-box' as const,
     borderRadius: '50%',
     border: '1px solid',
     textDecoration: 'none',
+    flexShrink: 0,
   },
-  playerBox: {
-    marginTop: '4px',
-    paddingTop: '16px',
+  playerWrap: {
+    position: 'relative' as const,
+    paddingTop: '12px',
     borderTop: '1px solid',
   },
-  playerLabel: {
-    fontSize: '12px',
-    fontWeight: 500 as const,
+  playerCard: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '10px',
+    padding: '8px',
+    borderRadius: '10px',
   },
-  playerTag: {
-    fontSize: '16px',
-    fontWeight: 700 as const,
-    fontFamily: 'monospace',
-    margin: '4px 0 10px',
+  playerText: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex' as const,
   },
-  changeButton: {
-    border: 'none',
-    background: 'transparent',
-    padding: 0,
-    fontSize: '13px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
+  switchIcon: {
+    display: 'inline-flex' as const,
+    flexShrink: 0,
+  },
+  popover: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: 'calc(100% + 8px)',
+    zIndex: 30,
+    padding: '6px',
+    borderRadius: '12px',
+    border: '1px solid',
+    backgroundColor: 'var(--modal-bg)',
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.25)',
   },
 };

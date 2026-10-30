@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import MobileNav from './MobileNav';
 import ThemeToggle from './ThemeToggle';
 import Footer from './Footer';
 import { ElixirGradientDefs } from './ElixirBadge';
@@ -100,15 +101,33 @@ export default function Layout() {
         color: theme.text.primary,
       }}
     >
-      <Sidebar />
+      <a
+        href="#main-content"
+        className="skip-link"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
+        Skip to content
+      </a>
+      {isMobile ? <MobileNav /> : <Sidebar />}
       <main
+        id="main-content"
+        tabIndex={-1}
         style={{
           ...styles.content,
           padding: isMobile ? '12px' : '20px',
-          ...(isMobile ? { maxWidth: '560px', margin: '0 auto', width: '100%' } : {}),
+          ...(isMobile
+            ? {
+                maxWidth: '560px',
+                margin: '0 auto',
+                width: '100%',
+                paddingBottom: 'calc(76px + env(safe-area-inset-bottom))',
+              }
+            : {}),
         }}
       >
-        {!isMobile && <CornerThemeToggle />}
         <ElixirGradientDefs />
         {/* Grows to fill the screen, so the footer stays at the bottom even on short pages. */}
         <div style={styles.page}>
