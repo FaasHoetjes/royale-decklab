@@ -13,7 +13,7 @@ COPY src/RoyaleDeckLab.Api/ src/RoyaleDeckLab.Api/
 RUN dotnet publish src/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj \
         -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS runtime
 WORKDIR /app
 
 COPY --from=api /app/publish ./
