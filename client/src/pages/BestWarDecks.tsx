@@ -11,6 +11,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import GeneratorHeader from '../components/GeneratorHeader';
 import BestDeckRow from '../components/BestDeckRow';
 import { BestDecksSkeleton } from '../components/LoadingSkeletons';
+import LoadError from '../components/LoadError';
 import {
   DECK_COUNT,
   SLOTS_PER_DECK,
@@ -42,7 +43,7 @@ export default function BestWarDecks() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, error } = useBestDecks();
+  const { data, isLoading, isError, isFetching, refetch } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
   const [foldedSets, setFoldedSets] = useState(loadFolded);
 
@@ -120,9 +121,12 @@ export default function BestWarDecks() {
 
       {isLoading && <BestDecksSkeleton isMobile={isMobile} />}
       {isError && (
-        <p style={{ ...styles.message, color: '#e05c5c' }}>
-          Failed to load: {error instanceof Error ? error.message : 'Unknown error'}
-        </p>
+        <LoadError
+          title="Couldn't load the best decks"
+          message="Something went wrong on our end. Please try again in a moment."
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
       )}
 
       {data && (
@@ -222,9 +226,6 @@ const styles = {
   subtitle: {
     fontSize: '15px',
     margin: '8px 0 0',
-  },
-  message: {
-    marginTop: '32px',
   },
   setList: {
     display: 'flex' as const,

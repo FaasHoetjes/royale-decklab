@@ -6,7 +6,7 @@ import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } fr
 import { toBuilderCards } from '../lib/builderCards';
 import { hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
 import { useApp } from '../AppContext';
-import { getTheme } from '../theme';
+import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -97,24 +97,18 @@ export default function WarDeckGenerator() {
     navigate('/');
   };
 
-  const theme = getTheme();
-
   if (!metaReady) {
     if (!meta.isError) return <WarDecksSkeleton isMobile={isMobile} />;
 
     return (
-      <div style={styles.centerContent}>
-        <h1>Royale DeckLab</h1>
-        <p style={{ ...styles.error, color: '#ff6b6b' }}>
-          Can't reach the server right now; please try again in a moment.
-        </p>
-        <button
-          onClick={() => meta.refetch()}
-          style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}
-        >
-          Retry Connection
-        </button>
-      </div>
+      <LoadError
+        title="Can't reach the server"
+        message="Royale DeckLab is unreachable right now. Please try again in a moment."
+        onRetry={() => meta.refetch()}
+        retrying={meta.isFetching}
+        retryLabel="Retry connection"
+        style={{ minHeight: '80dvh' }}
+      />
     );
   }
 
@@ -143,33 +137,3 @@ const sameIds = (a: number[], b: number[]) => a.length === b.length && a.every((
 function onlyLocksChanged(a: GeneratorOptions, b: GeneratorOptions): boolean {
   return a.decks === b.decks && a.minLevel === b.minLevel && sameIds(a.ban, b.ban) && sameIds(a.require, b.require);
 }
-
-const styles = {
-  centerContent: {
-    maxWidth: '600px',
-    margin: '80px auto',
-    textAlign: 'center' as const,
-  },
-  subtitle: {
-    fontSize: '16px',
-    marginTop: '12px',
-  },
-  button: {
-    padding: '14px 32px',
-    fontSize: '16px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    marginTop: '20px',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 2px 8px rgba(0, 123, 255, 0.2)',
-  },
-  error: {
-    color: '#d32f2f',
-    marginTop: '20px',
-    fontSize: '16px',
-  },
-};

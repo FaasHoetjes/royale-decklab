@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { useUpgradeAdvice } from '../queries';
 import UpgradeRow from '../components/UpgradeRow';
 import { UpgradeAdvisorSkeleton } from '../components/LoadingSkeletons';
+import LoadError from '../components/LoadError';
 import type { UpgradeSuggestion } from '../api';
 
 const INITIAL_ROWS = 10;
@@ -95,9 +96,12 @@ export default function UpgradeAdvisor() {
       ) : advice.isLoading ? (
         <UpgradeAdvisorSkeleton isMobile={isMobile} />
       ) : advice.isError ? (
-        <p style={{ ...styles.message, color: '#e05c5c' }}>
-          Failed to load: {advice.error instanceof Error ? advice.error.message : 'Unknown error'}
-        </p>
+        <LoadError
+          title="Couldn't load your upgrade advice"
+          message="Something went wrong on our end. Please try again in a moment."
+          onRetry={() => advice.refetch()}
+          retrying={advice.isFetching}
+        />
       ) : data && data.suggestions.length === 0 ? (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           {data.collectionMaxed ? (
@@ -269,9 +273,6 @@ const styles = {
     fontSize: '15px',
     marginTop: '8px',
     lineHeight: 1.6,
-  },
-  message: {
-    marginTop: '32px',
   },
   panel: {
     border: '1px solid',
