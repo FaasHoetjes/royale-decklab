@@ -64,6 +64,7 @@ export default function UpgradeAdvisor() {
 
   const current = suggestions[Math.min(selected, suggestions.length - 1)];
   const choose = (i: number) => {
+    if (i === selected) return;
     setSelected(i);
     setPick((p) => p + 1);
   };
@@ -145,7 +146,7 @@ export default function UpgradeAdvisor() {
           />
 
           <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>
-            All {suggestions.length} upgrades, best first
+            All {suggestions.length} upgrades
           </h3>
           <div>
             {visible.map((s, i) => (

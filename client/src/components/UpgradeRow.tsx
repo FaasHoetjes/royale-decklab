@@ -43,12 +43,12 @@ export default function UpgradeRow({ rank, suggestion: s, effect, selected, onSe
         gridTemplateColumns: isMobile ? '18px 36px minmax(0, 1fr) auto' : '22px 36px minmax(0, 1fr) auto',
         gap: isMobile ? '12px' : '14px',
         padding: isMobile ? '11px 8px' : '11px 10px',
-        borderBottomColor: selected ? 'transparent' : theme.border,
-        backgroundColor: selected ? 'color-mix(in srgb, var(--text-primary) 7%, transparent)' : 'transparent',
+        borderBottomColor: selected ? 'transparent' : theme.borderStrong,
+        backgroundColor: selected ? theme.bg.secondary : 'transparent',
         borderRadius: selected ? '10px' : 0,
       }}
     >
-      {selected && <span style={{ ...styles.marker, backgroundColor: theme.text.primary }} />}
+      {selected && <span style={{ ...styles.marker, backgroundColor: theme.accent }} />}
       <span style={{ ...styles.rank, color: theme.text.tertiary }}>{rank}</span>
       <CardTile
         name={s.name ?? ''}
