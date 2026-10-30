@@ -53,25 +53,22 @@ public sealed class MetaCache(
         await LoadOrBuildAsync(ct);
     }
 
-    public async Task<List<DeckMeta>> AggregateFromStoreAsync(string reason, CancellationToken ct = default)
+    public Task<List<DeckMeta>> AggregateFromStoreAsync(string reason, CancellationToken ct = default)
     {
         using var scope = scopeFactory.CreateScope();
         var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
         var builder = scope.ServiceProvider.GetRequiredService<MetaBuilder>();
-        return await AggregateWithinAsync(store, builder, reason, ct);
+        return Task.FromResult(Aggregate(store, builder, reason));
     }
 
-    private async Task<List<DeckMeta>> AggregateWithinAsync(
-        BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
+    // Never prunes: without a fresh crawl, the stored battles, however old, are all there is to serve.
+    private List<DeckMeta> Aggregate(BattleRepository store, MetaBuilder builder, string reason)
     {
-        var cutoff = PruneCutoff();
-        var pruned = await store.PruneAsync(cutoff, ct);
         var decks = builder.AggregateBattles(store.AllBattles(), Interlocked.Read(ref _epochStart));
         _meta = decks;
         Interlocked.Increment(ref _version);
         Interlocked.Exchange(ref _lastCacheTime, store.GetLastBuild());
-        logger.LogInformation("Meta {Reason}: {Decks} decks from {Battles} battles (pruned {Pruned}, cutoff {Cutoff})",
-            reason, decks.Count, store.Count(), pruned, IsoMs(cutoff));
+        logger.LogInformation("Meta {Reason}: {Decks} decks from {Battles} battles", reason, decks.Count, store.Count());
         return decks;
     }
 
@@ -104,9 +101,12 @@ public sealed class MetaCache(
 
             var added = await store.MergeBattlesAsync(fresh, ct);
             await store.SetLastBuildAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct);
-            var decks = await AggregateWithinAsync(store, builder, $"rebuild ({reason})", ct);
-            logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Kept} kept after cutoff",
-                added, fresh.Count, store.Count());
+            // Old battles go only now that fresh ones have landed, so a failed crawl never empties the store.
+            var cutoff = PruneCutoff();
+            var pruned = await store.PruneAsync(cutoff, ct);
+            var decks = Aggregate(store, builder, $"rebuild ({reason})");
+            logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Pruned} pruned before {Cutoff}, {Kept} kept",
+                added, fresh.Count, pruned, IsoMs(cutoff), store.Count());
             return decks;
         }
         catch (Exception ex)
