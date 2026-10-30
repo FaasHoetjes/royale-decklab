@@ -29,6 +29,58 @@ public sealed class UpgradeAdvisorTests
     }
 
     [Fact]
+    public void AdvisesOnADeck_OnlyAdmittedByARelaxedPopularityGate()
+    {
+        // Only three 5+ player decks exist, so the lineup's fourth deck comes from the 2-player gate.
+        var cards = Build.Collection(Enumerable.Range(1, 24).ToArray())
+            .Concat([Build.Card(25, level: 12)])
+            .Concat(Build.Collection(26, 27, 28, 29, 30, 31, 32)).ToList();
+        var meta = new[]
+        {
+            Build.Deck(Build.Eight(1), players: 10),
+            Build.Deck(Build.Eight(9), players: 10),
+            Build.Deck(Build.Eight(17), players: 10),
+            Build.Deck(Build.Eight(25), players: 2),
+        };
+
+        var advice = _advisor.Advise(cards, meta);
+
+        var suggestion = Assert.Single(advice.Suggestions, s => s.ToLevel == 13);
+        Assert.Equal(25, suggestion.CardId);
+        Assert.True(suggestion.ScoreDelta > 0);
+        Assert.Single(suggestion.AffectedDeckIndexes);
+    }
+
+    [Fact]
+    public void DecksBelowTheLineupsPopularityGate_DoNotChangeTheAdvice()
+    {
+        var cards = new List<PlayerItemLevel> { Build.Card(1, level: 12), Build.Card(9, level: 13) }
+            .Concat(Build.Collection(Enumerable.Range(2, 7).Concat(Enumerable.Range(10, 31)).ToArray())).ToList();
+        var popular = new[]
+        {
+            Build.Deck(Build.Eight(1), players: 10),
+            Build.Deck(Build.Eight(9), players: 10),
+            Build.Deck(Build.Eight(17), players: 10),
+            Build.Deck(Build.Eight(25), players: 10),
+        };
+        // Strong, but played by too few players to ever be picked while four 5+ player decks fit.
+        var unpopular = new[]
+        {
+            Build.Deck([1, 9, 33, 34, 35, 36, 37, 38], confidence: 0.90, players: 2),
+            Build.Deck([1, 17, 25, 36, 37, 38, 39, 40], confidence: 0.90, players: 1),
+        };
+
+        var withoutUnpopular = _advisor.Advise(cards, popular);
+        var withUnpopular = _advisor.Advise(cards, [.. popular, .. unpopular]);
+
+        Assert.NotEmpty(withoutUnpopular.Suggestions);
+        Assert.Equal(withoutUnpopular.BaselineScore, withUnpopular.BaselineScore);
+        Assert.Equal(
+            withoutUnpopular.Suggestions.Select(s => (s.CardId, s.Kind, s.ToLevel, s.ScoreDelta, s.ChangesLineup)),
+            withUnpopular.Suggestions.Select(s => (s.CardId, s.Kind, s.ToLevel, s.ScoreDelta, s.ChangesLineup)));
+    }
+
+    [Fact]
     public void IgnoresCards_AtMaxLevel_OrOutsideEveryMetaDeck()
     {
         var cards = Build.Collection(Build.Eight(1))

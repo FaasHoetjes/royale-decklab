@@ -177,6 +177,7 @@ public sealed class FindBestWarDecksTests
 
         Assert.Equal(4, result.Decks.Count);
         Assert.Contains(result.Decks, d => d.CardIds.SequenceEqual(Build.Eight(25)));
+        Assert.Equal(2, result.PoolMinPlayers);
     }
 
     [Fact]

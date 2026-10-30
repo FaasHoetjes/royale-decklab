@@ -703,6 +703,7 @@ public sealed class DeckAnalyzer
 
         var lineup = new List<(DeckMeta deck, double score)>();
         var lastPoolCount = -1;
+        var poolMinPlayers = PopularityGateLadder[0];
         foreach (var gate in PopularityGateLadder)
         {
             var pool = sorted.Where(s => s.deck.Players is null || s.deck.Players >= gate).ToList();
@@ -711,6 +712,7 @@ public sealed class DeckAnalyzer
                 continue;
             }
             lastPoolCount = pool.Count;
+            poolMinPlayers = gate;
             lineup = FindOptimalLineup(pool, deckCount, required);
             if (lineup.Count >= deckCount)
             {
@@ -748,6 +750,7 @@ public sealed class DeckAnalyzer
             Decks = selectedDecks,
             TotalScore = selectedDecks.Sum(d => d.PlayerScore),
             Alternatives = alternatives,
+            PoolMinPlayers = poolMinPlayers,
         };
     }
 

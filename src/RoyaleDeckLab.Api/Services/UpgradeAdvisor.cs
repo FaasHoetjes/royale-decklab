@@ -16,6 +16,12 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false, assumeSorted: true);
         var baselineKeys = LineupKeys(baseline);
 
+        // An upgrade only moves scores, never which decks are fieldable or clash, so every simulation settles on the
+        // same popularity gate as the baseline. Decks below it can't be picked, so skipping them is ~14x faster.
+        var pool = fieldable
+            .Where(s => s.deck.Players is null || s.deck.Players >= baseline.PoolMinPlayers)
+            .ToList();
+
         var metaCardIds = new HashSet<int>();
         var evoFielded = new HashSet<int>();
         var heroFielded = new HashSet<int>();
@@ -38,9 +44,9 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
         (double Delta, WarDeckResult Result) Simulate(PlayerItemLevel modified)
         {
             var simulatedMap = new Dictionary<int, PlayerItemLevel>(cardMap) { [modified.Id] = modified };
-            var unchanged = new List<(DeckMeta deck, double score)>(fieldable.Count);
+            var unchanged = new List<(DeckMeta deck, double score)>(pool.Count);
             var changed = new List<(DeckMeta deck, double score)>();
-            foreach (var (deck, score) in fieldable)
+            foreach (var (deck, score) in pool)
             {
                 if (deck.CardIds.Contains(modified.Id))
                 {
