@@ -5,6 +5,7 @@ import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import ThemeToggle from './ThemeToggle';
 import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon, MailIcon, GitHubIcon, MenuIcon, CloseIcon } from './navIcons';
+import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
 export default function Sidebar() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
@@ -75,7 +76,7 @@ export default function Sidebar() {
     <div style={styles.footer}>
       <div style={styles.footerIcons}>
         <a
-          href="mailto:faashoetjes+royaledecklab@gmail.com"
+          href={CONTACT_EMAIL_URL}
           className="nav-link mobile-touch-target"
           aria-label="Contact"
           title="Contact"
@@ -84,7 +85,7 @@ export default function Sidebar() {
           <MailIcon />
         </a>
         <a
-          href="https://github.com/FaasHoetjes/royale-decklab"
+          href={GITHUB_URL}
           target="_blank"
           rel="noreferrer"
           className="nav-link mobile-touch-target"

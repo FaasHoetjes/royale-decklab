@@ -1,7 +1,11 @@
+export type FaqPage = 'generator' | 'builder' | 'upgrades' | 'best-decks';
+
 export interface FaqItem {
   question: string;
   answer: React.ReactNode;
   id?: string;
+  // The page this answer describes, linked below it.
+  link?: FaqPage;
 }
 
 const pStyle: React.CSSProperties = {
@@ -14,6 +18,54 @@ const pLast: React.CSSProperties = {
   ...pStyle,
   marginBottom: 0,
 };
+
+const symbolRow: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '68px minmax(0, 1fr)',
+  gap: '12px',
+  alignItems: 'baseline',
+  padding: '10px 0',
+};
+
+const scoreSample: React.CSSProperties = {
+  fontSize: '14px',
+  fontWeight: 700,
+  fontVariantNumeric: 'tabular-nums',
+  whiteSpace: 'nowrap',
+};
+
+const stepGrid: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  gap: '8px',
+  margin: '0 0 12px',
+};
+
+const stepBox: React.CSSProperties = {
+  backgroundColor: 'var(--bg-tertiary)',
+  border: '1px solid var(--border)',
+  borderRadius: '9px',
+  padding: '10px 12px',
+};
+
+function WorkedStep({ label, value, note, highlight }: { label: string; value: string; note: string; highlight?: boolean }) {
+  return (
+    <div style={stepBox}>
+      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)' }}>{label}</div>
+      <div
+        style={{
+          fontSize: '19px',
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: highlight ? 'var(--accent)' : 'var(--text-primary)',
+        }}
+      >
+        {value}
+      </div>
+      <div style={{ fontSize: '12.5px', lineHeight: 1.4 }}>{note}</div>
+    </div>
+  );
+}
 
 export const faqItems: FaqItem[] = [
   {
@@ -51,6 +103,7 @@ export const faqItems: FaqItem[] = [
         levels and the Evolutions and Heroes you can use.
       </p>
     ),
+    link: 'generator',
   },
   {
     id: 'customize',
@@ -105,6 +158,7 @@ export const faqItems: FaqItem[] = [
         ranked by that gain, including upgrades that make a different deck worth using.
       </p>
     ),
+    link: 'upgrades',
   },
   {
     question: 'How does the War Deck Builder score decks?',
@@ -116,23 +170,32 @@ export const faqItems: FaqItem[] = [
         the set and the usual Evolution and Hero slot rules.
       </p>
     ),
+    link: 'builder',
   },
   {
     id: 'builder-score-symbols',
     question: 'What do the ★ and ~ symbols next to a deck score mean?',
     answer: (
       <>
-        <p style={pStyle}>
-          A <strong>★</strong> means the deck exactly matches a deck that top war players
-          actually run. It is scored the same way as a generated recommendation, using that
-          deck's proven win rate and your own card levels and unlocked versions.
-        </p>
-        <p style={pLast}>
-          A <strong>~</strong> means the deck is not one of those known decks, so there is no real
-          record to score it on. It receives a cautious estimate that assumes a neutral fifty
-          percent win rate at your card levels and treats the deck as unproven, which keeps it
-          below any ★ deck. This is why changing a single card in a meta deck can drop the score
-          sharply: the deck stops matching a known deck and switches to the cautious estimate.
+        <div style={symbolRow}>
+          <span style={{ ...scoreSample, color: 'var(--accent)' }}>★ 0.548</span>
+          <p style={pLast}>
+            The deck exactly matches a deck that top war players actually run. It is scored the
+            same way as a generated recommendation, using that deck's proven win rate and your own
+            card levels and unlocked versions.
+          </p>
+        </div>
+        <div style={{ ...symbolRow, borderTop: '1px solid var(--border)' }}>
+          <span style={{ ...scoreSample, color: 'var(--text-secondary)' }}>~ 0.471</span>
+          <p style={pLast}>
+            The deck is not one of those known decks, so there is no real record to score it on. It
+            receives a cautious estimate that assumes a neutral fifty percent win rate at your card
+            levels and treats the deck as unproven, which keeps it below any ★ deck.
+          </p>
+        </div>
+        <p style={{ ...pLast, marginTop: '12px' }}>
+          This is why changing a single card in a meta deck can drop the score sharply: the deck
+          stops matching a known deck and switches to the cautious estimate.
         </p>
       </>
     ),
@@ -158,19 +221,33 @@ export const faqItems: FaqItem[] = [
         recommendations. You can send any set to the Builder to see how it works with your cards.
       </p>
     ),
+    link: 'best-decks',
   },
   {
     question: "How is a deck's winrate determined?",
     answer: (
-      <p style={pLast}>
-        Win rate comes from real Clan War battles played by roughly 5,000 players in leading war
-        clans. Exact eight card decks are grouped and their results counted over the current
-        thirty day window. Draws count as half a win, and the displayed percentage is the raw win
-        rate. For ranking, each deck's record is combined with eighty imaginary games at about
-        fifty percent, measured from war battles, and the deck is rated at the win rate it is 75%
-        likely to reach. A deck that went six for six counts as about 52%, while a deck at 60%
-        over hundreds of games keeps most of its rate.
-      </p>
+      <>
+        <p style={pStyle}>
+          Win rate comes from real Clan War battles played by roughly 5,000 players in leading war
+          clans. Exact eight card decks are grouped and their results counted over the current
+          thirty day window. Draws count as half a win, and the displayed percentage is the raw win
+          rate.
+        </p>
+        <p style={pStyle}>
+          For ranking, each deck's record is combined with eighty imaginary games at 52%, a rate
+          measured from war battles, and the deck is rated at the win rate it is 75% likely to
+          reach. For a deck that went six for six:
+        </p>
+        <div style={stepGrid}>
+          <WorkedStep label="Record" value="6–0" note="100% raw win rate" />
+          <WorkedStep label="Plus 80 games at 52%" value="47.6 of 86" note="about 55% on average" />
+          <WorkedStep label="Ranked as" value="51.8%" note="75% likely to reach" highlight />
+        </div>
+        <p style={pLast}>
+          A deck at 60% over 300 games is ranked at 56.6%, so a proven record keeps most of its
+          rate while a lucky streak can't outrank it.
+        </p>
+      </>
     ),
   },
   {
