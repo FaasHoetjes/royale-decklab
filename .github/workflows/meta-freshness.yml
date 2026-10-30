@@ -1,0 +1,23 @@
+# Every 6 hours, checks that production still refreshes its meta. A failed scheduled run makes
+# GitHub email the repo owner, so a crawler that quietly stopped (new server IP, broken API key) gets noticed.
+name: Meta freshness
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: Fail when the last refresh is older than this many hours
+        default: '12'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the last meta refresh
+        env:
+          MAX_AGE_HOURS: ${{ inputs.max_age_hours || '12' }}
+        run: python3 .github/scripts/check-meta-freshness.py https://royaledecklab.com/api/meta/status "$MAX_AGE_HOURS"
