@@ -227,6 +227,13 @@ input:disabled {
     background-color: rgba(148, 148, 148, 0.16) !important;
     opacity: 1 !important;
   }
+  .faq-page-link:hover .faq-page-link-label {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .faq-page-link:hover .faq-page-link-arrow {
+    transform: translateX(3px);
+  }
 }
 
 .drawer-backdrop {

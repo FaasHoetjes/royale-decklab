@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { GridIcon, SearchIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 import { faqItems, type FaqPage } from './faqContent';
 
 // Pages behind a player tag send visitors without one to the tag search instead.
-function pageLink(page: FaqPage, playerTag: string | null): { to: string; label: string } {
-  if (page === 'best-decks') return { to: '/best-decks', label: 'See the Best War Decks' };
-  if (!playerTag) return { to: '/', label: 'Search your player tag' };
-  if (page === 'generator') return { to: `/${playerTag.replace(/#/g, '')}`, label: 'Open the War Deck Generator' };
-  if (page === 'builder') return { to: '/builder', label: 'Open the War Deck Builder' };
-  return { to: '/upgrades', label: 'Open the Upgrade Advisor' };
+function pageLink(page: FaqPage, playerTag: string | null): { to: string; label: string; icon: ReactNode } {
+  if (page === 'best-decks') return { to: '/best-decks', label: 'See the Best War Decks', icon: <TrophyIcon /> };
+  if (!playerTag) return { to: '/', label: 'Search your player tag', icon: <SearchIcon /> };
+  if (page === 'generator') {
+    return { to: `/${playerTag.replace(/#/g, '')}`, label: 'Open the War Deck Generator', icon: <ZapIcon /> };
+  }
+  if (page === 'builder') return { to: '/builder', label: 'Open the War Deck Builder', icon: <GridIcon /> };
+  return { to: '/upgrades', label: 'Open the Upgrade Advisor', icon: <TrendingUpIcon /> };
 }
 
 export default function Faq() {
@@ -103,11 +106,25 @@ export default function Faq() {
                   <div style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}>
                     {item.answer}
                     {link && (
-                      <Link
-                        to={link.to}
-                        style={{ ...styles.pageLink, color: theme.accent, borderColor: theme.borderStrong }}
-                      >
-                        {link.label} →
+                      <Link to={link.to} className="faq-page-link" style={{ ...styles.pageLink, color: theme.accent }}>
+                        <span style={styles.pageLinkIcon} aria-hidden="true">
+                          {link.icon}
+                        </span>
+                        <span className="faq-page-link-label">{link.label}</span>
+                        <svg
+                          className="faq-page-link-arrow"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          style={styles.pageLinkArrow}
+                        >
+                          <path d="M5 12h14" />
+                          <path d="m13 6 6 6-6 6" />
+                        </svg>
                       </Link>
                     )}
                   </div>
@@ -201,13 +218,21 @@ const styles = {
   pageLink: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
+    gap: '8px',
     marginTop: '14px',
-    padding: '6px 13px',
-    border: '1px solid',
-    borderRadius: '999px',
-    fontSize: '13px',
+    fontSize: '15px',
     fontWeight: 600 as const,
     textDecoration: 'none',
+  },
+  pageLinkIcon: {
+    display: 'inline-flex' as const,
+    flexShrink: 0,
+  },
+  pageLinkArrow: {
+    width: '16px',
+    height: '16px',
+    flexShrink: 0,
+    transition: 'transform 0.2s ease',
   },
   contact: {
     marginTop: '16px',
