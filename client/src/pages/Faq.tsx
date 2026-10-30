@@ -68,16 +68,24 @@ export default function Faq() {
                   <Chevron open={isOpen} color={theme.text.secondary} />
                 </button>
               </h3>
-              {isOpen && (
-                <div
-                  id={panelId}
-                  role="region"
-                  aria-labelledby={buttonId}
-                  style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}
-                >
-                  {item.answer}
+              <div
+                id={panelId}
+                role="region"
+                aria-labelledby={buttonId}
+                style={{
+                  ...styles.fold,
+                  gridTemplateRows: isOpen ? '1fr' : '0fr',
+                  opacity: isOpen ? 1 : 0,
+                  visibility: isOpen ? 'visible' : 'hidden',
+                  transition: isOpen ? styles.fold.transition : `${styles.fold.transition}, visibility 0s linear 0.3s`,
+                }}
+              >
+                <div style={{ minHeight: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}>
+                    {item.answer}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
@@ -101,7 +109,7 @@ function Chevron({ open, color }: { open: boolean; color: string }) {
         stroke: color,
         flexShrink: 0,
         marginLeft: '12px',
-        transition: 'transform 0.2s ease',
+        transition: 'transform 0.3s ease',
         transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
       }}
     >
@@ -125,6 +133,10 @@ const styles = {
   },
   questionHeading: {
     margin: 0,
+  },
+  fold: {
+    display: 'grid' as const,
+    transition: 'grid-template-rows 0.3s ease, opacity 0.25s ease',
   },
   trigger: {
     width: '100%',
