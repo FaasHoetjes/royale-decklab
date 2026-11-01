@@ -1,10 +1,11 @@
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme, type Theme } from '../theme';
 import { useAllCards, useCardDecks, useCardStats } from '../queries';
 import type { CardStat, CatalogCard } from '../api';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { FOLD_EASING, prefersReducedMotion } from '../lib/motion';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { cardSlug, cardType, mostPlayedVersion, specialVersions } from '../lib/cardInfo';
 import { cardRanks, isLowSample, percent } from '../lib/cardStats';
@@ -51,10 +52,49 @@ export default function CardPage() {
   return <CardDetails key={card.id} card={card} />;
 }
 
+const lockIcon = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <rect x="4" y="11" width="16" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </svg>
+);
+
+/**
+ * On phones, whether the build button in the card panel has scrolled up under the header while the end of the
+ * deck list is still below, which is when the floating copy of it shows.
+ */
+function usePastBuildButton(enabled: boolean) {
+  const buttonRef = useRef<HTMLAnchorElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const [pastButton, setPastButton] = useState(false);
+  const [atEnd, setAtEnd] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || !buttonRef.current || !endRef.current) return;
+    const button = buttonRef.current;
+    const header = 60;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target === button) setPastButton(!entry.isIntersecting && entry.boundingClientRect.top < header);
+          else setAtEnd(entry.isIntersecting);
+        }
+      },
+      { rootMargin: `-${header}px 0px 0px 0px` }
+    );
+    observer.observe(button);
+    observer.observe(endRef.current);
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  return { buttonRef, endRef, floating: enabled && pastButton && !atEnd };
+}
+
 function CardDetails({ card }: { card: CatalogCard }) {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
+  const build = usePastBuildButton(isMobile);
   const statsQuery = useCardStats();
   const decksQuery = useCardDecks(card.id);
 
@@ -82,6 +122,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
   ].filter(Boolean);
 
   const rough = stat ? isLowSample(stat) : false;
+  const buildHref = buildLink(card.id, activePlayerTag);
   const comparing = stats?.cards.some((s) => s.winRateChange != null) ?? false;
   const winRank = ranks?.winRank.get(card.id);
   const playRank = ranks?.playRank.get(card.id);
@@ -164,19 +205,29 @@ function CardDetails({ card }: { card: CatalogCard }) {
             </p>
           )}
           {stat && (versions.evo || versions.hero) && !isChampion && <PlaySplit theme={theme} stat={stat} />}
+          {isMobile && (
+            <div style={styles.buildPanel}>
+              <Link ref={build.buttonRef} to={buildHref} style={{ ...styles.buildButton, ...styles.buildButtonWide, backgroundColor: theme.accent, color: theme.onAccent }}>
+                {lockIcon}
+                Build my best war decks with {card.name}
+              </Link>
+              <p style={{ ...styles.buildCaption, color: theme.text.secondary }}>
+                Your 4 best war decks from your own cards, with {card.name} in one of them.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
       <section style={{ marginTop: isMobile ? '22px' : '30px' }}>
         <div style={{ ...styles.decksHead, ...(isMobile ? styles.decksHeadMobile : {}) }}>
           <h2 style={{ ...styles.decksTitle, color: theme.text.primary }}>Best war decks with {card.name}</h2>
-          <Link to={buildLink(card.id, activePlayerTag)} style={{ ...styles.buildButton, backgroundColor: theme.accent, color: theme.onAccent }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="4" y="11" width="16" height="10" rx="2" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-            </svg>
-            Build my best war decks with {card.name}
-          </Link>
+          {!isMobile && (
+            <Link to={buildHref} style={{ ...styles.buildButton, backgroundColor: theme.accent, color: theme.onAccent }}>
+              {lockIcon}
+              Build my best war decks with {card.name}
+            </Link>
+          )}
         </div>
 
         {decksQuery.isLoading && <BestDecksSkeleton isMobile={isMobile} />}
@@ -200,7 +251,31 @@ function CardDetails({ card }: { card: CatalogCard }) {
             ))}
           </div>
         )}
+        <div ref={build.endRef} />
       </section>
+
+      {isMobile && (
+        <div style={styles.buildFloat}>
+          <Link
+            to={buildHref}
+            aria-hidden={!build.floating}
+            tabIndex={build.floating ? undefined : -1}
+            style={{
+              ...styles.buildButton,
+              ...styles.buildPill,
+              backgroundColor: theme.accent,
+              color: theme.onAccent,
+              opacity: build.floating ? 1 : 0,
+              transform: build.floating ? 'none' : 'translateY(16px)',
+              pointerEvents: build.floating ? 'auto' : 'none',
+              transition: prefersReducedMotion() ? 'none' : `opacity 200ms ${FOLD_EASING}, transform 200ms ${FOLD_EASING}`,
+            }}
+          >
+            {lockIcon}
+            Build with {card.name}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -392,6 +467,41 @@ const styles = {
     fontWeight: 700 as const,
     textDecoration: 'none',
     whiteSpace: 'nowrap' as const,
+  },
+  buildPanel: {
+    marginTop: '16px',
+  },
+  buildButtonWide: {
+    display: 'flex' as const,
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    padding: '13px 16px',
+    fontSize: '15px',
+    whiteSpace: 'normal' as const,
+    textAlign: 'center' as const,
+  },
+  buildCaption: {
+    margin: '8px 0 0',
+    fontSize: '13px',
+    lineHeight: 1.45,
+    textAlign: 'center' as const,
+  },
+  buildFloat: {
+    position: 'fixed' as const,
+    left: '12px',
+    right: '12px',
+    bottom: 'calc(76px + env(safe-area-inset-bottom))',
+    zIndex: 850,
+    display: 'flex' as const,
+    justifyContent: 'center' as const,
+    pointerEvents: 'none' as const,
+  },
+  buildPill: {
+    padding: '11px 20px',
+    borderRadius: '999px',
+    fontSize: '15px',
+    maxWidth: '100%',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
   },
   deckList: {
     display: 'flex' as const,
