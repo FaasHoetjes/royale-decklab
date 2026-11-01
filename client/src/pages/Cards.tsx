@@ -105,6 +105,7 @@ export default function Cards() {
         <div style={{ ...styles.controlRow, ...(isMobile ? { width: '100%' } : {}) }}>
           <input
             type="search"
+            className="mobile-touch-target"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search cards…"
