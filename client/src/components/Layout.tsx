@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
@@ -131,7 +131,9 @@ export default function Layout() {
         <ElixirGradientDefs />
         {/* Grows to fill the screen, so the footer stays at the bottom even on short pages. */}
         <div style={styles.page}>
-          <Outlet />
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </div>
         <Footer />
       </main>
