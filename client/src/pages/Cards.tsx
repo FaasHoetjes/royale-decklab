@@ -72,12 +72,6 @@ export default function Cards() {
         {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Cards</h2>}
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           {stats ? periodNote(stats) : 'How every card does in Clan War.'}
-          {stats && !stats.isLastPatch && stats.since && (
-            <>
-              {' '}Under each win rate: its change since the last patch, <span style={{ color: 'var(--up)', fontWeight: 600 }}>green</span> for
-              up and <span style={{ color: 'var(--down)', fontWeight: 600 }}>red</span> for down, or grey when it's within the noise.
-            </>
-          )}
         </p>
       </div>
 
