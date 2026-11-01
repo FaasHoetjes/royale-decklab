@@ -21,12 +21,12 @@ public static partial class SpaPages
     private const string SiteDescription = "Generate your best four Clash Royale War Decks tuned to the cards you actually own.";
     private const string CardsPath = "/cards";
 
-    private static readonly (string Path, string Label, string Description)[] StaticPages =
+    private static (string Path, string Title, string Description)[] StaticPages(DateTimeOffset now) =>
     [
-        ("/best-decks", "Best War Decks", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans."),
-        (CardsPath, "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks."),
-        ("/builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta."),
-        ("/upgrades", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most."),
+        ("/best-decks", $"Best Clash Royale War Decks ({now.ToString("MMMM yyyy", CultureInfo.InvariantCulture)})", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans."),
+        (CardsPath, "Clash Royale Card Win Rates in Clan War", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks."),
+        ("/builder", "Clash Royale War Deck Builder", "Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta."),
+        ("/upgrades", "What to Upgrade Next in Clash Royale", "Find the card upgrade that raises your Clash Royale war lineup the most."),
         ("/faq", "FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from."),
     ];
 
@@ -35,23 +35,23 @@ public static partial class SpaPages
 
     public static bool IsCardPath(string? path) => path?.StartsWith(CardsPath + "/", StringComparison.OrdinalIgnoreCase) == true;
 
-    public static SpaPage Resolve(string? rawPath, IReadOnlyList<CatalogCard> cards, IReadOnlyList<CardStat> stats)
+    public static SpaPage Resolve(string? rawPath, IReadOnlyList<CatalogCard> cards, IReadOnlyList<CardStat> stats, DateTimeOffset now)
     {
         var path = "/" + (rawPath ?? "").Trim('/');
         if (path == "/")
         {
             return Home;
         }
-        foreach (var page in StaticPages)
+        foreach (var page in StaticPages(now))
         {
             if (string.Equals(path, page.Path, StringComparison.OrdinalIgnoreCase))
             {
-                return new(200, $"{page.Label} · {SiteName}", page.Description, page.Path, false);
+                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, false);
             }
         }
         if (IsCardPath(path))
         {
-            return CardPage(path[(CardsPath.Length + 1)..], cards, stats);
+            return CardPage(path[(CardsPath.Length + 1)..], cards, stats, now);
         }
         var segment = path[1..];
         // Player pages are endless and differ only in whose cards they use, so they stay shareable but unindexed.
@@ -62,7 +62,7 @@ public static partial class SpaPages
         return NotFound;
     }
 
-    private static SpaPage CardPage(string slug, IReadOnlyList<CatalogCard> cards, IReadOnlyList<CardStat> stats)
+    private static SpaPage CardPage(string slug, IReadOnlyList<CatalogCard> cards, IReadOnlyList<CardStat> stats, DateTimeOffset now)
     {
         if (slug.Contains('/'))
         {
@@ -71,8 +71,8 @@ public static partial class SpaPages
         // Without a catalog the slug can't be checked, and a real card page shouldn't 404 while the API is down.
         if (cards.Count == 0)
         {
-            var (_, label, description) = StaticPages.First(p => p.Path == CardsPath);
-            return new(200, $"{label} · {SiteName}", description, $"{CardsPath}/{slug}", false);
+            var (_, title, description) = StaticPages(now).First(p => p.Path == CardsPath);
+            return new(200, $"{title} · {SiteName}", description, $"{CardsPath}/{slug}", false);
         }
         var card = cards.FirstOrDefault(c => CardSlug(c.Name) == slug);
         if (card is null)
@@ -80,11 +80,13 @@ public static partial class SpaPages
             return NotFound;
         }
         var stat = stats.FirstOrDefault(s => s.Id == card.Id);
-        var numbers = stat is null ? "" : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} play rate, ";
+        var numbers = stat is null
+            ? "its win rate, play rate and change"
+            : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} play rate and its change";
         return new(
             200,
-            $"{card.Name} · Cards · {SiteName}",
-            $"{card.Name} in Clash Royale Clan War: {numbers}its change since the last balance update and its best war decks.",
+            $"Best {card.Name} War Decks & Win Rate · {SiteName}",
+            $"The best {card.Name} decks for Clash Royale Clan War, ranked on real war battles: {numbers} since the last balance update.",
             $"{CardsPath}/{slug}",
             false);
     }
@@ -114,7 +116,7 @@ public static partial class SpaPages
 
     public static string Sitemap(IEnumerable<CatalogCard> cards)
     {
-        var paths = StaticPages.Select(p => p.Path)
+        var paths = StaticPages(DateTimeOffset.UnixEpoch).Select(p => p.Path)
             .Prepend("/")
             .Concat(cards.Select(c => $"{CardsPath}/{CardSlug(c.Name)}").Order(StringComparer.Ordinal))
             .Distinct();
