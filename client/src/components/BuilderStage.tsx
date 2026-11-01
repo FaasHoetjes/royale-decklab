@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, type Ref } from 'react';
 import { Link } from 'react-router-dom';
 import type { BuilderDeckScore } from '../api';
 import type { Theme } from '../theme';
@@ -22,6 +22,7 @@ interface BuilderStageProps {
   /** The empty slot the next picked card goes into. */
   target: number;
   onSlotClick: (slotIndex: number) => void;
+  slotsRef?: Ref<HTMLDivElement>;
   theme: Theme;
   isMobile: boolean;
 }
@@ -30,7 +31,7 @@ const CURVE_LABELS = ['1', '2', '3', '4', '5', '6+'];
 
 /** The deck you're working on, big, with what it scores and how it plays. */
 const BuilderStage = forwardRef<HTMLDivElement, BuilderStageProps>(function BuilderStage(
-  { deckIndex, name, score, board, cardById, target, onSlotClick, theme, isMobile },
+  { deckIndex, name, score, board, cardById, target, onSlotClick, slotsRef, theme, isMobile },
   ref
 ) {
   const deck = board.decks[deckIndex] ?? [];
@@ -54,7 +55,7 @@ const BuilderStage = forwardRef<HTMLDivElement, BuilderStageProps>(function Buil
         <h3 style={{ ...styles.name, fontSize: isMobile ? '19px' : '24px', marginBottom: isMobile ? '12px' : '18px', color: theme.text.primary }}>
           {name}
         </h3>
-        <div style={{ ...styles.slots, gap: isMobile ? '10px 8px' : '14px' }}>
+        <div ref={slotsRef} style={{ ...styles.slots, gap: isMobile ? '10px 8px' : '14px' }}>
           {deck.map((cardId, slotIndex) => {
             const slot = { deckIndex, slotIndex };
             const isDropTarget = board.dragOver?.deckIndex === deckIndex && board.dragOver?.slotIndex === slotIndex;

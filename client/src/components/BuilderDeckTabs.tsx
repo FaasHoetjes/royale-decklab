@@ -23,11 +23,7 @@ export default function BuilderDeckTabs({ decks, names, scores, active, onSelect
     <div
       role="tablist"
       aria-label="Your four war decks"
-      style={{
-        ...styles.tabs,
-        gap: isMobile ? '6px' : '10px',
-        ...(isMobile && { ...styles.mobileSticky, backgroundColor: theme.bg.primary }),
-      }}
+      style={{ ...styles.tabs, gap: isMobile ? '6px' : '10px' }}
     >
       {decks.map((deck, i) => {
         const featured = featuredCard(deckCards(deck, cardById));
@@ -85,12 +81,6 @@ const styles = {
   tabs: {
     display: 'grid' as const,
     gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-  },
-  mobileSticky: {
-    position: 'sticky' as const,
-    top: '62px',
-    zIndex: 5,
-    padding: '4px 0 8px',
   },
   tab: {
     display: 'grid' as const,

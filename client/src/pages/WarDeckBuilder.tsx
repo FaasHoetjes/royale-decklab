@@ -10,14 +10,19 @@ import Tweened from '../components/Tweened';
 import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
 import { builderDeckNames, championFits, nextSlot, placeInDeck } from '../lib/builderDecks';
 import { flyCard, replayAnimation } from '../lib/flyCard';
+import { FOLD_EASING, prefersReducedMotion } from '../lib/motion';
 import type { ScoreDeckCard } from '../api';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import BuilderDeckTabs from '../components/BuilderDeckTabs';
+import BuilderDeckStrip from '../components/BuilderDeckStrip';
 import BuilderStage from '../components/BuilderStage';
 import CardCollection from '../components/CardCollection';
 import TrashIcon from '../components/TrashIcon';
 import { BuilderSkeleton } from '../components/LoadingSkeletons';
 import LoadError from '../components/LoadError';
+
+/** The app header's height on phones, which the deck tabs pin under. */
+const MOBILE_HEADER = 62;
 
 export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();
@@ -59,6 +64,8 @@ export default function WarDeckBuilder() {
   const [cardsOpen, setCardsOpen] = useState(wantCards);
   const filledLast = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const slotsRef = useRef<HTMLDivElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (wantCards || !filledLast.current) {
       setCardsOpen(wantCards);
@@ -70,8 +77,7 @@ export default function WarDeckBuilder() {
       setCardsOpen(false);
       const stage = stageRef.current;
       if (!stage) return;
-      const tabs = document.querySelector<HTMLElement>('[role="tablist"]');
-      const offset = isMobile ? 62 + (tabs?.offsetHeight ?? 0) + 12 : 24;
+      const offset = isMobile ? MOBILE_HEADER + (pinRef.current?.offsetHeight ?? 0) + 12 : 24;
       const top = stage.getBoundingClientRect().top;
       if (top >= offset) return;
       const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -80,6 +86,41 @@ export default function WarDeckBuilder() {
     }, 430);
     return () => window.clearTimeout(timer);
   }, [wantCards, isMobile]);
+
+  // On a phone the deck and your cards don't fit on one screen, so once the deck scrolls away a small copy of it
+  // takes the tabs' place.
+  const ready = !loading && !loadFailed;
+  const [stripShown, setStripShown] = useState(false);
+  useEffect(() => {
+    const slots = slotsRef.current;
+    const pin = pinRef.current;
+    if (!isMobile || !ready || !slots || !pin) {
+      setStripShown(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (entry) setStripShown(!entry.isIntersecting && entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0));
+      },
+      { rootMargin: `-${MOBILE_HEADER + pin.offsetHeight}px 0px 0px 0px` }
+    );
+    observer.observe(slots);
+    return () => observer.disconnect();
+  }, [isMobile, ready]);
+
+  // Tapping a slot in the big deck on a phone takes you down to your cards, once they're open.
+  const cardsPending = useRef(false);
+  const [cardsRequest, setCardsRequest] = useState(0);
+  useEffect(() => {
+    if (!cardsPending.current || !cardsOpen) return;
+    cardsPending.current = false;
+    const stage = stageRef.current;
+    const pin = pinRef.current;
+    if (!stage || !pin) return;
+    const top = window.scrollY + stage.getBoundingClientRect().bottom - MOBILE_HEADER - pin.offsetHeight;
+    if (top > window.scrollY) window.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [cardsRequest, cardsOpen]);
 
   const [initialPrefs] = useState(loadPickerPrefs);
   const [filters, setFilters] = useState<Set<FilterKey>>(() => new Set(initialPrefs.filters));
@@ -149,7 +190,7 @@ export default function WarDeckBuilder() {
   const flights = useRef<{ deckIndex: number; slotIndex: number; from: DOMRect }[]>([]);
   useLayoutEffect(() => {
     flights.current.forEach((f) => {
-      const art = slotArt(f.deckIndex, f.slotIndex);
+      const art = slotArt(f.deckIndex, f.slotIndex, stripShown);
       if (art) flyCard(f.from, art);
     });
     flights.current = [];
@@ -167,7 +208,7 @@ export default function WarDeckBuilder() {
       return;
     }
     const { slot, bump } = placement;
-    const bumpedFrom = bump && slotArt(active, bump.from)?.getBoundingClientRect();
+    const bumpedFrom = bump && slotArt(active, bump.from, stripShown)?.getBoundingClientRect();
     if (bump) board.swapSlots({ deckIndex: active, slotIndex: bump.from }, { deckIndex: active, slotIndex: bump.to });
     board.setSlot(active, slot, cardId);
     setChosenSlot(null);
@@ -177,10 +218,18 @@ export default function WarDeckBuilder() {
     if (bump && bumpedFrom) flights.current.push({ deckIndex: active, slotIndex: bump.to, from: bumpedFrom });
   };
 
+  /** Whether the tap chose the slot, rather than ending a drag. */
   const handleSlotClick = (slotIndex: number) => {
-    if (board.consumeDragClick()) return;
+    if (board.consumeDragClick()) return false;
     if (activeDeck[slotIndex] != null) board.setSlot(active, slotIndex, null);
     setChosenSlot(slotIndex);
+    return true;
+  };
+
+  const handleStageSlotClick = (slotIndex: number) => {
+    if (!handleSlotClick(slotIndex) || !isMobile) return;
+    cardsPending.current = true;
+    setCardsRequest((n) => n + 1);
   };
 
   const selectDeck = (deckIndex: number) => {
@@ -188,6 +237,19 @@ export default function WarDeckBuilder() {
     setChosenSlot(null);
     setBrowsing(false);
   };
+
+  const tabs = (
+    <BuilderDeckTabs
+      decks={board.decks}
+      names={names}
+      scores={scores?.decks ?? null}
+      active={active}
+      onSelect={selectDeck}
+      cardById={cardById}
+      theme={theme}
+      isMobile={isMobile}
+    />
+  );
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -247,25 +309,35 @@ export default function WarDeckBuilder() {
         />
       ) : (
         <>
-          <BuilderDeckTabs
-            decks={board.decks}
-            names={names}
-            scores={scores?.decks ?? null}
-            active={active}
-            onSelect={selectDeck}
-            cardById={cardById}
-            theme={theme}
-            isMobile={isMobile}
-          />
+          {isMobile ? (
+            <div ref={pinRef} style={{ ...styles.pin, backgroundColor: theme.bg.primary }}>
+              <div style={pinLayer(!stripShown)}>{tabs}</div>
+              <div style={pinLayer(stripShown)}>
+                <BuilderDeckStrip
+                  deckIndex={active}
+                  name={names[active] ?? `Deck ${active + 1}`}
+                  board={board}
+                  cardById={cardById}
+                  target={targetSlot}
+                  onSlotClick={handleSlotClick}
+                  onSelectDeck={selectDeck}
+                  theme={theme}
+                />
+              </div>
+            </div>
+          ) : (
+            tabs
+          )}
           <BuilderStage
             ref={stageRef}
+            slotsRef={slotsRef}
             deckIndex={active}
             name={names[active] ?? `Deck ${active + 1}`}
             score={scores?.decks[active]}
             board={board}
             cardById={cardById}
             target={targetSlot}
-            onSlotClick={handleSlotClick}
+            onSlotClick={handleStageSlotClick}
             theme={theme}
             isMobile={isMobile}
           />
@@ -304,16 +376,34 @@ export default function WarDeckBuilder() {
   );
 }
 
-/** The card art inside a deck slot, to fly cards to and from. */
-function slotArt(deckIndex: number, slotIndex: number): HTMLElement | null {
-  const art = document.querySelector(`[data-deck-index="${deckIndex}"][data-slot-index="${slotIndex}"]`)?.firstElementChild;
+/** The card art inside a deck slot, to fly cards to and from: in the pinned strip while that's what's in view. */
+function slotArt(deckIndex: number, slotIndex: number, inStrip: boolean): HTMLElement | null {
+  const selector = inStrip ? `[data-strip-slot="${slotIndex}"]` : `[data-deck-index="${deckIndex}"][data-slot-index="${slotIndex}"]`;
+  const art = document.querySelector(selector)?.firstElementChild;
   return art instanceof HTMLElement ? art : null;
+}
+
+function pinLayer(shown: boolean) {
+  return {
+    gridArea: '1 / 1',
+    opacity: shown ? 1 : 0,
+    visibility: shown ? ('visible' as const) : ('hidden' as const),
+    transition: prefersReducedMotion() ? 'none' : `opacity 180ms ${FOLD_EASING}, visibility 180ms`,
+  };
 }
 
 const styles = {
   container: {
     maxWidth: '1000px',
     margin: '0 auto',
+  },
+  pin: {
+    position: 'sticky' as const,
+    top: `${MOBILE_HEADER}px`,
+    zIndex: 5,
+    display: 'grid' as const,
+    alignItems: 'end' as const,
+    padding: '4px 0 8px',
   },
   header: {
     display: 'flex' as const,
