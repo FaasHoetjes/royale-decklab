@@ -1,5 +1,5 @@
 import type { BuilderCard } from './builderCards';
-import { displayLevel } from './cardDisplay';
+import { displayLevel, localArtUrl } from './cardDisplay';
 
 export const SORT_TYPES = ['Name', 'Level', 'Elixir', 'Rarity'] as const;
 export type SortType = (typeof SORT_TYPES)[number];
@@ -130,6 +130,11 @@ export function sortCards(cards: BuilderCard[], sortType: SortType, descending: 
 }
 
 export function pickerIconUrl(card: BuilderCard, filters: Set<FilterKey>): string | undefined {
+  const url = pickerArt(card, filters);
+  return url && localArtUrl(url);
+}
+
+function pickerArt(card: BuilderCard, filters: Set<FilterKey>): string | undefined {
   if (filters.has('champion') && card.ownsHero) {
     return card.iconUrls?.heroMedium ?? card.iconUrls?.evolutionMedium ?? card.iconUrls?.medium;
   }
