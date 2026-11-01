@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
-import { playerWarDecksOptions } from '../queries';
+import { playerWarDecksOptions, useMetaStatus } from '../queries';
 import { startingQuery } from '../lib/generatorOptions';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
+import { timeAgo } from '../lib/timeAgo';
 import CardWall from '../components/CardWall';
-
-const EXAMPLE_TAG = '2QGG92L9';
 
 export default function Landing() {
   const { setActivePlayerTag } = useApp();
@@ -17,6 +16,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const status = useMetaStatus();
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -139,14 +139,6 @@ export default function Landing() {
           >
             Where's my player tag?
           </button>
-          <span aria-hidden="true" style={{ color: theme.text.tertiary }}>·</span>
-          <Link
-            to={`/${EXAMPLE_TAG}`}
-            className="mobile-touch-target"
-            style={{ ...styles.textButton, color: theme.accent }}
-          >
-            Try an example player
-          </Link>
         </div>
         {showTagHelp && (
           <p id="player-tag-help" style={{ ...styles.helpText, color: theme.text.secondary }}>
@@ -156,6 +148,13 @@ export default function Landing() {
           </p>
         )}
 
+        {status.data && status.data.deckCount > 0 && (
+          <p style={{ ...styles.status, color: theme.text.secondary }}>
+            <span style={{ ...styles.statusDot, backgroundColor: theme.accent }} aria-hidden="true" />
+            {status.data.deckCount.toLocaleString('en-US')} war decks tracked · updated{' '}
+            {timeAgo(status.data.lastRefresh)}
+          </p>
+        )}
       </section>
     </div>
   );
@@ -260,6 +259,20 @@ const styles = {
     margin: '2px auto 0',
     fontSize: '13px',
     lineHeight: 1.5,
+  },
+  status: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '8px',
+    margin: '18px 0 0',
+    fontSize: '13px',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  statusDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    flexShrink: 0,
   },
   error: {
     color: '#ff6b6b',
