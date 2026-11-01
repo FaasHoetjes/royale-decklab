@@ -30,10 +30,12 @@ public sealed class CardsController(
     }
 
     [HttpGet("stats")]
+    [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public IActionResult Stats() => Ok(cache.CardStats);
 
     [HttpGet("{id:int}/decks")]
+    [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> Decks(int id, CancellationToken ct)
     {

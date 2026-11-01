@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import {
   useQuery,
   useQueryClient,
@@ -15,6 +15,7 @@ import {
   fetchCardDecks,
   fetchUpgradeAdvice,
   scoreBuilderDecks,
+  isMetaLoading,
   type ScoreDeckCard,
 } from './api';
 
@@ -36,6 +37,15 @@ export function playerCollectionOptions(tag: string) {
     queryKey: queryKeys.playerCollection(tag),
     queryFn: ({ signal }: { signal: AbortSignal }) => fetchPlayerCollection(tag, signal),
   };
+}
+
+/** True while something on the page waits for the server to finish reloading the meta. */
+export function useMetaLoading(): boolean {
+  const cache = useQueryClient().getQueryCache();
+  return useSyncExternalStore(
+    (onChange) => cache.subscribe(onChange),
+    () => cache.findAll({ type: 'active' }).some((q) => q.state.status === 'pending' && isMetaLoading(q.state.fetchFailureReason)),
+  );
 }
 
 export function useMetaStatus() {

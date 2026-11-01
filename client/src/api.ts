@@ -1,9 +1,23 @@
 import type { CardVersionRef, CardIconUrls } from './lib/cardDisplay';
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(label: string, status: number) {
+    super(`${label}: ${status}`);
+    this.status = status;
+  }
+}
+
+/** The server answers 503 while it reloads the meta after a restart, which takes a few minutes. */
+export function isMetaLoading(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 503;
+}
+
 async function getJson<T>(url: string, label: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { signal });
   if (!response.ok) {
-    throw new Error(`${label}: ${response.status}`);
+    throw new ApiError(label, response.status);
   }
   return response.json();
 }
@@ -203,7 +217,7 @@ export async function scoreBuilderDecks(
     signal,
   });
   if (!response.ok) {
-    throw new Error(`Failed to score decks: ${response.status}`);
+    throw new ApiError('Failed to score decks', response.status);
   }
   return response.json();
 }

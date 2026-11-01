@@ -57,6 +57,7 @@ public sealed class PlayerController(
     }
 
     [HttpGet("api/player/{tag}")]
+    [RequireMetaLoaded]
     public async Task<IActionResult> WarDecks(
         string tag,
         [FromQuery] string? decks,

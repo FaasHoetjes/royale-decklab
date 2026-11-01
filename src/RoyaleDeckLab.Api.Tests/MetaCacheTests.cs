@@ -1,9 +1,16 @@
 using System.Net;
 using System.Text;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RoyaleDeckLab.Api.Clients;
+using RoyaleDeckLab.Api.Controllers;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Options;
@@ -140,5 +147,53 @@ public sealed class MetaCacheTests : IDisposable
         await cache.SetEpochAsync(Now);
 
         Assert.Equal(3, StoredBattles(sp).Count);
+    }
+
+    private static ResourceExecutingContext RunMetaFilter(ServiceProvider sp)
+    {
+        var http = new DefaultHttpContext { RequestServices = sp };
+        var context = new ResourceExecutingContext(
+            new ActionContext(http, new RouteData(), new ActionDescriptor()),
+            new List<IFilterMetadata>(),
+            new List<IValueProviderFactory>());
+        new RequireMetaLoadedAttribute().OnResourceExecuting(context);
+        return context;
+    }
+
+    [Fact]
+    public async Task Meta_endpoints_answer_an_uncacheable_503_until_the_stored_battles_are_loaded()
+    {
+        using var sp = Services(crawlFails: true);
+        await SeedOldBattlesAsync(sp, lastBuildMs: Now);
+        var cache = sp.GetRequiredService<MetaCache>();
+
+        var loading = RunMetaFilter(sp);
+        var result = Assert.IsType<ObjectResult>(loading.Result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+        Assert.Equal("no-store", loading.HttpContext.Response.Headers.CacheControl.ToString());
+        Assert.Equal("15", loading.HttpContext.Response.Headers.RetryAfter.ToString());
+
+        await cache.InitializeAsync();
+
+        Assert.Null(RunMetaFilter(sp).Result);
+    }
+
+    [Fact]
+    public async Task An_empty_store_with_a_failed_crawl_still_counts_as_loaded()
+    {
+        using var sp = Services(crawlFails: true);
+        using (var scope = sp.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<MetaDbContext>();
+            db.Database.EnsureCreated();
+            db.MetaState.Add(new MetaStateEntity { Id = 1 });
+            await db.SaveChangesAsync();
+        }
+        var cache = sp.GetRequiredService<MetaCache>();
+
+        await cache.InitializeAsync();
+
+        Assert.True(cache.IsLoaded);
+        Assert.Empty(cache.Meta);
     }
 }

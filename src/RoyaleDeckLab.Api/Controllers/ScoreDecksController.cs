@@ -13,6 +13,7 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
     private const int MaxDeckSlots = 8;
 
     [HttpPost("api/score-decks")]
+    [RequireMetaLoaded]
     [RequestSizeLimit(64 * 1024)]
     public IActionResult ScoreDecks([FromBody] ScoreDecksRequest request)
     {

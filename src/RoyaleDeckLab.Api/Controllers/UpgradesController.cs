@@ -14,6 +14,7 @@ public sealed class UpgradesController(
     ILogger<UpgradesController> logger) : ControllerBase
 {
     [HttpGet("api/player/{tag}/upgrades")]
+    [RequireMetaLoaded]
     public async Task<IActionResult> Get(string tag, CancellationToken ct)
     {
         if (!PlayerTag.IsValid(tag))

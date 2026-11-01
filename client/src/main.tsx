@@ -8,6 +8,7 @@ import Layout from './components/Layout'
 import WarDeckGenerator from './pages/WarDeckGenerator'
 import NotFound from './pages/NotFound'
 import Landing from './pages/Landing'
+import { retryDelay, shouldRetry } from './lib/retry'
 import './index.css'
 
 // The generator is where nearly every visit starts; the other pages load as separate chunks.
@@ -38,7 +39,8 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: 60_000,
       gcTime: 30 * 60_000,
-      retry: 1,
+      retry: shouldRetry,
+      retryDelay,
     },
   },
 })

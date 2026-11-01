@@ -21,6 +21,7 @@ public sealed class MetaCache(
     private long _epochStart;
     private long _version;
     private bool _isBuilding;
+    private volatile bool _isLoaded;
 
     private Dictionary<string, DeckMeta> _metaIndex = new();
     private long _metaIndexVersion = -1;
@@ -34,6 +35,9 @@ public sealed class MetaCache(
     public long Version => Interlocked.Read(ref _version);
     public bool IsBuilding { get { lock (_buildLock) { return _isBuilding; } } }
 
+    /// <summary>False after a restart until the stored battles are aggregated, or startup finds there are none.</summary>
+    public bool IsLoaded => _isLoaded;
+
     public static string DeckKey(IEnumerable<int> cardIds) => string.Join(',', cardIds.OrderBy(x => x));
 
     private long PruneCutoff()
@@ -41,19 +45,27 @@ public sealed class MetaCache(
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
-        long epoch;
-        using (var scope = scopeFactory.CreateScope())
+        try
         {
-            epoch = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
-        }
-        Interlocked.Exchange(ref _epochStart, epoch);
-        if (epoch > 0)
-        {
-            logger.LogInformation("Patch boundary in effect: {Epoch}", IsoMs(epoch));
-        }
+            long epoch;
+            using (var scope = scopeFactory.CreateScope())
+            {
+                epoch = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
+            }
+            Interlocked.Exchange(ref _epochStart, epoch);
+            if (epoch > 0)
+            {
+                logger.LogInformation("Patch boundary in effect: {Epoch}", IsoMs(epoch));
+            }
 
-        logger.LogInformation("Loading meta cache...");
-        await LoadOrBuildAsync(ct);
+            logger.LogInformation("Loading meta cache...");
+            await LoadOrBuildAsync(ct);
+        }
+        finally
+        {
+            // Once startup is over, even if it failed, there's nothing left to wait for: serve whatever meta there is.
+            _isLoaded = true;
+        }
     }
 
     public async Task<List<DeckMeta>> AggregateFromStoreAsync(string reason, CancellationToken ct = default)
@@ -77,6 +89,7 @@ public sealed class MetaCache(
             ? CardPeriods.Compare(periods[1], await KeepPreviousPeriodAsync(store, periods[0], ct))
             : CardPeriods.Compare(periods[0], null);
         _meta = decks;
+        _isLoaded = true;
         Interlocked.Increment(ref _version);
         Interlocked.Exchange(ref _lastCacheTime, store.GetLastBuild());
         logger.LogInformation("Meta {Reason}: {Decks} decks from {Battles} battles", reason, decks.Count, store.Count());

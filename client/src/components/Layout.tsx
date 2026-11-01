@@ -3,6 +3,7 @@ import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'r
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import Footer from './Footer';
+import MetaLoadingNotice from './MetaLoadingNotice';
 import { ElixirGradientDefs } from './ElixirBadge';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
@@ -112,6 +113,7 @@ export default function Layout() {
         <ElixirGradientDefs />
         {/* Grows to fill the screen, so the footer stays at the bottom even on short pages. */}
         <div style={styles.page}>
+          <MetaLoadingNotice />
           <Suspense fallback={null}>
             <Outlet />
           </Suspense>

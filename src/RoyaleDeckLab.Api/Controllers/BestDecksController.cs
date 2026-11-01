@@ -12,6 +12,7 @@ public sealed class BestDecksController(
     ILogger<BestDecksController> logger) : ControllerBase
 {
     [HttpGet("api/best-decks")]
+    [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
