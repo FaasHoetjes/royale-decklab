@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Configuration;
 using RoyaleDeckLab.Api.Data;
+using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Options;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
@@ -240,6 +241,20 @@ app.MapGet("/.well-known/security.txt", () => Results.Text(
     Canonical: https://royaledecklab.com/.well-known/security.txt
     """, "text/plain"));
 
+app.MapGet("/robots.txt", () => Results.Text(
+    $"""
+    User-agent: *
+    Allow: /
+
+    Sitemap: {SpaPages.Origin}/sitemap.xml
+    """, "text/plain"));
+
+app.MapGet("/sitemap.xml", async (HttpContext ctx, CardCatalog catalog) =>
+{
+    ctx.Response.Headers.CacheControl = "public, max-age=3600";
+    return Results.Text(SpaPages.Sitemap(await CardsOrEmpty(catalog, ctx.RequestAborted)), "application/xml");
+});
+
 var spaStaticFiles = new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -261,22 +276,39 @@ if (File.Exists(spaIndex))
     var earlyHintLink = BuildEarlyHintLink(indexHtml);
 
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-    app.MapFallback((HttpContext ctx) =>
+    app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta) =>
     {
         ctx.Response.Headers.CacheControl = "no-cache";
         ctx.Response.Headers.Link = earlyHintLink;
 
-        var path = ctx.Request.Path.Value ?? "/";
-        var canonical = System.Net.WebUtility.HtmlEncode("https://royaledecklab.com" + path);
-        var html = indexHtml.Replace(
-            "<meta property=\"og:url\" content=\"https://royaledecklab.com/\" />",
-            $"<meta property=\"og:url\" content=\"{canonical}\" />\n    <link rel=\"canonical\" href=\"{canonical}\" />");
-        return Results.Content(html, "text/html; charset=utf-8");
+        var path = ctx.Request.Path.Value;
+        var cards = SpaPages.IsCardPath(path) ? await CardsOrEmpty(catalog, ctx.RequestAborted) : [];
+        var page = SpaPages.Resolve(path, cards, meta.CardStats.Cards);
+        if (page.NoIndex)
+        {
+            ctx.Response.Headers["X-Robots-Tag"] = "noindex";
+        }
+        return Results.Content(SpaPages.Render(indexHtml, page), "text/html; charset=utf-8", statusCode: page.StatusCode);
     });
 }
 else
 {
     app.MapFallback(() => Results.Json(new { error = "Not found" }, statusCode: 404));
+}
+
+// Pages shouldn't wait out the Clash Royale API's retries; without the catalog they're served generically instead.
+static async Task<IReadOnlyList<CatalogCard>> CardsOrEmpty(CardCatalog catalog, CancellationToken requestAborted)
+{
+    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(requestAborted);
+    timeout.CancelAfter(TimeSpan.FromSeconds(2));
+    try
+    {
+        return await catalog.GetAsync(timeout.Token);
+    }
+    catch (Exception) when (!requestAborted.IsCancellationRequested)
+    {
+        return [];
+    }
 }
 
 static string BuildEarlyHintLink(string html)
