@@ -4,7 +4,7 @@ import { percent } from '../lib/cardStats';
 function explain(stat: CardStat): string {
   const chance = stat.changeMargin != null ? ` With this many games, chance alone can move a win rate by up to ${percent(stat.changeMargin)}.` : '';
   return stat.changeIsClear
-    ? `Win rate change since the last patch, bigger than chance would explain.${chance}`
+    ? `Win rate change since the last patch.${chance}`
     : `Win rate change since the last patch, but too few games to tell if it really changed.${chance}`;
 }
 
