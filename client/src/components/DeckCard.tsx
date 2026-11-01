@@ -234,6 +234,7 @@ const styles = {
     zIndex: -1,
     overflow: 'hidden' as const,
     borderRadius: '17px 17px 0 0',
+    clipPath: 'inset(0 round 17px 17px 0 0)',
     backgroundColor: 'var(--hero-bg)',
   },
   bannerBlur: {

@@ -194,6 +194,7 @@ const styles = {
     zIndex: -1,
     overflow: 'hidden' as const,
     borderRadius: '19px',
+    clipPath: 'inset(0 round 19px)',
     backgroundColor: 'var(--hero-bg)',
   },
   blur: {
