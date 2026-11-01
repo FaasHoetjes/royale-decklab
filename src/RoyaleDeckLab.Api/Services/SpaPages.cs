@@ -7,7 +7,11 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-public sealed record SpaPage(int StatusCode, string Title, string Description, string? CanonicalPath, bool NoIndex);
+public sealed record SpaPage(int StatusCode, string Title, string Description, string? CanonicalPath, bool NoIndex, string? PlayerTag = null)
+{
+    /// <summary>The link preview image, when the page has its own instead of the site's.</summary>
+    public string? ImagePath { get; init; }
+}
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -57,9 +61,28 @@ public static partial class SpaPages
         // Player pages are endless and differ only in whose cards they use, so they stay shareable but unindexed.
         if (!segment.Contains('/') && PlayerTag.IsValid(segment))
         {
-            return new(200, $"War Deck Generator · {SiteName}", SiteDescription, path, true);
+            return new(200, $"War Deck Generator · {SiteName}", SiteDescription, path, true, "#" + segment.ToUpperInvariant());
         }
         return NotFound;
+    }
+
+    public static bool IsShareCode(string? code) => ShareCode.TryDecode(code, out _);
+
+    /// <summary>
+    /// A player page opened from a share link names whose decks they are, and keeps the code in og:url, which
+    /// Discord links the preview's title to.
+    /// </summary>
+    public static SpaPage SharedLineup(SpaPage playerPage, string? playerName, string shareCode)
+    {
+        var count = shareCode.Split('.').Length;
+        var decks = count switch { 1 => "One Clash Royale war deck", 2 => "Two Clash Royale war decks", 3 => "Three Clash Royale war decks", _ => "Four Clash Royale war decks" };
+        return playerPage with
+        {
+            Title = playerName is null ? $"Shared war decks · {SiteName}" : $"{playerName}'s war decks · {SiteName}",
+            Description = $"{decks} picked for {(playerName is null ? "a player" : playerName + "'s")} cards. Get the best war decks for your own cards on {SiteName}.",
+            CanonicalPath = $"{playerPage.CanonicalPath}?share={shareCode}",
+            ImagePath = $"/api/player/{playerPage.PlayerTag?.TrimStart('#')}/share-image?share={shareCode}",
+        };
     }
 
     private static SpaPage CardPage(string slug, IReadOnlyList<CatalogCard> cards, IReadOnlyList<CardStat> stats, DateTimeOffset now)
@@ -110,6 +133,14 @@ public static partial class SpaPages
             html = html.Replace(
                 $"<meta property=\"og:url\" content=\"{Origin}/\" />",
                 $"<meta property=\"og:url\" content=\"{url}\" />\n    <link rel=\"canonical\" href=\"{url}\" />");
+        }
+        if (page.ImagePath is { } imagePath)
+        {
+            html = html
+                .Replace($"content=\"{Origin}/og-image.png\"", $"content=\"{WebUtility.HtmlEncode(Origin + imagePath)}\"")
+                .Replace("property=\"og:image:width\" content=\"2400\"", $"property=\"og:image:width\" content=\"{ShareImageRenderer.Width}\"")
+                .Replace("property=\"og:image:height\" content=\"1260\"", $"property=\"og:image:height\" content=\"{ShareImageRenderer.Height}\"")
+                .Replace("property=\"og:image:alt\" content=\"Royale DeckLab\"", $"property=\"og:image:alt\" content=\"{title}\"");
         }
         return html;
     }

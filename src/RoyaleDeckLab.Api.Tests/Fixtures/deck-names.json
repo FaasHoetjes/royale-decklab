@@ -1,0 +1,646 @@
+[
+ {
+  "cards": [
+   ["Valkyrie", 4],
+   ["Skeleton Army", 3],
+   ["Princess", 3],
+   ["Ice Spirit", 1],
+   ["Dart Goblin", 3],
+   ["Wall Breakers", 2],
+   ["Bomb Tower", 4],
+   ["Goblin Barrel", 3]
+  ],
+  "name": "Log Bait",
+  "featured": "Goblin Barrel"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Skeleton Army", 3],
+   ["Princess", 3],
+   ["Dart Goblin", 3],
+   ["Wall Breakers", 2],
+   ["Inferno Tower", 5],
+   ["Goblin Barrel", 3],
+   ["The Log", 2]
+  ],
+  "name": "Log Bait",
+  "featured": "Goblin Barrel"
+ },
+ {
+  "cards": [
+   ["Minion Horde", 5],
+   ["Goblin Gang", 3],
+   ["Cannon Cart", 5],
+   ["Mother Witch", 4],
+   ["Goblinstein", 5],
+   ["Mortar", 4],
+   ["Fireball", 4],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Mortar Bait",
+  "featured": "Mortar"
+ },
+ {
+  "cards": [
+   ["Ice Wizard", 3],
+   ["Goblin Gang", 3],
+   ["Rascals", 5],
+   ["Cannon Cart", 5],
+   ["Skeleton Barrel", 3],
+   ["Mortar", 4],
+   ["Fireball", 4],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Mortar Bait",
+  "featured": "Mortar"
+ },
+ {
+  "cards": [
+   ["Giant Skeleton", 6],
+   ["Battle Ram", 4],
+   ["Electro Wizard", 4],
+   ["Bandit", 3],
+   ["Royal Ghost", 3],
+   ["Furnace", 4],
+   ["Arrows", 3],
+   ["Heal Spirit", 1]
+  ],
+  "name": "Bridge Spam",
+  "featured": "Battle Ram"
+ },
+ {
+  "cards": [
+   ["Barbarians", 5],
+   ["Battle Ram", 4],
+   ["Bandit", 3],
+   ["Royal Ghost", 3],
+   ["Archer Queen", 5],
+   ["Elixir Collector", 6],
+   ["Arrows", 3],
+   ["Heal Spirit", 1]
+  ],
+  "name": "Bridge Spam",
+  "featured": "Battle Ram"
+ },
+ {
+  "cards": [
+   ["Barbarians", 5],
+   ["Lava Hound", 7],
+   ["Miner", 3],
+   ["Flying Machine", 4],
+   ["Phoenix", 4],
+   ["Tombstone", 3],
+   ["Zap", 2],
+   ["Goblin Curse", 2]
+  ],
+  "name": "Lava Hound Beatdown",
+  "featured": "Lava Hound"
+ },
+ {
+  "cards": [
+   ["Valkyrie", 4],
+   ["Baby Dragon", 4],
+   ["Guards", 3],
+   ["Lava Hound", 7],
+   ["Mega Minion", 3],
+   ["Tombstone", 3],
+   ["Arrows", 3],
+   ["Lightning", 6]
+  ],
+  "name": "Lava Hound Beatdown",
+  "featured": "Lava Hound"
+ },
+ {
+  "cards": [
+   ["Skeleton Army", 3],
+   ["Dart Goblin", 3],
+   ["Rascals", 5],
+   ["Skeleton Barrel", 3],
+   ["Skeleton King", 4],
+   ["Suspicious Bush", 2],
+   ["Bomb Tower", 4],
+   ["Vines", 3]
+  ],
+  "name": "Skeleton Barrel Bait",
+  "featured": "Skeleton Barrel"
+ },
+ {
+  "cards": [
+   ["Goblins", 2],
+   ["Dart Goblin", 3],
+   ["Royal Ghost", 3],
+   ["Rascals", 5],
+   ["Skeleton Barrel", 3],
+   ["Suspicious Bush", 2],
+   ["Freeze", 4],
+   ["The Log", 2]
+  ],
+  "name": "Skeleton Barrel Bait",
+  "featured": "Skeleton Barrel"
+ },
+ {
+  "cards": [
+   ["Three Musketeers", 9],
+   ["Ice Golem", 2],
+   ["Elite Barbarians", 6],
+   ["Bandit", 3],
+   ["Golden Knight", 4],
+   ["Elixir Collector", 6],
+   ["Zap", 2],
+   ["Heal Spirit", 1]
+  ],
+  "name": "Three Musketeers Control",
+  "featured": "Three Musketeers"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Minions", 3],
+   ["Spear Goblins", 2],
+   ["Goblin Hut", 4],
+   ["Furnace", 4],
+   ["Poison", 4],
+   ["Graveyard", 5],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Graveyard Control",
+  "featured": "Graveyard"
+ },
+ {
+  "cards": [
+   ["P.E.K.K.A", 7],
+   ["Battle Ram", 4],
+   ["Electro Wizard", 4],
+   ["Bandit", 3],
+   ["Royal Ghost", 3],
+   ["Golden Knight", 4],
+   ["Mother Witch", 4],
+   ["Arrows", 3]
+  ],
+  "name": "PEKKA Bridge Spam",
+  "featured": "P.E.K.K.A"
+ },
+ {
+  "cards": [
+   ["Guards", 3],
+   ["Bowler", 5],
+   ["Inferno Dragon", 4],
+   ["Executioner", 5],
+   ["Goblin Cage", 4],
+   ["Freeze", 4],
+   ["Graveyard", 5],
+   ["Tornado", 3]
+  ],
+  "name": "Graveyard Freeze",
+  "featured": "Graveyard"
+ },
+ {
+  "cards": [
+   ["Wizard", 5],
+   ["Hog Rider", 4],
+   ["Guards", 3],
+   ["Ice Spirit", 1],
+   ["Monk", 5],
+   ["Cannon", 3],
+   ["The Log", 2],
+   ["Earthquake", 3]
+  ],
+  "name": "Hog EQ",
+  "featured": "Hog Rider"
+ },
+ {
+  "cards": [
+   ["Baby Dragon", 4],
+   ["Ice Wizard", 3],
+   ["Dark Prince", 4],
+   ["Fire Spirit", 1],
+   ["Electro Giant", 7],
+   ["Goblin Cage", 4],
+   ["Lightning", 6],
+   ["Tornado", 3]
+  ],
+  "name": "Electro Giant Beatdown",
+  "featured": "Electro Giant"
+ },
+ {
+  "cards": [
+   ["Giant", 5],
+   ["Skeleton Army", 3],
+   ["Mini P.E.K.K.A", 4],
+   ["Minion Horde", 5],
+   ["Sparky", 6],
+   ["Bats", 2],
+   ["Arrows", 3],
+   ["Zap", 2]
+  ],
+  "name": "Giant Beatdown",
+  "featured": "Giant"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Archers", 3],
+   ["Ice Wizard", 3],
+   ["Royal Hogs", 5],
+   ["Electro Spirit", 1],
+   ["Goblin Hut", 4],
+   ["Lightning", 6],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Royal Hogs Control",
+  "featured": "Royal Hogs"
+ },
+ {
+  "cards": [
+   ["Goblins", 2],
+   ["Royal Ghost", 3],
+   ["Royal Hogs", 5],
+   ["Archer Queen", 5],
+   ["Electro Spirit", 1],
+   ["Goblin Hut", 4],
+   ["Fireball", 4],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Royal Hogs Control",
+  "featured": "Royal Hogs"
+ },
+ {
+  "cards": [
+   ["Guards", 3],
+   ["Fire Spirit", 1],
+   ["Berserker", 2],
+   ["Cannon", 3],
+   ["Furnace", 4],
+   ["Goblin Drill", 4],
+   ["Poison", 4],
+   ["Giant Snowball", 2]
+  ],
+  "name": "Goblin Drill Cycle",
+  "featured": "Goblin Drill"
+ },
+ {
+  "cards": [
+   ["Giant", 5],
+   ["Witch", 5],
+   ["Guards", 3],
+   ["Bowler", 5],
+   ["Zappies", 4],
+   ["Arrows", 3],
+   ["Graveyard", 5],
+   ["Giant Snowball", 2]
+  ],
+  "name": "Giant Graveyard",
+  "featured": "Giant"
+ },
+ {
+  "cards": [
+   ["Balloon", 5],
+   ["Miner", 3],
+   ["Inferno Dragon", 4],
+   ["Ice Golem", 2],
+   ["Mega Minion", 3],
+   ["Goblin Cage", 4],
+   ["Fireball", 4],
+   ["Zap", 2]
+  ],
+  "name": "Balloon Control",
+  "featured": "Balloon"
+ },
+ {
+  "cards": [
+   ["Skeleton Army", 3],
+   ["Executioner", 5],
+   ["Night Witch", 4],
+   ["Elixir Golem", 3],
+   ["Skeleton King", 4],
+   ["Rage", 2],
+   ["Void", 5],
+   ["Goblin Curse", 2]
+  ],
+  "name": "Elixir Golem Control",
+  "featured": "Elixir Golem"
+ },
+ {
+  "cards": [
+   ["Skeletons", 1],
+   ["Musketeer", 4],
+   ["Hog Rider", 4],
+   ["Ice Spirit", 1],
+   ["Ice Golem", 2],
+   ["Cannon", 3],
+   ["Fireball", 4],
+   ["The Log", 2]
+  ],
+  "name": "Hog 2.6",
+  "featured": "Hog Rider"
+ },
+ {
+  "cards": [
+   ["Skeletons", 1],
+   ["Hog Rider", 4],
+   ["Firecracker", 3],
+   ["Mighty Miner", 4],
+   ["Electro Spirit", 1],
+   ["Tesla", 4],
+   ["The Log", 2],
+   ["Earthquake", 3]
+  ],
+  "name": "Hog EQ",
+  "featured": "Hog Rider"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Princess", 3],
+   ["Ice Spirit", 1],
+   ["Goblin Gang", 3],
+   ["Inferno Tower", 5],
+   ["Rocket", 6],
+   ["Goblin Barrel", 3],
+   ["The Log", 2]
+  ],
+  "name": "Log Bait",
+  "featured": "Goblin Barrel"
+ },
+ {
+  "cards": [
+   ["Valkyrie", 4],
+   ["Skeleton Army", 3],
+   ["Princess", 3],
+   ["Ice Spirit", 1],
+   ["Dart Goblin", 3],
+   ["Wall Breakers", 2],
+   ["Cannon", 3],
+   ["Goblin Barrel", 3]
+  ],
+  "name": "Log Bait",
+  "featured": "Goblin Barrel"
+ },
+ {
+  "cards": [
+   ["P.E.K.K.A", 7],
+   ["Battle Ram", 4],
+   ["Electro Wizard", 4],
+   ["Bandit", 3],
+   ["Royal Ghost", 3],
+   ["Magic Archer", 4],
+   ["Zap", 2],
+   ["Poison", 4]
+  ],
+  "name": "PEKKA Bridge Spam",
+  "featured": "P.E.K.K.A"
+ },
+ {
+  "cards": [
+   ["Royal Recruits", 7],
+   ["Zappies", 4],
+   ["Flying Machine", 4],
+   ["Royal Hogs", 5],
+   ["Electro Spirit", 1],
+   ["Goblin Cage", 4],
+   ["Arrows", 3],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Royal Hogs Recruits",
+  "featured": "Royal Hogs"
+ },
+ {
+  "cards": [
+   ["Skeletons", 1],
+   ["Ice Spirit", 1],
+   ["Royal Hogs", 5],
+   ["Archer Queen", 5],
+   ["Cannon", 3],
+   ["The Log", 2],
+   ["Earthquake", 3],
+   ["Royal Delivery", 3]
+  ],
+  "name": "Royal Hogs EQ",
+  "featured": "Royal Hogs"
+ },
+ {
+  "cards": [
+   ["Minions", 3],
+   ["Rascals", 5],
+   ["Cannon Cart", 5],
+   ["Skeleton Barrel", 3],
+   ["Berserker", 2],
+   ["Mortar", 4],
+   ["Fireball", 4],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Mortar Bait",
+  "featured": "Mortar"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Baby Dragon", 4],
+   ["Ice Wizard", 3],
+   ["Tombstone", 3],
+   ["Poison", 4],
+   ["Graveyard", 5],
+   ["Tornado", 3],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Splashyard",
+  "featured": "Graveyard"
+ },
+ {
+  "cards": [
+   ["Bowler", 5],
+   ["Inferno Dragon", 4],
+   ["Executioner", 5],
+   ["Zappies", 4],
+   ["Golden Knight", 4],
+   ["Freeze", 4],
+   ["Graveyard", 5],
+   ["Tornado", 3]
+  ],
+  "name": "Graveyard Freeze",
+  "featured": "Graveyard"
+ },
+ {
+  "cards": [
+   ["Giant", 5],
+   ["Minions", 3],
+   ["Witch", 5],
+   ["Mini P.E.K.K.A", 4],
+   ["Bowler", 5],
+   ["Arrows", 3],
+   ["Graveyard", 5],
+   ["Giant Snowball", 2]
+  ],
+  "name": "Giant Graveyard",
+  "featured": "Giant"
+ },
+ {
+  "cards": [
+   ["Balloon", 5],
+   ["Bowler", 5],
+   ["Lumberjack", 4],
+   ["Inferno Dragon", 4],
+   ["Electro Dragon", 5],
+   ["Freeze", 4],
+   ["Tornado", 3],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Lumberloon",
+  "featured": "Balloon"
+ },
+ {
+  "cards": [
+   ["Balloon", 5],
+   ["Valkyrie", 4],
+   ["Guards", 3],
+   ["Lava Hound", 7],
+   ["Inferno Dragon", 4],
+   ["Skeleton Dragons", 4],
+   ["Fireball", 4],
+   ["Zap", 2]
+  ],
+  "name": "Lava Loon",
+  "featured": "Lava Hound"
+ },
+ {
+  "cards": [
+   ["Golem", 8],
+   ["Bomber", 2],
+   ["Mini P.E.K.K.A", 4],
+   ["Elite Barbarians", 6],
+   ["Night Witch", 4],
+   ["Phoenix", 4],
+   ["Arrows", 3],
+   ["Zap", 2]
+  ],
+  "name": "Golem Beatdown",
+  "featured": "Golem"
+ },
+ {
+  "cards": [
+   ["Skeletons", 1],
+   ["Royal Giant", 6],
+   ["Hunter", 4],
+   ["Royal Ghost", 3],
+   ["Fisherman", 3],
+   ["Electro Spirit", 1],
+   ["Fireball", 4],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Royal Giant Fisherman",
+  "featured": "Royal Giant"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Archers", 3],
+   ["Skeletons", 1],
+   ["Electro Spirit", 1],
+   ["Tesla", 4],
+   ["X-Bow", 6],
+   ["Fireball", 4],
+   ["The Log", 2]
+  ],
+  "name": "X-Bow Cycle",
+  "featured": "X-Bow"
+ },
+ {
+  "cards": [
+   ["Wizard", 5],
+   ["Giant Skeleton", 6],
+   ["Battle Ram", 4],
+   ["Royal Ghost", 3],
+   ["Zappies", 4],
+   ["Mother Witch", 4],
+   ["Barbarian Barrel", 2],
+   ["Vines", 3]
+  ],
+  "name": "Bridge Spam",
+  "featured": "Battle Ram"
+ },
+ {
+  "cards": [
+   ["Prince", 5],
+   ["Goblin Gang", 3],
+   ["Bandit", 3],
+   ["Bats", 2],
+   ["Mega Knight", 7],
+   ["Wall Breakers", 2],
+   ["Archer Queen", 5],
+   ["Arrows", 3]
+  ],
+  "name": "Mega Knight Wall Breakers",
+  "featured": "Wall Breakers"
+ },
+ {
+  "cards": [
+   ["Spear Goblins", 2],
+   ["Miner", 3],
+   ["Inferno Dragon", 4],
+   ["Goblin Gang", 3],
+   ["Bats", 2],
+   ["Mega Knight", 7],
+   ["Skeleton Barrel", 3],
+   ["Zap", 2]
+  ],
+  "name": "Mega Knight Miner",
+  "featured": "Miner"
+ },
+ {
+  "cards": [
+   ["Skeleton Army", 3],
+   ["Dart Goblin", 3],
+   ["Rascals", 5],
+   ["Skeleton Barrel", 3],
+   ["Skeleton King", 4],
+   ["Suspicious Bush", 2],
+   ["Cannon", 3],
+   ["Vines", 3]
+  ],
+  "name": "Skeleton Barrel Bait",
+  "featured": "Skeleton Barrel"
+ },
+ {
+  "cards": [
+   ["Knight", 3],
+   ["Skeletons", 1],
+   ["Ice Spirit", 1],
+   ["Tesla", 4],
+   ["Furnace", 4],
+   ["Poison", 4],
+   ["Graveyard", 5],
+   ["Barbarian Barrel", 2]
+  ],
+  "name": "Graveyard Cycle",
+  "featured": "Graveyard"
+ },
+ {
+  "cards": [
+   ["Royal Giant", 6],
+   ["Hunter", 4],
+   ["Royal Ghost", 3],
+   ["Fisherman", 3],
+   ["Monk", 5],
+   ["Electro Spirit", 1],
+   ["Lightning", 6],
+   ["The Log", 2]
+  ],
+  "name": "Royal Giant Fisherman",
+  "featured": "Royal Giant"
+ },
+ {
+  "cards": [
+   ["Barbarians", 5],
+   ["Night Witch", 4],
+   ["Electro Dragon", 5],
+   ["Elixir Golem", 3],
+   ["Battle Healer", 4],
+   ["Arrows", 3],
+   ["Rage", 2],
+   ["Tornado", 3]
+  ],
+  "name": "Elixir Golem Control",
+  "featured": "Elixir Golem"
+ }
+]

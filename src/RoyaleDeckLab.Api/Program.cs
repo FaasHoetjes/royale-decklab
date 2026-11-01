@@ -70,6 +70,7 @@ builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddHttpClient(CardArtCache.HttpClientName, http => http.MaxResponseContentBufferSize = 4 * 1024 * 1024)
     .AddStandardResilienceHandler();
 builder.Services.AddSingleton<CardArtCache>();
+builder.Services.AddSingleton<ShareImageService>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddHostedService<SeasonWatchService>();
@@ -277,7 +278,7 @@ if (File.Exists(spaIndex))
     var earlyHintLink = BuildEarlyHintLink(indexHtml);
 
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-    app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta) =>
+    app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta, PlayerProfileCache profiles) =>
     {
         ctx.Response.Headers.CacheControl = "no-cache";
         ctx.Response.Headers.Link = earlyHintLink;
@@ -285,6 +286,11 @@ if (File.Exists(spaIndex))
         var path = ctx.Request.Path.Value;
         var cards = SpaPages.IsCardPath(path) ? await CardsOrEmpty(catalog, ctx.RequestAborted) : [];
         var page = SpaPages.Resolve(path, cards, meta.CardStats.Cards, DateTimeOffset.UtcNow);
+        var share = ctx.Request.Query["share"].ToString();
+        if (page.PlayerTag is { } playerTag && SpaPages.IsShareCode(share))
+        {
+            page = SpaPages.SharedLineup(page, await PlayerNameOrNull(profiles, playerTag, ctx.RequestAborted), share);
+        }
         if (page.NoIndex)
         {
             ctx.Response.Headers["X-Robots-Tag"] = "noindex";
@@ -309,6 +315,20 @@ static async Task<IReadOnlyList<CatalogCard>> CardsOrEmpty(CardCatalog catalog, 
     catch (Exception) when (!requestAborted.IsCancellationRequested)
     {
         return [];
+    }
+}
+
+static async Task<string?> PlayerNameOrNull(PlayerProfileCache profiles, string playerTag, CancellationToken requestAborted)
+{
+    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(requestAborted);
+    timeout.CancelAfter(TimeSpan.FromSeconds(2));
+    try
+    {
+        return (await profiles.GetPlayerDataAsync(playerTag, timeout.Token).WaitAsync(timeout.Token)).Name;
+    }
+    catch (Exception) when (!requestAborted.IsCancellationRequested)
+    {
+        return null;
     }
 }
 

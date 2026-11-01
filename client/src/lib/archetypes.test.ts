@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { classifyDeck, distinctDeckNames } from './archetypes';
+import { classifyDeck, distinctDeckNames, featuredCard } from './archetypes';
+import serverFixture from '../../../src/RoyaleDeckLab.Api.Tests/Fixtures/deck-names.json';
 
 const COST: Record<string, number> = {
   'Archer Queen': 5, Archers: 3, Arrows: 3, 'Baby Dragon': 4, Balloon: 5, Bandit: 3, 'Barbarian Barrel': 2,
@@ -80,5 +81,14 @@ describe('distinctDeckNames', () => {
 
   test('adds the priciest card only one of the twins runs', () => {
     expect(distinctDeckNames([inferno, bombTower, hog])).toEqual(['Log Bait · Inferno Tower', 'Log Bait · Bomb Tower', 'Hog EQ']);
+  });
+});
+
+// The server names decks in share images with a C# copy of these rules, tested against the same file.
+describe('the server copy (DeckArchetypes.cs)', () => {
+  test.each(serverFixture.map((d) => [d.name, d]))('%s', (_, { cards, name, featured }) => {
+    const deck = cards.map(([cardName, elixirCost]) => ({ name: cardName as string, elixirCost: elixirCost as number }));
+    expect(classifyDeck(deck).name).toBe(name);
+    expect(featuredCard(deck)?.name).toBe(featured);
   });
 });

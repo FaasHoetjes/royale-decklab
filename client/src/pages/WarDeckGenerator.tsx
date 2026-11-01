@@ -4,7 +4,8 @@ import PlayerSearch from '../components/PlayerSearch';
 import WarDeckResult from '../components/WarDeckResult';
 import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } from '../queries';
 import { toBuilderCards } from '../lib/builderCards';
-import { hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
+import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
+import { decodeShare } from '../lib/shareLink';
 import { useApp } from '../AppContext';
 import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
@@ -21,7 +22,12 @@ export default function WarDeckGenerator() {
   // Options live in the URL (shareable). Each change loads at once: deck count and level are single
   // clicks, and the card picker applies its picks in one go when it closes.
   const [searchParams] = useSearchParams();
-  const options = useMemo(() => parseOptions(searchParams), [searchParams]);
+  // A share link pins its decks with locks and ignores the reader's own remembered options.
+  const shared = useMemo(() => decodeShare(searchParams.get('share')), [searchParams]);
+  const options = useMemo(
+    () => (shared ? { ...DEFAULT_OPTIONS, decks: shared.length, lock: shared } : parseOptions(searchParams)),
+    [shared, searchParams]
+  );
   const query = toQuery(options);
 
   // Locking or unlocking a deck doesn't change the lineup on screen, so it doesn't fetch: the locks
@@ -37,8 +43,8 @@ export default function WarDeckGenerator() {
   // Write remembered defaults and cleaned-up values back, so the address bar always matches what is shown.
   const showOptions = (next: string) => navigate({ search: next ? `?${next}` : '' }, { replace: true });
   useEffect(() => {
-    if (playerId && searchParams.toString().replace(/%2C/g, ',') !== query) showOptions(query);
-  }, [playerId, query]);
+    if (playerId && !shared && searchParams.toString().replace(/%2C/g, ',') !== query) showOptions(query);
+  }, [playerId, query, shared]);
 
   const handleOptionsChange = (next: GeneratorOptions) => {
     saveDefaults(next);
@@ -57,7 +63,7 @@ export default function WarDeckGenerator() {
   const optionsFailed = warDecks.isError && fallback != null;
 
   const catalog = useAllCards();
-  const collection = usePlayerCollection(playerData ? tag : null);
+  const collection = usePlayerCollection(playerData && !shared ? tag : null);
   const pickerCards = useMemo(
     () => (catalog.data && collection.data ? toBuilderCards(catalog.data, collection.data) : []),
     [catalog.data, collection.data]
@@ -69,24 +75,40 @@ export default function WarDeckGenerator() {
     }
   }, [playerId, activePlayerTag]);
 
-  // Once a tag's decks load successfully, make that player active app-wide
-  // (used by the Builder + Best Decks).
+  // Once a tag's decks load successfully, make that player active app-wide (used by the Builder + Best
+  // Decks); someone else's shared lineup leaves the reader's own player alone.
   useEffect(() => {
-    if (warDecks.isSuccess && tag) setActivePlayerTag(tag);
-  }, [warDecks.isSuccess, tag]);
+    if (warDecks.isSuccess && tag && !shared) setActivePlayerTag(tag);
+  }, [warDecks.isSuccess, tag, shared]);
 
   useEffect(() => {
     if (warDecks.isError && playerId && !fallback) {
-      setActivePlayerTag(null);
+      if (!shared) setActivePlayerTag(null);
       navigate('/', {
         replace: true,
         state: {
-          tagError: "Couldn't load that player. Check your tag or try again.",
+          tagError: shared
+            ? "Couldn't load that shared lineup. Try the link again in a moment."
+            : "Couldn't load that player. Check your tag or try again.",
           badTag: playerId,
         },
       });
     }
   }, [warDecks.isError, playerId]);
+
+  // Shown in the order they were shared; a deck the player can no longer field was replaced, and goes last.
+  const shownDecks = useMemo(() => {
+    const decks = playerData?.warDecks.decks ?? [];
+    if (!shared) return decks;
+    const order = shared.map(deckKey);
+    const rank = (ids: number[]) => {
+      const i = order.indexOf(deckKey(ids));
+      return i < 0 ? order.length : i;
+    };
+    return [...decks].sort((a, b) => rank(a.cardIds) - rank(b.cardIds));
+  }, [playerData, shared]);
+
+  const getMyDecks = () => navigate(activePlayerTag ? `/${activePlayerTag.replace(/#/g, '')}` : '/');
 
   const handleSearch = (playerTag: string) => {
     navigate(`/${playerTag.replace(/#/g, '')}`);
@@ -115,7 +137,8 @@ export default function WarDeckGenerator() {
   return playerData ? (
     <WarDeckResult
       playerName={playerData.player.name}
-      decks={playerData.warDecks.decks}
+      playerTag={tag!}
+      decks={shownDecks}
       alternatives={playerData.warDecks.alternatives}
       onNewSearch={handleNewSearch}
       options={options}
@@ -124,6 +147,7 @@ export default function WarDeckGenerator() {
       isUpdating={!optionsFailed && warDecks.isPlaceholderData}
       updateFailed={optionsFailed}
       onRetry={() => warDecks.refetch()}
+      shared={shared ? { onGetMine: getMyDecks, decks: shared } : undefined}
     />
   ) : tag || activePlayerTag ? (
     <WarDecksSkeleton isMobile={isMobile} />
