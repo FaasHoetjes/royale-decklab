@@ -50,7 +50,7 @@ export default function Cards() {
       if (needle && !card.name.toLowerCase().includes(needle)) return [];
       return [{ card, stat }];
     });
-    return sortCardStats(shown, sort, stats.battles, descending);
+    return sortCardStats(shown, sort, descending);
   }, [catalog.data, stats, sort, descending, query, filters]);
 
   const toggleFilter = (key: FilterKey) =>
@@ -157,7 +157,7 @@ export default function Cards() {
       {stats && cards.length > 0 && (
         <div style={{ ...styles.grid, ...(isMobile ? styles.gridMobile : {}) }}>
           {cards.map(({ card, stat }, i) => {
-            const rough = isLowSample(stat, stats.battles);
+            const rough = isLowSample(stat);
             return (
               <CardLink key={card.id} name={card.name}>
                 <div style={{ opacity: rough ? 0.55 : 1 }} title={rough ? `Rarely played: only ${stat.games.toLocaleString('en-US')} games ${gamesPeriod}, too few for a reliable win rate.` : undefined}>

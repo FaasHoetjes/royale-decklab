@@ -24,10 +24,13 @@ function stat(id: number, winRate: number, games: number, winRateChange: number 
 const ids = (cards: Array<{ stat: CardStat }>) => cards.map((c) => c.stat.id);
 
 describe('isLowSample', () => {
-  test('needs 1% of the battles, and at least 500 games', () => {
-    expect(isLowSample(stat(1, 0.5, 1_999), BATTLES)).toBe(true);
-    expect(isLowSample(stat(1, 0.5, 2_000), BATTLES)).toBe(false);
-    expect(isLowSample(stat(1, 0.5, 499), 10_000)).toBe(true);
+  test('needs enough games that chance moves a 50% win rate by at most 2.6 points', () => {
+    expect(isLowSample(stat(1, 0.5, 1_479))).toBe(true);
+    expect(isLowSample(stat(1, 0.5, 1_480))).toBe(false);
+  });
+
+  test('a perfect record on a few games is still unreliable', () => {
+    expect(isLowSample(stat(1, 1, 3))).toBe(true);
   });
 });
 
@@ -37,26 +40,26 @@ describe('sortCardStats', () => {
   );
 
   test('ranks by win rate with rarely played cards last', () => {
-    expect(ids(sortCardStats(cards, 'Win rate', BATTLES))).toEqual([3, 4, 1, 2]);
+    expect(ids(sortCardStats(cards, 'Win rate'))).toEqual([3, 4, 1, 2]);
   });
 
   test('ranks by play rate', () => {
-    expect(ids(sortCardStats(cards, 'Play rate', BATTLES))).toEqual([4, 1, 3, 2]);
+    expect(ids(sortCardStats(cards, 'Play rate'))).toEqual([4, 1, 3, 2]);
   });
 
   test('ranks by change, with cards that have none after those that do', () => {
-    expect(ids(sortCardStats(cards, 'Change', BATTLES))).toEqual([4, 1, 3, 2]);
+    expect(ids(sortCardStats(cards, 'Change'))).toEqual([4, 1, 3, 2]);
   });
 
   test('ascending flips the order but keeps rarely played cards and missing changes last', () => {
-    expect(ids(sortCardStats(cards, 'Win rate', BATTLES, false))).toEqual([1, 4, 3, 2]);
-    expect(ids(sortCardStats(cards, 'Change', BATTLES, false))).toEqual([1, 4, 3, 2]);
+    expect(ids(sortCardStats(cards, 'Win rate', false))).toEqual([1, 4, 3, 2]);
+    expect(ids(sortCardStats(cards, 'Change', false))).toEqual([1, 4, 3, 2]);
   });
 });
 
 describe('cardRanks', () => {
   test('ranks play rate over every card and win rate over the cards with enough games', () => {
-    const { playRank, winRank, rankedCount } = cardRanks([stat(1, 0.5, 10_000), stat(2, 0.7, 300), stat(3, 0.55, 5_000)], BATTLES);
+    const { playRank, winRank, rankedCount } = cardRanks([stat(1, 0.5, 10_000), stat(2, 0.7, 300), stat(3, 0.55, 5_000)]);
     expect([playRank.get(1), playRank.get(3), playRank.get(2)]).toEqual([1, 2, 3]);
     expect([winRank.get(3), winRank.get(1), winRank.get(2)]).toEqual([1, 2, undefined]);
     expect(rankedCount).toBe(2);

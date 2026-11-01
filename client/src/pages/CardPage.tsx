@@ -60,7 +60,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
 
   const stats = statsQuery.data;
   const stat = stats?.cards.find((s) => s.id === card.id);
-  const ranks = useMemo(() => (stats ? cardRanks(stats.cards, stats.battles) : null), [stats]);
+  const ranks = useMemo(() => (stats ? cardRanks(stats.cards) : null), [stats]);
   const deckNames = useMemo(() => distinctDeckNames((decksQuery.data?.decks ?? []).map((d) => d.cards)), [decksQuery.data]);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
     versions.evo && versions.hero ? 'has Evo and Hero' : versions.evo ? 'has an Evo' : versions.hero ? 'has a Hero' : null,
   ].filter(Boolean);
 
-  const rough = stat && stats ? isLowSample(stat, stats.battles) : false;
+  const rough = stat ? isLowSample(stat) : false;
   const comparing = stats?.cards.some((s) => s.winRateChange != null) ?? false;
   const winRank = ranks?.winRank.get(card.id);
   const playRank = ranks?.playRank.get(card.id);
