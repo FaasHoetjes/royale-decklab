@@ -7,12 +7,15 @@ import DeckCard from './DeckCard';
 import { TrophyIcon } from './navIcons';
 import GeneratorControls from './GeneratorControls';
 import GeneratorHeader from './GeneratorHeader';
+import ShareLineupButton from './ShareLineupButton';
 import SwapDeckModal from './SwapDeckModal';
 import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { encodeShare } from '../lib/shareLink';
 
 interface WarDeckResultProps {
   playerName: string;
+  playerTag: string;
   decks: ScoredDeck[];
   alternatives: ScoredDeck[];
   onNewSearch: () => void;
@@ -24,10 +27,13 @@ interface WarDeckResultProps {
   /** The last options change failed; the decks shown are from before it. */
   updateFailed?: boolean;
   onRetry?: () => void;
+  /** Someone else's lineup opened from a share link: read-only, with a way to the reader's own decks. */
+  shared?: { onGetMine: () => void };
 }
 
 export default function WarDeckResult({
   playerName,
+  playerTag,
   decks,
   alternatives,
   onNewSearch,
@@ -37,6 +43,7 @@ export default function WarDeckResult({
   isUpdating,
   updateFailed,
   onRetry,
+  shared,
 }: WarDeckResultProps) {
   const isMobile = useIsMobile();
   const lockedKeys = useMemo(() => new Set(options.lock.map(deckKey)), [options.lock]);
@@ -138,8 +145,11 @@ export default function WarDeckResult({
     }
   };
 
+  const shareCode = encodeShare(slots.map((master) => deckAt(master).cardIds));
+  const shareUrl = `${window.location.origin}/${playerTag.replace('#', '')}${shareCode ? `?share=${shareCode}` : ''}`;
+
   // Not while updating: right after clearing the options, `decks` can still be an empty result for the old ones.
-  if (decks.length === 0 && !customized && !isUpdating) {
+  if (decks.length === 0 && !customized && !isUpdating && !shared) {
     return <NoDecks onNewSearch={onNewSearch} isMobile={isMobile} />;
   }
 
@@ -149,22 +159,38 @@ export default function WarDeckResult({
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
+      {shared && (
+        <div style={{ ...styles.sharedNotice, ...(isMobile && styles.sharedNoticeMobile) }} role="note">
+          <span>
+            <b style={styles.sharedBy}>{playerName} shared these war decks.</b> Want the best ones for your cards?
+          </span>
+          <button type="button" onClick={shared.onGetMine} style={styles.getMine}>
+            Get my decks
+          </button>
+        </div>
+      )}
+
       <GeneratorHeader
         title={playerName}
+        eyebrow={shared ? `${playerName}'s war decks` : undefined}
         decks={slots.map(deckAt)}
         totalScore={liveTotalScore}
         isMobile={isMobile}
-      />
+      >
+        {decks.length > 0 && <ShareLineupButton url={shareUrl} title={`${playerName}'s war decks`} isMobile={isMobile} />}
+      </GeneratorHeader>
 
-      <GeneratorControls
-        options={options}
-        onChange={onOptionsChange}
-        canReset={customized || swapped}
-        onReset={resetLineup}
-        cards={cards}
-        isUpdating={isUpdating}
-        isMobile={isMobile}
-      />
+      {!shared && (
+        <GeneratorControls
+          options={options}
+          onChange={onOptionsChange}
+          canReset={customized || swapped}
+          onReset={resetLineup}
+          cards={cards}
+          isUpdating={isUpdating}
+          isMobile={isMobile}
+        />
+      )}
 
       {updateFailed && (
         <p style={styles.notice} role="alert">
@@ -177,7 +203,7 @@ export default function WarDeckResult({
         </p>
       )}
 
-      {!updateFailed && shortBy > 0 && (
+      {!updateFailed && !shared && shortBy > 0 && (
         <Shortfall found={decks.length} options={options} onChange={onOptionsChange} isMobile={isMobile} />
       )}
 
@@ -207,11 +233,11 @@ export default function WarDeckResult({
               cardOrder={cardOrderAt(slotPos)}
               playerScore={deck.playerScore}
               deckNumber={slotPos + 1}
-              canSwap={!locked && swapOptions.length > 1}
+              canSwap={!shared && !locked && swapOptions.length > 1}
               onSwap={() => setSwapSlot(slotPos)}
               priority={slotPos === 0}
-              locked={locked}
-              onToggleLock={() => toggleLock(slotPos)}
+              locked={!shared && locked}
+              onToggleLock={shared ? undefined : () => toggleLock(slotPos)}
             />
           );
         })}
@@ -350,6 +376,41 @@ const styles = {
     gap: '30px',
     marginBottom: '50px',
     transition: 'opacity 0.15s ease',
+  },
+  sharedNotice: {
+    margin: '0 0 16px',
+    padding: '12px 14px 12px 18px',
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '10px 16px',
+    borderRadius: '14px',
+    border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--accent) 12%, var(--bg-secondary))',
+    fontSize: '14px',
+    lineHeight: 1.45,
+    color: 'var(--text-secondary)',
+  },
+  sharedNoticeMobile: {
+    margin: '0 0 12px',
+    padding: '12px 14px',
+  },
+  sharedBy: {
+    color: 'var(--text-primary)',
+  },
+  getMine: {
+    height: '36px',
+    padding: '0 14px',
+    border: 'none',
+    borderRadius: '10px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--on-accent)',
+    fontFamily: 'inherit',
+    fontSize: '14px',
+    fontWeight: 700 as const,
+    whiteSpace: 'nowrap' as const,
+    cursor: 'pointer',
   },
   retry: {
     border: 0,

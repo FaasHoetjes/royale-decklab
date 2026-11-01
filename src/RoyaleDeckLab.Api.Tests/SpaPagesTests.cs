@@ -40,6 +40,40 @@ public sealed class SpaPagesTests
         Assert.True(page.NoIndex);
     }
 
+    [Fact]
+    public void SharedLineup_NamesThePlayerAndKeepsTheCodeInTheLink()
+    {
+        var code = $"{new string('a', 16)}.{new string('b', 16)}";
+        var page = SpaPages.SharedLineup(Resolve("/2qgg92l9"), "Faas", code);
+
+        Assert.Equal("Faas's war decks · Royale DeckLab", page.Title);
+        Assert.StartsWith("Two Clash Royale war decks picked for Faas's cards.", page.Description);
+        Assert.Equal($"/2qgg92l9?share={code}", page.CanonicalPath);
+        Assert.True(page.NoIndex);
+    }
+
+    [Fact]
+    public void SharedLineup_WithoutAName_StaysGeneric()
+        => Assert.Equal("Shared war decks · Royale DeckLab", SpaPages.SharedLineup(Resolve("/2QGG92L9"), null, new string('a', 16)).Title);
+
+    [Fact]
+    public void PlayerPage_CarriesItsTag()
+    {
+        Assert.Equal("#2QGG92L9", Resolve("/2qgg92l9").PlayerTag);
+        Assert.Null(Resolve("/faq").PlayerTag);
+    }
+
+    [Theory]
+    [InlineData("0123456789abcdef", true)]
+    [InlineData("0123456789abcdef.0123456789abcdef.0123456789abcdef.0123456789abcdef", true)]
+    [InlineData("0123456789abcdef.0123456789abcdef.0123456789abcdef.0123456789abcdef.0123456789abcdef", false)]
+    [InlineData("0123456789ABCDEF", false)]
+    [InlineData("0123456789abcde", false)]
+    [InlineData("0123456789abcdef\"><script>", false)]
+    [InlineData("", false)]
+    public void ShareCodes_AreCheckedBeforeTheyReachTheHead(string code, bool valid)
+        => Assert.Equal(valid, SpaPages.IsShareCode(code));
+
     [Theory]
     [InlineData("/not-a-tag")]
     [InlineData("/faq/extra")]

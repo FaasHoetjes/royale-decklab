@@ -7,7 +7,7 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-public sealed record SpaPage(int StatusCode, string Title, string Description, string? CanonicalPath, bool NoIndex);
+public sealed record SpaPage(int StatusCode, string Title, string Description, string? CanonicalPath, bool NoIndex, string? PlayerTag = null);
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -57,9 +57,27 @@ public static partial class SpaPages
         // Player pages are endless and differ only in whose cards they use, so they stay shareable but unindexed.
         if (!segment.Contains('/') && PlayerTag.IsValid(segment))
         {
-            return new(200, $"War Deck Generator · {SiteName}", SiteDescription, path, true);
+            return new(200, $"War Deck Generator · {SiteName}", SiteDescription, path, true, "#" + segment.ToUpperInvariant());
         }
         return NotFound;
+    }
+
+    public static bool IsShareCode(string? code) => code is not null && ShareCodeRegex().IsMatch(code);
+
+    /// <summary>
+    /// A player page opened from a share link names whose decks they are, and keeps the code in og:url, which
+    /// Discord links the preview's title to.
+    /// </summary>
+    public static SpaPage SharedLineup(SpaPage playerPage, string? playerName, string shareCode)
+    {
+        var count = shareCode.Split('.').Length;
+        var decks = count switch { 1 => "One Clash Royale war deck", 2 => "Two Clash Royale war decks", 3 => "Three Clash Royale war decks", _ => "Four Clash Royale war decks" };
+        return playerPage with
+        {
+            Title = playerName is null ? $"Shared war decks · {SiteName}" : $"{playerName}'s war decks · {SiteName}",
+            Description = $"{decks} picked for {(playerName is null ? "a player" : playerName + "'s")} cards. Get the best war decks for your own cards on {SiteName}.",
+            CanonicalPath = $"{playerPage.CanonicalPath}?share={shareCode}",
+        };
     }
 
     private static SpaPage CardPage(string slug, IReadOnlyList<CatalogCard> cards, IReadOnlyList<CardStat> stats, DateTimeOffset now)
@@ -127,6 +145,9 @@ public static partial class SpaPages
         }
         return xml.Append("</urlset>\n").ToString();
     }
+
+    [GeneratedRegex(@"^[0-9a-z]{16}(\.[0-9a-z]{16}){0,3}$")]
+    private static partial Regex ShareCodeRegex();
 
     [GeneratedRegex("[^a-z0-9]+")]
     private static partial Regex NonAlphanumericRegex();

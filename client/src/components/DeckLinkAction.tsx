@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { copyText } from '../lib/clipboard';
 
 interface DeckLinkActionProps {
   link: string;
@@ -46,19 +47,7 @@ export default function DeckLinkAction({
   }
 
   const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = link;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      textarea.remove();
-    }
-
+    await copyText(link);
     setCopied(true);
     if (resetTimer.current != null) window.clearTimeout(resetTimer.current);
     resetTimer.current = window.setTimeout(() => setCopied(false), 1800);
