@@ -1,11 +1,11 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import CardTile from './CardTile';
 import DeckLinkAction from './DeckLinkAction';
-import Fold from './Fold';
 import Tweened from './Tweened';
 import { upgradeSlotIndex, upgradeStep } from './UpgradeRow';
 import { cardIconUrl, orderBySlots, versionOf } from '../lib/cardDisplay';
 import { buildDeckLink } from '../lib/deckLink';
+import { prefersReducedMotion, slide } from '../lib/motion';
 import type { UpgradeSuggestion } from '../api';
 import type { Theme } from '../theme';
 
@@ -36,56 +36,89 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
   if (bringsDeck) lastNew.current = { s, name: unlockedName, pick };
   const shown = lastNew.current;
 
+  const sectionRef = useRef<HTMLElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const deckRef = useRef<HTMLDivElement>(null);
+  // Lags `bringsDeck` while the new deck slides shut.
+  const [deckShown, setDeckShown] = useState(bringsDeck);
+  const wasBringing = useRef(bringsDeck);
+
+  useLayoutEffect(() => {
+    if (wasBringing.current === bringsDeck) return;
+    wasBringing.current = bringsDeck;
+    if (bringsDeck) setDeckShown(true);
+    const deck = deckRef.current;
+    if (!deck || prefersReducedMotion()) {
+      if (!bringsDeck) setDeckShown(false);
+      return;
+    }
+    deck.style.display = '';
+    slide(deck, bringsDeck, {
+      box: { outer: sectionRef.current!, inner: boxRef.current! },
+      onEnd: bringsDeck
+        ? undefined
+        : () => {
+            // A new deck picked again before this one slid shut keeps it.
+            if (wasBringing.current) return;
+            deck.style.display = 'none';
+            setDeckShown(false);
+          },
+    });
+  }, [bringsDeck]);
+
   return (
-    <section
-      aria-live="polite"
-      style={{
-        ...styles.panel,
-        top: isMobile ? '62px' : '16px',
-        padding: isMobile ? '14px' : '22px 22px 20px',
-        backgroundColor: theme.bg.secondary,
-      }}
-    >
-      <div style={{ ...styles.top, gridTemplateColumns: isMobile ? '46px minmax(0, 1fr) auto' : '60px minmax(0, 1fr) auto', gap: isMobile ? '12px' : '16px' }}>
-        <CardTile
-          name={s.name ?? ''}
-          iconUrl={cardIconUrl(s.iconUrls, s.kind === 'level' ? 'normal' : s.kind)}
-          slotIndex={upgradeSlotIndex(s)}
-          showName={false}
-          fetchPriority="high"
-        />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ ...styles.over, color: theme.text.tertiary }}>If you upgrade</div>
-          <div style={{ ...styles.name, fontSize: isMobile ? '16px' : '19px', color: theme.text.primary }}>
-            {s.name} · {upgradeStep(s)}
+    <section ref={sectionRef} aria-live="polite" style={{ ...styles.panel, top: isMobile ? '62px' : '16px' }}>
+      <div
+        ref={boxRef}
+        style={{
+          ...styles.box,
+          padding: isMobile ? '14px' : '22px 22px 20px',
+          backgroundColor: theme.bg.secondary,
+        }}
+      >
+        <div style={{ ...styles.top, gridTemplateColumns: isMobile ? '46px minmax(0, 1fr) auto' : '60px minmax(0, 1fr) auto', gap: isMobile ? '12px' : '16px' }}>
+          <CardTile
+            name={s.name ?? ''}
+            iconUrl={cardIconUrl(s.iconUrls, s.kind === 'level' ? 'normal' : s.kind)}
+            slotIndex={upgradeSlotIndex(s)}
+            showName={false}
+            fetchPriority="high"
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ ...styles.over, color: theme.text.tertiary }}>If you upgrade</div>
+            <div style={{ ...styles.name, fontSize: isMobile ? '16px' : '19px', color: theme.text.primary }}>
+              {s.name} · {upgradeStep(s)}
+            </div>
+            {!isMobile && <div style={{ ...styles.effect, color: theme.text.secondary }}>{sentence(effect)}</div>}
           </div>
-          {!isMobile && <div style={{ ...styles.effect, color: theme.text.secondary }}>{sentence(effect)}</div>}
-        </div>
-        <div style={styles.scoreWrap}>
-          <span key={pick} className="ua-float" style={{ ...styles.float, color: theme.text.primary }} aria-hidden="true">
-            +{s.scoreDelta.toFixed(3)}
-          </span>
-          <div style={{ ...styles.score, fontSize: isMobile ? '28px' : '36px', color: theme.text.primary }}><Tweened value={s.newTotalScore} from={baselineScore} /></div>
-          <div style={{ ...styles.scoreLabel, color: theme.text.tertiary }}>
-            {isMobile ? 'up from ' : 'new lineup score, up from '}
-            <span style={styles.digits}>{baselineScore.toFixed(3)}</span>
+          <div style={styles.scoreWrap}>
+            <span key={pick} className="ua-float" style={{ ...styles.float, color: theme.text.primary }} aria-hidden="true">
+              +{s.scoreDelta.toFixed(3)}
+            </span>
+            <div style={{ ...styles.score, fontSize: isMobile ? '28px' : '36px', color: theme.text.primary }}><Tweened value={s.newTotalScore} from={baselineScore} /></div>
+            <div style={{ ...styles.scoreLabel, color: theme.text.tertiary }}>
+              {isMobile ? 'up from ' : 'new lineup score, up from '}
+              <span style={styles.digits}>{baselineScore.toFixed(3)}</span>
+            </div>
           </div>
         </div>
+
+        {lineup && (
+          <div style={{ ...styles.slots, gap: isMobile ? '6px' : '10px', marginTop: isMobile ? '14px' : '20px' }}>
+            {lineup.map((deck, i) => {
+              const hit = !bringsDeck && s.affectedDeckIndexes.includes(i);
+              const gain = hit && s.affectedDeckIndexes.length === 1 ? s.scoreDelta : 0;
+              return <DeckSlot key={i} deck={deck} hit={hit} gain={gain} pick={pick} theme={theme} isMobile={isMobile} />;
+            })}
+          </div>
+        )}
+
+        {(bringsDeck || deckShown) && shown?.s.unlockedDeck && (
+          <div ref={deckRef} style={styles.deckFold}>
+            <NewDeck key={shown.pick} suggestion={shown.s} name={shown.name} theme={theme} isMobile={isMobile} />
+          </div>
+        )}
       </div>
-
-      {lineup && (
-        <div style={{ ...styles.slots, gap: isMobile ? '6px' : '10px', marginTop: isMobile ? '14px' : '20px' }}>
-          {lineup.map((deck, i) => {
-            const hit = !bringsDeck && s.affectedDeckIndexes.includes(i);
-            const gain = hit && s.affectedDeckIndexes.length === 1 ? s.scoreDelta : 0;
-            return <DeckSlot key={i} deck={deck} hit={hit} gain={gain} pick={pick} theme={theme} isMobile={isMobile} />;
-          })}
-        </div>
-      )}
-
-      <Fold open={bringsDeck}>
-        {shown?.s.unlockedDeck && <NewDeck key={shown.pick} suggestion={shown.s} name={shown.name} theme={theme} isMobile={isMobile} />}
-      </Fold>
     </section>
   );
 }
@@ -169,10 +202,12 @@ const styles = {
   panel: {
     position: 'sticky' as const,
     zIndex: 5,
+    marginBottom: '28px',
+  },
+  box: {
     border: '1px solid var(--panel-border)',
     borderRadius: '18px',
     boxShadow: 'var(--panel-shadow)',
-    marginBottom: '28px',
   },
   top: {
     display: 'grid' as const,
@@ -251,8 +286,10 @@ const styles = {
     fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
   },
+  deckFold: {
+    paddingTop: '12px',
+  },
   newDeck: {
-    marginTop: '12px',
     border: '1px dashed',
     borderRadius: '12px',
   },

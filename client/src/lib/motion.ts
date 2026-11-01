@@ -20,14 +20,55 @@ function below(el: HTMLElement, distance: number): HTMLElement[] {
   return moved;
 }
 
+/** A box drawn around a sliding panel: `inner` draws it, `outer` holds just `inner`. */
+export interface SlideBox {
+  outer: HTMLElement;
+  inner: HTMLElement;
+}
+
 let inFlight: (() => void) | null = null;
 
 /**
- * Folds `panel` open or shut by sliding everything below it with transforms, which the GPU moves without
- * any layout or paint. Animating the panel's height instead repaints the page below on every frame, which
- * stutters on phones once that page is long. `render` shows the new state: right away when opening, so the
- * panel can be measured, and once the slide ends when closing. Only for a panel with nothing boxed around
- * it, since a box around it would keep its old height until the end.
+ * Fades `panel` in or out while everything below it slides down from under it or up over it, with transforms
+ * the GPU moves without any layout or paint. Animating the panel's height instead repaints the page below on
+ * every frame, which stutters on phones once that page is long. `panel` has to be laid out at full height for
+ * the whole slide; `onEnd` runs as it ends, before the transforms come off, to take a closed panel away.
+ *
+ * A `box` around the panel grows and shrinks along: `outer` slides like the page below it and cuts off what's
+ * past its lower edge, while `inner` slides the other way and so stays put.
+ */
+export function slide(panel: HTMLElement, open: boolean, { box, onEnd }: { box?: SlideBox; onEnd?: () => void } = {}) {
+  inFlight?.();
+
+  const height = panel.offsetHeight;
+  const timing: KeyframeAnimationOptions = { duration: FOLD_DURATION, easing: FOLD_EASING, fill: 'forwards' };
+  const shift = (el: HTMLElement, by: number) => {
+    const shifted = `translateY(${by}px)`;
+    return el.animate({ transform: open ? [shifted, 'none'] : ['none', shifted] }, timing);
+  };
+  const fade = panel.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);
+  const animations = [fade, ...below(box?.outer ?? panel, height).map((el) => shift(el, -height))];
+  if (box) {
+    box.outer.style.clipPath = `inset(0 round ${getComputedStyle(box.inner).borderRadius})`;
+    animations.push(shift(box.outer, -height), shift(box.inner, height));
+  }
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    inFlight = null;
+    onEnd?.();
+    if (box) box.outer.style.clipPath = '';
+    animations.forEach((a) => a.cancel());
+  };
+  inFlight = finish;
+  fade.finished.then(finish, () => {});
+}
+
+/**
+ * Folds `panel` open or shut with `slide`. `render` shows the new state: right away when opening, so the panel
+ * can be measured, and once the slide ends when closing.
  */
 export function slideFold(panel: HTMLElement, open: boolean, render: () => void) {
   inFlight?.();
@@ -36,21 +77,5 @@ export function slideFold(panel: HTMLElement, open: boolean, render: () => void)
     return;
   }
   if (open) flushSync(render);
-
-  const height = panel.offsetHeight;
-  const shifted = `translateY(${-height}px)`;
-  const timing: KeyframeAnimationOptions = { duration: FOLD_DURATION, easing: FOLD_EASING, fill: 'forwards' };
-  const fade = panel.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);
-  const animations = [fade, ...below(panel, height).map((el) => el.animate({ transform: open ? [shifted, 'none'] : ['none', shifted] }, timing))];
-
-  let done = false;
-  const finish = () => {
-    if (done) return;
-    done = true;
-    inFlight = null;
-    if (!open) flushSync(render);
-    animations.forEach((a) => a.cancel());
-  };
-  inFlight = finish;
-  fade.finished.then(finish, () => {});
+  slide(panel, open, { onEnd: open ? undefined : () => flushSync(render) });
 }
