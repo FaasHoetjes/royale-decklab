@@ -87,4 +87,40 @@ public sealed class BestDecksBuilderTests
         var entry = sets.SelectMany(s => s.Decks).First(d => d.CardIds.Contains(1));
         Assert.Equal(CardVersionKind.Hero, entry.CardVersions.Single(v => v.CardId == 1).Version);
     }
+
+    [Fact]
+    public void TopDecksWith_ranks_the_decks_holding_the_card_one_per_archetype()
+    {
+        var best = Build.Eight(1);
+        var variant = new[] { 1, 2, 3, 4, 5, 6, 7, 99 };
+        var other = new[] { 1, 20, 21, 22, 23, 24, 25, 26 };
+        var meta = new List<DeckMeta>
+        {
+            Build.Deck(Build.Eight(30), confidence: 0.70),
+            Build.Deck(other, confidence: 0.54),
+            Build.Deck(variant, confidence: 0.58),
+            Build.Deck(best, confidence: 0.60),
+            Build.Deck(new[] { 1, 40, 41, 42, 43, 44, 45, 46 }, confidence: 0.65, players: 4),
+        };
+        var catalog = Build.CatalogMap(Enumerable.Range(1, 50).Append(99));
+
+        var decks = _builder.TopDecksWith(1, meta, catalog, count: 5);
+
+        Assert.Equal([best, other], decks.Select(d => d.CardIds));
+        Assert.Equal(0.60, decks[0].MetaScore);
+    }
+
+    [Fact]
+    public void TopDecksWith_stops_at_the_requested_count()
+    {
+        var meta = Enumerable.Range(0, 8)
+            .Select(i => Build.Deck([1, .. Enumerable.Range(10 + i * 7, 7)], confidence: 0.6 - i * 0.01))
+            .ToList();
+        var catalog = Build.CatalogMap(Enumerable.Range(1, 80));
+
+        var decks = _builder.TopDecksWith(1, meta, catalog, count: 5);
+
+        Assert.Equal(5, decks.Count);
+        Assert.Equal(meta.Take(5).Select(d => d.CardIds), decks.Select(d => d.CardIds));
+    }
 }

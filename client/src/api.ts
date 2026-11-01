@@ -155,6 +155,40 @@ export function fetchBestDecks(signal?: AbortSignal): Promise<{ sets: BestDeckSe
   return getJson('/api/best-decks', 'Failed to fetch best decks', signal);
 }
 
+/** One card's war numbers; the change since the last patch is only set when both patches have enough games. */
+export interface CardStat {
+  id: number;
+  games: number;
+  winRate: number;
+  playRate: number;
+  evoShare: number;
+  heroShare: number;
+  previousGames: number;
+  previousWinRate: number | null;
+  previousPlayRate: number | null;
+  winRateChange: number | null;
+  /** The change is bigger than two standard errors. */
+  changeIsClear: boolean;
+}
+
+export interface CardStatsResponse {
+  /** Start of the period the numbers cover; null when there is no patch boundary yet. */
+  since: string | null;
+  /** Set while the new patch has too few battles, so the numbers are the last patch's. */
+  until: string | null;
+  battles: number;
+  isLastPatch: boolean;
+  cards: CardStat[];
+}
+
+export function fetchCardStats(signal?: AbortSignal): Promise<CardStatsResponse> {
+  return getJson('/api/cards/stats', 'Failed to fetch card stats', signal);
+}
+
+export function fetchCardDecks(cardId: number, signal?: AbortSignal): Promise<{ decks: BestDeckEntry[] }> {
+  return getJson(`/api/cards/${cardId}/decks`, 'Failed to fetch decks for this card', signal);
+}
+
 export async function scoreBuilderDecks(
   cards: ScoreDeckCard[],
   decks: (number | null)[][],

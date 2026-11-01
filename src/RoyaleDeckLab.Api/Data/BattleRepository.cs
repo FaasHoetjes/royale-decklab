@@ -103,6 +103,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
             await db.Battles.ExecuteDeleteAsync(ct);
             var s = State();
             s.EpochStartMs = 0;
+            s.PreviousEpochStartMs = 0;
             await db.SaveChangesAsync(ct);
         }
         finally
@@ -132,12 +133,23 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public long GetEpochStart() => State().EpochStartMs;
 
+    public long GetPreviousEpochStart() => State().PreviousEpochStartMs;
+
+    /// <summary>Moves the patch boundary; the old one becomes the start of the previous patch, unless the boundary moved back.</summary>
     public async Task SetEpochStartAsync(long ms, CancellationToken ct = default)
     {
         await WriteGate.WaitAsync(ct);
         try
         {
             var s = State();
+            if (ms > s.EpochStartMs)
+            {
+                s.PreviousEpochStartMs = s.EpochStartMs;
+            }
+            else if (s.PreviousEpochStartMs >= ms)
+            {
+                s.PreviousEpochStartMs = 0;
+            }
             s.EpochStartMs = ms;
             await db.SaveChangesAsync(ct);
         }
@@ -173,6 +185,34 @@ public sealed partial class BattleRepository(MetaDbContext db)
         {
             var s = State();
             s.LastBuildMs = ms;
+            await db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
+
+    public CardPeriod? GetCardPeriod(long endMs)
+    {
+        var e = db.CardPeriods.AsNoTracking().FirstOrDefault(p => p.EndMs == endMs);
+        return e is null ? null : new CardPeriod(e.StartMs, e.EndMs, e.Battles, e.Cards);
+    }
+
+    public async Task SaveCardPeriodAsync(CardPeriod period, CancellationToken ct = default)
+    {
+        await WriteGate.WaitAsync(ct);
+        try
+        {
+            var e = await db.CardPeriods.FindAsync([period.EndMs], ct);
+            if (e is null)
+            {
+                e = new CardPeriodEntity { EndMs = period.EndMs };
+                db.CardPeriods.Add(e);
+            }
+            e.StartMs = period.StartMs;
+            e.Battles = period.Battles;
+            e.Cards = period.Cards;
             await db.SaveChangesAsync(ct);
         }
         finally

@@ -14,7 +14,7 @@ import { documentMeta, toolItems } from './navItems';
 // Where each history entry was scrolled to, so going back returns there.
 const scrollPositions = new Map<string, number>();
 
-const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades']);
+const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades', 'cards']);
 
 export default function Layout() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
@@ -65,10 +65,13 @@ export default function Layout() {
   usePrefetchAppData(activePlayerTag);
 
   const { title, description } = documentMeta(pathname, toolItems(activePlayerTag), isPlayerDeepLink);
+  // A card page names its card in the title, so it sets its own once the card is known.
+  const isCardPage = pathname.startsWith('/cards/');
   useEffect(() => {
+    if (isCardPage) return;
     document.title = title;
     document.querySelector('meta[name="description"]')?.setAttribute('content', description);
-  }, [title, description]);
+  }, [title, description, isCardPage]);
 
   return (
     <div

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { playerWarDecksOptions, useMetaStatus } from '../queries';
-import { startingQuery } from '../lib/generatorOptions';
+import { parseOptions, toQuery } from '../lib/generatorOptions';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
@@ -21,7 +21,10 @@ export default function Landing() {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
 
-  const linkState = (useLocation().state ?? null) as { tagError?: string; badTag?: string } | null;
+  const location = useLocation();
+  const linkState = (location.state ?? null) as { tagError?: string; badTag?: string } | null;
+  // A card page's build button sends generator options along (?require=…), to apply once the tag is in.
+  const carriedQuery = toQuery(parseOptions(new URLSearchParams(location.search)));
   useEffect(() => {
     if (linkState?.tagError) {
       setError(linkState.tagError);
@@ -38,10 +41,10 @@ export default function Landing() {
     if (code.length < 8 || !isValidTag(code) || lastPrefetched.current === code) return;
     const timer = setTimeout(() => {
       lastPrefetched.current = code;
-      queryClient.prefetchQuery({ ...playerWarDecksOptions(`#${code}`, startingQuery()), retry: false });
+      queryClient.prefetchQuery({ ...playerWarDecksOptions(`#${code}`, carriedQuery), retry: false });
     }, 500);
     return () => clearTimeout(timer);
-  }, [value, queryClient]);
+  }, [value, queryClient, carriedQuery]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value.replace(/[#\s]/g, '').toUpperCase());
@@ -64,9 +67,9 @@ export default function Landing() {
     const tag = `#${code}`;
     setLoading(true);
     try {
-      await queryClient.fetchQuery(playerWarDecksOptions(tag, startingQuery()));
+      await queryClient.fetchQuery(playerWarDecksOptions(tag, carriedQuery));
       setActivePlayerTag(tag);
-      navigate(`/${code}`);
+      navigate(`/${code}${location.search}`);
     } catch {
       setError('Couldn\'t load that player. Check your tag or try again.');
     } finally {

@@ -45,6 +45,15 @@ export function TrophyIcon() {
   );
 }
 
+export function CardsIcon() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="3" y="5" width="11" height="15" rx="2" />
+      <path d="M17 4.5l3.2 1.1a1.5 1.5 0 0 1 .9 1.9l-3.6 10.4" />
+    </svg>
+  );
+}
+
 export function TrendingUpIcon() {
   return (
     <svg {...iconProps()}>

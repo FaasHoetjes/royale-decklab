@@ -5,6 +5,7 @@ import { classifyDeck, featuredCard } from '../lib/archetypes';
 import { buildDeckLink } from '../lib/deckLink';
 import { useIsMobile } from '../hooks/useIsMobile';
 import CardTile from './CardTile';
+import CardLink from './CardLink';
 import InfoTip from './InfoTip';
 import DeckLinkAction from './DeckLinkAction';
 
@@ -126,7 +127,7 @@ export default function DeckCard({
       <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 24px 18px' }}>
         <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '14px 22px' }}>
           {orderedCards.map((card, index) => (
-            <div key={card.id} style={{ minWidth: 0 }} title={`${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`}>
+            <CardLink key={card.id} name={card.name} title={`${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`}>
               <CardTile
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, versionOf(cardVersions, card.id))}
@@ -139,7 +140,7 @@ export default function DeckCard({
                 lazyLoad={!priority}
                 fetchPriority={priority ? 'high' : undefined}
               />
-            </div>
+            </CardLink>
           ))}
         </div>
 

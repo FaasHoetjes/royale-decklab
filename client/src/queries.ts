@@ -11,6 +11,8 @@ import {
   fetchAllCards,
   fetchPlayerCollection,
   fetchBestDecks,
+  fetchCardStats,
+  fetchCardDecks,
   fetchUpgradeAdvice,
   scoreBuilderDecks,
   type ScoreDeckCard,
@@ -20,6 +22,8 @@ export const queryKeys = {
   metaStatus: ['meta', 'status'] as const,
   cards: ['cards'] as const,
   bestDecks: ['best-decks'] as const,
+  cardStats: ['card-stats'] as const,
+  cardDecks: (cardId: number) => ['card-decks', cardId] as const,
   playerWarDecks: (tag: string, options = '') => ['player', tag, 'war-decks', options] as const,
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
@@ -118,6 +122,23 @@ function bestDecksOptions() {
 
 export function useBestDecks() {
   return useQuery(bestDecksOptions());
+}
+
+export function useCardStats() {
+  return useQuery({
+    queryKey: queryKeys.cardStats,
+    queryFn: ({ signal }) => fetchCardStats(signal),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCardDecks(cardId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.cardDecks(cardId ?? 0),
+    queryFn: ({ signal }) => fetchCardDecks(cardId!, signal),
+    enabled: cardId != null,
+    staleTime: 5 * 60_000,
+  });
 }
 
 export function useDeckScores(

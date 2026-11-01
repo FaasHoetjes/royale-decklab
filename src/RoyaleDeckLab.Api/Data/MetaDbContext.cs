@@ -10,6 +10,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
 {
     public DbSet<BattleEntity> Battles => Set<BattleEntity>();
     public DbSet<MetaStateEntity> MetaState => Set<MetaStateEntity>();
+    public DbSet<CardPeriodEntity> CardPeriods => Set<CardPeriodEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,15 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             v => JsonSerializer.Deserialize<List<CardVersion>>(v, StorageJson.Options) ?? new List<CardVersion>());
 
         var versionsComparer = new ValueComparer<IReadOnlyList<CardVersion>>(
+            (a, b) => a!.SequenceEqual(b!),
+            v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
+            v => v.ToList());
+
+        var talliesConverter = new ValueConverter<IReadOnlyList<CardTally>, string>(
+            v => JsonSerializer.Serialize(v, StorageJson.Options),
+            v => JsonSerializer.Deserialize<List<CardTally>>(v, StorageJson.Options) ?? new List<CardTally>());
+
+        var talliesComparer = new ValueComparer<IReadOnlyList<CardTally>>(
             (a, b) => a!.SequenceEqual(b!),
             v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
             v => v.ToList());
@@ -55,8 +65,19 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             m.HasKey(x => x.Id);
             m.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             m.Property(x => x.EpochStartMs).HasColumnName("epoch_start_ms").IsRequired();
+            m.Property(x => x.PreviousEpochStartMs).HasColumnName("previous_epoch_start_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastBuildMs).HasColumnName("last_build_ms").IsRequired();
             m.Property(x => x.KnownSeasonId).HasColumnName("known_season_id").IsRequired().HasDefaultValue(0);
+        });
+
+        modelBuilder.Entity<CardPeriodEntity>(c =>
+        {
+            c.ToTable("card_periods");
+            c.HasKey(x => x.EndMs);
+            c.Property(x => x.EndMs).HasColumnName("end_ms").ValueGeneratedNever();
+            c.Property(x => x.StartMs).HasColumnName("start_ms").IsRequired();
+            c.Property(x => x.Battles).HasColumnName("battles").IsRequired();
+            c.Property(x => x.Cards).HasColumnName("cards").HasConversion(talliesConverter, talliesComparer).IsRequired();
         });
     }
 }

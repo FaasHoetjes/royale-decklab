@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, GridIcon, TrophyIcon, TrendingUpIcon, HelpIcon } from './navIcons';
+import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, HelpIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
@@ -21,7 +21,7 @@ export function homePath(activePlayerTag: string | null): string {
 export const SITE_NAME = 'Royale DeckLab';
 export const SITE_DESCRIPTION = 'Generate your best four Clash Royale War Decks tuned to the cards you actually own.';
 
-/** The four tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
+/** The five tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
 export function toolItems(activePlayerTag: string | null): NavItem[] {
   return [
     {
@@ -39,6 +39,14 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       description: 'The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.',
       end: false,
       icon: <TrophyIcon />,
+    },
+    {
+      to: '/cards',
+      label: 'Cards',
+      tab: 'Cards',
+      description: 'How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.',
+      end: false,
+      icon: <CardsIcon />,
     },
     {
       to: '/builder',

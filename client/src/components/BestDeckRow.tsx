@@ -3,6 +3,7 @@ import type { Theme } from '../theme';
 import { versionOf, cardIconUrl, avgElixir, orderBySlots } from '../lib/cardDisplay';
 import { buildDeckLink } from '../lib/deckLink';
 import CardTile from './CardTile';
+import CardLink from './CardLink';
 import InfoTip from './InfoTip';
 import DeckLinkAction from './DeckLinkAction';
 
@@ -47,7 +48,7 @@ export default function BestDeckRow({ deck, name, theme, isMobile }: BestDeckRow
   const cardTiles = (
     <div style={{ ...styles.cards, ...(isMobile ? styles.cardsMobile : {}) }}>
       {cards.map((card, index) => (
-        <div key={card.id} style={{ minWidth: 0 }} title={card.name}>
+        <CardLink key={card.id} name={card.name}>
           <CardTile
             name={card.name}
             iconUrl={cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id))}
@@ -55,7 +56,7 @@ export default function BestDeckRow({ deck, name, theme, isMobile }: BestDeckRow
             elixirCost={card.elixirCost}
             nameColor={theme.text.primary}
           />
-        </div>
+        </CardLink>
       ))}
     </div>
   );

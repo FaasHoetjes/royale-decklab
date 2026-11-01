@@ -9,7 +9,7 @@ import { toolItems, pageTitle, FAQ_ITEM } from './navItems';
 import { MailIcon, GitHubIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
-/** Phones: a top bar with the page title and your player, and the four tools in a tab bar at the bottom. */
+/** Phones: a top bar with the page title and your player, and the five tools in a tab bar at the bottom. */
 export default function MobileNav() {
   const { activePlayerTag } = useApp();
   const { pathname } = useLocation();
@@ -39,7 +39,15 @@ export default function MobileNav() {
         </div>
       </header>
 
-      <nav aria-label="Main menu" style={{ ...styles.tabBar, backgroundColor: theme.bg.secondary, borderTopColor: theme.border }}>
+      <nav
+        aria-label="Main menu"
+        style={{
+          ...styles.tabBar,
+          gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
+          backgroundColor: theme.bg.secondary,
+          borderTopColor: theme.border,
+        }}
+      >
         {tabs.map((tab) => (
           <NavLink
             key={tab.label}
@@ -159,7 +167,6 @@ const styles = {
     bottom: 0,
     zIndex: 900,
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
     padding: '6px 4px calc(6px + env(safe-area-inset-bottom))',
     borderTop: '1px solid',
   },

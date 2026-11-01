@@ -43,7 +43,7 @@ public sealed class BestDecksBuilder
             .OrderByDescending(x => x.score)
             .ToList();
 
-        var eligible = CollapseToArchetypes(scored);
+        var eligible = CollapseToArchetypes(scored, ArchetypePoolSize);
         var sets = BuildDiverseSets(eligible);
 
         return sets
@@ -54,8 +54,26 @@ public sealed class BestDecksBuilder
             .ToList();
     }
 
+    /// <summary>The strongest decks with the card, one per archetype, so each is a different way to play it.</summary>
+    public IReadOnlyList<BestDeckEntry> TopDecksWith(
+        int cardId,
+        IReadOnlyList<DeckMeta> meta,
+        IReadOnlyDictionary<int, CatalogCard> catalog,
+        int count)
+    {
+        var scored = meta
+            .Where(d => d.CardIds.Contains(cardId) && (d.Players is null || d.Players >= MinPlayers))
+            .Select(d => (deck: d, score: d.Confidence))
+            .OrderByDescending(x => x.score)
+            .ToList();
+
+        return CollapseToArchetypes(scored, count)
+            .Select(d => ToEntry(d.deck, d.score, catalog))
+            .ToList();
+    }
+
     private static List<(DeckMeta deck, double score)> CollapseToArchetypes(
-        List<(DeckMeta deck, double score)> scored)
+        List<(DeckMeta deck, double score)> scored, int limit)
     {
         var eligible = new List<(DeckMeta deck, double score)>();
         foreach (var cand in scored)
@@ -66,7 +84,7 @@ public sealed class BestDecksBuilder
             {
                 eligible.Add(cand);
             }
-            if (eligible.Count >= ArchetypePoolSize)
+            if (eligible.Count >= limit)
             {
                 break;
             }

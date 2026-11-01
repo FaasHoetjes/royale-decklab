@@ -23,6 +23,18 @@ public sealed class MetaStateEntity
 {
     public int Id { get; set; } = 1;
     public long EpochStartMs { get; set; }
+    public long PreviousEpochStartMs { get; set; }
     public long LastBuildMs { get; set; }
     public int KnownSeasonId { get; set; }
+}
+
+public sealed class CardPeriodEntity
+{
+    public long EndMs { get; set; }
+
+    public long StartMs { get; set; }
+
+    public int Battles { get; set; }
+
+    public IReadOnlyList<CardTally> Cards { get; set; } = [];
 }

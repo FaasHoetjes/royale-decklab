@@ -127,12 +127,26 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
     db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
-    var hasSeasonColumn = db.Database.SqlQueryRaw<int>(
-        "SELECT COUNT(*) AS Value FROM pragma_table_info('meta_state') WHERE name = 'known_season_id'").Single() > 0;
-    if (!hasSeasonColumn)
+    // EnsureCreated only creates a fresh database, so columns and tables added since are created here.
+    bool HasStateColumn(string name) => db.Database.SqlQuery<int>(
+        $"SELECT COUNT(*) AS Value FROM pragma_table_info('meta_state') WHERE name = {name}").Single() > 0;
+    if (!HasStateColumn("known_season_id"))
     {
         db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN known_season_id INTEGER NOT NULL DEFAULT 0;");
     }
+    if (!HasStateColumn("previous_epoch_start_ms"))
+    {
+        db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN previous_epoch_start_ms INTEGER NOT NULL DEFAULT 0;");
+    }
+    db.Database.ExecuteSqlRaw(
+        """
+        CREATE TABLE IF NOT EXISTS card_periods (
+            end_ms INTEGER NOT NULL CONSTRAINT PK_card_periods PRIMARY KEY,
+            start_ms INTEGER NOT NULL,
+            battles INTEGER NOT NULL,
+            cards TEXT NOT NULL
+        );
+        """);
     db.Database.ExecuteSqlRaw(
         "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms, known_season_id) VALUES (1, 0, 0, 0);");
 }
