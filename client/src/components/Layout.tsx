@@ -2,29 +2,19 @@ import { Suspense, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
-import ThemeToggle from './ThemeToggle';
 import Footer from './Footer';
 import { ElixirGradientDefs } from './ElixirBadge';
-import Landing from '../pages/Landing';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { usePrefetchAppData } from '../queries';
 import { isValidTag } from '../lib/playerTag';
-
-function CornerThemeToggle() {
-  return (
-    <div style={styles.themeToggle}>
-      <ThemeToggle />
-    </div>
-  );
-}
+import { documentMeta, toolItems } from './navItems';
 
 // Where each history entry was scrolled to, so going back returns there.
 const scrollPositions = new Map<string, number>();
 
 const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades']);
-const PUBLIC_PATHS = new Set(['faq', 'best-decks']);
 
 export default function Layout() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
@@ -74,23 +64,11 @@ export default function Layout() {
 
   usePrefetchAppData(activePlayerTag);
 
-  const isPublicPath = PUBLIC_PATHS.has(pathname.replace(/^\//, ''));
-  if (pathname === '/' || (!activePlayerTag && !isPlayerDeepLink && !isPublicPath)) {
-    return (
-      <div
-        style={{
-          ...styles.shell,
-          flexDirection: 'column' as const,
-          backgroundColor: theme.bg.primary,
-          color: theme.text.primary,
-        }}
-      >
-        <CornerThemeToggle />
-        <Landing />
-        <Footer />
-      </div>
-    );
-  }
+  const { title, description } = documentMeta(pathname, toolItems(activePlayerTag), isPlayerDeepLink);
+  useEffect(() => {
+    document.title = title;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+  }, [title, description]);
 
   return (
     <div
@@ -157,11 +135,5 @@ const styles = {
   },
   page: {
     flex: '1 0 auto',
-  },
-  themeToggle: {
-    position: 'fixed' as const,
-    top: '20px',
-    right: '20px',
-    zIndex: 1000,
   },
 };

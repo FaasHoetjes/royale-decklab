@@ -7,6 +7,7 @@ import { ThemeProvider } from './ThemeContext'
 import Layout from './components/Layout'
 import WarDeckGenerator from './pages/WarDeckGenerator'
 import NotFound from './pages/NotFound'
+import Landing from './pages/Landing'
 import './index.css'
 
 // The generator is where nearly every visit starts; the other pages load as separate chunks.
@@ -46,7 +47,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <Routes>
             <Route element={<Layout />}>
-              <Route path="/" element={<WarDeckGenerator />} />
+              <Route path="/" element={<Landing />} />
               <Route path="/builder" element={<WarDeckBuilder />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/best-decks" element={<BestWarDecks />} />

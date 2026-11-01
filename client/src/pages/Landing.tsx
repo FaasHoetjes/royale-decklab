@@ -1,12 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
-import { playerWarDecksOptions } from '../queries';
+import { playerWarDecksOptions, useBestDecks, useMetaStatus } from '../queries';
 import { startingQuery } from '../lib/generatorOptions';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
+import { timeAgo } from '../lib/timeAgo';
+import GeneratorHeader from '../components/GeneratorHeader';
+
+const EXAMPLE_TAG = '2QGG92L9';
+
+const STEPS = [
+  {
+    title: 'Enter your tag',
+    text: 'DeckLab reads your cards, levels, Evolutions and Heroes from the official Clash Royale API.',
+  },
+  {
+    title: 'Matched against the meta',
+    text: 'Every Clan War battle from the top 100 war clans over the last 30 days, weighed against your card levels.',
+  },
+  {
+    title: 'Get four decks',
+    text: 'No shared cards, ready to copy into the game. Lock, ban or require cards to tweak them.',
+  },
+];
 
 export default function Landing() {
   const { setActivePlayerTag } = useApp();
@@ -14,6 +33,8 @@ export default function Landing() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const status = useMetaStatus();
+  const topSet = useBestDecks().data?.sets[0];
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -72,15 +93,14 @@ export default function Landing() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.hero}>
-        <div style={{ ...styles.brand, color: theme.text.primary }}>
-          <div style={{ ...styles.brandTop, fontSize: isMobile ? '36px' : '48px' }}>ROYALE</div>
-          <div style={{ ...styles.brandBottom, fontSize: isMobile ? '48px' : '64px' }}>DECKLAB</div>
-        </div>
-
-        <p style={{ ...styles.tagline, color: theme.text.secondary }}>
-          Enter your player tag to build and generate your best war decks.
+    <div style={{ ...styles.page, gap: isMobile ? '44px' : '64px', paddingTop: isMobile ? '24px' : '8vh' }}>
+      <section style={styles.hero}>
+        <h1 style={{ ...styles.headline, fontSize: isMobile ? '28px' : '40px', color: theme.text.primary }}>
+          Your best war decks, from the cards you own
+        </h1>
+        <p style={{ ...styles.tagline, fontSize: isMobile ? '15px' : '17px', color: theme.text.secondary }}>
+          Enter your player tag. DeckLab picks four war decks with no shared cards from what wins in the
+          top war clans right now, adjusted for your card levels.
         </p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -96,12 +116,13 @@ export default function Landing() {
             <input
               type="text"
               placeholder="YOUR PLAYER TAG"
+              aria-label="Your player tag"
               value={value}
               onChange={handleChange}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               disabled={loading}
-              autoFocus
+              autoFocus={!isMobile}
               spellCheck={false}
               autoCapitalize="characters"
               style={{ ...styles.input, color: theme.text.primary }}
@@ -122,16 +143,28 @@ export default function Landing() {
           </button>
         </form>
 
-        <button
-          type="button"
-          className="mobile-touch-target"
-          onClick={() => setShowTagHelp((show) => !show)}
-          aria-expanded={showTagHelp}
-          aria-controls="player-tag-help"
-          style={{ ...styles.helpButton, color: theme.accent }}
-        >
-          Where's my player tag?
-        </button>
+        {error && <p style={styles.error}>{error}</p>}
+
+        <div style={styles.links}>
+          <button
+            type="button"
+            className="mobile-touch-target"
+            onClick={() => setShowTagHelp((show) => !show)}
+            aria-expanded={showTagHelp}
+            aria-controls="player-tag-help"
+            style={{ ...styles.textButton, color: theme.accent }}
+          >
+            Where's my player tag?
+          </button>
+          <span aria-hidden="true" style={{ color: theme.text.tertiary }}>·</span>
+          <Link
+            to={`/${EXAMPLE_TAG}`}
+            className="mobile-touch-target"
+            style={{ ...styles.textButton, color: theme.accent }}
+          >
+            Try an example player
+          </Link>
+        </div>
         {showTagHelp && (
           <p id="player-tag-help" style={{ ...styles.helpText, color: theme.text.secondary }}>
             Open your Clash Royale profile by tapping your name on the home screen. Your player
@@ -140,44 +173,84 @@ export default function Landing() {
           </p>
         )}
 
-        {error && <p style={styles.error}>{error}</p>}
-      </div>
+        {status.data && status.data.deckCount > 0 && (
+          <p style={{ ...styles.status, color: theme.text.secondary }}>
+            <span style={{ ...styles.statusDot, backgroundColor: theme.accent }} aria-hidden="true" />
+            {status.data.deckCount.toLocaleString('en-US')} war decks tracked · updated{' '}
+            {timeAgo(status.data.lastRefresh)}
+          </p>
+        )}
+      </section>
+
+      {topSet && (
+        <section aria-labelledby="landing-best">
+          <div style={styles.sectionHead}>
+            <h2 id="landing-best" style={{ ...styles.sectionTitle, color: theme.text.primary }}>
+              Best war decks right now
+            </h2>
+            <p style={{ ...styles.sectionText, color: theme.text.secondary }}>
+              No tag needed: the strongest four-deck set in the current meta, for a maxed collection.
+            </p>
+          </div>
+          <GeneratorHeader
+            eyebrow={null}
+            decks={topSet.decks}
+            totalScore={topSet.totalScore}
+            scoreTip="The four decks' meta scores added up. Sets are ranked by it."
+            isMobile={isMobile}
+            style={{ marginBottom: 0, ...(isMobile ? {} : { minHeight: '118px' }) }}
+          >
+            <Link to="/best-decks" className="glass-btn mobile-touch-target" style={styles.glassLink}>
+              See all best war decks
+            </Link>
+          </GeneratorHeader>
+        </section>
+      )}
+
+      <section aria-labelledby="landing-how">
+        <h2 id="landing-how" style={{ ...styles.sectionTitle, ...styles.sectionHead, color: theme.text.primary }}>
+          How it works
+        </h2>
+        <ol style={{ ...styles.steps, gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)' }}>
+          {STEPS.map((step, i) => (
+            <li key={step.title} style={{ ...styles.step, backgroundColor: theme.bg.secondary, borderColor: theme.border }}>
+              <span style={{ ...styles.stepNumber, color: theme.accent, borderColor: theme.border }}>{i + 1}</span>
+              <h3 style={{ ...styles.stepTitle, color: theme.text.primary }}>{step.title}</h3>
+              <p style={{ ...styles.stepText, color: theme.text.secondary }}>{step.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
     </div>
   );
 }
 
 const styles = {
-  container: {
-    flex: 1,
+  page: {
+    width: '100%',
+    maxWidth: '760px',
+    margin: '0 auto',
+    paddingBottom: '24px',
     display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    padding: '20px',
+    flexDirection: 'column' as const,
   },
   hero: {
     width: '100%',
-    maxWidth: '460px',
+    maxWidth: '520px',
+    margin: '0 auto',
     textAlign: 'center' as const,
   },
-  brand: {
-    display: 'inline-block' as const,
-    lineHeight: 1.0,
-    marginBottom: '20px',
-  },
-  brandTop: {
-    fontSize: '48px',
+  headline: {
+    margin: 0,
     fontWeight: 700 as const,
-    letterSpacing: '3px',
-    textAlign: 'right' as const,
-  },
-  brandBottom: {
-    fontSize: '64px',
-    fontWeight: 800 as const,
-    letterSpacing: '2px',
+    lineHeight: 1.12,
+    letterSpacing: '-0.5px',
+    textWrap: 'balance' as const,
   },
   tagline: {
-    fontSize: '16px',
-    marginBottom: '36px',
+    margin: '14px 0 28px',
+    lineHeight: 1.5,
+    textWrap: 'pretty' as const,
   },
   form: {
     display: 'flex' as const,
@@ -185,9 +258,10 @@ const styles = {
   },
   field: {
     flex: 1,
+    minWidth: 0,
     display: 'flex' as const,
     alignItems: 'center' as const,
-    border: '2px solid #ddd',
+    border: '2px solid',
     borderRadius: '8px',
     paddingLeft: '16px',
     transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
@@ -201,6 +275,7 @@ const styles = {
   input: {
     flex: 1,
     width: '100%',
+    minWidth: 0,
     padding: '14px 16px 14px 6px',
     fontSize: '16px',
     fontWeight: 600 as const,
@@ -211,22 +286,32 @@ const styles = {
     outline: 'none',
   },
   button: {
-    padding: '14px 28px',
+    padding: '14px 24px',
     fontSize: '16px',
-    color: 'white',
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: 700 as const,
     transition: 'all 0.2s ease',
   },
-  helpButton: {
+  links: {
+    display: 'flex' as const,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    flexWrap: 'wrap' as const,
+    gap: '2px 4px',
     marginTop: '10px',
+  },
+  textButton: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
     padding: '8px 10px',
     border: 'none',
     background: 'transparent',
+    fontFamily: 'inherit',
     fontSize: '13px',
     fontWeight: 600 as const,
+    textDecoration: 'none',
     cursor: 'pointer',
   },
   helpText: {
@@ -237,7 +322,83 @@ const styles = {
   },
   error: {
     color: '#ff6b6b',
-    marginTop: '16px',
+    margin: '14px 0 0',
     fontSize: '14px',
+  },
+  status: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '8px',
+    margin: '18px 0 0',
+    fontSize: '13px',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  statusDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  sectionHead: {
+    marginBottom: '14px',
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: '20px',
+    fontWeight: 700 as const,
+  },
+  sectionText: {
+    margin: '6px 0 0',
+    fontSize: '14px',
+    lineHeight: 1.5,
+  },
+  glassLink: {
+    alignSelf: 'flex-start' as const,
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    marginTop: '10px',
+    height: '34px',
+    padding: '0 14px',
+    border: '1px solid color-mix(in srgb, var(--hero-text) 20%, transparent)',
+    borderRadius: '999px',
+    backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 62%, transparent)',
+    backdropFilter: 'blur(10px)',
+    color: 'var(--hero-text)',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap' as const,
+  },
+  steps: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'grid' as const,
+    gap: '12px',
+  },
+  step: {
+    border: '1px solid',
+    borderRadius: '14px',
+    padding: '18px',
+  },
+  stepNumber: {
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    width: '28px',
+    height: '28px',
+    border: '1px solid',
+    borderRadius: '50%',
+    fontSize: '13px',
+    fontWeight: 700 as const,
+  },
+  stepTitle: {
+    margin: '12px 0 6px',
+    fontSize: '15px',
+    fontWeight: 700 as const,
+  },
+  stepText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: 1.5,
   },
 };

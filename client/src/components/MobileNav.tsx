@@ -22,7 +22,7 @@ export default function MobileNav() {
     <>
       <header style={{ ...styles.bar, backgroundColor: theme.bg.secondary, borderBottomColor: theme.border }}>
         <span style={{ ...styles.barTitle, color: theme.text.primary }}>
-          {pageTitle(pathname, tabs) ?? 'Royale Decklab'}
+          {(pathname !== '/' && pageTitle(pathname, tabs)) || 'Royale DeckLab'}
         </span>
         <div style={styles.barRight}>
           <ThemeToggle size={22} />

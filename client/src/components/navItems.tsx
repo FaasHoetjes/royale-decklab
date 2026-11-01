@@ -7,6 +7,8 @@ export interface NavItem {
   label: string;
   /** A shorter label for the phone's tab bar. */
   tab: string;
+  /** The page's meta description, for search results. */
+  description: string;
   end: boolean;
   icon: ReactNode;
 }
@@ -16,18 +18,69 @@ export function homePath(activePlayerTag: string | null): string {
   return activePlayerTag ? `/${activePlayerTag.replace('#', '')}` : '/';
 }
 
+export const SITE_NAME = 'Royale DeckLab';
+export const SITE_DESCRIPTION = 'Generate your best four Clash Royale War Decks tuned to the cards you actually own.';
+
 /** The four tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
 export function toolItems(activePlayerTag: string | null): NavItem[] {
   return [
-    { to: homePath(activePlayerTag), label: 'War Deck Generator', tab: 'Generator', end: true, icon: <ZapIcon /> },
-    { to: '/best-decks', label: 'Best War Decks', tab: 'Best decks', end: false, icon: <TrophyIcon /> },
-    { to: '/builder', label: 'War Deck Builder', tab: 'Builder', end: false, icon: <GridIcon /> },
-    { to: '/upgrades', label: 'Upgrade Advisor', tab: 'Upgrades', end: false, icon: <TrendingUpIcon /> },
+    {
+      to: homePath(activePlayerTag),
+      label: 'War Deck Generator',
+      tab: 'Generator',
+      description: SITE_DESCRIPTION,
+      end: true,
+      icon: <ZapIcon />,
+    },
+    {
+      to: '/best-decks',
+      label: 'Best War Decks',
+      tab: 'Best decks',
+      description: 'The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.',
+      end: false,
+      icon: <TrophyIcon />,
+    },
+    {
+      to: '/builder',
+      label: 'War Deck Builder',
+      tab: 'Builder',
+      description: 'Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta.',
+      end: false,
+      icon: <GridIcon />,
+    },
+    {
+      to: '/upgrades',
+      label: 'Upgrade Advisor',
+      tab: 'Upgrades',
+      description: 'Find the card upgrade that raises your Clash Royale war lineup the most.',
+      end: false,
+      icon: <TrendingUpIcon />,
+    },
   ];
 }
 
-export const FAQ_ITEM: NavItem = { to: '/faq', label: 'FAQ', tab: 'FAQ', end: false, icon: <HelpIcon /> };
+export const FAQ_ITEM: NavItem = {
+  to: '/faq',
+  label: 'FAQ',
+  tab: 'FAQ',
+  description: 'How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.',
+  end: false,
+  icon: <HelpIcon />,
+};
+
+function pageItem(pathname: string, items: NavItem[]): NavItem | undefined {
+  return [...items, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
+}
 
 export function pageTitle(pathname: string, items: NavItem[]): string | undefined {
-  return [...items, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)))?.label;
+  return pageItem(pathname, items)?.label;
+}
+
+/** The browser tab's title and the search-result description for a page; the landing page gets the site's own. */
+export function documentMeta(pathname: string, items: NavItem[], isPlayerPage: boolean): { title: string; description: string } {
+  if (pathname === '/') return { title: `${SITE_NAME}: your best Clash Royale war decks`, description: SITE_DESCRIPTION };
+  const item = pageItem(pathname, items) ?? (isPlayerPage ? items[0] : undefined);
+  return item
+    ? { title: `${item.label} · ${SITE_NAME}`, description: item.description }
+    : { title: SITE_NAME, description: SITE_DESCRIPTION };
 }

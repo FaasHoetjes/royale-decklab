@@ -136,7 +136,14 @@ export function fetchUpgradeAdvice(playerTag: string, signal?: AbortSignal): Pro
   return getJson(`/api/player/${encodeURIComponent(playerTag)}/upgrades`, 'Failed to fetch upgrade advice', signal);
 }
 
-export function fetchMetaStatus(signal?: AbortSignal): Promise<{ status: string }> {
+export interface MetaStatus {
+  status: string;
+  /** Distinct war decks in the current meta. */
+  deckCount: number;
+  lastRefresh: string;
+}
+
+export function fetchMetaStatus(signal?: AbortSignal): Promise<MetaStatus> {
   return getJson('/api/meta/status', 'Failed to fetch meta status', signal);
 }
 
