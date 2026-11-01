@@ -62,6 +62,19 @@ export default function UpgradeAdvisor() {
     [suggestions, lineupDecks]
   );
 
+  // Fetched ahead, so a new deck's cards don't load and decode while they pop in.
+  const newDeckArt = visible
+    .flatMap(({ unlockedDeck: deck }) => deck?.cards.map((card) => cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id))) ?? [])
+    .join(' ');
+  useEffect(() => {
+    if (!newDeckArt) return;
+    new Set(newDeckArt.split(' ')).forEach((url) => {
+      const img = new Image();
+      img.src = url;
+      img.decode().catch(() => {});
+    });
+  }, [newDeckArt]);
+
   const current = suggestions[Math.min(selected, suggestions.length - 1)];
   const choose = (i: number) => {
     if (i === selected) return;

@@ -6,7 +6,7 @@ import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
-import { useTween } from '../hooks/useTween';
+import Tweened from '../components/Tweened';
 import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
 import { builderDeckNames, championFits, nextSlot, placeInDeck } from '../lib/builderDecks';
 import { flyCard, replayAnimation } from '../lib/flyCard';
@@ -122,7 +122,6 @@ export default function WarDeckBuilder() {
   );
 
   const scores = board.usedIds.size > 0 ? scoreQuery.data ?? null : null;
-  const total = useTween(scores?.total ?? 0);
   const names = useMemo(() => builderDeckNames(board.decks, cardById), [board.decks, cardById]);
 
   const usedIn = useMemo(() => {
@@ -208,7 +207,7 @@ export default function WarDeckBuilder() {
               </span>
             )}
             <div style={{ ...styles.totalValue, fontSize: isMobile ? '26px' : '34px', color: theme.text.primary }}>
-              {total.toFixed(3)}
+              <Tweened value={scores?.total ?? 0} />
             </div>
             <div style={{ ...styles.totalLabel, color: theme.text.tertiary }}>lineup score</div>
           </div>

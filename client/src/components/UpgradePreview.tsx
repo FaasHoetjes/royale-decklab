@@ -2,10 +2,10 @@ import { useRef } from 'react';
 import CardTile from './CardTile';
 import DeckLinkAction from './DeckLinkAction';
 import Fold from './Fold';
+import Tweened from './Tweened';
 import { upgradeSlotIndex, upgradeStep } from './UpgradeRow';
 import { cardIconUrl, orderBySlots, versionOf } from '../lib/cardDisplay';
 import { buildDeckLink } from '../lib/deckLink';
-import { useTween } from '../hooks/useTween';
 import type { UpgradeSuggestion } from '../api';
 import type { Theme } from '../theme';
 
@@ -29,7 +29,6 @@ interface UpgradePreviewProps {
 
 /** Shows what the picked upgrade does to the lineup: the new score, the deck it helps, or the deck it brings in. */
 export default function UpgradePreview({ suggestion: s, pick, baselineScore, lineup, unlockedName, effect, theme, isMobile }: UpgradePreviewProps) {
-  const score = useTween(s.newTotalScore, baselineScore);
   const bringsDeck = s.changesLineup && !!s.unlockedDeck;
 
   // The new deck stays rendered while its panel folds shut.
@@ -66,7 +65,7 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
           <span key={pick} className="ua-float" style={{ ...styles.float, color: theme.text.primary }} aria-hidden="true">
             +{s.scoreDelta.toFixed(3)}
           </span>
-          <div style={{ ...styles.score, fontSize: isMobile ? '28px' : '36px', color: theme.text.primary }}>{score.toFixed(3)}</div>
+          <div style={{ ...styles.score, fontSize: isMobile ? '28px' : '36px', color: theme.text.primary }}><Tweened value={s.newTotalScore} from={baselineScore} /></div>
           <div style={{ ...styles.scoreLabel, color: theme.text.tertiary }}>
             {isMobile ? 'up from ' : 'new lineup score, up from '}
             <span style={styles.digits}>{baselineScore.toFixed(3)}</span>
@@ -96,7 +95,6 @@ function sentence(effect: string): string {
 }
 
 function DeckSlot({ deck, hit, gain, pick, theme, isMobile }: { deck: LineupDeck; hit: boolean; gain: number; pick: number; theme: Theme; isMobile: boolean }) {
-  const score = useTween(deck.score + gain, deck.score);
   return (
     <div
       key={hit ? pick : 'idle'}
@@ -116,7 +114,7 @@ function DeckSlot({ deck, hit, gain, pick, theme, isMobile }: { deck: LineupDeck
       </div>
       {!isMobile && <div style={{ ...styles.slotName, color: theme.text.secondary }}>{deck.name}</div>}
       <div style={{ ...styles.slotScore, fontSize: isMobile ? '13px' : '15px', color: theme.text.primary }}>
-        {score.toFixed(3)}
+        <Tweened value={deck.score + gain} from={deck.score} />
       </div>
     </div>
   );
