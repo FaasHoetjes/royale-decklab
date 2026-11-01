@@ -9,6 +9,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { timeAgo } from '../lib/timeAgo';
 import CardWall from '../components/CardWall';
+import SlotNumber from '../components/SlotNumber';
 
 export default function Landing() {
   const { setActivePlayerTag } = useApp();
@@ -154,8 +155,10 @@ export default function Landing() {
         {status.data && status.data.deckCount > 0 && (
           <p style={{ ...styles.status, color: theme.text.secondary }}>
             <span style={{ ...styles.statusDot, backgroundColor: theme.accent }} aria-hidden="true" />
-            {status.data.deckCount.toLocaleString('en-US')} war decks tracked · updated{' '}
-            {timeAgo(status.data.lastRefresh)}
+            <span style={styles.statusText}>
+              <SlotNumber value={status.data.deckCount} /> war decks tracked · updated{' '}
+              {timeAgo(status.data.lastRefresh)}
+            </span>
           </p>
         )}
       </section>
@@ -270,6 +273,9 @@ const styles = {
     margin: '18px 0 0',
     fontSize: '13px',
     fontVariantNumeric: 'tabular-nums' as const,
+  },
+  statusText: {
+    lineHeight: '1.2em',
   },
   statusDot: {
     width: '7px',
