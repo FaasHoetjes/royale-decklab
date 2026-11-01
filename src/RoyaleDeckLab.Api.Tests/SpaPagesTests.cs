@@ -49,8 +49,26 @@ public sealed class SpaPagesTests
         Assert.Equal("Faas's war decks · Royale DeckLab", page.Title);
         Assert.StartsWith("Two Clash Royale war decks picked for Faas's cards.", page.Description);
         Assert.Equal($"/2qgg92l9?share={code}", page.CanonicalPath);
+        Assert.Equal($"/api/player/2QGG92L9/share-image?share={code}", page.ImagePath);
         Assert.True(page.NoIndex);
     }
+
+    [Fact]
+    public void Render_SwapsInTheSharedLineupsImage()
+    {
+        const string code = "000a0uc6cao9oaof";
+        var html = SpaPages.Render(File.ReadAllText(IndexHtmlPath()), SpaPages.SharedLineup(Resolve("/2QGG92L9"), "Faas", code));
+
+        Assert.Equal(2, Count(html, $"content=\"https://royaledecklab.com/api/player/2QGG92L9/share-image?share={code}\""));
+        Assert.Contains("<meta property=\"og:image:width\" content=\"1200\" />", html);
+        Assert.Contains("<meta property=\"og:image:height\" content=\"630\" />", html);
+        Assert.Contains("<meta property=\"og:image:alt\" content=\"Faas&#39;s war decks &#183; Royale DeckLab\" />", html);
+        Assert.DoesNotContain("og-image.png", html);
+    }
+
+    [Fact]
+    public void Render_KeepsTheSiteImageElsewhere()
+        => Assert.Equal(2, Count(SpaPages.Render(File.ReadAllText(IndexHtmlPath()), Resolve("/cards")), "og-image.png"));
 
     [Fact]
     public void SharedLineup_WithoutAName_StaysGeneric()
@@ -65,8 +83,9 @@ public sealed class SpaPagesTests
 
     [Theory]
     [InlineData("0123456789abcdef", true)]
-    [InlineData("0123456789abcdef.0123456789abcdef.0123456789abcdef.0123456789abcdef", true)]
-    [InlineData("0123456789abcdef.0123456789abcdef.0123456789abcdef.0123456789abcdef.0123456789abcdef", false)]
+    [InlineData("0102030405060708.090a0b0c0d0e0f0g.0h0i0j0k0l0m0n0o.0p0q0r0s0t0u0v0w", true)]
+    [InlineData("0102030405060708.090a0b0c0d0e0f0g.0h0i0j0k0l0m0n0o.0p0q0r0s0t0u0v0w.0x0y0z1011121314", false)]
+    [InlineData("0123456789abcdef.0123456789abcdef", false)]
     [InlineData("0123456789ABCDEF", false)]
     [InlineData("0123456789abcde", false)]
     [InlineData("0123456789abcdef\"><script>", false)]

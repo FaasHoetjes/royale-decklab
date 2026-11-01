@@ -27,8 +27,11 @@ interface WarDeckResultProps {
   /** The last options change failed; the decks shown are from before it. */
   updateFailed?: boolean;
   onRetry?: () => void;
-  /** Someone else's lineup opened from a share link: read-only, with a way to the reader's own decks. */
-  shared?: { onGetMine: () => void };
+  /**
+   * Someone else's lineup opened from a share link: read-only, with a way to the reader's own decks. `decks`
+   * holds each deck's cards in the order the sharer saw them.
+   */
+  shared?: { onGetMine: () => void; decks: number[][] };
 }
 
 export default function WarDeckResult({
@@ -114,6 +117,8 @@ export default function WarDeckResult({
     const kept = slotState.orders[slotPos];
     if (kept?.master === master) return kept.ids;
     const deck = deckAt(master);
+    const asShared = shared?.decks.find((ids) => deckKey(ids) === deckKey(deck.cardIds));
+    if (asShared) return asShared;
     return orderBySlots(deck.cards, slotVersionOf(deck.metaCardVersions, deck.cardVersions)).map((c) => c.id);
   };
 
@@ -145,7 +150,7 @@ export default function WarDeckResult({
     }
   };
 
-  const shareCode = encodeShare(slots.map((master) => deckAt(master).cardIds));
+  const shareCode = encodeShare(slots.map((_, slotPos) => cardOrderAt(slotPos)));
   const shareUrl = `${window.location.origin}/${playerTag.replace('#', '')}${shareCode ? `?share=${shareCode}` : ''}`;
 
   // Not while updating: right after clearing the options, `decks` can still be an empty result for the old ones.

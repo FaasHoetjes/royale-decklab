@@ -147,7 +147,7 @@ export default function WarDeckGenerator() {
       isUpdating={!optionsFailed && warDecks.isPlaceholderData}
       updateFailed={optionsFailed}
       onRetry={() => warDecks.refetch()}
-      shared={shared ? { onGetMine: getMyDecks } : undefined}
+      shared={shared ? { onGetMine: getMyDecks, decks: shared } : undefined}
     />
   ) : tag || activePlayerTag ? (
     <WarDecksSkeleton isMobile={isMobile} />

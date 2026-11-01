@@ -49,6 +49,17 @@ public sealed partial class CardArtCache
     public static bool IsWellFormed(string kind, string hash) =>
         KindPattern().IsMatch(kind) && HashPattern().IsMatch(hash);
 
+    [GeneratedRegex(@"^https://api-assets\.clashroyale\.com/(cards|cardevolutions|cardheroes)/300/([A-Za-z0-9_-]{16,128})\.png$")]
+    private static partial Regex AssetUrlPattern();
+
+    /// <summary>Splits a CR CDN art URL into the kind and hash <see cref="GetAsync"/> takes.</summary>
+    public static bool TryParseUrl(string url, out string kind, out string hash)
+    {
+        var match = AssetUrlPattern().Match(url);
+        (kind, hash) = match.Success ? (match.Groups[1].Value, match.Groups[2].Value) : ("", "");
+        return match.Success;
+    }
+
     /// <summary>Path of the cached WebP, or null when the art is not a known card's.</summary>
     public async Task<string?> GetAsync(string kind, string hash, CancellationToken ct = default)
     {

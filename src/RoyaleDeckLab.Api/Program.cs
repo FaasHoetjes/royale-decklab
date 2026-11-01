@@ -70,6 +70,7 @@ builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddHttpClient(CardArtCache.HttpClientName, http => http.MaxResponseContentBufferSize = 4 * 1024 * 1024)
     .AddStandardResilienceHandler();
 builder.Services.AddSingleton<CardArtCache>();
+builder.Services.AddSingleton<ShareImageService>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddHostedService<SeasonWatchService>();

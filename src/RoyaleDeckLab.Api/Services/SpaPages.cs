@@ -7,7 +7,11 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-public sealed record SpaPage(int StatusCode, string Title, string Description, string? CanonicalPath, bool NoIndex, string? PlayerTag = null);
+public sealed record SpaPage(int StatusCode, string Title, string Description, string? CanonicalPath, bool NoIndex, string? PlayerTag = null)
+{
+    /// <summary>The link preview image, when the page has its own instead of the site's.</summary>
+    public string? ImagePath { get; init; }
+}
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -62,7 +66,7 @@ public static partial class SpaPages
         return NotFound;
     }
 
-    public static bool IsShareCode(string? code) => code is not null && ShareCodeRegex().IsMatch(code);
+    public static bool IsShareCode(string? code) => ShareCode.TryDecode(code, out _);
 
     /// <summary>
     /// A player page opened from a share link names whose decks they are, and keeps the code in og:url, which
@@ -77,6 +81,7 @@ public static partial class SpaPages
             Title = playerName is null ? $"Shared war decks · {SiteName}" : $"{playerName}'s war decks · {SiteName}",
             Description = $"{decks} picked for {(playerName is null ? "a player" : playerName + "'s")} cards. Get the best war decks for your own cards on {SiteName}.",
             CanonicalPath = $"{playerPage.CanonicalPath}?share={shareCode}",
+            ImagePath = $"/api/player/{playerPage.PlayerTag?.TrimStart('#')}/share-image?share={shareCode}",
         };
     }
 
@@ -129,6 +134,14 @@ public static partial class SpaPages
                 $"<meta property=\"og:url\" content=\"{Origin}/\" />",
                 $"<meta property=\"og:url\" content=\"{url}\" />\n    <link rel=\"canonical\" href=\"{url}\" />");
         }
+        if (page.ImagePath is { } imagePath)
+        {
+            html = html
+                .Replace($"content=\"{Origin}/og-image.png\"", $"content=\"{WebUtility.HtmlEncode(Origin + imagePath)}\"")
+                .Replace("property=\"og:image:width\" content=\"2400\"", $"property=\"og:image:width\" content=\"{ShareImageRenderer.Width}\"")
+                .Replace("property=\"og:image:height\" content=\"1260\"", $"property=\"og:image:height\" content=\"{ShareImageRenderer.Height}\"")
+                .Replace("property=\"og:image:alt\" content=\"Royale DeckLab\"", $"property=\"og:image:alt\" content=\"{title}\"");
+        }
         return html;
     }
 
@@ -145,9 +158,6 @@ public static partial class SpaPages
         }
         return xml.Append("</urlset>\n").ToString();
     }
-
-    [GeneratedRegex(@"^[0-9a-z]{16}(\.[0-9a-z]{16}){0,3}$")]
-    private static partial Regex ShareCodeRegex();
 
     [GeneratedRegex("[^a-z0-9]+")]
     private static partial Regex NonAlphanumericRegex();
