@@ -229,6 +229,7 @@ const SetSection = memo(function SetSection({ set, setKey, setIdx, expanded, dec
             name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
             theme={theme}
             isMobile={isMobile}
+            lazyLoad={setIdx > 0}
           />
         ))}
       </div>
