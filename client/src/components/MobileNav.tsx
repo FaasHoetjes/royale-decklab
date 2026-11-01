@@ -17,6 +17,10 @@ export default function MobileNav() {
   const switcher = usePlayerSwitcher();
   const [sheetOpen, setSheetOpen] = useState(false);
   const tabs = toolItems(activePlayerTag);
+  // The tapped tab lights up right away; the page it opens can take a moment to render on a phone.
+  const [tapped, setTapped] = useState<string | null>(null);
+  useEffect(() => setTapped(null), [pathname]);
+  const lit = (to: string, isActive: boolean) => (tapped ? tapped === to : isActive);
 
   return (
     <>
@@ -54,17 +58,18 @@ export default function MobileNav() {
             to={tab.to}
             end={tab.end}
             className="tab-link"
-            style={({ isActive }) => ({ ...styles.tab, color: isActive ? theme.text.primary : theme.text.secondary })}
+            onClick={() => setTapped(tab.to)}
+            style={({ isActive }) => ({ ...styles.tab, color: lit(tab.to, isActive) ? theme.text.primary : theme.text.secondary })}
           >
             {({ isActive }) => (
               <>
                 <span style={styles.tabIconBox}>
-                  {isActive && <span className="tab-pill" style={styles.tabPill} />}
-                  <span style={{ ...styles.tabIcon, color: isActive ? theme.accent : undefined }} aria-hidden="true">
+                  {lit(tab.to, isActive) && <span className="tab-pill" style={styles.tabPill} />}
+                  <span style={{ ...styles.tabIcon, color: lit(tab.to, isActive) ? theme.accent : undefined }} aria-hidden="true">
                     {tab.icon}
                   </span>
                 </span>
-                <span style={{ ...styles.tabLabel, fontWeight: isActive ? 700 : 600 }}>
+                <span style={{ ...styles.tabLabel, fontWeight: lit(tab.to, isActive) ? 700 : 600 }}>
                   {tab.tab}
                 </span>
               </>

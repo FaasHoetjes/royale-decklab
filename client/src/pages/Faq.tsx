@@ -4,6 +4,7 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { GridIcon, SearchIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
+import Fold from '../components/Fold';
 import { faqItems, type FaqPage } from './faqContent';
 
 // Pages behind a player tag send visitors without one to the tag search instead.
@@ -89,46 +90,33 @@ export default function Faq() {
                   <Chevron open={isOpen} color={isOpen ? theme.accent : theme.text.secondary} />
                 </button>
               </h3>
-              <div
-                id={panelId}
-                role="region"
-                aria-labelledby={buttonId}
-                style={{
-                  ...styles.fold,
-                  gridTemplateRows: isOpen ? '1fr' : '0fr',
-                  opacity: isOpen ? 1 : 0,
-                  visibility: isOpen ? 'visible' : 'hidden',
-                  transition: isOpen ? styles.fold.transition : `${styles.fold.transition}, visibility 0s linear 0.3s`,
-                }}
-              >
-                <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                  <div style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}>
-                    {item.answer}
-                    {link && (
-                      <Link to={link.to} className="faq-page-link" style={{ ...styles.pageLink, color: theme.accent }}>
-                        <span style={styles.pageLinkIcon} aria-hidden="true">
-                          {link.icon}
-                        </span>
-                        <span className="faq-page-link-label">{link.label}</span>
-                        <svg
-                          className="faq-page-link-arrow"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2.2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                          style={styles.pageLinkArrow}
-                        >
-                          <path d="M5 12h14" />
-                          <path d="m13 6 6 6-6 6" />
-                        </svg>
-                      </Link>
-                    )}
-                  </div>
+              <Fold id={panelId} role="region" aria-labelledby={buttonId} open={isOpen}>
+                <div style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}>
+                  {item.answer}
+                  {link && (
+                    <Link to={link.to} className="faq-page-link" style={{ ...styles.pageLink, color: theme.accent }}>
+                      <span style={styles.pageLinkIcon} aria-hidden="true">
+                        {link.icon}
+                      </span>
+                      <span className="faq-page-link-label">{link.label}</span>
+                      <svg
+                        className="faq-page-link-arrow"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        style={styles.pageLinkArrow}
+                      >
+                        <path d="M5 12h14" />
+                        <path d="m13 6 6 6-6 6" />
+                      </svg>
+                    </Link>
+                  )}
                 </div>
-              </div>
+              </Fold>
             </div>
           );
         })}
@@ -198,10 +186,6 @@ const styles = {
     height: '16px',
     flexShrink: 0,
     transition: 'transform 0.2s ease',
-  },
-  fold: {
-    display: 'grid' as const,
-    transition: 'grid-template-rows 0.3s ease, opacity 0.25s ease',
   },
   trigger: {
     width: '100%',

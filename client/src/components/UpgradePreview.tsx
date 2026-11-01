@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import CardTile from './CardTile';
 import DeckLinkAction from './DeckLinkAction';
+import Fold from './Fold';
 import { upgradeSlotIndex, upgradeStep } from './UpgradeRow';
 import { cardIconUrl, orderBySlots, versionOf } from '../lib/cardDisplay';
 import { buildDeckLink } from '../lib/deckLink';
@@ -83,11 +84,9 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
         </div>
       )}
 
-      <div style={{ ...styles.fold, gridTemplateRows: bringsDeck ? '1fr' : '0fr' }}>
-        <div style={{ minHeight: 0, overflow: 'hidden' }}>
-          {shown?.s.unlockedDeck && <NewDeck key={shown.pick} suggestion={shown.s} name={shown.name} theme={theme} isMobile={isMobile} />}
-        </div>
-      </div>
+      <Fold open={bringsDeck}>
+        {shown?.s.unlockedDeck && <NewDeck key={shown.pick} suggestion={shown.s} name={shown.name} theme={theme} isMobile={isMobile} />}
+      </Fold>
     </section>
   );
 }
@@ -253,10 +252,6 @@ const styles = {
   slotScore: {
     fontWeight: 700 as const,
     fontVariantNumeric: 'tabular-nums' as const,
-  },
-  fold: {
-    display: 'grid' as const,
-    transition: 'grid-template-rows 0.35s ease',
   },
   newDeck: {
     marginTop: '12px',

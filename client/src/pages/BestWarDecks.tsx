@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
@@ -8,6 +8,7 @@ import type { BestDeckSet } from '../api';
 import { versionOf, orderBySlots } from '../lib/cardDisplay';
 import { distinctDeckNames } from '../lib/archetypes';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { slideFold } from '../lib/motion';
 import GeneratorHeader from '../components/GeneratorHeader';
 import BestDeckRow from '../components/BestDeckRow';
 import { BestDecksSkeleton } from '../components/LoadingSkeletons';
@@ -47,14 +48,16 @@ export default function BestWarDecks() {
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
   const [foldedSets, setFoldedSets] = useState(loadFolded);
 
-  function toggleSet(key: string) {
-    const next = new Set(foldedSets);
-    if (!next.delete(key)) next.add(key);
-    setFoldedSets(next);
-    try {
-      sessionStorage.setItem(FOLDED_KEY, JSON.stringify([...next]));
-    } catch {}
-  }
+  const toggleSet = useCallback((key: string) => {
+    setFoldedSets((folded) => {
+      const next = new Set(folded);
+      if (!next.delete(key)) next.add(key);
+      try {
+        sessionStorage.setItem(FOLDED_KEY, JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // A deck can show up in several sets; it keeps one name, unique across the whole page.
   const deckNames = useMemo(() => {
@@ -67,7 +70,7 @@ export default function BestWarDecks() {
 
   // Cards the active player doesn't own are left as empty slots; the builder
   // re-scores the board itself once mounted.
-  async function copySetToBuilder(set: BestDeckSet, setIdx: number) {
+  const copySetToBuilder = useCallback(async (set: BestDeckSet, setIdx: number) => {
     setCopyingSetIdx(setIdx);
     try {
       const ownedIds = new Set<number>();
@@ -108,7 +111,7 @@ export default function BestWarDecks() {
     } finally {
       setCopyingSetIdx(null);
     }
-  }
+  }, [activePlayerTag, queryClient, navigate]);
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -133,65 +136,20 @@ export default function BestWarDecks() {
         <div style={{ ...styles.setList, gap: isMobile ? '14px' : '16px' }}>
           {data.sets.map((set, setIdx) => {
             const key = setKey(set);
-            const expanded = !foldedSets.has(key);
-            const rowsId = `best-set-${setIdx + 1}-decks`;
             return (
-              <section key={key}>
-                <GeneratorHeader
-                  eyebrow={null}
-                  decks={set.decks}
-                  totalScore={set.totalScore}
-                  scoreTip="The four decks' meta scores added up. Sets are ranked by it."
-                  isMobile={isMobile}
-                  style={{ marginBottom: 0, ...(isMobile ? {} : { minHeight: '118px' }) }}
-                  toggle={{
-                    expanded,
-                    onToggle: () => toggleSet(key),
-                    controls: rowsId,
-                    label: `${expanded ? 'Hide' : 'Show'} the decks of set ${setIdx + 1}`,
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="glass-btn mobile-touch-target"
-                    onClick={() => copySetToBuilder(set, setIdx)}
-                    disabled={copyingSetIdx !== null}
-                    style={{
-                      ...styles.useButton,
-                      cursor: copyingSetIdx !== null ? 'wait' : 'pointer',
-                      opacity: copyingSetIdx !== null && copyingSetIdx !== setIdx ? 0.6 : 1,
-                    }}
-                  >
-                    <BuilderIcon spinning={copyingSetIdx === setIdx} />
-                    Use set in builder
-                  </button>
-                </GeneratorHeader>
-
-                <div
-                  id={rowsId}
-                  style={{
-                    ...styles.fold,
-                    gridTemplateRows: expanded ? '1fr' : '0fr',
-                    opacity: expanded ? 1 : 0,
-                    visibility: expanded ? 'visible' : 'hidden',
-                    transition: expanded ? styles.fold.transition : `${styles.fold.transition}, visibility 0s linear 0.3s`,
-                  }}
-                >
-                  <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                    <div style={{ ...styles.rowList, padding: isMobile ? '12px 0 18px' : '12px 0 20px' }}>
-                      {set.decks.map((deck, deckIdx) => (
-                        <BestDeckRow
-                          key={deckIdx}
-                          deck={deck}
-                          name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
-                          theme={theme}
-                          isMobile={isMobile}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
+              <SetSection
+                key={key}
+                set={set}
+                setKey={key}
+                setIdx={setIdx}
+                expanded={!foldedSets.has(key)}
+                deckNames={deckNames}
+                isMobile={isMobile}
+                copying={copyingSetIdx === setIdx}
+                copyBusy={copyingSetIdx !== null}
+                onToggle={toggleSet}
+                onCopy={copySetToBuilder}
+              />
             );
           })}
         </div>
@@ -199,6 +157,84 @@ export default function BestWarDecks() {
     </div>
   );
 }
+
+interface SetSectionProps {
+  set: BestDeckSet;
+  setKey: string;
+  setIdx: number;
+  expanded: boolean;
+  deckNames: Map<string, string | undefined>;
+  isMobile: boolean;
+  copying: boolean;
+  copyBusy: boolean;
+  onToggle: (key: string) => void;
+  onCopy: (set: BestDeckSet, setIdx: number) => void;
+}
+
+// Memoized so folding one set re-renders that set, not all ten.
+const SetSection = memo(function SetSection({ set, setKey, setIdx, expanded, deckNames, isMobile, copying, copyBusy, onToggle, onCopy }: SetSectionProps) {
+  const theme = getTheme();
+  const decksRef = useRef<HTMLDivElement>(null);
+  // Lags `expanded` while the decks slide shut, so the chevron turns right away but the decks stay until covered.
+  const [decksShown, setDecksShown] = useState(expanded);
+  const rowsId = `best-set-${setIdx + 1}-decks`;
+
+  function toggle() {
+    const open = !expanded;
+    onToggle(setKey);
+    slideFold(decksRef.current!, open, () => setDecksShown(open));
+  }
+
+  return (
+    <section>
+      <GeneratorHeader
+        eyebrow={null}
+        decks={set.decks}
+        totalScore={set.totalScore}
+        scoreTip="The four decks' meta scores added up. Sets are ranked by it."
+        isMobile={isMobile}
+        style={{ marginBottom: 0, ...(isMobile ? {} : { minHeight: '118px' }) }}
+        toggle={{
+          expanded,
+          onToggle: toggle,
+          controls: rowsId,
+          label: `${expanded ? 'Hide' : 'Show'} the decks of set ${setIdx + 1}`,
+        }}
+      >
+        <button
+          type="button"
+          className="glass-btn mobile-touch-target"
+          onClick={() => onCopy(set, setIdx)}
+          disabled={copyBusy}
+          style={{
+            ...styles.useButton,
+            cursor: copyBusy ? 'wait' : 'pointer',
+            opacity: copyBusy && !copying ? 0.6 : 1,
+          }}
+        >
+          <BuilderIcon spinning={copying} />
+          Use set in builder
+        </button>
+      </GeneratorHeader>
+
+      <div
+        ref={decksRef}
+        id={rowsId}
+        style={{ ...styles.rowList, padding: isMobile ? '12px 0 18px' : '12px 0 20px', display: decksShown ? 'flex' : 'none' }}
+      >
+        {set.decks.map((deck, deckIdx) => (
+          <BestDeckRow
+            key={deckIdx}
+            deck={deck}
+            name={deckNames.get(deckKey(deck.cardIds)) ?? `Deck ${deckIdx + 1}`}
+            theme={theme}
+            isMobile={isMobile}
+          />
+        ))}
+      </div>
+    </section>
+  );
+});
 
 function BuilderIcon({ spinning }: { spinning: boolean }) {
   if (spinning) {
@@ -256,13 +292,9 @@ const styles = {
     flexShrink: 0,
     color: 'var(--accent)',
   },
-  fold: {
-    display: 'grid' as const,
-    transition: 'grid-template-rows 0.3s ease, opacity 0.25s ease',
-  },
   rowList: {
-    display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: '10px',
+    isolation: 'isolate' as const,
   },
 };
