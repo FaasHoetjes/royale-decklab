@@ -75,7 +75,7 @@ export default function BestDeckRow({ deck, name, theme, isMobile, lazyLoad }: B
           link={deckLink}
           isMobile
           className="mobile-touch-target"
-          style={{ ...styles.openInGameFull, color: theme.accent }}
+          style={{ ...styles.openInGameFull, color: theme.text.primary, borderColor: theme.borderStrong }}
           label="Open in Clash Royale"
         />
       </div>
@@ -198,13 +198,16 @@ const styles = {
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    gap: '8px',
-    padding: '11px 12px',
+    gap: '7px',
+    boxSizing: 'border-box' as const,
+    height: '36px',
+    padding: '0 14px',
     borderRadius: '10px',
-    border: '1px solid var(--row-border)',
-    backgroundColor: 'var(--raised-bg)',
+    border: '1px solid',
+    backgroundColor: 'transparent',
     fontSize: '13px',
     fontWeight: 600 as const,
+    whiteSpace: 'nowrap' as const,
     textDecoration: 'none',
   },
 };
