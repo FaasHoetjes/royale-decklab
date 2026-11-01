@@ -155,7 +155,8 @@ export default function WarDeckBuilder() {
   }, [builderCards]);
 
   const scoreInput = useMemo(() => ({ cards: scoreCards, decks: board.decks }), [scoreCards, board.decks]);
-  const debouncedInput = useDebouncedValue(scoreInput, 300);
+  // On a phone every change is a separate tap, so there's no burst of edits worth waiting out.
+  const debouncedInput = useDebouncedValue(scoreInput, isMobile ? 0 : 300);
   const scoreQuery = useDeckScores(
     debouncedInput.cards,
     debouncedInput.decks,

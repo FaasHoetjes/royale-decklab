@@ -8,5 +8,5 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
     return () => clearTimeout(timer);
   }, [value, delayMs]);
 
-  return debounced;
+  return delayMs > 0 ? debounced : value;
 }
