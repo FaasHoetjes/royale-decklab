@@ -22,6 +22,7 @@ export default function Footer() {
 
 const styles = {
   footer: {
+    position: 'relative' as const,
     padding: '24px 16px 16px',
     fontSize: '12px',
     lineHeight: 1.5,

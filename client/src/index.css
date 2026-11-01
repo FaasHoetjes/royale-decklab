@@ -292,6 +292,23 @@ input:disabled {
   to { transform: none; opacity: 1; }
 }
 
+.card-wall {
+  animation: card-wall-in 0.8s ease both;
+}
+.card-wall-column {
+  animation: card-wall-drift 60s linear infinite;
+}
+
+@keyframes card-wall-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes card-wall-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
 @keyframes drawer-fade {
   from { background-color: rgba(0, 0, 0, 0); }
   to { background-color: rgba(0, 0, 0, 0.5); }
@@ -447,7 +464,9 @@ input:disabled {
     animation: none;
     transition: none;
   }
-  .ua-float {
+  .ua-float,
+  .card-wall,
+  .card-wall-column {
     animation: none;
   }
   .skeleton {
