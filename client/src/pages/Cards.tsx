@@ -188,7 +188,7 @@ function TileStats({ theme, stat }: { theme: Theme; stat: CardStat }) {
     <div style={styles.tileStats}>
       <span style={{ ...styles.winRate, color: theme.text.primary }}>{percent(stat.winRate)}</span>
       <span style={styles.changeLine}>
-        <WinRateChange stat={stat} size={11.5} />
+        <WinRateChange stat={stat} />
       </span>
       <span style={{ ...styles.playRate, color: theme.text.secondary }}>{percent(stat.playRate)} play</span>
     </div>
@@ -347,7 +347,7 @@ const styles = {
     lineHeight: 1.2,
   },
   changeLine: {
-    minHeight: '15px',
+    minHeight: '17px',
   },
   playRate: {
     fontSize: '11.5px',

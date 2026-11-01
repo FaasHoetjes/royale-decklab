@@ -101,7 +101,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
   const statTiles = stat && stats && (
     <div style={{ ...styles.tiles, ...(isMobile ? styles.tilesMobile : {}) }}>
       <StatTile theme={theme} value={percent(stat.winRate)} label="win rate">
-        <WinRateChange stat={stat} long={!isMobile} />
+        <WinRateChange stat={stat} large showPrevious />
       </StatTile>
       <StatTile theme={theme} value={percent(stat.playRate)} label="play rate">
         {playRank && <span style={{ color: theme.text.secondary }}>#{playRank} most played</span>}
