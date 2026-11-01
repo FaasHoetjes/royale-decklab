@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
-import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
 import Tweened from '../components/Tweened';
@@ -154,13 +153,10 @@ export default function WarDeckBuilder() {
       }));
   }, [builderCards]);
 
-  const scoreInput = useMemo(() => ({ cards: scoreCards, decks: board.decks }), [scoreCards, board.decks]);
-  // On a phone every change is a separate tap, so there's no burst of edits worth waiting out.
-  const debouncedInput = useDebouncedValue(scoreInput, isMobile ? 0 : 300);
   const scoreQuery = useDeckScores(
-    debouncedInput.cards,
-    debouncedInput.decks,
-    debouncedInput.cards.length > 0 && debouncedInput.decks.some((deck) => deck.some((id) => id != null))
+    scoreCards,
+    board.decks,
+    scoreCards.length > 0 && board.decks.some((deck) => deck.some((id) => id != null))
   );
 
   const scores = board.usedIds.size > 0 ? scoreQuery.data ?? null : null;
