@@ -65,6 +65,7 @@ export default function Cards() {
 
   const failed = catalog.isError || statsQuery.isError;
   const loading = !failed && (!catalog.data || !stats);
+  const gamesPeriod = stats?.isLastPatch ? 'last patch' : stats?.since ? 'this patch' : 'in the last 30 days';
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -159,7 +160,7 @@ export default function Cards() {
             const rough = isLowSample(stat, stats.battles);
             return (
               <CardLink key={card.id} name={card.name}>
-                <div style={{ opacity: rough ? 0.55 : 1 }} title={rough ? `${card.name}: only ${stat.games.toLocaleString('en-US')} games, so its win rate is rough` : undefined}>
+                <div style={{ opacity: rough ? 0.55 : 1 }} title={rough ? `Rarely played: only ${stat.games.toLocaleString('en-US')} games ${gamesPeriod}, too few for a reliable win rate.` : undefined}>
                   <CardTile
                     name={card.name}
                     iconUrl={cardIconUrl(card.iconUrls, mostPlayedVersion(stat))}
