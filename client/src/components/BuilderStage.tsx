@@ -159,7 +159,7 @@ const BuilderStage = forwardRef<HTMLDivElement, BuilderStageProps>(function Buil
                 onClick={() => board.resetDeck(deckIndex)}
                 style={{ ...styles.outlineButton, color: theme.text.primary, borderColor: theme.borderStrong }}
               >
-                <TrashIcon size={13} />
+                <TrashIcon size={isMobile ? 18 : 13} />
                 Clear deck
               </button>
             </div>

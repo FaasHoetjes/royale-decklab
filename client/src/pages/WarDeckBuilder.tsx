@@ -290,7 +290,7 @@ export default function WarDeckBuilder() {
                 borderColor: theme.borderStrong,
               }}
             >
-              <TrashIcon size={13} />
+              <TrashIcon size={isMobile ? 24 : 13} />
               {!isMobile && 'Clear all'}
             </button>
           )}
