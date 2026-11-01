@@ -231,7 +231,8 @@ if (app.Environment.IsDevelopment())
 }
 app.UseRateLimiter();
 
-app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
+// Uptime monitors probe with HEAD, which MapGet alone leaves to the SPA fallback and its 404.
+app.MapMethods("/healthz", ["GET", "HEAD"], () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
 
 app.MapGet("/.well-known/security.txt", () => Results.Text(
     """
