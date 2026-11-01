@@ -13,17 +13,27 @@ import CardLink from '../components/CardLink';
 import WinRateChange from '../components/WinRateChange';
 import FilterPopover from '../components/FilterPopover';
 import LoadError from '../components/LoadError';
+import InfoTip from '../components/InfoTip';
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
+const battlesIn = (stats: CardStatsResponse) => `${stats.battles.toLocaleString('en-US')} battles in the top 100 war clans`;
+const patchSpan = (since: string | null, until: string) => (since ? `${shortDate(since)} to ${shortDate(until)}` : `up to ${shortDate(until)}`);
+
 /** Which battles the numbers come from, in a sentence. */
 export function periodNote(stats: CardStatsResponse): string {
-  const battles = `${stats.battles.toLocaleString('en-US')} battles in the top 100 war clans`;
   if (stats.isLastPatch && stats.until) {
-    const span = stats.since ? `${shortDate(stats.since)} to ${shortDate(stats.until)}` : `up to ${shortDate(stats.until)}`;
-    return `How every card did in Clan War last patch, from ${battles} (${span}). The new season's war battles aren't in yet.`;
+    return `How every card did in Clan War last patch, from ${battlesIn(stats)} (${patchSpan(stats.since, stats.until)}). The new season's war battles aren't in yet.`;
   }
-  return `How every card does in Clan War, from ${battles} ${stats.since ? `since the ${shortDate(stats.since)} patch` : 'over the last 30 days'}.`;
+  return `How every card does in Clan War, from ${battlesIn(stats)} ${stats.since ? `since the ${shortDate(stats.since)} patch` : 'over the last 30 days'}.`;
+}
+
+/** Which battles the numbers come from, for the info tip in the page intro. */
+function sourceNote(stats: CardStatsResponse): string {
+  if (stats.isLastPatch && stats.until) {
+    return `From ${battlesIn(stats)} last patch (${patchSpan(stats.since, stats.until)}). The new season's war battles aren't in yet.`;
+  }
+  return `From ${battlesIn(stats)} ${stats.since ? `since the ${shortDate(stats.since)} patch` : 'over the last 30 days'}.`;
 }
 
 export default function Cards() {
@@ -72,7 +82,21 @@ export default function Cards() {
       <div style={{ marginBottom: isMobile ? '14px' : '20px' }}>
         {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Cards</h2>}
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
-          {stats ? periodNote(stats) : 'How every card does in Clan War.'}
+          {!stats ? (
+            'How every card does in Clan War.'
+          ) : isMobile ? (
+            <>
+              {stats.isLastPatch ? 'How every card did in Clan War last patch.' : 'How every card does in Clan War.'}
+              <span style={styles.sourceTip}>
+                <InfoTip ariaLabel="Which battles these numbers come from" color={theme.text.secondary} width={250} placement="bottom">
+                  {sourceNote(stats)}
+                </InfoTip>
+              </span>
+            </>
+          ) : (
+            periodNote(stats)
+          )}
+          <span style={{ display: 'block' }}>{isMobile ? 'Tap' : 'Click'} a card for its detailed stats.</span>
         </p>
       </div>
 
@@ -250,6 +274,11 @@ const styles = {
     lineHeight: 1.5,
     margin: '8px 0 0',
     maxWidth: '760px',
+  },
+  sourceTip: {
+    display: 'inline-flex' as const,
+    verticalAlign: '-2px',
+    marginLeft: '6px',
   },
   controls: {
     display: 'flex' as const,
