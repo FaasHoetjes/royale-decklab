@@ -1,5 +1,6 @@
 import type { CardStat } from '../api';
 import { percent } from '../lib/cardStats';
+import InfoTip from './InfoTip';
 
 function explain(stat: CardStat): string {
   const chance = stat.changeMargin != null ? ` With this many games, chance alone can move a win rate by up to ${percent(stat.changeMargin)}.` : '';
@@ -8,13 +9,21 @@ function explain(stat: CardStat): string {
     : `Win rate change since the last patch, but too few games played to call it a trend.${chance}`;
 }
 
-/** The win rate change since the last patch as a pill: green up, red down, grey when there are too few games to tell. */
+function withinChance(stat: CardStat, change: number): string {
+  const margin = stat.changeMargin != null ? `by up to ${percent(stat.changeMargin)}` : 'this much';
+  return `${change >= 0 ? 'Up' : 'Down'} ${percent(Math.abs(change))} since last patch, but at this many games chance alone can move a win rate ${margin}, so treat it as unchanged.`;
+}
+
+/**
+ * The win rate change since the last patch as a pill: green up, red down, grey when chance alone could explain it.
+ * `detailed` adds an info tip to a grey pill saying so.
+ */
 export default function WinRateChange({ stat, large = false, detailed = false }: { stat: CardStat; large?: boolean; detailed?: boolean }) {
   if (stat.winRateChange == null) return null;
   const up = stat.winRateChange >= 0;
   const color = !stat.changeIsClear ? 'var(--text-tertiary)' : up ? 'var(--up)' : 'var(--down)';
   return (
-    <span title={explain(stat)} style={styles.wrap}>
+    <span title={detailed ? undefined : explain(stat)} style={styles.wrap}>
       <span
         style={{
           ...styles.pill,
@@ -36,8 +45,11 @@ export default function WinRateChange({ stat, large = false, detailed = false }:
         <span style={styles.srOnly}>{up ? 'up' : 'down'} </span>
         {percent(Math.abs(stat.winRateChange))}
       </span>
-      {detailed && stat.previousWinRate != null && <span style={styles.previous}>from {percent(stat.previousWinRate)}</span>}
-      {detailed && !stat.changeIsClear && <span style={{ ...styles.previous, whiteSpace: 'normal' }}>too few games to tell</span>}
+      {detailed && !stat.changeIsClear && (
+        <InfoTip ariaLabel="What the grey change means" color="var(--text-secondary)" width={250} placement="bottom">
+          {withinChance(stat, stat.winRateChange)}
+        </InfoTip>
+      )}
     </span>
   );
 }
@@ -68,13 +80,6 @@ const styles = {
   },
   arrow: {
     flexShrink: 0,
-  },
-  previous: {
-    color: 'var(--text-secondary)',
-    fontSize: '12px',
-    fontWeight: 500 as const,
-    fontVariantNumeric: 'tabular-nums' as const,
-    whiteSpace: 'nowrap' as const,
   },
   srOnly: {
     position: 'absolute' as const,
