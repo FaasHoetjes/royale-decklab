@@ -65,7 +65,7 @@ export default function PickerControls({
         style={{
           ...styles.searchInput,
           ...(wideSearch && { flex: 1, width: 'auto', minWidth: 0 }),
-          ...(isMobile ? { flex: '1 1 100%', width: 'auto', minWidth: 0 } : {}),
+          ...(isMobile ? { flex: '1 1 100%', width: 'auto', minWidth: 0, fontSize: '16px' } : {}),
           backgroundColor: theme.control.bg,
           color: theme.control.text,
           border: `1px solid ${theme.control.border}`,

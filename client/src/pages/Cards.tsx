@@ -112,7 +112,7 @@ export default function Cards() {
             aria-label="Search cards by name"
             style={{
               ...styles.search,
-              ...(isMobile ? { flex: 1, width: 'auto', minWidth: 0 } : {}),
+              ...(isMobile ? { flex: 1, width: 'auto', minWidth: 0, fontSize: '16px' } : {}),
               backgroundColor: theme.control.bg,
               color: theme.control.text,
               border: `1px solid ${theme.control.border}`,
