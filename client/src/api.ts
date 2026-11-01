@@ -167,7 +167,9 @@ export interface CardStat {
   previousWinRate: number | null;
   previousPlayRate: number | null;
   winRateChange: number | null;
-  /** The change is bigger than two standard errors. */
+  /** How far chance alone could move the win rate with this many games (two standard errors). */
+  changeMargin: number | null;
+  /** The change is bigger than the margin. */
   changeIsClear: boolean;
 }
 

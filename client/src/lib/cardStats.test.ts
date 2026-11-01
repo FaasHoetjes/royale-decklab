@@ -16,6 +16,7 @@ function stat(id: number, winRate: number, games: number, winRateChange: number 
     previousWinRate: null,
     previousPlayRate: null,
     winRateChange,
+    changeMargin: null,
     changeIsClear: false,
   };
 }

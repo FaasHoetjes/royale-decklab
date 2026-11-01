@@ -1,15 +1,20 @@
 import type { CardStat } from '../api';
 import { percent } from '../lib/cardStats';
 
-const NOISE_NOTE = 'Win rate change since the last patch. Grey means it is too small to tell apart from chance.';
+function explain(stat: CardStat): string {
+  const chance = stat.changeMargin != null ? ` With this many games, chance alone can move a win rate by up to ${percent(stat.changeMargin)}.` : '';
+  return stat.changeIsClear
+    ? `Win rate change since the last patch, bigger than chance would explain.${chance}`
+    : `Win rate change since the last patch, but too few games to tell if it really changed.${chance}`;
+}
 
-/** The win rate change since the last patch as a pill: green up, red down, grey when it is within the noise. */
-export default function WinRateChange({ stat, large = false, showPrevious = false }: { stat: CardStat; large?: boolean; showPrevious?: boolean }) {
+/** The win rate change since the last patch as a pill: green up, red down, grey when there are too few games to tell. */
+export default function WinRateChange({ stat, large = false, detailed = false }: { stat: CardStat; large?: boolean; detailed?: boolean }) {
   if (stat.winRateChange == null) return null;
   const up = stat.winRateChange >= 0;
   const color = !stat.changeIsClear ? 'var(--text-tertiary)' : up ? 'var(--up)' : 'var(--down)';
   return (
-    <span title={NOISE_NOTE} style={styles.wrap}>
+    <span title={explain(stat)} style={styles.wrap}>
       <span
         style={{
           ...styles.pill,
@@ -31,9 +36,8 @@ export default function WinRateChange({ stat, large = false, showPrevious = fals
         <span style={styles.srOnly}>{up ? 'up' : 'down'} </span>
         {percent(Math.abs(stat.winRateChange))}
       </span>
-      {showPrevious && stat.previousWinRate != null && (
-        <span style={styles.previous}>from {percent(stat.previousWinRate)}</span>
-      )}
+      {detailed && stat.previousWinRate != null && <span style={styles.previous}>from {percent(stat.previousWinRate)}</span>}
+      {detailed && !stat.changeIsClear && <span style={{ ...styles.previous, whiteSpace: 'normal' }}>too few games to tell</span>}
     </span>
   );
 }

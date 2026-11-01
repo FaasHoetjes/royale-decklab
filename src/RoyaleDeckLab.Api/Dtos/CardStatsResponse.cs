@@ -11,7 +11,10 @@ public sealed record CardStatsResponse(
     bool IsLastPatch,
     IReadOnlyList<CardStat> Cards);
 
-/// <summary>Win rate change since the last patch is only set when both patches have enough games; <see cref="ChangeIsClear"/> means it is bigger than the noise.</summary>
+/// <summary>
+/// Win rate change since the last patch is only set when both patches have enough games. <see cref="ChangeMargin"/> is how far
+/// chance alone could move it with this many games, and <see cref="ChangeIsClear"/> means the change is bigger than that.
+/// </summary>
 public sealed record CardStat(
     int Id,
     int Games,
@@ -23,4 +26,5 @@ public sealed record CardStat(
     double? PreviousWinRate,
     double? PreviousPlayRate,
     double? WinRateChange,
+    double? ChangeMargin,
     bool ChangeIsClear);

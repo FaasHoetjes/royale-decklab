@@ -102,6 +102,7 @@ public sealed class CardPeriodsTests
 
         var card = Assert.Single(stats.Cards);
         Assert.Equal(0.02, card.WinRateChange!.Value, 10);
+        Assert.Equal(0.0141, card.ChangeMargin!.Value, 4);
         Assert.True(card.ChangeIsClear);
         Assert.Equal(0.5, card.PreviousWinRate!.Value, 10);
         Assert.Equal(0.2, card.PreviousPlayRate!.Value, 10);
@@ -118,6 +119,7 @@ public sealed class CardPeriodsTests
 
         var card = Assert.Single(stats.Cards);
         Assert.Equal(0.02, card.WinRateChange!.Value, 10);
+        Assert.Equal(0.0707, card.ChangeMargin!.Value, 4);
         Assert.False(card.ChangeIsClear);
     }
 
@@ -130,6 +132,7 @@ public sealed class CardPeriodsTests
 
         var card = Assert.Single(stats.Cards);
         Assert.Null(card.WinRateChange);
+        Assert.Null(card.ChangeMargin);
         Assert.False(card.ChangeIsClear);
         Assert.NotNull(card.PreviousWinRate);
     }

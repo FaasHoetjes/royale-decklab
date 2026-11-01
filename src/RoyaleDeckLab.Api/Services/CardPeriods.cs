@@ -99,13 +99,12 @@ public static class CardPeriods
         var winRate = card.Wins / card.Games;
         double? previousWinRate = before is { Games: > 0 } ? before.Wins / before.Games : null;
         double? change = null;
-        var clear = false;
+        double? margin = null;
         if (previousWinRate is { } p0 && card.Games >= MinGamesForChange && before!.Games >= MinGamesForChange)
         {
             change = winRate - p0;
             // Two standard errors of the difference between two independent win rates.
-            var se = Math.Sqrt(winRate * (1 - winRate) / card.Games + p0 * (1 - p0) / before.Games);
-            clear = Math.Abs(change.Value) >= 2 * se;
+            margin = 2 * Math.Sqrt(winRate * (1 - winRate) / card.Games + p0 * (1 - p0) / before.Games);
         }
 
         return new CardStat(
@@ -119,7 +118,8 @@ public static class CardPeriods
             PreviousWinRate: previousWinRate,
             PreviousPlayRate: before is not null && battlesBefore > 0 ? (double)before.Games / battlesBefore : null,
             WinRateChange: change,
-            ChangeIsClear: clear);
+            ChangeMargin: margin,
+            ChangeIsClear: change is { } c && Math.Abs(c) >= margin);
     }
 
     private static string? IsoOrNull(long ms) => ms > 0 ? MetaCache.IsoMs(ms) : null;

@@ -82,6 +82,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
   ].filter(Boolean);
 
   const rough = stat && stats ? isLowSample(stat, stats.battles) : false;
+  const comparing = stats?.cards.some((s) => s.winRateChange != null) ?? false;
   const winRank = ranks?.winRank.get(card.id);
   const playRank = ranks?.playRank.get(card.id);
 
@@ -101,7 +102,15 @@ function CardDetails({ card }: { card: CatalogCard }) {
   const statTiles = stat && stats && (
     <div style={{ ...styles.tiles, ...(isMobile ? styles.tilesMobile : {}) }}>
       <StatTile theme={theme} value={percent(stat.winRate)} label="win rate">
-        <WinRateChange stat={stat} large showPrevious />
+        {stat.winRateChange != null ? (
+          <WinRateChange stat={stat} large detailed />
+        ) : (
+          comparing && (
+            <span style={{ color: theme.text.secondary, fontWeight: 500 }}>
+              {stat.previousGames === 0 ? 'Not played last patch' : 'Too few games to compare with last patch'}
+            </span>
+          )
+        )}
       </StatTile>
       <StatTile theme={theme} value={percent(stat.playRate)} label="play rate">
         {playRank && <span style={{ color: theme.text.secondary }}>#{playRank} most played</span>}
