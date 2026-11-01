@@ -85,7 +85,7 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
             fetchPriority="high"
           />
           <div style={{ minWidth: 0 }}>
-            <div style={{ ...styles.over, color: theme.text.tertiary }}>If you upgrade</div>
+            <div style={{ ...styles.over, color: theme.text.tertiary }}>{s.kind === 'level' ? 'If you upgrade' : 'If you unlock'}</div>
             <div style={{ ...styles.name, fontSize: isMobile ? '16px' : '19px', color: theme.text.primary }}>
               {s.name} · {upgradeStep(s)}
             </div>
