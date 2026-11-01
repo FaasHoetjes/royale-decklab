@@ -283,7 +283,7 @@ if (File.Exists(spaIndex))
 
         var path = ctx.Request.Path.Value;
         var cards = SpaPages.IsCardPath(path) ? await CardsOrEmpty(catalog, ctx.RequestAborted) : [];
-        var page = SpaPages.Resolve(path, cards, meta.CardStats.Cards);
+        var page = SpaPages.Resolve(path, cards, meta.CardStats.Cards, DateTimeOffset.UtcNow);
         if (page.NoIndex)
         {
             ctx.Response.Headers["X-Robots-Tag"] = "noindex";

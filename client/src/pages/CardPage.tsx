@@ -104,11 +104,13 @@ function CardDetails({ card }: { card: CatalogCard }) {
   const deckNames = useMemo(() => distinctDeckNames((decksQuery.data?.decks ?? []).map((d) => d.cards)), [decksQuery.data]);
 
   useEffect(() => {
-    document.title = `${card.name} · Cards · ${SITE_NAME}`;
-    const numbers = stat ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} play rate, ` : '';
+    document.title = `Best ${card.name} War Decks & Win Rate · ${SITE_NAME}`;
+    const numbers = stat
+      ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} play rate and its change`
+      : 'its win rate, play rate and change';
     document
       .querySelector('meta[name="description"]')
-      ?.setAttribute('content', `${card.name} in Clash Royale Clan War: ${numbers}its change since the last balance update and its best war decks.`);
+      ?.setAttribute('content', `The best ${card.name} decks for Clash Royale Clan War, ranked on real war battles: ${numbers} since the last balance update.`);
   }, [card.name, stat]);
 
   const versions = specialVersions(card.maxEvolutionLevel);

@@ -7,6 +7,8 @@ export interface NavItem {
   label: string;
   /** A shorter label for the phone's tab bar. */
   tab: string;
+  /** The browser tab's and search result's title, worded the way people search; defaults to the label. */
+  title?: string;
   /** The page's meta description, for search results. */
   description: string;
   end: boolean;
@@ -36,6 +38,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       to: '/best-decks',
       label: 'Best War Decks',
       tab: 'Best decks',
+      title: `Best Clash Royale War Decks (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`,
       description: 'The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.',
       end: false,
       icon: <TrophyIcon />,
@@ -44,6 +47,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       to: '/cards',
       label: 'Cards',
       tab: 'Cards',
+      title: 'Clash Royale Card Win Rates in Clan War',
       description: 'How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.',
       end: false,
       icon: <CardsIcon />,
@@ -52,6 +56,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       to: '/builder',
       label: 'War Deck Builder',
       tab: 'Builder',
+      title: 'Clash Royale War Deck Builder',
       description: 'Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta.',
       end: false,
       icon: <GridIcon />,
@@ -60,6 +65,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       to: '/upgrades',
       label: 'Upgrade Advisor',
       tab: 'Upgrades',
+      title: 'What to Upgrade Next in Clash Royale',
       description: 'Find the card upgrade that raises your Clash Royale war lineup the most.',
       end: false,
       icon: <TrendingUpIcon />,
@@ -89,6 +95,6 @@ export function documentMeta(pathname: string, items: NavItem[], isPlayerPage: b
   if (pathname === '/') return { title: `${SITE_NAME}: your best Clash Royale war decks`, description: SITE_DESCRIPTION };
   const item = pageItem(pathname, items) ?? (isPlayerPage ? items[0] : undefined);
   return item
-    ? { title: `${item.label} · ${SITE_NAME}`, description: item.description }
+    ? { title: `${item.title ?? item.label} · ${SITE_NAME}`, description: item.description }
     : { title: SITE_NAME, description: SITE_DESCRIPTION };
 }

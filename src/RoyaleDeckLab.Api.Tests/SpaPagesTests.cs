@@ -14,7 +14,9 @@ public sealed class SpaPagesTests
 
     private static readonly CardStat[] Stats = [new(1, 500, 0.5234, 0.081, 0, 0, 0, null, null, null, null, false)];
 
-    private static SpaPage Resolve(string path) => SpaPages.Resolve(path, Cards, Stats);
+    private static readonly DateTimeOffset Now = new(2026, 11, 1, 12, 0, 0, TimeSpan.Zero);
+
+    private static SpaPage Resolve(string path) => SpaPages.Resolve(path, Cards, Stats, Now);
 
     [Theory]
     [InlineData("/", "/")]
@@ -50,15 +52,21 @@ public sealed class SpaPagesTests
 
     [Fact]
     public void CardPage_WithoutACatalog_IsStillServed()
-        => Assert.Equal(200, SpaPages.Resolve("/cards/anything", [], []).StatusCode);
+        => Assert.Equal(200, SpaPages.Resolve("/cards/anything", [], [], Now).StatusCode);
 
     [Fact]
     public void CardPage_NamesTheCardAndItsNumbers()
     {
         var page = Resolve("/cards/mega-knight");
-        Assert.Equal("Mega Knight · Cards · Royale DeckLab", page.Title);
-        Assert.StartsWith("Mega Knight in Clash Royale Clan War: 52.3% win rate, 8.1% play rate, ", page.Description);
+        Assert.Equal("Best Mega Knight War Decks & Win Rate · Royale DeckLab", page.Title);
+        Assert.Equal(
+            "The best Mega Knight decks for Clash Royale Clan War, ranked on real war battles: 52.3% win rate, 8.1% play rate and its change since the last balance update.",
+            page.Description);
     }
+
+    [Fact]
+    public void BestDecks_NamesTheCurrentMonth()
+        => Assert.Equal("Best Clash Royale War Decks (November 2026) · Royale DeckLab", Resolve("/best-decks").Title);
 
     [Theory]
     [InlineData("Mini P.E.K.K.A", "mini-pekka")]
@@ -72,9 +80,9 @@ public sealed class SpaPagesTests
     {
         var html = SpaPages.Render(File.ReadAllText(IndexHtmlPath()), Resolve("/cards/mega-knight"));
 
-        Assert.Contains("<title>Mega Knight &#183; Cards &#183; Royale DeckLab</title>", html);
-        Assert.Equal(2, Count(html, "content=\"Mega Knight &#183; Cards &#183; Royale DeckLab\""));
-        Assert.Equal(3, Count(html, "content=\"Mega Knight in Clash Royale Clan War: 52.3% win rate"));
+        Assert.Contains("<title>Best Mega Knight War Decks &amp; Win Rate &#183; Royale DeckLab</title>", html);
+        Assert.Equal(2, Count(html, "content=\"Best Mega Knight War Decks &amp; Win Rate &#183; Royale DeckLab\""));
+        Assert.Equal(3, Count(html, "content=\"The best Mega Knight decks for Clash Royale Clan War, ranked on real war battles: 52.3% win rate"));
         Assert.Contains("<meta property=\"og:url\" content=\"https://royaledecklab.com/cards/mega-knight\" />", html);
         Assert.Contains("<link rel=\"canonical\" href=\"https://royaledecklab.com/cards/mega-knight\" />", html);
         Assert.Contains("<meta property=\"og:site_name\" content=\"Royale DeckLab\" />", html);
