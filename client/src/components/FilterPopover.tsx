@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { Theme } from '../theme';
 import { FILTER_OPTIONS, type FilterKey } from '../lib/pickerData';
 
@@ -10,7 +11,24 @@ interface FilterPopoverProps {
   align?: 'left' | 'right';
 }
 
+/**
+ * While the menu is open the page keeps the tallest height it had. A filter that leaves only a few cards would
+ * otherwise make it shorter than the screen, and the browser scrolling back up would slide the menu down under the
+ * next tap, which then lands on the option above the one aimed at.
+ */
+function holdPageHeight() {
+  const root = document.documentElement;
+  root.style.minHeight = `${root.scrollHeight}px`;
+}
+
 export default function FilterPopover({ filters, onToggle, onClear, onClose, theme, align = 'right' }: FilterPopoverProps) {
+  useEffect(
+    () => () => {
+      document.documentElement.style.minHeight = '';
+    },
+    []
+  );
+
   return (
     <>
       <div style={styles.backdrop} onClick={onClose} />
@@ -21,7 +39,10 @@ export default function FilterPopover({ filters, onToggle, onClear, onClose, the
             <button
               className="picker-filter-option mobile-touch-target"
               key={opt.key}
-              onClick={() => onToggle(opt.key)}
+              onClick={() => {
+                holdPageHeight();
+                onToggle(opt.key);
+              }}
               style={{ ...styles.option, color: theme.text.primary }}
               role="menuitemcheckbox"
               aria-checked={on}
