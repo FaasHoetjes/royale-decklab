@@ -6,7 +6,6 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { GridIcon, SearchIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
 import Fold from '../components/Fold';
 import { faqItems, type FaqPage } from './faqContent';
-import { pageHeading } from '../components/navItems';
 
 // Pages behind a player tag send visitors without one to the tag search instead.
 function pageLink(page: FaqPage, playerTag: string | null): { to: string; label: string; icon: ReactNode } {
@@ -46,7 +45,7 @@ export default function Faq() {
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
       {isMobile ? (
-        <h1 className="visually-hidden">{pageHeading('/faq')}</h1>
+        <h1 className="visually-hidden">FAQ</h1>
       ) : (
         <div
           style={{
@@ -56,7 +55,7 @@ export default function Faq() {
             paddingBottom: '20px',
           }}
         >
-          <h1 style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>{pageHeading('/faq')}</h1>
+          <h1 style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>FAQ</h1>
         </div>
       )}
 

@@ -22,7 +22,6 @@ import {
   type DeckState,
   type SlotVersionMap,
 } from '../lib/deckBoard';
-import { pageHeading } from '../components/navItems';
 
 const deckKey = (cardIds: number[]) => [...cardIds].sort((a, b) => a - b).join(',');
 // A set is remembered by its decks, not its rank, so it stays folded when the ranking shifts.
@@ -117,7 +116,7 @@ export default function BestWarDecks() {
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
       <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
-        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>{pageHeading('/best-decks')}</h1>
+        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Best War Deck Sets</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           The strongest four deck war sets in the current meta. Assumes a maxed collection with all Evolutions and Heroes.
         </p>

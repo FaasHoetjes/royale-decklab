@@ -14,7 +14,6 @@ import WinRateChange from '../components/WinRateChange';
 import FilterPopover from '../components/FilterPopover';
 import LoadError from '../components/LoadError';
 import InfoTip from '../components/InfoTip';
-import { pageHeading } from '../components/navItems';
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
@@ -81,7 +80,7 @@ export default function Cards() {
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
       <div style={{ marginBottom: isMobile ? '14px' : '20px' }}>
-        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>{pageHeading('/cards')}</h1>
+        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Cards</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           {!stats ? (
             'How every card does in Clan War.'

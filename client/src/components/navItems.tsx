@@ -83,12 +83,6 @@ export const FAQ_ITEM: NavItem = {
   icon: <HelpIcon />,
 };
 
-/** A page's h1, worded like its title so it matches what people search; the server's copy is in SpaPages.cs. */
-export function pageHeading(to: string): string {
-  const item = [...toolItems(null), FAQ_ITEM].find((i) => i.to === to);
-  return item?.title ?? item?.label ?? SITE_NAME;
-}
-
 function pageItem(pathname: string, items: NavItem[]): NavItem | undefined {
   return [...items, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
 }

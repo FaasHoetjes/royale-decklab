@@ -64,7 +64,7 @@ public sealed class SpaContentTests
     [Fact]
     public void CardsPage_LinksEveryCardMostPlayedFirst()
     {
-        var html = SpaContent.Cards("Clash Royale Card Win Rates in Clan War", [MiniPekka, MegaKnight], Stats);
+        var html = SpaContent.Cards("Cards", [MiniPekka, MegaKnight], Stats);
 
         Assert.Contains("<tr><td><a href=\"/cards/mega-knight\">Mega Knight</a></td><td>52.3%</td><td>8.1%</td></tr>", html);
         Assert.Contains("<tr><td><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a></td><td>–</td><td>–</td></tr>", html);
@@ -99,7 +99,7 @@ public sealed class SpaContentTests
         var html = SpaPages.Render(File.ReadAllText(IndexHtmlPath()), page with { Body = SpaContent.Faq(page.Heading!, "<h2>Q</h2>") });
 
         Assert.Contains("<div id=\"root\"><div id=\"prerender\">", html);
-        Assert.Contains("<h1>Clash Royale War Deck FAQ</h1><h2>Q</h2>", html);
+        Assert.Contains("<h1>FAQ</h1><h2>Q</h2>", html);
     }
 
     [Fact]
@@ -111,10 +111,10 @@ public sealed class SpaContentTests
 
     [Theory]
     [InlineData("/", "Royale DeckLab")]
-    [InlineData("/best-decks", "Best Clash Royale War Decks (January 1970)")]
-    [InlineData("/cards", "Clash Royale Card Win Rates in Clan War")]
-    [InlineData("/faq", "Clash Royale War Deck FAQ")]
-    public void Pages_HeadTheirContentWithTheirSearchTitle(string path, string heading)
+    [InlineData("/best-decks", "Best War Deck Sets")]
+    [InlineData("/cards", "Cards")]
+    [InlineData("/faq", "FAQ")]
+    public void Pages_HeadTheirContentLikeTheApp(string path, string heading)
         => Assert.Equal(heading, SpaPages.Resolve(path, [], [], DateTimeOffset.UnixEpoch).Heading);
 
     [Fact]
