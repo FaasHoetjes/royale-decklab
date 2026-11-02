@@ -116,7 +116,7 @@ export default function BestWarDecks() {
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
       <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
-        {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Best War Deck Sets</h2>}
+        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Best War Deck Sets</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           The strongest four deck war sets in the current meta. Assumes a maxed collection with all Evolutions and Heroes.
         </p>

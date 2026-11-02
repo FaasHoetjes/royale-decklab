@@ -77,6 +77,7 @@ export const FAQ_ITEM: NavItem = {
   to: '/faq',
   label: 'FAQ',
   tab: 'FAQ',
+  title: 'Clash Royale War Deck FAQ',
   description: 'How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.',
   end: false,
   icon: <HelpIcon />,

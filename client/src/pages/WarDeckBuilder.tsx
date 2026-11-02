@@ -252,7 +252,7 @@ export default function WarDeckBuilder() {
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
       <div style={{ ...styles.header, marginBottom: isMobile ? '14px' : '22px' }}>
         <div style={{ minWidth: 0 }}>
-          {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>War Deck Builder</h2>}
+          <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>War Deck Builder</h1>
           <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
             Build four war decks that don't share a card.
           </p>

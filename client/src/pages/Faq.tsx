@@ -44,7 +44,9 @@ export default function Faq() {
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      {!isMobile && (
+      {isMobile ? (
+        <h1 className="visually-hidden">FAQ</h1>
+      ) : (
         <div
           style={{
             ...styles.header,
@@ -53,7 +55,7 @@ export default function Faq() {
             paddingBottom: '20px',
           }}
         >
-          <h2 style={{ color: theme.text.primary, margin: 0 }}>FAQ</h2>
+          <h1 style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>FAQ</h1>
         </div>
       )}
 
