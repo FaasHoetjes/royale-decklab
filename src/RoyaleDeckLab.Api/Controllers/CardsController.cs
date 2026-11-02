@@ -11,7 +11,7 @@ public sealed class CardsController(
     BestDecksBuilder decks,
     ILogger<CardsController> logger) : ControllerBase
 {
-    private const int DecksPerCard = 5;
+    public const int DecksPerCard = 5;
 
     [HttpGet]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]

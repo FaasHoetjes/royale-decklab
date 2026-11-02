@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Configuration;
+using RoyaleDeckLab.Api.Controllers;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Options;
@@ -276,9 +277,11 @@ if (File.Exists(spaIndex))
 {
     var indexHtml = File.ReadAllText(spaIndex);
     var earlyHintLink = BuildEarlyHintLink(indexHtml);
+    var faqFile = Path.Combine(app.Environment.ContentRootPath, "prerender", "faq.html");
+    var faqHtml = File.Exists(faqFile) ? File.ReadAllText(faqFile) : null;
 
     app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-    app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta, PlayerProfileCache profiles) =>
+    app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta, PlayerProfileCache profiles, BestDecksBuilder decks, ILogger<SpaPage> logger) =>
     {
         ctx.Response.Headers.CacheControl = "no-cache";
         ctx.Response.Headers.Link = earlyHintLink;
@@ -294,6 +297,14 @@ if (File.Exists(spaIndex))
         if (page.NoIndex)
         {
             ctx.Response.Headers["X-Robots-Tag"] = "noindex";
+        }
+        try
+        {
+            page = page with { Body = await PageBody(page, catalog, meta, decks, faqHtml, ctx.RequestAborted) };
+        }
+        catch (Exception ex) when (!ctx.RequestAborted.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Couldn't write the content of {Path}", path);
         }
         return Results.Content(SpaPages.Render(indexHtml, page), "text/html; charset=utf-8", statusCode: page.StatusCode);
     });
@@ -316,6 +327,36 @@ static async Task<IReadOnlyList<CatalogCard>> CardsOrEmpty(CardCatalog catalog, 
     {
         return [];
     }
+}
+
+// Crawlers that don't run JavaScript get each page's content in its HTML; a page whose data isn't in yet still gets its heading.
+static async Task<string?> PageBody(SpaPage page, CardCatalog catalog, MetaCache meta, BestDecksBuilder decks, string? faqHtml, CancellationToken requestAborted)
+{
+    var heading = page.Heading ?? "";
+    switch (page.Content)
+    {
+        case SpaContentKind.Home: return SpaContent.Home(heading);
+        case SpaContentKind.Builder: return SpaContent.Builder(heading);
+        case SpaContentKind.Upgrades: return SpaContent.Upgrades(heading);
+        case SpaContentKind.Faq: return SpaContent.Faq(heading, faqHtml);
+    }
+    if (page.Content is not (SpaContentKind.BestDecks or SpaContentKind.Cards or SpaContentKind.Card))
+    {
+        return null;
+    }
+    var cards = await CardsOrEmpty(catalog, requestAborted);
+    var catalogById = cards.ToDictionary(c => c.Id);
+    var loaded = meta.IsLoaded && cards.Count > 0;
+    return page.Content switch
+    {
+        SpaContentKind.BestDecks => SpaContent.BestDecks(heading, loaded ? decks.BuildCached(meta.Version, meta.Meta, catalogById) : []),
+        SpaContentKind.Cards => SpaContent.Cards(heading, cards, meta.CardStats),
+        _ => SpaContent.Card(
+            page.Card!,
+            meta.CardStats.Cards.FirstOrDefault(s => s.Id == page.Card!.Id),
+            meta.IsLoaded,
+            loaded ? decks.TopDecksWith(page.Card!.Id, meta.Meta, catalogById, CardsController.DecksPerCard) : []),
+    };
 }
 
 static async Task<string?> PlayerNameOrNull(PlayerProfileCache profiles, string playerTag, CancellationToken requestAborted)

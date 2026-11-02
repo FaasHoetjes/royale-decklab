@@ -11,6 +11,7 @@ import LoadError from '../components/LoadError';
 import { classifyDeck, distinctDeckNames, featuredCard } from '../lib/archetypes';
 import { cardIconUrl, versionOf } from '../lib/cardDisplay';
 import type { UpgradeSuggestion } from '../api';
+import { pageHeading } from '../components/navItems';
 
 const INITIAL_ROWS = 10;
 
@@ -92,7 +93,7 @@ export default function UpgradeAdvisor() {
           paddingBottom: isMobile ? '14px' : '18px',
         }}
       >
-        {!isMobile && <h2 style={{ color: theme.text.primary, margin: 0 }}>Upgrade Advisor</h2>}
+        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>{pageHeading('/upgrades')}</h1>
         <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
           {data && suggestions.length > 0
             ? 'Pick an upgrade to see what it does to your war lineup.'

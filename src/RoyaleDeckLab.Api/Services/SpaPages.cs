@@ -11,7 +11,17 @@ public sealed record SpaPage(int StatusCode, string Title, string Description, s
 {
     /// <summary>The link preview image, when the page has its own instead of the site's.</summary>
     public string? ImagePath { get; init; }
+
+    /// <summary>What <see cref="SpaContent"/> writes into the page for crawlers, and the h1 it gives it.</summary>
+    public SpaContentKind Content { get; init; }
+    public string? Heading { get; init; }
+    public CatalogCard? Card { get; init; }
+
+    /// <summary>The page's content as HTML for #root, once it's been written.</summary>
+    public string? Body { get; init; }
 }
+
+public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Builder, Upgrades, Faq }
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -25,16 +35,20 @@ public static partial class SpaPages
     private const string SiteDescription = "Generate your best four Clash Royale War Decks tuned to the cards you actually own.";
     private const string CardsPath = "/cards";
 
-    private static (string Path, string Title, string Description)[] StaticPages(DateTimeOffset now) =>
+    private static (string Path, string Title, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
-        ("/best-decks", $"Best Clash Royale War Decks ({now.ToString("MMMM yyyy", CultureInfo.InvariantCulture)})", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans."),
-        (CardsPath, "Clash Royale Card Win Rates in Clan War", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks."),
-        ("/builder", "Clash Royale War Deck Builder", "Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta."),
-        ("/upgrades", "What to Upgrade Next in Clash Royale", "Find the card upgrade that raises your Clash Royale war lineup the most."),
-        ("/faq", "FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from."),
+        ("/best-decks", $"Best Clash Royale War Decks ({now.ToString("MMMM yyyy", CultureInfo.InvariantCulture)})", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.", SpaContentKind.BestDecks),
+        (CardsPath, "Clash Royale Card Win Rates in Clan War", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
+        ("/builder", "Clash Royale War Deck Builder", "Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta.", SpaContentKind.Builder),
+        ("/upgrades", "What to Upgrade Next in Clash Royale", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
+        ("/faq", "Clash Royale War Deck FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.", SpaContentKind.Faq),
     ];
 
-    private static readonly SpaPage Home = new(200, $"{SiteName}: your best Clash Royale war decks", SiteDescription, "/", false);
+    private static readonly SpaPage Home = new(200, $"{SiteName}: your best Clash Royale war decks", SiteDescription, "/", false)
+    {
+        Content = SpaContentKind.Home,
+        Heading = SiteName,
+    };
     private static readonly SpaPage NotFound = new(404, SiteName, SiteDescription, null, false);
 
     public static bool IsCardPath(string? path) => path?.StartsWith(CardsPath + "/", StringComparison.OrdinalIgnoreCase) == true;
@@ -50,7 +64,11 @@ public static partial class SpaPages
         {
             if (string.Equals(path, page.Path, StringComparison.OrdinalIgnoreCase))
             {
-                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, false);
+                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, false)
+                {
+                    Content = page.Content,
+                    Heading = page.Title,
+                };
             }
         }
         if (IsCardPath(path))
@@ -94,7 +112,7 @@ public static partial class SpaPages
         // Without a catalog the slug can't be checked, and a real card page shouldn't 404 while the API is down.
         if (cards.Count == 0)
         {
-            var (_, title, description) = StaticPages(now).First(p => p.Path == CardsPath);
+            var (_, title, description, _) = StaticPages(now).First(p => p.Path == CardsPath);
             return new(200, $"{title} · {SiteName}", description, $"{CardsPath}/{slug}", false);
         }
         var card = cards.FirstOrDefault(c => CardSlug(c.Name) == slug);
@@ -111,7 +129,12 @@ public static partial class SpaPages
             $"Best {card.Name} War Decks & Win Rate · {SiteName}",
             $"The best {card.Name} decks for Clash Royale Clan War, ranked on real war battles: {numbers} since the last balance update.",
             $"{CardsPath}/{slug}",
-            false);
+            false)
+        {
+            Content = SpaContentKind.Card,
+            Heading = card.Name,
+            Card = card,
+        };
     }
 
     private static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
@@ -141,6 +164,10 @@ public static partial class SpaPages
                 .Replace("property=\"og:image:width\" content=\"2400\"", $"property=\"og:image:width\" content=\"{ShareImageRenderer.Width}\"")
                 .Replace("property=\"og:image:height\" content=\"1260\"", $"property=\"og:image:height\" content=\"{ShareImageRenderer.Height}\"")
                 .Replace("property=\"og:image:alt\" content=\"Royale DeckLab\"", $"property=\"og:image:alt\" content=\"{title}\"");
+        }
+        if (page.Body is { } body)
+        {
+            html = html.Replace("<div id=\"root\"></div>", $"<div id=\"root\">{body}</div>");
         }
         return html;
     }

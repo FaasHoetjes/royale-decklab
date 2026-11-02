@@ -3,7 +3,7 @@ WORKDIR /client
 COPY client/package.json client/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY client/ ./
-RUN bun run build            # -> /client/dist
+RUN bun run build            # -> /client/dist, /client/dist-prerender
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api
 WORKDIR /build
@@ -18,6 +18,7 @@ WORKDIR /app
 
 COPY --from=api /app/publish ./
 COPY --from=web /client/dist ./wwwroot
+COPY --from=web /client/dist-prerender ./prerender
 
 RUN mkdir -p /data && chown $APP_UID /data
 ENV Meta__DbPath=/data/meta.db

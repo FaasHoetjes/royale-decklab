@@ -1,7 +1,8 @@
 namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
-/// The server's copy of classifyDeck and featuredCard in client/src/lib/archetypes.ts, for share images.
+/// The server's copy of classifyDeck, featuredCard and distinctDeckNames in client/src/lib/archetypes.ts, for share
+/// images and the server-rendered pages.
 /// Both sides are tested against Fixtures/deck-names.json, so a rule changed on one side fails until the
 /// other matches.
 /// </summary>
@@ -92,6 +93,32 @@ public static class DeckArchetypes
         }
         var name = rule.NameOf?.Invoke(deck) ?? rule.Name ?? $"{rule.WinCondition} {rule.Style ?? StyleByElixir(deck)}";
         return (name, rule.WinCondition);
+    }
+
+    /// <summary>
+    /// Names for decks shown together, matching distinctDeckNames: a name two decks share gets the priciest card
+    /// only that deck runs, e.g. "Log Bait · Inferno Tower".
+    /// </summary>
+    public static IReadOnlyList<string> DistinctNames(IReadOnlyList<IReadOnlyList<(string Name, int? ElixirCost)>> decks)
+    {
+        var classified = decks.Select(cards => (Cards: cards, Classified: Classify(cards))).ToList();
+        return classified.Select((deck, i) =>
+        {
+            var (name, winCondition) = deck.Classified;
+            var twins = classified.Where((other, j) => j != i && other.Classified.Name == name).Select(other => other.Cards).ToList();
+            if (twins.Count == 0)
+            {
+                return name;
+            }
+            static bool Runs(IReadOnlyList<(string Name, int? ElixirCost)> cards, string card) => cards.Any(c => c.Name == card);
+            var candidates = deck.Cards.Where(c => c.Name != winCondition).ToList();
+            var own = candidates.Where(c => twins.All(t => !Runs(t, c.Name))).ToList();
+            var tell = (own.Count > 0 ? own : candidates.Where(c => twins.Any(t => !Runs(t, c.Name))))
+                .OrderByDescending(c => c.ElixirCost ?? 0)
+                .Select(c => c.Name)
+                .FirstOrDefault();
+            return tell is null ? name : $"{name} · {tell}";
+        }).ToList();
     }
 
     /// <summary>Index of the card to show for a deck: its win condition, or its most expensive card.</summary>

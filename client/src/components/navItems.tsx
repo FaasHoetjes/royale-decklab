@@ -77,10 +77,17 @@ export const FAQ_ITEM: NavItem = {
   to: '/faq',
   label: 'FAQ',
   tab: 'FAQ',
+  title: 'Clash Royale War Deck FAQ',
   description: 'How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.',
   end: false,
   icon: <HelpIcon />,
 };
+
+/** A page's h1, worded like its title so it matches what people search; the server's copy is in SpaPages.cs. */
+export function pageHeading(to: string): string {
+  const item = [...toolItems(null), FAQ_ITEM].find((i) => i.to === to);
+  return item?.title ?? item?.label ?? SITE_NAME;
+}
 
 function pageItem(pathname: string, items: NavItem[]): NavItem | undefined {
   return [...items, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
