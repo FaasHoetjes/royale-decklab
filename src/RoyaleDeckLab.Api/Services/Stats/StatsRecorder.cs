@@ -18,12 +18,22 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
     /// <summary>Set on requests that came through Cloudflare, the only ones whose country header can be believed.</summary>
     public const string ViaCloudflare = "stats.via-cloudflare";
 
+    /// <summary>Far above real traffic. Past it, a day's events are dropped so a flood can't fill the disk.</summary>
+    public const int MaxEventsPerDay = 200_000;
+
     private static readonly TimeSpan ServedFor = TimeSpan.FromMinutes(30);
+
+    private readonly object _capLock = new();
+    private DateOnly _capDay;
+    private int _eventsToday;
+    private DateOnly _capWarnedDay;
 
     private readonly Channel<StatsEvent> _queue = Channel.CreateBounded<StatsEvent>(
         new BoundedChannelOptions(10_000) { FullMode = BoundedChannelFullMode.DropWrite, SingleReader = true });
 
     private readonly MemoryCache _served = new(new MemoryCacheOptions { SizeLimit = 50_000 });
+
+    public int DailyCap { get; init; } = MaxEventsPerDay;
 
     public ChannelReader<StatsEvent> Queue => _queue.Reader;
 
@@ -51,12 +61,18 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
             }
 
             var now = clock.GetUtcNow();
-            var secret = store.SecretFor(StatsStore.Month(DateOnly.FromDateTime(now.UtcDateTime)));
+            var day = DateOnly.FromDateTime(now.UtcDateTime);
+            if (!UnderDailyCap(day))
+            {
+                return false;
+            }
+
+            var secret = store.SecretFor(StatsStore.Month(day));
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "";
             var country = context.Items.ContainsKey(ViaCloudflare)
                 ? StatsClassify.Country(context.Request.Headers["CF-IPCountry"].ToString())
                 : null;
-            return _queue.Writer.TryWrite(new StatsEvent(
+            var written = _queue.Writer.TryWrite(new StatsEvent(
                 now.ToUnixTimeMilliseconds(),
                 kind,
                 Hash(secret, "visitor", $"{ip}\n{userAgent}"),
@@ -65,11 +81,49 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
                 country,
                 StatsClassify.Device(userAgent),
                 StatsClassify.Source(referrerHost)));
+            if (written)
+            {
+                CountEvent(day);
+            }
+            return written;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Couldn't record a {Kind} stats event", kind);
             return false;
+        }
+    }
+
+    private bool UnderDailyCap(DateOnly day)
+    {
+        lock (_capLock)
+        {
+            if (day != _capDay)
+            {
+                _capDay = day;
+                _eventsToday = 0;
+            }
+            if (_eventsToday < DailyCap)
+            {
+                return true;
+            }
+            if (_capWarnedDay != day)
+            {
+                _capWarnedDay = day;
+                logger.LogWarning("Stats events for {Day} reached the daily cap of {Cap}; the rest of the day's events are dropped", day, DailyCap);
+            }
+            return false;
+        }
+    }
+
+    private void CountEvent(DateOnly day)
+    {
+        lock (_capLock)
+        {
+            if (day == _capDay)
+            {
+                _eventsToday++;
+            }
         }
     }
 

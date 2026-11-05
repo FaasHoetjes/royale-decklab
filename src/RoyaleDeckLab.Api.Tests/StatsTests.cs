@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RoyaleDeckLab.Api.Services;
 using RoyaleDeckLab.Api.Services.Stats;
@@ -242,6 +243,45 @@ public sealed class StatsTests : IDisposable
         Assert.False(recorder.Record(Request("84.1.2.3", Phone), StatsStore.Kinds.Lookup, StatsRecorder.OwnerTag));
         Assert.True(recorder.Record(Request("84.1.2.3", Phone), StatsStore.Kinds.ShareOpen, StatsRecorder.OwnerTag));
         Assert.True(recorder.Record(Request("1.2.3.4", "WhatsApp/2.23"), StatsStore.Kinds.Preview, "#ABC/000a0uc6cao9oaof"));
+    }
+
+    [Fact]
+    public void Recorder_StopsAtTheDailyCapCountsPreviewsToo_AndResetsTheNextDay()
+    {
+        var clock = new Clock(Noon);
+        var logger = new WarningCounter();
+        var recorder = new StatsRecorder(_store, clock, logger) { DailyCap = 3 };
+        var context = Request("84.1.2.3", Phone);
+
+        Assert.True(recorder.Record(context, StatsStore.Kinds.Lookup, "#ABC"));
+        Assert.True(recorder.Record(context, StatsStore.Kinds.Preview, "#ABC/share"));
+        Assert.True(recorder.Record(context, StatsStore.Kinds.Lookup, "#DEF"));
+        Assert.False(recorder.Record(context, StatsStore.Kinds.Lookup, "#GHI"));
+        Assert.False(recorder.Record(context, StatsStore.Kinds.Preview, "#ABC/other"));
+        Assert.Equal(3, Drain(recorder).Count);
+        Assert.Equal(1, logger.Warnings);
+
+        clock.Now = Noon.AddDays(1);
+        Assert.True(recorder.Record(context, StatsStore.Kinds.Lookup, "#GHI"));
+        Assert.Single(Drain(recorder));
+        Assert.Equal(1, logger.Warnings);
+    }
+
+    private sealed class WarningCounter : ILogger<StatsRecorder>
+    {
+        public int Warnings { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning)
+            {
+                Warnings++;
+            }
+        }
     }
 
     [Fact]
