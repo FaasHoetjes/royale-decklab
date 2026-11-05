@@ -108,21 +108,21 @@ builder.Services.AddRateLimiter(o =>
         await ctx.HttpContext.Response.WriteAsync("""{"error":"Too many requests. Try again in a minute."}""", ct);
     };
     o.AddPolicy(RateLimitPolicies.Player, ctx => RateLimitPartition.GetFixedWindowLimiter(
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        RateLimitKey.For(ctx.Connection.RemoteIpAddress),
         static _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 30,
             Window = TimeSpan.FromMinutes(1),
         }));
     o.AddPolicy(RateLimitPolicies.Admin, ctx => RateLimitPartition.GetFixedWindowLimiter(
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        RateLimitKey.For(ctx.Connection.RemoteIpAddress),
         static _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 5,
             Window = TimeSpan.FromMinutes(1),
         }));
     o.AddPolicy(RateLimitPolicies.Stats, ctx => RateLimitPartition.GetFixedWindowLimiter(
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        RateLimitKey.For(ctx.Connection.RemoteIpAddress),
         static _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 60,
@@ -130,7 +130,7 @@ builder.Services.AddRateLimiter(o =>
         }));
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
         RateLimitPartition.GetFixedWindowLimiter(
-            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            RateLimitKey.For(ctx.Connection.RemoteIpAddress),
             static _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 300,
