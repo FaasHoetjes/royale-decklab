@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { BuilderCard } from '../lib/builderCards';
-import { cardIconUrl, displayLevel } from '../lib/cardDisplay';
-import { LOWEST_LEVEL_CHOICE, MAX_DECKS, MAX_LEVEL, type GeneratorOptions } from '../lib/generatorOptions';
+import { displayLevel } from '../lib/cardDisplay';
+import { MAX_DECKS, type GeneratorOptions } from '../lib/generatorOptions';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import CardPicker from './CardPicker';
+import CardAvatar from './generator/CardAvatar';
+import OptionsSheet from './generator/OptionsSheet';
+import PickedCards from './generator/PickedCards';
+import { DeckSegment, KeptCount, LevelSegment } from './generator/SegmentedChoice';
+import { BanIcon, ChevronIcon, PlusIcon, SlidersIcon } from './generator/icons';
+import { decksLabel, type PickerKind } from './generator/labels';
 
 interface GeneratorControlsProps {
   options: GeneratorOptions;
@@ -17,25 +23,29 @@ interface GeneratorControlsProps {
   onReset: () => void;
 }
 
-type PickerKind = 'ban' | 'require';
 type Menu = 'decks' | 'level';
 type Tone = 'plain' | 'active' | 'add';
 
-const LEVEL_CHOICES: (number | null)[] = [
-  null,
-  ...Array.from({ length: MAX_LEVEL - LOWEST_LEVEL_CHOICE + 1 }, (_, i) => LOWEST_LEVEL_CHOICE + i),
-];
-const DECK_CHOICES = Array.from({ length: MAX_DECKS }, (_, i) => i + 1);
 // Include uses the accent; Exclude stays grey with a ⊘, so the two read apart without extra colours.
 const RULES: Record<PickerKind, { label: string; subtitle: string; usedLabel: string }> = {
   require: { label: 'Include', subtitle: 'Each of these cards goes in one of your decks.', usedLabel: 'excluded' },
   ban: { label: 'Exclude', subtitle: 'Decks with these cards are skipped.', usedLabel: 'included' },
 };
 
-const decksLabel = (n: number) => `${n} deck${n === 1 ? '' : 's'}`;
 const levelLabel = (min: number | null) => (min == null ? 'Any level' : `Level ${min}+`);
 const levelOf = (card: BuilderCard | undefined) =>
   card?.owned && card.level != null && card.maxLevel != null ? displayLevel(card.level, card.maxLevel) : null;
+const DECK_MENU_WIDTH = 230;
+const LEVEL_MENU_WIDTH = 360;
+
+function rulePillTone(kind: PickerKind, hasCards: boolean): Tone {
+  if (!hasCards) return 'add';
+  return kind === 'require' ? 'active' : 'plain';
+}
+
+function ruleIcon(kind: PickerKind) {
+  return kind === 'require' ? <PlusIcon /> : <BanIcon />;
+}
 
 export default function GeneratorControls({ options, onChange, cards, isUpdating, isMobile, canReset, onReset }: GeneratorControlsProps) {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -77,7 +87,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
     const anchor = anchors.current[menu];
     anchor?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     const onPointer = (e: PointerEvent) => {
-      if (!anchor?.contains(e.target as Node)) setMenu(null);
+      const target = e.target instanceof Node ? e.target : null;
+      if (!anchor?.contains(target)) setMenu(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -112,10 +123,18 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
     setPicker(null);
   };
   const cardName = (id: number) => cardById.get(id)?.name ?? `Card ${id}`;
+  const applySheetPatch = (patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => {
+    if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
+      set({ ...patch, lock: options.lock.slice(0, patch.decks) });
+    }
+  };
 
   const tooLow = options.minLevel == null
     ? []
     : options.require.filter((id) => (levelOf(cardById.get(id)) ?? 0) < (options.minLevel ?? 0));
+  const isSingle = tooLow.length === 1;
+  const verb = isSingle ? 'is' : 'are';
+  const pronoun = isSingle ? 'it' : 'them';
 
   // One pill per rule, showing its cards; it opens the picker straight away.
   const rulePill = (kind: PickerKind) => {
@@ -131,7 +150,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
         disabled={!cardsLoaded}
         onClick={() => openPicker(kind)}
         style={{
-          ...pill(ids.length === 0 ? 'add' : kind === 'require' ? 'active' : 'plain', isMobile),
+          ...pill(rulePillTone(kind, ids.length > 0), isMobile),
           ...(ids.length ? { padding: '0 12px 0 6px' } : {}),
         }}
       >
@@ -141,10 +160,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               <CardAvatar key={id} card={cardById.get(id)} dim={kind === 'ban'} style={i > 0 ? styles.stacked : undefined} />
             ))}
           </span>
-        ) : kind === 'require' ? (
-          <PlusIcon />
         ) : (
-          <BanIcon />
+          ruleIcon(kind)
         )}
         {label}
         {ids.length > 0 && <span style={{ ...styles.count, ...(kind === 'ban' ? styles.countMuted : {}) }}>{ids.length}</span>}
@@ -210,7 +227,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               </div>
               <DeckSegment value={options.decks} onPick={(n) => set({ decks: n, lock: options.lock.slice(0, n) })} />
             </>,
-            230
+            DECK_MENU_WIDTH
           )}
           {menuPill(
             'level',
@@ -223,7 +240,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               </div>
               <LevelSegment levels={ownedLevels} value={options.minLevel} onPick={(minLevel) => set({ minLevel })} />
             </>,
-            360
+            LEVEL_MENU_WIDTH
           )}
           {rulePills}
           <span style={styles.status}>
@@ -236,8 +253,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
       {tooLow.length > 0 && (
         <p style={styles.warning} role="status">
           {tooLow.map((id) => `${cardById.get(id)?.name ?? 'A card'} (level ${levelOf(cardById.get(id))})`).join(', ')}{' '}
-          {tooLow.length === 1 ? 'is' : 'are'} below your minimum level of {options.minLevel}, so no deck can include{' '}
-          {tooLow.length === 1 ? 'it' : 'them'}. Lower the minimum level or stop including {tooLow.length === 1 ? 'it' : 'them'}.
+          {verb} below your minimum level of {options.minLevel}, so no deck can include{' '}
+          {pronoun}. Lower the minimum level or stop including {pronoun}.
         </p>
       )}
 
@@ -248,15 +265,11 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           cardsLoaded={cardsLoaded}
           canReset={canReset}
           onApply={(patch) => {
-            if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
-              set({ ...patch, lock: options.lock.slice(0, patch.decks) });
-            }
+            applySheetPatch(patch);
             setSheetOpen(false);
           }}
           onPickCards={(kind, patch) => {
-            if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
-              set({ ...patch, lock: options.lock.slice(0, patch.decks) });
-            }
+            applySheetPatch(patch);
             openPicker(kind);
           }}
           onReset={() => {
@@ -281,17 +294,14 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           subtitle={RULES[picker].subtitle}
           topContent={
             picks.length > 0 && (
-              <div style={styles.picks} aria-label={`${RULES[picker].label}d cards`}>
-                {picks.map((id) => (
-                  <span key={id} style={styles.pick}>
-                    <CardAvatar card={cardById.get(id)} dim={picker === 'ban'} small />
-                    {cardName(id)}
-                    <button type="button" onClick={() => togglePick(id)} aria-label={`Remove ${cardName(id)}`} className="mobile-touch-hitbox" style={styles.remove}>
-                      <CrossIcon />
-                    </button>
-                  </span>
-                ))}
-              </div>
+              <PickedCards
+                picks={picks}
+                cardById={cardById}
+                cardName={cardName}
+                label={RULES[picker].label}
+                dim={picker === 'ban'}
+                onRemove={togglePick}
+              />
             )
           }
           footer={
@@ -317,161 +327,6 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
         />
       )}
     </div>
-  );
-}
-
-/** A row of choices with a highlight that slides to the pick. */
-function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim }: {
-  label: string;
-  choices: T[];
-  value: T;
-  onPick: (choice: T) => void;
-  text: (choice: T) => string;
-  ariaLabel?: (choice: T) => string;
-  dim?: (choice: T) => boolean;
-}) {
-  const index = Math.max(0, choices.indexOf(value));
-  return (
-    <div role="radiogroup" aria-label={label} style={{ ...styles.segment, gridTemplateColumns: `repeat(${choices.length}, minmax(0, 1fr))` }}>
-      <span
-        aria-hidden="true"
-        className="gc-thumb"
-        style={{ ...styles.thumb, width: `calc((100% - 6px) / ${choices.length})`, transform: `translateX(${index * 100}%)` }}
-      />
-      {choices.map((choice, i) => (
-        <button
-          key={text(choice)}
-          type="button"
-          role="radio"
-          aria-checked={i === index}
-          aria-label={ariaLabel?.(choice)}
-          onClick={() => onPick(choice)}
-          style={{
-            ...styles.segmentButton,
-            fontSize: choices.length > 4 ? '14px' : '16px',
-            color: i === index ? 'var(--on-accent)' : dim?.(choice) ? 'var(--text-tertiary)' : 'var(--text-primary)',
-          }}
-        >
-          {text(choice)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function DeckSegment({ value, onPick }: { value: number; onPick: (n: number) => void }) {
-  return <Segment label="Number of decks" choices={DECK_CHOICES} value={value} onPick={onPick} text={String} />;
-}
-
-/** Any | 10 … 16, plus a bar that fills with the share of the player's cards a minimum keeps. */
-function LevelSegment({ levels, value, onPick }: {
-  levels: number[];
-  value: number | null;
-  onPick: (min: number | null) => void;
-}) {
-  const keptAt = (min: number | null) => (min == null ? levels.length : levels.filter((l) => l >= min).length);
-  const share = levels.length === 0 ? 1 : keptAt(value) / levels.length;
-  return (
-    <>
-      <Segment
-        label="Minimum card level"
-        choices={LEVEL_CHOICES}
-        value={value}
-        onPick={onPick}
-        text={(choice) => (choice == null ? 'Any' : String(choice))}
-        ariaLabel={(choice) => `${choice == null ? 'Any level' : `Level ${choice} and up`}: keeps ${keptAt(choice)} of your cards`}
-        dim={(choice) => value != null && (choice == null || choice < value)}
-      />
-      <div aria-hidden="true" style={styles.keptTrack}>
-        <span className="gc-kept" style={{ ...styles.keptFill, width: `${share * 100}%` }} />
-      </div>
-    </>
-  );
-}
-
-function KeptCount({ levels, min }: { levels: number[]; min: number | null }) {
-  if (levels.length === 0) return null;
-  const kept = min == null ? levels.length : levels.filter((l) => l >= min).length;
-  return <span style={styles.keptCount}>{kept} of {levels.length} cards</span>;
-}
-
-/** Phone: decks and level are batched here and applied with one button, so each tap isn't a request. */
-function OptionsSheet({ options, levels, cardsLoaded, canReset, onApply, onPickCards, onReset, onClose }: {
-  options: GeneratorOptions;
-  levels: number[];
-  cardsLoaded: boolean;
-  canReset: boolean;
-  onApply: (patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => void;
-  onPickCards: (kind: PickerKind, patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => void;
-  onReset: () => void;
-  onClose: () => void;
-}) {
-  const [decks, setDecks] = useState(options.decks);
-  const [minLevel, setMinLevel] = useState(options.minLevel);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  // The parent re-renders while the sheet is open (e.g. "updating"); keep the effect from re-running.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, []);
-
-  return (
-    <>
-      <div className="gc-backdrop" style={styles.backdrop} onClick={onClose} aria-hidden="true" />
-      <div role="dialog" aria-modal="true" aria-labelledby="gc-sheet-title" className="gc-sheet" style={styles.sheet}>
-        <div aria-hidden="true" style={styles.handle} />
-        <div style={styles.sheetHeader}>
-          <h2 id="gc-sheet-title" style={styles.sheetTitle}>Customize</h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close" className="mobile-touch-target" style={styles.close}>
-            <CrossIcon size={16} />
-          </button>
-        </div>
-
-        <div style={{ ...styles.label, marginBottom: '8px' }}>Number of decks</div>
-        <DeckSegment value={decks} onPick={setDecks} />
-
-        <div style={{ ...styles.menuHeader, marginTop: '18px' }}>
-          <span style={styles.label}>Minimum card level</span>
-          <KeptCount levels={levels} min={minLevel} />
-        </div>
-        <LevelSegment levels={levels} value={minLevel} onPick={setMinLevel} />
-
-        <div style={{ ...styles.label, marginTop: '18px' }}>Cards</div>
-        <div style={styles.cardButtons}>
-          <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('require', { decks, minLevel })} style={styles.cardButton}>
-            <PlusIcon />
-            Include…
-          </button>
-          <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('ban', { decks, minLevel })} style={styles.cardButton}>
-            <BanIcon />
-            Exclude…
-          </button>
-        </div>
-
-        <div style={styles.sheetFooter}>
-          {canReset && (
-            <button type="button" onClick={onReset} className="mobile-touch-target" style={styles.reset}>
-              Reset all
-            </button>
-          )}
-          <button type="button" onClick={() => onApply({ decks, minLevel })} style={styles.apply}>
-            Show {decksLabel(decks)}
-          </button>
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -507,61 +362,6 @@ function pill(tone: Tone, isMobile: boolean): CSSProperties {
     default:
       return base;
   }
-}
-
-function CardAvatar({ card, dim, small, style }: { card: BuilderCard | undefined; dim?: boolean; small?: boolean; style?: CSSProperties }) {
-  const size = small ? '24px' : '28px';
-  if (!card) return <span style={{ ...styles.avatar, width: size, height: size, backgroundColor: 'var(--bg-tertiary)', ...style }} />;
-  return (
-    <img
-      src={cardIconUrl(card.iconUrls, 'normal')}
-      alt=""
-      style={{ ...styles.avatar, width: size, height: size, filter: dim ? 'grayscale(1) brightness(0.8)' : undefined, ...style }}
-    />
-  );
-}
-
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transition: 'transform 0.2s ease', transform: open ? 'rotate(180deg)' : undefined }}>
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
-function CrossIcon({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function BanIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M6 6l12 12" />
-    </svg>
-  );
-}
-
-function SlidersIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
-      <circle cx="16" cy="7" r="2" />
-      <circle cx="10" cy="17" r="2" />
-    </svg>
-  );
 }
 
 const styles = {
@@ -609,31 +409,6 @@ const styles = {
     fontWeight: 600 as const,
     color: 'var(--text-secondary)',
   },
-  keptCount: {
-    fontSize: '13px',
-    fontWeight: 600 as const,
-    color: 'var(--accent)',
-  },
-  keptTrack: {
-    height: '6px',
-    margin: '12px 2px 2px',
-    borderRadius: '99px',
-    backgroundColor: 'var(--bg-tertiary)',
-    overflow: 'hidden' as const,
-  },
-  keptFill: {
-    display: 'block',
-    height: '100%',
-    borderRadius: 'inherit',
-    backgroundColor: 'var(--accent)',
-  },
-  avatar: {
-    width: '28px',
-    height: '28px',
-    borderRadius: '50%',
-    objectFit: 'cover' as const,
-    objectPosition: 'top',
-  },
   stack: {
     display: 'inline-flex' as const,
   },
@@ -657,38 +432,6 @@ const styles = {
   countMuted: {
     backgroundColor: 'var(--bg-tertiary)',
     color: 'var(--text-primary)',
-  },
-  picks: {
-    display: 'flex' as const,
-    flexWrap: 'wrap' as const,
-    gap: '8px',
-    padding: '12px 20px',
-    borderBottom: '1px solid var(--border)',
-  },
-  pick: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    gap: '6px',
-    height: '34px',
-    padding: '0 2px 0 4px',
-    borderRadius: '99px',
-    border: '1px solid var(--border)',
-    backgroundColor: 'var(--bg-tertiary)',
-    color: 'var(--text-primary)',
-    fontSize: '13px',
-    fontWeight: 600 as const,
-  },
-  remove: {
-    width: '28px',
-    height: '28px',
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    border: 0,
-    borderRadius: '50%',
-    background: 'none',
-    color: 'inherit',
-    cursor: 'pointer',
   },
   status: {
     display: 'flex' as const,
@@ -717,105 +460,6 @@ const styles = {
     lineHeight: 1.5,
     color: '#b26a00',
   },
-  backdrop: {
-    position: 'fixed' as const,
-    inset: 0,
-    zIndex: 1500,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  sheet: {
-    position: 'fixed' as const,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1501,
-    maxHeight: '90vh',
-    overflowY: 'auto' as const,
-    padding: '10px 16px calc(16px + env(safe-area-inset-bottom))',
-    borderRadius: '22px 22px 0 0',
-    backgroundColor: 'var(--modal-bg)',
-    borderTop: '1px solid var(--border-strong)',
-    color: 'var(--text-primary)',
-  },
-  handle: {
-    width: '40px',
-    height: '4px',
-    borderRadius: '2px',
-    backgroundColor: 'var(--border-strong)',
-    margin: '0 auto 8px',
-  },
-  sheetHeader: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: '10px',
-  },
-  sheetTitle: {
-    margin: 0,
-    fontSize: '18px',
-    fontWeight: 700 as const,
-  },
-  close: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    border: 0,
-    background: 'none',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-  },
-  segment: {
-    position: 'relative' as const,
-    display: 'grid' as const,
-    padding: '3px',
-    borderRadius: '12px',
-    backgroundColor: 'var(--bg-tertiary)',
-    border: '1px solid var(--border)',
-  },
-  thumb: {
-    position: 'absolute' as const,
-    top: '3px',
-    bottom: '3px',
-    left: '3px',
-    borderRadius: '9px',
-    backgroundColor: 'var(--accent)',
-  },
-  segmentButton: {
-    position: 'relative' as const,
-    height: '42px',
-    border: 0,
-    background: 'none',
-    fontSize: '16px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-    transition: 'color 0.2s ease',
-  },
-  cardButtons: {
-    display: 'grid' as const,
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: '8px',
-    marginTop: '8px',
-  },
-  cardButton: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '8px',
-    height: '46px',
-    borderRadius: '12px',
-    border: '1px dashed var(--border-strong)',
-    background: 'none',
-    color: 'var(--text-primary)',
-    fontSize: '14px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-  },
-  sheetFooter: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '12px',
-    marginTop: '22px',
-  },
   pickerFooter: {
     display: 'flex' as const,
     alignItems: 'center' as const,
@@ -838,17 +482,6 @@ const styles = {
     backgroundColor: 'var(--accent)',
     color: 'var(--on-accent)',
     fontSize: '15px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-  },
-  apply: {
-    flex: 1,
-    height: '50px',
-    border: 0,
-    borderRadius: '14px',
-    backgroundColor: 'var(--accent)',
-    color: 'var(--on-accent)',
-    fontSize: '16px',
     fontWeight: 600 as const,
     cursor: 'pointer',
   },

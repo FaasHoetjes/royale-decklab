@@ -91,7 +91,6 @@ export default function Sidebar() {
   );
 }
 
-/** The active player, with a menu above it to switch to another one. */
 function PlayerCard() {
   const theme = getTheme();
   const switcher = usePlayerSwitcher();
@@ -102,7 +101,8 @@ function PlayerCard() {
   useEffect(() => {
     if (!open) return;
     const onPointer = (e: PointerEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target instanceof Node ? e.target : null;
+      if (!wrapRef.current?.contains(target)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;

@@ -46,7 +46,11 @@ public sealed class ShareImageService(
             cardMap[card.Id] = card.ToPlayerItemLevel();
         }
 
-        var options = new LineupOptions { DeckCount = shared.Count, LockedDecks = [.. shared.Select(d => d.Order().ToArray())] };
+        var options = new LineupOptions
+        {
+            DeckCount = shared.Count,
+            LockedDecks = [.. shared.Select(d => d.Order().ToArray())],
+        };
         var lineup = analyzer.FindBestWarDecks(meta.Meta, cardMap, options);
 
         var images = new List<SKImage?>();

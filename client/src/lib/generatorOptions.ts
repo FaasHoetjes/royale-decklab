@@ -20,7 +20,7 @@ export const DEFAULT_OPTIONS: GeneratorOptions = { decks: MAX_DECKS, minLevel: n
 
 export const deckKey = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',');
 
-const ids = (raw: string | null) =>
+const parseIdList = (raw: string | null) =>
   [...new Set((raw ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0))];
 
 /** Reads options from the URL, dropping anything the API would reject (hand-edited or stale links). */
@@ -31,12 +31,12 @@ export function parseOptions(params: URLSearchParams): GeneratorOptions {
   const decks = decksRaw != null ? Number(decksRaw) : stored.decks;
   const minLevel = minRaw != null ? Number(minRaw) : stored.minLevel;
 
-  const ban = ids(params.get('ban'));
-  const require = ids(params.get('require')).filter((id) => !ban.includes(id));
+  const ban = parseIdList(params.get('ban'));
+  const require = parseIdList(params.get('require')).filter((id) => !ban.includes(id));
   const lock: number[][] = [];
   const lockedCards = new Set<number>();
   for (const raw of params.getAll('lock')) {
-    const deck = ids(raw);
+    const deck = parseIdList(raw);
     if (deck.length !== CARDS_PER_DECK || deck.some((id) => lockedCards.has(id) || ban.includes(id))) continue;
     deck.forEach((id) => lockedCards.add(id));
     lock.push(deck);

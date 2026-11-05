@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { prefersReducedMotion } from '../lib/motion';
 
 /** Counts a number up or down to its new value instead of jumping there. */
 export function useTween(value: number, from = value, durationMs = 650): number {
@@ -6,7 +7,7 @@ export function useTween(value: number, from = value, durationMs = 650): number 
   const current = useRef(from);
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (prefersReducedMotion()) {
       current.current = value;
       setShown(value);
       return;

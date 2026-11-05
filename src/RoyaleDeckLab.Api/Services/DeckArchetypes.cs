@@ -26,6 +26,9 @@ public static class DeckArchetypes
     private static readonly string[] BridgeSupport = ["Battle Ram", "Bandit", "Royal Ghost", "Dark Prince", "Prince", "Elite Barbarians", "Ram Rider"];
     private static readonly string[] BeatdownTanks = ["Golem", "Lava Hound", "Electro Giant", "Giant", "Goblin Giant"];
 
+    private const double CycleMaxAverageElixir = 3.2;
+    private const double BeatdownMinAverageElixir = 3.8;
+
     private static readonly Rule[] Rules =
     [
         new("Lava Hound", ["Lava Hound", "Balloon"], Name: "Lava Loon", Style: "Beatdown"),
@@ -40,7 +43,7 @@ public static class DeckArchetypes
         new("Royal Giant", ["Royal Giant"]),
         new("Elixir Golem", ["Elixir Golem"]),
         new("Rune Giant", ["Rune Giant"]),
-        new("X-Bow", ["X-Bow"], Style: "Siege", NameOf: d => d.Avg <= 3.2 ? "X-Bow Cycle" : "X-Bow Siege"),
+        new("X-Bow", ["X-Bow"], Style: "Siege", NameOf: d => d.Avg <= CycleMaxAverageElixir ? "X-Bow Cycle" : "X-Bow Siege"),
         new("Mortar", ["Mortar"], Name: "Mortar Bait", Style: "Siege", When: d => d.HasAny(BaitSupport)),
         new("Mortar", ["Mortar"], Style: "Siege"),
         new("Graveyard", ["Graveyard"], Name: "Splashyard", Style: "Control",
@@ -105,7 +108,10 @@ public static class DeckArchetypes
         return classified.Select((deck, i) =>
         {
             var (name, winCondition) = deck.Classified;
-            var twins = classified.Where((other, j) => j != i && other.Classified.Name == name).Select(other => other.Cards).ToList();
+            var twins = classified
+                .Where((other, j) => j != i && other.Classified.Name == name)
+                .Select(other => other.Cards)
+                .ToList();
             if (twins.Count == 0)
             {
                 return name;
@@ -113,7 +119,8 @@ public static class DeckArchetypes
             static bool Runs(IReadOnlyList<(string Name, int? ElixirCost)> cards, string card) => cards.Any(c => c.Name == card);
             var candidates = deck.Cards.Where(c => c.Name != winCondition).ToList();
             var own = candidates.Where(c => twins.All(t => !Runs(t, c.Name))).ToList();
-            var tell = (own.Count > 0 ? own : candidates.Where(c => twins.Any(t => !Runs(t, c.Name))))
+            var tellCandidates = own.Count > 0 ? own : candidates.Where(c => twins.Any(t => !Runs(t, c.Name)));
+            var tell = tellCandidates
                 .OrderByDescending(c => c.ElixirCost ?? 0)
                 .Select(c => c.Name)
                 .FirstOrDefault();
@@ -130,9 +137,19 @@ public static class DeckArchetypes
         {
             return index;
         }
-        return cards.Select((c, i) => (c.ElixirCost ?? 0, i)).OrderByDescending(c => c.Item1).Select(c => c.i).FirstOrDefault();
+        return cards
+            .Select((c, i) => (Cost: c.ElixirCost ?? 0, Index: i))
+            .OrderByDescending(c => c.Cost)
+            .Select(c => c.Index)
+            .FirstOrDefault();
     }
 
     private static string StyleByElixir(Deck deck)
-        => deck.HasAny(BeatdownTanks) && deck.Avg >= 3.8 ? "Beatdown" : deck.Avg <= 3.2 ? "Cycle" : "Control";
+    {
+        if (deck.HasAny(BeatdownTanks) && deck.Avg >= BeatdownMinAverageElixir)
+        {
+            return "Beatdown";
+        }
+        return deck.Avg <= CycleMaxAverageElixir ? "Cycle" : "Control";
+    }
 }

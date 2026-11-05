@@ -82,25 +82,9 @@ export default function UpgradeAdvisor() {
     setPick((p) => p + 1);
   };
 
-  return (
-    <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div
-        style={{
-          ...styles.header,
-          borderBottomColor: theme.border,
-          marginBottom: isMobile ? '18px' : '24px',
-          paddingBottom: isMobile ? '14px' : '18px',
-        }}
-      >
-        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Upgrade Advisor</h1>
-        <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
-          {data && suggestions.length > 0
-            ? 'Pick an upgrade to see what it does to your war lineup.'
-            : 'Which card upgrade raises your war lineup the most.'}
-        </p>
-      </div>
-
-      {!activePlayerTag ? (
+  function renderBody() {
+    if (!activePlayerTag) {
+      return (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           <p style={{ ...styles.panelText, color: theme.text.secondary }}>
             Upgrade advice uses your card collection. Search your player tag first.
@@ -112,16 +96,21 @@ export default function UpgradeAdvisor() {
             Search your player tag
           </Link>
         </div>
-      ) : advice.isLoading ? (
-        <UpgradeAdvisorSkeleton isMobile={isMobile} />
-      ) : advice.isError ? (
+      );
+    }
+    if (advice.isLoading) return <UpgradeAdvisorSkeleton isMobile={isMobile} />;
+    if (advice.isError) {
+      return (
         <LoadError
           title="Couldn't load your upgrade advice"
           message="Something went wrong on our end. Please try again in a moment."
           onRetry={() => advice.refetch()}
           retrying={advice.isFetching}
         />
-      ) : data && suggestions.length === 0 ? (
+      );
+    }
+    if (data && suggestions.length === 0) {
+      return (
         <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
           {data.collectionMaxed ? (
             <>
@@ -145,48 +134,72 @@ export default function UpgradeAdvisor() {
             </>
           )}
         </div>
-      ) : data && current ? (
-        <>
-          <UpgradePreview
-            suggestion={current}
-            pick={pick}
-            baselineScore={data.baselineScore}
-            lineup={lineup}
-            unlockedName={unlockedNames[selected] ?? ''}
-            effect={effectOf(current, lineup, unlockedNames[selected] ?? '')}
-            theme={theme}
-            isMobile={isMobile}
-          />
+      );
+    }
+    if (!data || !current) return null;
+    return (
+      <>
+        <UpgradePreview
+          suggestion={current}
+          pick={pick}
+          baselineScore={data.baselineScore}
+          lineup={lineup}
+          unlockedName={unlockedNames[selected] ?? ''}
+          effect={effectOf(current, lineup, unlockedNames[selected] ?? '')}
+          theme={theme}
+          isMobile={isMobile}
+        />
 
-          <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>
-            All {suggestions.length} upgrades
-          </h3>
-          <div>
-            {visible.map((s, i) => (
-              <UpgradeRow
-                key={`${s.cardId}-${s.kind}-${s.toLevel}`}
-                rank={i + 1}
-                suggestion={s}
-                effect={effectOf(s, lineup, unlockedNames[i] ?? '')}
-                selected={i === selected}
-                onSelect={() => choose(i)}
-                theme={theme}
-                isMobile={isMobile}
-              />
-            ))}
-          </div>
-          {suggestions.length > INITIAL_ROWS && (
-            <button
-              type="button"
-              className="mobile-touch-target"
-              onClick={() => setExpanded((e) => !e)}
-              style={{ ...styles.showMore, color: theme.text.primary }}
-            >
-              {expanded ? 'Show fewer' : `Show all ${suggestions.length}`}
-            </button>
-          )}
-        </>
-      ) : null}
+        <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>
+          All {suggestions.length} upgrades
+        </h3>
+        <div>
+          {visible.map((s, i) => (
+            <UpgradeRow
+              key={`${s.cardId}-${s.kind}-${s.toLevel}`}
+              rank={i + 1}
+              suggestion={s}
+              effect={effectOf(s, lineup, unlockedNames[i] ?? '')}
+              selected={i === selected}
+              onSelect={() => choose(i)}
+              theme={theme}
+              isMobile={isMobile}
+            />
+          ))}
+        </div>
+        {suggestions.length > INITIAL_ROWS && (
+          <button
+            type="button"
+            className="mobile-touch-target"
+            onClick={() => setExpanded((e) => !e)}
+            style={{ ...styles.showMore, color: theme.text.primary }}
+          >
+            {expanded ? 'Show fewer' : `Show all ${suggestions.length}`}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
+      <div
+        style={{
+          ...styles.header,
+          borderBottomColor: theme.border,
+          marginBottom: isMobile ? '18px' : '24px',
+          paddingBottom: isMobile ? '14px' : '18px',
+        }}
+      >
+        <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Upgrade Advisor</h1>
+        <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
+          {data && suggestions.length > 0
+            ? 'Pick an upgrade to see what it does to your war lineup.'
+            : 'Which card upgrade raises your war lineup the most.'}
+        </p>
+      </div>
+
+      {renderBody()}
     </div>
   );
 }

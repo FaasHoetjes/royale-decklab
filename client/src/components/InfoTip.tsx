@@ -87,7 +87,7 @@ export default function InfoTip({
       tabIndex={0}
       onFocus={(e) => { if (e.target.matches(':focus-visible')) setShow(true); }}
       onBlur={(e) => {
-        const next = e.relatedTarget as Node | null;
+        const next = e.relatedTarget instanceof Node ? e.relatedTarget : null;
         if (!e.currentTarget.contains(next) && !tipRef.current?.contains(next)) setShow(false);
       }}
       onClick={() => { if (lastPointerType.current !== 'mouse') setShow((prev) => !prev); }}

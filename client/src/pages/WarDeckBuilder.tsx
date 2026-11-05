@@ -8,10 +8,12 @@ import { useDeckBoard } from '../hooks/useDeckBoard';
 import Tweened from '../components/Tweened';
 import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
 import { builderDeckNames, championFits, nextSlot, placeInDeck } from '../lib/builderDecks';
+import { MAX_DISPLAY_LEVEL } from '../lib/cardDisplay';
 import { flyCard, replayAnimation } from '../lib/flyCard';
 import { FOLD_EASING, prefersReducedMotion } from '../lib/motion';
 import type { ScoreDeckCard } from '../api';
-import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
+import { usePickerPrefs } from '../hooks/usePickerPrefs';
+import { useTimedNotice } from '../hooks/useTimedNotice';
 import BuilderDeckTabs from '../components/BuilderDeckTabs';
 import BuilderDeckStrip from '../components/BuilderDeckStrip';
 import BuilderStage from '../components/BuilderStage';
@@ -79,7 +81,7 @@ export default function WarDeckBuilder() {
       const offset = isMobile ? MOBILE_HEADER + (pinRef.current?.offsetHeight ?? 0) + 12 : 24;
       const top = stage.getBoundingClientRect().top;
       if (top >= offset) return;
-      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const smooth = !prefersReducedMotion();
       // On desktop the header, tabs and deck fit on screen together, so go all the way up.
       window.scrollTo({ top: isMobile ? window.scrollY + top - offset : 0, behavior: smooth ? 'smooth' : 'auto' });
     }, 430);
@@ -121,36 +123,23 @@ export default function WarDeckBuilder() {
     if (top > window.scrollY) window.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }, [cardsRequest, cardsOpen]);
 
-  const [initialPrefs] = useState(loadPickerPrefs);
-  const [filters, setFilters] = useState<Set<FilterKey>>(() => new Set(initialPrefs.filters));
-  const [sortIndex, setSortIndex] = useState(initialPrefs.sortIndex);
-  const [descending, setDescending] = useState(initialPrefs.descending);
-  useEffect(() => {
-    savePickerPrefs({ filters: [...filters], sortIndex, descending });
-  }, [filters, sortIndex, descending]);
-
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimer = useRef<number | null>(null);
-  const showNotice = (text: string) => {
-    setNotice(text);
-    if (noticeTimer.current != null) window.clearTimeout(noticeTimer.current);
-    noticeTimer.current = window.setTimeout(() => setNotice(null), 2600);
-  };
-  useEffect(() => () => {
-    if (noticeTimer.current != null) window.clearTimeout(noticeTimer.current);
-  }, []);
+  const { filters, setFilters, sortIndex, setSortIndex, descending, setDescending } = usePickerPrefs();
+  const { notice, showNotice } = useTimedNotice();
 
   // The whole collection, not just placed cards: scoring compares decks against the player's own level.
   const scoreCards = useMemo<ScoreDeckCard[]>(() => {
-    return builderCards
-      .filter((c) => c.owned && c.level != null)
-      .map((c) => ({
-        id: c.id,
-        level: c.level as number,
-        maxLevel: c.maxLevel ?? 16,
-        evolutionLevel: (c.hasEvo ? 1 : 0) | (c.ownsHero ? 2 : 0),
-        rarity: c.rarity,
-      }));
+    return builderCards.flatMap((c) => {
+      if (!c.owned || c.level == null) return [];
+      return [
+        {
+          id: c.id,
+          level: c.level,
+          maxLevel: c.maxLevel ?? MAX_DISPLAY_LEVEL,
+          evolutionLevel: (c.hasEvo ? 1 : 0) | (c.ownsHero ? 2 : 0),
+          rarity: c.rarity,
+        },
+      ];
+    });
   }, [builderCards]);
 
   const scoreQuery = useDeckScores(
@@ -294,9 +283,8 @@ export default function WarDeckBuilder() {
         </div>
       </div>
 
-      {loading ? (
-        <BuilderSkeleton isMobile={isMobile} />
-      ) : loadFailed ? (
+      {loading && <BuilderSkeleton isMobile={isMobile} />}
+      {!loading && loadFailed && (
         <LoadError
           title="Can't reach the server"
           message="Royale DeckLab is unreachable right now. Please try again in a moment."
@@ -304,7 +292,8 @@ export default function WarDeckBuilder() {
           retrying={cardsQuery.isFetching || collectionQuery.isFetching}
           retryLabel="Retry connection"
         />
-      ) : (
+      )}
+      {ready && (
         <>
           {isMobile ? (
             <div ref={pinRef} style={{ ...styles.pin, backgroundColor: theme.bg.primary }}>

@@ -31,10 +31,14 @@ public sealed record LineupOptions
         error = null;
 
         var deckCount = MaxDecks;
-        if (!string.IsNullOrWhiteSpace(decks) && (!int.TryParse(decks, out deckCount) || deckCount is < 1 or > MaxDecks))
+        if (!string.IsNullOrWhiteSpace(decks))
         {
-            error = $"decks must be 1 to {MaxDecks}";
-            return false;
+            var isDeckCountValid = int.TryParse(decks, out deckCount) && deckCount is >= 1 and <= MaxDecks;
+            if (!isDeckCountValid)
+            {
+                error = $"decks must be 1 to {MaxDecks}";
+                return false;
+            }
         }
 
         int? min = null;
@@ -48,7 +52,11 @@ public sealed record LineupOptions
             min = m;
         }
 
-        if (!TryParseIds(ban, "ban", out var banned, out error) || !TryParseIds(require, "require", out var required, out error))
+        if (!TryParseIds(ban, "ban", out var banned, out error))
+        {
+            return false;
+        }
+        if (!TryParseIds(require, "require", out var required, out error))
         {
             return false;
         }

@@ -9,7 +9,6 @@ import { useFold } from '../hooks/useFold';
 
 interface CardCollectionProps {
   cards: BuilderCard[];
-  /** Which deck each placed card is in. */
   usedIn: Map<number, number>;
   /** Whether the deck being built still has room for a champion. */
   championFits: boolean;

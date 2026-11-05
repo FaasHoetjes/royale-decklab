@@ -98,7 +98,7 @@ public sealed class AggregateBattlesTests
     [Fact]
     public void RanksAProvenDeck_AboveASixForSixDeck()
     {
-        // The Wilson bound ranked 6/6 (0.61) above 180/300 (0.54); the cautious estimate gives 0.518 vs 0.566.
+        // A 6/6 streak must not outrank 180/300 (60%).
         var tiny = Build.Eight(1);
         var proven = Build.Eight(9);
         var battles = new List<BattleRecord>();
@@ -119,7 +119,7 @@ public sealed class AggregateBattlesTests
     [Fact]
     public void RanksAProvenDeck_AboveAHotStreak()
     {
-        // 20/25 vs 330/550: 30-game shrinkage ranked the streak first (0.636 vs 0.595); cautious gives 0.555 vs 0.577.
+        // 80% over 25 games must not outrank 60% over 550.
         var streak = Build.Eight(1);
         var proven = Build.Eight(9);
         var battles = new List<BattleRecord>();

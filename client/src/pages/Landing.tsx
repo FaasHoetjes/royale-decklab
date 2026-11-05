@@ -48,7 +48,7 @@ export default function Landing() {
   }, [value, queryClient, carriedQuery]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value.replace(/[#\s]/g, '').toUpperCase());
+    setValue(normalizeTag(e.target.value));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

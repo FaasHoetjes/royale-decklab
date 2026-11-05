@@ -2,6 +2,11 @@ namespace RoyaleDeckLab.Api.Models;
 
 public static class DomainMath
 {
+    private const int MaxNewtonSteps = 200;
+    private const double QuantileTolerance = 1e-13;
+    private const int MaxContinuedFractionTerms = 10_000;
+    private const double ContinuedFractionTolerance = 1e-15;
+
     /// <summary>
     /// Cautious deck strength: the <paramref name="quantile"/> of the deck's posterior win rate,
     /// Beta(wins + m·k, losses + (1 − m)·k) for a prior of k = <paramref name="priorGames"/> imaginary games
@@ -22,26 +27,35 @@ public static class DomainMath
         if (p >= 1) return 1;
 
         var logBeta = LogGamma(a) + LogGamma(b) - LogGamma(a + b);
-        double lo = 0, hi = 1;
+        var lo = 0.0;
+        var hi = 1.0;
 
         // Start from the normal approximation, which is already close for the evidence sizes seen here.
         var mean = a / (a + b);
         var sd = Math.Sqrt(a * b / ((a + b) * (a + b) * (a + b + 1)));
         var x = Math.Clamp(mean + NormalQuantile(p) * sd, 1e-9, 1 - 1e-9);
 
-        for (var i = 0; i < 200; i++)
+        for (var i = 0; i < MaxNewtonSteps; i++)
         {
             var f = RegularizedIncompleteBeta(a, b, x) - p;
-            if (f < 0) lo = x; else hi = x;
+            if (f < 0)
+            {
+                lo = x;
+            }
+            else
+            {
+                hi = x;
+            }
 
             var density = Math.Exp((a - 1) * Math.Log(x) + (b - 1) * Math.Log(1 - x) - logBeta);
             var next = density > 0 ? x - f / density : double.NaN;
-            if (!(next > lo && next < hi))
+            var isInsideBracket = next > lo && next < hi;
+            if (!isInsideBracket)
             {
                 next = (lo + hi) / 2;
             }
 
-            if (Math.Abs(next - x) < 1e-13)
+            if (Math.Abs(next - x) < QuantileTolerance)
             {
                 return next;
             }
@@ -71,7 +85,7 @@ public static class DomainMath
         d = 1 / d;
         var h = d;
 
-        for (var m = 1; m <= 10_000; m++)
+        for (var m = 1; m <= MaxContinuedFractionTerms; m++)
         {
             var m2 = 2 * m;
             var aa = m * (b - m) * x / ((a + m2 - 1) * (a + m2));
@@ -90,7 +104,7 @@ public static class DomainMath
             d = 1 / d;
             var delta = d * c;
             h *= delta;
-            if (Math.Abs(delta - 1) < 1e-15)
+            if (Math.Abs(delta - 1) < ContinuedFractionTolerance)
             {
                 break;
             }
@@ -126,9 +140,17 @@ public static class DomainMath
     /// <summary>Standard normal quantile (Acklam's rational approximation, ~1e-9); only seeds the Beta inversion.</summary>
     private static double NormalQuantile(double p)
     {
-        double[] a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.3577518672690, -30.66479806614716, 2.506628277459239];
+        double[] a =
+        [
+            -39.69683028665376, 220.9460984245205, -275.9285104469687,
+            138.3577518672690, -30.66479806614716, 2.506628277459239,
+        ];
         double[] b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
-        double[] c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+        double[] c =
+        [
+            -0.007784894002430293, -0.3223964580411365, -2.400758277161838,
+            -2.549732539343734, 4.374664141464968, 2.938163982698783,
+        ];
         double[] d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
 
         if (p < 0.02425)

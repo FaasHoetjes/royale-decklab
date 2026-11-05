@@ -11,7 +11,6 @@ interface BuilderDeckStripProps {
   name: string;
   board: DeckBoard;
   cardById: Map<number, BuilderCard>;
-  /** The empty slot the next picked card goes into. */
   target: number;
   onSlotClick: (slotIndex: number) => void;
   onSelectDeck: (deckIndex: number) => void;

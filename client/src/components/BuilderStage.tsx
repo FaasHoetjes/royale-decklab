@@ -19,7 +19,6 @@ interface BuilderStageProps {
   score?: BuilderDeckScore;
   board: DeckBoard;
   cardById: Map<number, BuilderCard>;
-  /** The empty slot the next picked card goes into. */
   target: number;
   onSlotClick: (slotIndex: number) => void;
   slotsRef?: Ref<HTMLDivElement>;
@@ -29,7 +28,6 @@ interface BuilderStageProps {
 
 const CURVE_LABELS = ['1', '2', '3', '4', '5', '6+'];
 
-/** The deck you're working on, big, with what it scores and how it plays. */
 const BuilderStage = forwardRef<HTMLDivElement, BuilderStageProps>(function BuilderStage(
   { deckIndex, name, score, board, cardById, target, onSlotClick, slotsRef, theme, isMobile },
   ref
