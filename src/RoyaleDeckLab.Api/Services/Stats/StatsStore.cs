@@ -69,6 +69,7 @@ public sealed class StatsStore
 
     private readonly string _connectionString;
     private readonly ConcurrentDictionary<string, byte[]> _secrets = new();
+    private bool _checkpointPending;
 
     public StatsStore(string path)
     {
@@ -209,6 +210,7 @@ public sealed class StatsStore
         using var connection = Open();
         var cutoff = Day(today.AddDays(-(RetentionDays - 1)));
         var expired = new List<string>();
+        var deleted = false;
         using (var days = Command(connection, "SELECT DISTINCT day FROM events WHERE day < @cutoff ORDER BY day"))
         {
             days.Parameters.AddWithValue("@cutoff", cutoff);
@@ -221,6 +223,7 @@ public sealed class StatsStore
 
         foreach (var dayText in expired)
         {
+            deleted = true;
             var day = DateOnly.ParseExact(dayText, "yyyy-MM-dd", CultureInfo.InvariantCulture);
             var first = new DateOnly(day.Year, day.Month, 1);
             using var transaction = connection.BeginTransaction();
@@ -245,11 +248,20 @@ public sealed class StatsStore
         using (var secrets = Command(connection, "DELETE FROM secrets WHERE month < @month"))
         {
             secrets.Parameters.AddWithValue("@month", month);
-            secrets.ExecuteNonQuery();
+            deleted |= secrets.ExecuteNonQuery() > 0;
         }
         foreach (var key in _secrets.Keys.Where(k => string.CompareOrdinal(k, month) < 0))
         {
             _secrets.TryRemove(key, out _);
+        }
+
+        // secure_delete zeroes freed bytes in the database, but deleted rows stay in the WAL until it's checkpointed.
+        // TRUNCATE also empties the WAL file; if readers block it, the next run tries again.
+        if (deleted || _checkpointPending)
+        {
+            using var checkpoint = Command(connection, "PRAGMA wal_checkpoint(TRUNCATE);");
+            using var reader = checkpoint.ExecuteReader();
+            _checkpointPending = reader.Read() && reader.GetInt64(0) != 0;
         }
     }
 
@@ -314,6 +326,7 @@ public sealed class StatsStore
         var connection = new SqliteConnection(_connectionString);
         connection.Open();
         Execute(connection, "PRAGMA busy_timeout=5000;");
+        Execute(connection, "PRAGMA secure_delete=ON;");
         return connection;
     }
 

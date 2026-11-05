@@ -152,6 +152,28 @@ public sealed class StatsTests : IDisposable
         Assert.Equal(_store.SecretFor("2026-11"), _store.SecretFor("2026-11"));
     }
 
+    [Fact]
+    public void Maintain_LeavesNoDeletedMonthKeyInTheDatabaseFiles()
+    {
+        var october = _store.SecretFor("2026-10");
+        Assert.True(FilesContain(october));
+
+        _store.Maintain(Today);
+
+        Assert.False(FilesContain(october));
+    }
+
+    private bool FilesContain(byte[] needle)
+        => new[] { _path, _path + "-wal" }.Any(path => File.Exists(path) && Bytes(path).AsSpan().IndexOf(needle) >= 0);
+
+    private static byte[] Bytes(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        return memory.ToArray();
+    }
+
     private static DefaultHttpContext Request(string ip, string userAgent, bool viaCloudflare = false)
     {
         var context = new DefaultHttpContext();
