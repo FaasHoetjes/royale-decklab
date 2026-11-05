@@ -70,6 +70,12 @@ function saveToken(token: string) {
 const number = (value: number) => value.toLocaleString('en-US');
 const percent = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '–');
 
+function changeFrom(now: number, before: number | null): string | undefined {
+  if (!before) return undefined;
+  const change = Math.round(((now - before) / before) * 100);
+  return `${change >= 0 ? '+' : ''}${change}% vs the period before`;
+}
+
 export default function AdminStats() {
   const theme = getTheme();
   const [token, setToken] = useState(readToken);
@@ -169,7 +175,6 @@ export default function AdminStats() {
   const report = stats.data;
   const range = report.ranges.find((r) => r.key === rangeKey) ?? report.ranges[0];
   if (!range) return null;
-  const change = range.previousUsers ? Math.round(((range.users - range.previousUsers) / range.previousUsers) * 100) : null;
 
   return (
     <div style={styles.page}>
@@ -214,7 +219,8 @@ export default function AdminStats() {
       </p>
 
       <div style={styles.tiles}>
-        <Tile label="Real users" value={number(range.users)} detail={change === null ? undefined : `${change >= 0 ? '+' : ''}${change}% vs the period before`} />
+        <Tile label="Visitors (any page)" value={number(range.visitors)} detail={changeFrom(range.visitors, range.previousVisitors)} />
+        <Tile label="Real users" value={number(range.users)} detail={['Looked up a player', changeFrom(range.users, range.previousUsers)].filter(Boolean).join(' · ')} />
         <Tile label="Player lookups" value={number(range.lookups)} detail={range.users > 0 ? `${(range.lookups / range.users).toFixed(1)} per user` : undefined} />
         <Tile label="Different players" value={number(range.players)} />
         <Tile label="Came back" value={percent(range.returning, range.users)} detail={`${number(range.returning)} on more than one day`} />
@@ -240,9 +246,9 @@ export default function AdminStats() {
       </section>
 
       <div style={styles.grid}>
-        <Breakdown title="Countries" counts={range.countries} total={range.users} label={(key) => countryNames?.of(key) ?? key} />
+        <Breakdown title="Countries" counts={range.countries} total={range.visitors} label={(key) => countryNames?.of(key) ?? key} />
         <Breakdown title="Phone or desktop" counts={range.devices} total={range.users} label={(key) => DEVICE_LABELS[key] ?? key} />
-        <Breakdown title="Where users came from" counts={range.sources} total={range.users} label={(key) => SOURCE_LABELS[key] ?? key} />
+        <Breakdown title="Where users came from" counts={range.sources} total={range.visitors} label={(key) => SOURCE_LABELS[key] ?? key} />
         <Breakdown title="Which tools are used" counts={range.tools} label={(key) => TOOL_LABELS[key] ?? key} />
       </div>
 
@@ -254,6 +260,7 @@ export default function AdminStats() {
               <thead>
                 <tr style={{ color: theme.text.tertiary }}>
                   <th style={styles.th}>Month</th>
+                  <th style={styles.thNumber}>Visitors</th>
                   <th style={styles.thNumber}>Users</th>
                   <th style={styles.thNumber}>Lookups</th>
                   <th style={styles.thNumber}>Players</th>
@@ -268,6 +275,7 @@ export default function AdminStats() {
                       {m.month}
                       {m.partial && <span style={{ color: theme.text.tertiary }}> (so far)</span>}
                     </td>
+                    <td style={styles.tdNumber}>{number(m.visitors)}</td>
                     <td style={styles.tdNumber}>{number(m.users)}</td>
                     <td style={styles.tdNumber}>{number(m.lookups)}</td>
                     <td style={styles.tdNumber}>{number(m.players)}</td>

@@ -32,9 +32,13 @@ public sealed class StatsStore
 
     private const string Range = "day BETWEEN @from AND @to";
 
+    // Anyone who opened a page; previews come from the sites fetching a link, not from people.
+    private const string Visit = "kind <> 'preview'";
+
     private static readonly (string Metric, string Sql)[] Scalars =
     [
         ("users", $"SELECT COUNT(DISTINCT visitor) FROM events WHERE kind = 'lookup' AND {Range}"),
+        ("visitors", $"SELECT COUNT(DISTINCT visitor) FROM events WHERE {Visit} AND {Range}"),
         ("lookups", $"SELECT COUNT(*) FROM events WHERE kind = 'lookup' AND {Range}"),
         ("players", $"SELECT COUNT(DISTINCT tag) FROM events WHERE kind = 'lookup' AND {Range}"),
         ("returning", $"SELECT COUNT(*) FROM (SELECT visitor FROM events WHERE kind = 'lookup' AND {Range} GROUP BY visitor HAVING COUNT(DISTINCT day) > 1)"),
@@ -57,9 +61,9 @@ public sealed class StatsStore
     private static readonly (string Metric, string Sql)[] Groups =
     [
         ("daily_users", $"SELECT day, COUNT(DISTINCT visitor) FROM events WHERE kind = 'lookup' AND {Range} GROUP BY day"),
-        ("country", $"SELECT COALESCE(country, 'XX'), COUNT(DISTINCT visitor) FROM events WHERE kind = 'lookup' AND {Range} GROUP BY 1"),
+        ("country", $"SELECT COALESCE(country, 'XX'), COUNT(DISTINCT visitor) FROM events WHERE {Visit} AND {Range} GROUP BY 1"),
         ("device", $"SELECT COALESCE(device, 'desktop'), COUNT(DISTINCT visitor) FROM events WHERE kind = 'lookup' AND {Range} GROUP BY 1"),
-        ("source", $"SELECT COALESCE(source, 'direct'), COUNT(DISTINCT visitor) FROM events WHERE kind = 'lookup' AND {Range} GROUP BY 1"),
+        ("source", $"SELECT COALESCE(source, 'direct'), COUNT(DISTINCT visitor) FROM events WHERE {Visit} AND {Range} GROUP BY 1"),
         ("tool", $"SELECT tool, COUNT(DISTINCT visitor) FROM events WHERE kind = 'tool' AND {Range} GROUP BY tool"),
     ];
 
@@ -154,10 +158,11 @@ public sealed class StatsStore
         return Compute(connection, from, to);
     }
 
-    public long CountUsers(DateOnly from, DateOnly to)
+    /// <summary>One of the scalar metrics, such as "users" or "visitors", without computing the rest.</summary>
+    public long Count(string metric, DateOnly from, DateOnly to)
     {
         using var connection = Open();
-        using var command = RangeCommand(connection, Scalars[0].Sql, from, to);
+        using var command = RangeCommand(connection, Scalars.Single(s => s.Metric == metric).Sql, from, to);
         return (long)command.ExecuteScalar()!;
     }
 

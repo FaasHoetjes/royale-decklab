@@ -83,6 +83,26 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
+    public void Visitors_CountEveryoneWhoOpenedAPageButNotLinkPreviews()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Lookup, 1, Noon, tag: 10, country: "NL"),
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "generator", country: "NL"),
+            Event(StatsStore.Kinds.Tool, 2, Noon, tool: "cards", country: "US"),
+            Event(StatsStore.Kinds.Tool, 3, Noon, tool: "card", country: "US"),
+            Event(StatsStore.Kinds.Preview, 4, Noon, tag: 11, country: "DE"),
+        ]);
+
+        Assert.Equal(1, Metric(Today, Today, "users"));
+        Assert.Equal(3, Metric(Today, Today, "visitors"));
+        Assert.Equal(1, Metric(Today, Today, "country", "NL"));
+        Assert.Equal(2, Metric(Today, Today, "country", "US"));
+        Assert.Equal(0, Metric(Today, Today, "country", "DE"));
+        Assert.Equal(3, Metric(Today, Today, "source", "direct"));
+        Assert.Equal(1, Metric(Today, Today, "device", "phone"));
+    }
+
+    [Fact]
     public void NewFromShare_IsAFriendWhoLooksUpAnotherPlayerWithinAWeek()
     {
         const int owner = 50;
@@ -249,9 +269,10 @@ public sealed class StatsTests : IDisposable
         Assert.True(week.SpansMonths);
         Assert.False(report.Ranges.Single(r => r.Key == "today").SpansMonths);
         Assert.Equal(0, week.PreviousUsers);
+        Assert.Equal((1L, 0L), (week.Visitors, week.PreviousVisitors));
         Assert.Null(report.Ranges.Single(r => r.Key == "today").PreviousUsers);
         var month = Assert.Single(report.Months);
-        Assert.Equal(("2026-11", true, 1L), (month.Month, month.Partial, month.Users));
+        Assert.Equal(("2026-11", true, 1L, 1L), (month.Month, month.Partial, month.Users, month.Visitors));
     }
 
     [Fact]

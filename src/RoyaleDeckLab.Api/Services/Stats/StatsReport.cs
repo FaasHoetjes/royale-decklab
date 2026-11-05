@@ -12,6 +12,8 @@ public static class StatsReport
         bool SpansMonths,
         long Users,
         long? PreviousUsers,
+        long Visitors,
+        long? PreviousVisitors,
         long Lookups,
         long Players,
         long Returning,
@@ -25,7 +27,7 @@ public static class StatsReport
         IReadOnlyList<Count> Sources,
         IReadOnlyList<Count> Tools);
 
-    public sealed record MonthReport(string Month, bool Partial, long Users, long Lookups, long Players, long ShareOpens, long NewFromShare);
+    public sealed record MonthReport(string Month, bool Partial, long Users, long Visitors, long Lookups, long Players, long ShareOpens, long NewFromShare);
 
     public sealed record Report(DateTimeOffset GeneratedAt, int RetentionDays, IReadOnlyList<RangeReport> Ranges, IReadOnlyList<MonthReport> Months);
 
@@ -67,7 +69,9 @@ public static class StatsReport
             StatsStore.Day(to),
             StatsStore.Month(from) != StatsStore.Month(to),
             Scalar("users"),
-            previous is { } p ? store.CountUsers(p.From, p.To) : null,
+            previous is { } p ? store.Count("users", p.From, p.To) : null,
+            Scalar("visitors"),
+            previous is { } v ? store.Count("visitors", v.From, v.To) : null,
             Scalar("lookups"),
             Scalar("players"),
             Scalar("returning"),
@@ -100,6 +104,6 @@ public static class StatsReport
     private static MonthReport Month(string month, IReadOnlyList<StatsTotal> totals, bool partial)
     {
         long Scalar(string metric) => totals.FirstOrDefault(t => t.Metric == metric && t.Dim == "")?.Value ?? 0;
-        return new MonthReport(month, partial, Scalar("users"), Scalar("lookups"), Scalar("players"), Scalar("share_opens"), Scalar("new_from_share"));
+        return new MonthReport(month, partial, Scalar("users"), Scalar("visitors"), Scalar("lookups"), Scalar("players"), Scalar("share_opens"), Scalar("new_from_share"));
     }
 }

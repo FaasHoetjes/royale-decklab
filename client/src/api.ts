@@ -235,6 +235,8 @@ export interface StatsRange {
   spansMonths: boolean;
   users: number;
   previousUsers: number | null;
+  visitors: number;
+  previousVisitors: number | null;
   lookups: number;
   players: number;
   returning: number;
@@ -253,6 +255,7 @@ export interface StatsMonth {
   month: string;
   partial: boolean;
   users: number;
+  visitors: number;
   lookups: number;
   players: number;
   shareOpens: number;
