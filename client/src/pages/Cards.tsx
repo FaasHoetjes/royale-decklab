@@ -5,7 +5,7 @@ import type { CardStat, CardStatsResponse } from '../api';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { mostPlayedVersion } from '../lib/cardInfo';
-import { CARD_SORTS, isLowSample, percent, sortCardStats, type CardSort } from '../lib/cardStats';
+import { isLowSample, percent, sortCardStats, type CardSort } from '../lib/cardStats';
 import { toBuilderCards } from '../lib/builderCards';
 import { EXCLUSIVE_TYPES, matchesFilters, type FilterKey } from '../lib/pickerData';
 import CardTile from '../components/CardTile';
@@ -14,31 +14,12 @@ import WinRateChange from '../components/WinRateChange';
 import FilterPopover from '../components/FilterPopover';
 import LoadError from '../components/LoadError';
 import InfoTip from '../components/InfoTip';
+import { periodNote, sourceNote } from '../lib/statsPeriod';
+import { SortSegment } from './CardSortSegment';
 
 const EAGER_TILE_COUNT = 25;
 const MOBILE_SKELETON_TILES = 16;
 const DESKTOP_SKELETON_TILES = 30;
-
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-
-const battlesIn = (stats: CardStatsResponse) => `${stats.battles.toLocaleString('en-US')} battles in the top 100 war clans`;
-const patchSpan = (since: string | null, until: string) => (since ? `${shortDate(since)} to ${shortDate(until)}` : `up to ${shortDate(until)}`);
-
-/** Which battles the numbers come from, in a sentence. */
-export function periodNote(stats: CardStatsResponse): string {
-  if (stats.isLastPatch && stats.until) {
-    return `How every card did in Clan War last patch, from ${battlesIn(stats)} (${patchSpan(stats.since, stats.until)}). The new season's war battles aren't in yet.`;
-  }
-  return `How every card does in Clan War, from ${battlesIn(stats)} ${stats.since ? `since the ${shortDate(stats.since)} patch` : 'over the last 30 days'}.`;
-}
-
-/** Which battles the numbers come from, for the info tip in the page intro. */
-function sourceNote(stats: CardStatsResponse): string {
-  if (stats.isLastPatch && stats.until) {
-    return `From ${battlesIn(stats)} last patch (${patchSpan(stats.since, stats.until)}). The new season's war battles aren't in yet.`;
-  }
-  return `From ${battlesIn(stats)} ${stats.since ? `since the ${shortDate(stats.since)} patch` : 'over the last 30 days'}.`;
-}
 
 export default function Cards() {
   const theme = getTheme();
@@ -231,35 +212,6 @@ function TileStats({ theme, stat }: { theme: Theme; stat: CardStat }) {
   );
 }
 
-function SortSegment({ value, onPick, isMobile }: { value: CardSort; onPick: (sort: CardSort) => void; isMobile: boolean }) {
-  const index = CARD_SORTS.indexOf(value);
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Sort cards by"
-      style={{ ...styles.segment, gridTemplateColumns: `repeat(${CARD_SORTS.length}, minmax(0, 1fr))`, ...(isMobile ? { width: '100%' } : {}) }}
-    >
-      <span
-        aria-hidden="true"
-        className="gc-thumb"
-        style={{ ...styles.thumb, width: `calc((100% - 6px) / ${CARD_SORTS.length})`, transform: `translateX(${index * 100}%)` }}
-      />
-      {CARD_SORTS.map((sort, i) => (
-        <button
-          key={sort}
-          type="button"
-          role="radio"
-          aria-checked={i === index}
-          onClick={() => onPick(sort)}
-          style={{ ...styles.segmentButton, color: i === index ? 'var(--on-accent)' : 'var(--text-primary)' }}
-        >
-          {sort}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function GridSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div role="status" aria-live="polite" aria-label="Loading cards">
@@ -334,35 +286,6 @@ const styles = {
     fontWeight: 600 as const,
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
-  },
-  segment: {
-    position: 'relative' as const,
-    display: 'grid' as const,
-    width: '330px',
-    padding: '3px',
-    boxSizing: 'border-box' as const,
-    borderRadius: '10px',
-    backgroundColor: 'var(--bg-tertiary)',
-    border: '1px solid var(--border)',
-  },
-  thumb: {
-    position: 'absolute' as const,
-    top: '3px',
-    bottom: '3px',
-    left: '3px',
-    borderRadius: '7px',
-    backgroundColor: 'var(--accent)',
-  },
-  segmentButton: {
-    position: 'relative' as const,
-    height: '31px',
-    border: 0,
-    background: 'none',
-    fontFamily: 'inherit',
-    fontSize: '14px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-    transition: 'color 0.2s ease',
   },
   grid: {
     display: 'grid' as const,
