@@ -37,7 +37,7 @@ public sealed class ShareImageController(ShareImageService images, StatsRecorder
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogError(ex, "Error drawing the share image for {Tag}", tag);
+            logger.LogError(ex, "Error drawing the share image");
             return StatusCode(500, new { error = "Failed to draw the share image" });
         }
     }

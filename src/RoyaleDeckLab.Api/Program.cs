@@ -250,8 +250,8 @@ app.Use(async (context, next) =>
     var start = System.Diagnostics.Stopwatch.GetTimestamp();
     await next();
     var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(start);
-    app.Logger.LogInformation("{Method} {Path} => {Status} in {Elapsed:F1} ms",
-        context.Request.Method, context.Request.Path, context.Response.StatusCode, elapsed.TotalMilliseconds);
+    app.Logger.LogInformation("{Method} {Route} => {Status} in {Elapsed:F1} ms",
+        context.Request.Method, RequestRoute.Of(context), context.Response.StatusCode, elapsed.TotalMilliseconds);
 });
 
 app.UseResponseCompression();

@@ -44,7 +44,7 @@ public sealed class UpgradesController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error generating upgrade advice for {Tag}", tag);
+            logger.LogError(ex, "Error generating upgrade advice");
             return StatusCode(500, new { error = "Failed to generate upgrade advice" });
         }
     }

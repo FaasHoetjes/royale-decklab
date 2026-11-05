@@ -53,7 +53,7 @@ public sealed class PlayerController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error fetching player collection for {Tag}", tag);
+            logger.LogError(ex, "Error fetching player collection");
             return StatusCode(500, new { error = "Failed to fetch player collection" });
         }
     }
@@ -108,7 +108,7 @@ public sealed class PlayerController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error fetching player data for {Tag}", tag);
+            logger.LogError(ex, "Error fetching player data");
             return StatusCode(500, new { error = "Failed to fetch player data" });
         }
     }
