@@ -55,42 +55,13 @@ public sealed class MetaController(MetaCache cache, BattleRepository store) : Co
             return StatusCode(409, new { status = "busy", message = "A meta rebuild is already in progress" });
         }
 
-        JsonElement? timestamp = null;
-        try
-        {
-            var body = await Request.ReadFromJsonAsync<JsonElement>();
-            if (body is { ValueKind: JsonValueKind.Object } el && el.TryGetProperty("timestamp", out var t))
-            {
-                timestamp = t;
-            }
-        }
-        catch
-        {
-            // No / invalid body
-        }
-
+        using var reader = new StreamReader(Request.Body);
+        var body = await reader.ReadToEndAsync(HttpContext.RequestAborted);
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        long ts;
-        if (timestamp is null
-            || timestamp.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
-            || (timestamp.Value.ValueKind == JsonValueKind.String && timestamp.Value.GetString() == "now"))
+        if (EpochTimestamp(body, now) is not { } ts)
         {
-            ts = now;
-        }
-        else if (timestamp.Value.ValueKind == JsonValueKind.Number)
-        {
-            ts = timestamp.Value.GetInt64();
-        }
-        else
-        {
-            var raw = timestamp.Value.ValueKind == JsonValueKind.String ? timestamp.Value.GetString() : null;
-            if (!DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
-                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed))
-            {
-                return StatusCode(400,
-                    new { status = "error", message = "Invalid timestamp. Use an ISO date, epoch ms, or \"now\"." });
-            }
-            ts = parsed.ToUnixTimeMilliseconds();
+            return StatusCode(400,
+                new { status = "error", message = "Invalid timestamp. Use an ISO date, epoch ms, or \"now\"." });
         }
 
         if (ts > now + FutureTimestampToleranceMs)
@@ -106,5 +77,58 @@ public sealed class MetaController(MetaCache cache, BattleRepository store) : Co
             deckCount = decks.Count,
             battlesKept = cache.BattleCount()
         });
+    }
+
+    /// <summary>
+    /// An empty body, <c>{}</c>, a null timestamp and "now" all mean now. Anything it can't read gives null, because
+    /// guessing "now" for a typo would move the patch boundary and down-weight every battle before it.
+    /// </summary>
+    public static long? EpochTimestamp(string body, long now)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return now;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(body);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        using (document)
+        {
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+            if (!root.TryGetProperty("timestamp", out var timestamp) || timestamp.ValueKind == JsonValueKind.Null)
+            {
+                return now;
+            }
+            if (timestamp.ValueKind == JsonValueKind.Number)
+            {
+                return timestamp.TryGetInt64(out var ms) ? ms : null;
+            }
+            if (timestamp.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            var raw = timestamp.GetString();
+            if (raw == "now")
+            {
+                return now;
+            }
+            return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed)
+                ? parsed.ToUnixTimeMilliseconds()
+                : null;
+        }
     }
 }
