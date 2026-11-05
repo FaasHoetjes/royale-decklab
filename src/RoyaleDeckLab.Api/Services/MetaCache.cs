@@ -63,7 +63,7 @@ public sealed class MetaCache(
         }
         finally
         {
-            // Once startup is over, even if it failed, there's nothing left to wait for: serve whatever meta there is.
+            // Serve whatever meta exists, even when startup failed.
             _isLoaded = true;
         }
     }

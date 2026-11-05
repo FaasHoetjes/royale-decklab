@@ -7,9 +7,8 @@ namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
 /// Each page's content as plain HTML inside #root, for crawlers that read the HTML without running the app: Bing,
-/// and with it ChatGPT search and DuckDuckGo, and the AI crawlers. Visitors never see it, since theme-init.js marks
-/// the page as running scripts before first paint and index.html hides it then, until the app replaces it. Mirrors
-/// what the pages in client/src/pages show, so crawlers and visitors get the same content.
+/// ChatGPT search, DuckDuckGo and the AI crawlers. theme-init.js hides it from visitors until the app replaces it.
+/// Mirrors what the pages in client/src/pages show.
 /// </summary>
 public static class SpaContent
 {

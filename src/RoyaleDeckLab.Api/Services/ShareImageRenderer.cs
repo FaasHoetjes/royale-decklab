@@ -7,7 +7,7 @@ public sealed record ShareImageDeck(string Name, double WinRate, double AvgElixi
 
 /// <summary>
 /// The 1200×630 link preview of a shared lineup: a header with whose decks they are, then one row per deck
-/// with its name and win rate beside its eight cards. Layout picked in .lavish/share-image.html (option A).
+/// with its name and win rate beside its eight cards.
 /// </summary>
 public static class ShareImageRenderer
 {

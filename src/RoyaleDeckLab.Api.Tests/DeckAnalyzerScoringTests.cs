@@ -49,7 +49,7 @@ public sealed class DeckAnalyzerScoringTests
         var cards = Build.Collection(Build.Eight(1));
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20);
 
-        // logit(confidence) + level edge, x versionFit(1); how many players run it no longer matters.
+        // logit(confidence) + level edge, x versionFit(1); the number of players running it does not count.
         var expected = Expected(0.55, MaxedDeckEdge);
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
     }
@@ -120,7 +120,7 @@ public sealed class DeckAnalyzerScoringTests
     [Fact]
     public void PlayerScore_PrefersANearMaxedDeck_OverAnUnderleveledStrongerDeck()
     {
-        // Regression check: the old linear model ranked the underleveled 60% deck above the near-maxed 51% deck.
+        // The underleveled 60% deck must rank below the near-maxed 51% deck.
         var cards = Enumerable.Range(1, 4).Select(id => Build.Card(id, level: 12))
             .Concat(Enumerable.Range(5, 4).Select(id => Build.Card(id, level: 11)))
             .Concat(Enumerable.Range(9, 8).Select(id => Build.Card(id, level: 13)))
@@ -155,8 +155,8 @@ public sealed class DeckAnalyzerScoringTests
     [Fact]
     public void PlayerScore_DoesNotReward_HowManyPlayersRunTheDeck()
     {
-        // Popularity weighting picked decks that won less for other players; evidence size is already in
-        // the cautious confidence, so a niche deck and a popular one with equal confidence score the same.
+        // Evidence size is already in the cautious confidence, so a niche deck and a popular one with equal
+        // confidence score the same.
         var cards = Build.Collection(Build.Eight(1));
         var niche = Build.Deck(Build.Eight(1), confidence: 0.55, players: 5);
         var popular = Build.Deck(Build.Eight(1), confidence: 0.55, players: 500);

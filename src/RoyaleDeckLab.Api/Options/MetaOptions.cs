@@ -25,8 +25,8 @@ public sealed class MetaOptions
     public double PreEpochWeight { get; set; } = 0.25;
 
     // Decks rank by a cautious estimate: the RankingQuantile of their posterior win rate after adding
-    // PriorGames imaginary games at PriorWinRate (fitted on one week of war battles, Oct 2026; retune with
-    // Meta__PriorGames etc. once more data is in). 0.25 = "75% sure the deck is at least this good".
+    // PriorGames imaginary games at PriorWinRate (fitted on one week of war battles, Oct 2026; overridable
+    // with Meta__PriorGames etc.). 0.25 = "75% sure the deck is at least this good".
     public double PriorGames { get; set; } = 80;
 
     public double PriorWinRate { get; set; } = 0.52;
