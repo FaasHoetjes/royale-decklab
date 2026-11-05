@@ -34,6 +34,18 @@ interface WarDeckResultProps {
   shared?: { onGetMine: () => void; decks: number[][] };
 }
 
+interface KeptOrder {
+  master: number;
+  ids: number[];
+}
+
+interface LineupState {
+  decks: ScoredDeck[];
+  arranged: number[];
+  slots: number[];
+  orders: Record<number, KeptOrder>;
+}
+
 export default function WarDeckResult({
   playerName,
   playerTag,
@@ -73,9 +85,9 @@ export default function WarDeckResult({
 
   // Re-arranged in the same render a new result arrives, so old positions never index into the new list.
   // `arranged` is the lineup as generated; `slots` also reflects swaps made since.
-  const [slotState, setSlotState] = useState(() => {
+  const [slotState, setSlotState] = useState<LineupState>(() => {
     const arranged = arrange();
-    return { decks, arranged, slots: arranged, orders: {} as Record<number, { master: number; ids: number[] }> };
+    return { decks, arranged, slots: arranged, orders: {} };
   });
   let slots = slotState.slots;
   if (slotState.decks !== decks) {
@@ -286,27 +298,42 @@ function Shortfall({ found, options, onChange, isMobile }: {
   // `short` is the phone label: three buttons have to share one row there.
   const fixes: { label: string; short: string; apply: () => void }[] = [];
   if (minLevel != null) {
-    if (minLevel > LOWEST_LEVEL_CHOICE) fixes.push({ label: `Lower to level ${minLevel - 1}+`, short: `Level ${minLevel - 1}+`, apply: () => set({ minLevel: minLevel - 1 }) });
+    if (minLevel > LOWEST_LEVEL_CHOICE) {
+      const lower = minLevel - 1;
+      fixes.push({ label: `Lower to level ${lower}+`, short: `Level ${lower}+`, apply: () => set({ minLevel: lower }) });
+    }
     // "Any level" next to "Lower" only when the level is the one thing set; otherwise each other rule gets its button.
     if (minLevel <= LOWEST_LEVEL_CHOICE || (options.require.length === 0 && options.ban.length === 0)) {
       fixes.push({ label: 'Any level', short: 'Any level', apply: () => set({ minLevel: null }) });
     }
   }
-  if (options.require.length) fixes.push({ label: 'Clear included cards', short: 'Clear included', apply: () => set({ require: [] }) });
-  if (options.ban.length) fixes.push({ label: 'Clear excluded cards', short: 'Clear excluded', apply: () => set({ ban: [] }) });
+  if (options.require.length) {
+    fixes.push({ label: 'Clear included cards', short: 'Clear included', apply: () => set({ require: [] }) });
+  }
+  if (options.ban.length) {
+    fixes.push({ label: 'Clear excluded cards', short: 'Clear excluded', apply: () => set({ ban: [] }) });
+  }
   if (found > 0) {
-    fixes.push({ label: `Show just ${found} deck${found === 1 ? '' : 's'}`, short: `Show ${found} deck${found === 1 ? '' : 's'}`, apply: () => set({ decks: found, lock: options.lock.slice(0, found) }) });
+    const deckWord = found === 1 ? 'deck' : 'decks';
+    fixes.push({
+      label: `Show just ${found} ${deckWord}`,
+      short: `Show ${found} ${deckWord}`,
+      apply: () => set({ decks: found, lock: options.lock.slice(0, found) }),
+    });
   }
 
   const onlyLevel = minLevel != null && options.require.length === 0 && options.ban.length === 0;
   const title = found === 0
     ? 'No decks fit these options'
     : `Only ${found} of ${options.decks} decks ${found === 1 ? 'fits' : 'fit'}`;
+  const noDecksReason = onlyLevel
+    ? `None of your popular war decks has every card at level ${minLevel} or higher.`
+    : 'None of your popular war decks fits all of these options.';
+  const subject = onlyLevel ? `A minimum level of ${minLevel}` : 'Your options';
+  const verb = onlyLevel ? 'rules' : 'rule';
   const reason = found === 0
-    ? onlyLevel
-      ? `None of your popular war decks has every card at level ${minLevel} or higher.`
-      : 'None of your popular war decks fits all of these options.'
-    : `${onlyLevel ? `A minimum level of ${minLevel}` : 'Your options'} ${onlyLevel ? 'rules' : 'rule'} out the other ${missing} deck${missing === 1 ? '' : 's'}.`;
+    ? noDecksReason
+    : `${subject} ${verb} out the other ${missing} deck${missing === 1 ? '' : 's'}.`;
 
   return (
     <div style={{ ...styles.shortfall, ...(isMobile && styles.shortfallMobile) }} role="status">

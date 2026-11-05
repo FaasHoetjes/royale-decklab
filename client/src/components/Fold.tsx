@@ -21,9 +21,15 @@ export default function Fold({ open, style, children, ...rest }: FoldProps) {
 
     // A fold reversed halfway starts from where it is now, not from fully open or shut.
     const running = el.getAnimations();
-    const current = running.length > 0;
-    const from = current ? el.getBoundingClientRect().height : open ? 0 : el.scrollHeight;
-    const fromOpacity = current ? Number(getComputedStyle(el).opacity) : open ? 0 : 1;
+    let from: number;
+    let fromOpacity: number;
+    if (running.length > 0) {
+      from = el.getBoundingClientRect().height;
+      fromOpacity = Number(getComputedStyle(el).opacity);
+    } else {
+      from = open ? 0 : el.scrollHeight;
+      fromOpacity = open ? 0 : 1;
+    }
     running.forEach((a) => a.cancel());
     el.animate(
       [

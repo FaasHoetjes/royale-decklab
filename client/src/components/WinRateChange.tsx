@@ -14,6 +14,11 @@ function withinChance(stat: CardStat, change: number): string {
   return `${change >= 0 ? 'Up' : 'Down'} ${percent(Math.abs(change))} since last patch, but at this many games chance alone can move a win rate ${margin}, so treat it as unchanged.`;
 }
 
+function changeColor(isClear: boolean, up: boolean): string {
+  if (!isClear) return 'var(--text-tertiary)';
+  return up ? 'var(--up)' : 'var(--down)';
+}
+
 /**
  * The win rate change since the last patch as a pill: green up, red down, grey when chance alone could explain it.
  * `detailed` adds an info tip to a grey pill saying so.
@@ -21,7 +26,7 @@ function withinChance(stat: CardStat, change: number): string {
 export default function WinRateChange({ stat, large = false, detailed = false }: { stat: CardStat; large?: boolean; detailed?: boolean }) {
   if (stat.winRateChange == null) return null;
   const up = stat.winRateChange >= 0;
-  const color = !stat.changeIsClear ? 'var(--text-tertiary)' : up ? 'var(--up)' : 'var(--down)';
+  const color = changeColor(stat.changeIsClear, up);
   return (
     <span title={detailed ? undefined : explain(stat)} style={styles.wrap}>
       <span

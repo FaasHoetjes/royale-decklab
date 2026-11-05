@@ -36,6 +36,23 @@ const decksLabel = (n: number) => `${n} deck${n === 1 ? '' : 's'}`;
 const levelLabel = (min: number | null) => (min == null ? 'Any level' : `Level ${min}+`);
 const levelOf = (card: BuilderCard | undefined) =>
   card?.owned && card.level != null && card.maxLevel != null ? displayLevel(card.level, card.maxLevel) : null;
+const countKept = (levels: number[], min: number | null) => (min == null ? levels.length : levels.filter((l) => l >= min).length);
+const DECK_MENU_WIDTH = 230;
+const LEVEL_MENU_WIDTH = 360;
+
+function rulePillTone(kind: PickerKind, hasCards: boolean): Tone {
+  if (!hasCards) return 'add';
+  return kind === 'require' ? 'active' : 'plain';
+}
+
+function ruleIcon(kind: PickerKind) {
+  return kind === 'require' ? <PlusIcon /> : <BanIcon />;
+}
+
+function choiceColor(isSelected: boolean, isDimmed: boolean) {
+  if (isSelected) return 'var(--on-accent)';
+  return isDimmed ? 'var(--text-tertiary)' : 'var(--text-primary)';
+}
 
 export default function GeneratorControls({ options, onChange, cards, isUpdating, isMobile, canReset, onReset }: GeneratorControlsProps) {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -77,7 +94,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
     const anchor = anchors.current[menu];
     anchor?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     const onPointer = (e: PointerEvent) => {
-      if (!anchor?.contains(e.target as Node)) setMenu(null);
+      const target = e.target instanceof Node ? e.target : null;
+      if (!anchor?.contains(target)) setMenu(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -112,10 +130,18 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
     setPicker(null);
   };
   const cardName = (id: number) => cardById.get(id)?.name ?? `Card ${id}`;
+  const applySheetPatch = (patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => {
+    if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
+      set({ ...patch, lock: options.lock.slice(0, patch.decks) });
+    }
+  };
 
   const tooLow = options.minLevel == null
     ? []
     : options.require.filter((id) => (levelOf(cardById.get(id)) ?? 0) < (options.minLevel ?? 0));
+  const isSingle = tooLow.length === 1;
+  const verb = isSingle ? 'is' : 'are';
+  const pronoun = isSingle ? 'it' : 'them';
 
   // One pill per rule, showing its cards; it opens the picker straight away.
   const rulePill = (kind: PickerKind) => {
@@ -131,7 +157,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
         disabled={!cardsLoaded}
         onClick={() => openPicker(kind)}
         style={{
-          ...pill(ids.length === 0 ? 'add' : kind === 'require' ? 'active' : 'plain', isMobile),
+          ...pill(rulePillTone(kind, ids.length > 0), isMobile),
           ...(ids.length ? { padding: '0 12px 0 6px' } : {}),
         }}
       >
@@ -141,10 +167,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               <CardAvatar key={id} card={cardById.get(id)} dim={kind === 'ban'} style={i > 0 ? styles.stacked : undefined} />
             ))}
           </span>
-        ) : kind === 'require' ? (
-          <PlusIcon />
         ) : (
-          <BanIcon />
+          ruleIcon(kind)
         )}
         {label}
         {ids.length > 0 && <span style={{ ...styles.count, ...(kind === 'ban' ? styles.countMuted : {}) }}>{ids.length}</span>}
@@ -210,7 +234,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               </div>
               <DeckSegment value={options.decks} onPick={(n) => set({ decks: n, lock: options.lock.slice(0, n) })} />
             </>,
-            230
+            DECK_MENU_WIDTH
           )}
           {menuPill(
             'level',
@@ -223,7 +247,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
               </div>
               <LevelSegment levels={ownedLevels} value={options.minLevel} onPick={(minLevel) => set({ minLevel })} />
             </>,
-            360
+            LEVEL_MENU_WIDTH
           )}
           {rulePills}
           <span style={styles.status}>
@@ -236,8 +260,8 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
       {tooLow.length > 0 && (
         <p style={styles.warning} role="status">
           {tooLow.map((id) => `${cardById.get(id)?.name ?? 'A card'} (level ${levelOf(cardById.get(id))})`).join(', ')}{' '}
-          {tooLow.length === 1 ? 'is' : 'are'} below your minimum level of {options.minLevel}, so no deck can include{' '}
-          {tooLow.length === 1 ? 'it' : 'them'}. Lower the minimum level or stop including {tooLow.length === 1 ? 'it' : 'them'}.
+          {verb} below your minimum level of {options.minLevel}, so no deck can include{' '}
+          {pronoun}. Lower the minimum level or stop including {pronoun}.
         </p>
       )}
 
@@ -248,15 +272,11 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           cardsLoaded={cardsLoaded}
           canReset={canReset}
           onApply={(patch) => {
-            if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
-              set({ ...patch, lock: options.lock.slice(0, patch.decks) });
-            }
+            applySheetPatch(patch);
             setSheetOpen(false);
           }}
           onPickCards={(kind, patch) => {
-            if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
-              set({ ...patch, lock: options.lock.slice(0, patch.decks) });
-            }
+            applySheetPatch(patch);
             openPicker(kind);
           }}
           onReset={() => {
@@ -349,7 +369,7 @@ function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim }: {
           style={{
             ...styles.segmentButton,
             fontSize: choices.length > 4 ? '14px' : '16px',
-            color: i === index ? 'var(--on-accent)' : dim?.(choice) ? 'var(--text-tertiary)' : 'var(--text-primary)',
+            color: choiceColor(i === index, dim?.(choice) === true),
           }}
         >
           {text(choice)}
@@ -368,7 +388,7 @@ function LevelSegment({ levels, value, onPick }: {
   value: number | null;
   onPick: (min: number | null) => void;
 }) {
-  const keptAt = (min: number | null) => (min == null ? levels.length : levels.filter((l) => l >= min).length);
+  const keptAt = (min: number | null) => countKept(levels, min);
   const share = levels.length === 0 ? 1 : keptAt(value) / levels.length;
   return (
     <>
@@ -390,7 +410,7 @@ function LevelSegment({ levels, value, onPick }: {
 
 function KeptCount({ levels, min }: { levels: number[]; min: number | null }) {
   if (levels.length === 0) return null;
-  const kept = min == null ? levels.length : levels.filter((l) => l >= min).length;
+  const kept = countKept(levels, min);
   return <span style={styles.keptCount}>{kept} of {levels.length} cards</span>;
 }
 

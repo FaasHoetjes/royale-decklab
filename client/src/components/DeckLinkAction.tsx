@@ -20,6 +20,7 @@ export default function DeckLinkAction({
 }: DeckLinkActionProps) {
   const [copied, setCopied] = useState(false);
   const resetTimer = useRef<number | null>(null);
+  const idleIcon = linkIcon ? <LinkIcon /> : <CopyIcon />;
 
   useEffect(
     () => () => {
@@ -61,7 +62,7 @@ export default function DeckLinkAction({
       aria-label={copied ? 'Deck link copied' : 'Copy deck link'}
       style={{ ...style, fontFamily: 'inherit' }}
     >
-      {copied ? <CheckIcon /> : linkIcon ? <LinkIcon /> : <CopyIcon />}
+      {copied ? <CheckIcon /> : idleIcon}
       {label && (copied ? 'Copied' : label)}
     </button>
   );
