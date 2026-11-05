@@ -88,7 +88,9 @@ export default function AdminStats() {
     queryFn: ({ signal }) => fetchAdminStats(token, signal),
     enabled: token !== '',
     retry: false,
-    staleTime: 0,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 
   const status = stats.error instanceof ApiError ? stats.error.status : null;
@@ -153,7 +155,7 @@ export default function AdminStats() {
     );
   }
 
-  if (stats.isError || !stats.data) {
+  if (!stats.data) {
     return (
       <div style={styles.page}>
         <h1 style={{ ...styles.title, color: theme.text.primary }}>Stats</h1>
@@ -214,7 +216,8 @@ export default function AdminStats() {
       </div>
 
       <p style={{ ...styles.note, color: theme.text.tertiary }}>
-        {range.from === range.to ? range.from : `${range.from} to ${range.to}`} (UTC)
+        {range.from === range.to ? range.from : `${range.from} to ${range.to}`} (UTC) · Updated {new Date(stats.dataUpdatedAt).toLocaleTimeString()}
+        {stats.isError && ' · Couldn’t refresh, trying again in a minute'}
         {range.spansMonths && ' · People who came in both months count twice here, as their anonymous code changes each month.'}
       </p>
 
