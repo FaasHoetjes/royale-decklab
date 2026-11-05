@@ -321,7 +321,7 @@ public sealed class StatsTests : IDisposable
         => Assert.Equal(expected, StatsClassify.Country(header));
 
     [Fact]
-    public void Report_FillsEveryDayAndFlagsRangesThatSpanMonths()
+    public void Report_FillsEveryDayAndComparesWithThePeriodBefore()
     {
         _store.Add([Event(StatsStore.Kinds.Lookup, 1, Noon, tag: 10)]);
 
@@ -330,8 +330,6 @@ public sealed class StatsTests : IDisposable
         var week = report.Ranges.Single(r => r.Key == "7d");
         Assert.Equal(7, week.Daily.Count);
         Assert.Equal(1, week.Daily[^1].Users);
-        Assert.True(week.SpansMonths);
-        Assert.False(report.Ranges.Single(r => r.Key == "today").SpansMonths);
         Assert.Equal(0, week.PreviousUsers);
         Assert.Equal((1L, 0L), (week.Visitors, week.PreviousVisitors));
         Assert.Null(report.Ranges.Single(r => r.Key == "today").PreviousUsers);
@@ -472,20 +470,14 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
-    public void Recorder_CountsWhoIsOnTheSiteNow()
+    public void Recorder_GivesAVisitorTheCodeTheirEventsCarry()
     {
-        var clock = new Clock(Noon);
-        var recorder = new StatsRecorder(_store, clock, NullLogger<StatsRecorder>.Instance);
+        var recorder = new StatsRecorder(_store, new Clock(Noon), NullLogger<StatsRecorder>.Instance);
         recorder.Record(Request("84.1.2.3", Phone), StatsStore.Kinds.Tool, tool: "home");
-        recorder.Record(Request("84.1.2.3", Phone), StatsStore.Kinds.Tool, tool: "faq");
-        recorder.Record(Request("84.1.2.4", Phone), StatsStore.Kinds.Tool, tool: "home");
-        recorder.Record(Request("1.2.3.4", "WhatsApp/2.23"), StatsStore.Kinds.Preview, "#ABC/000a0uc6cao9oaof");
-        Assert.Equal(2, recorder.ActiveNow());
 
-        clock.Now = Noon.AddMinutes(4);
-        recorder.Record(Request("84.1.2.4", Phone), StatsStore.Kinds.Tool, tool: "cards");
-        clock.Now = Noon.AddMinutes(6);
-        Assert.Equal(1, recorder.ActiveNow());
+        Assert.Equal(Drain(recorder)[0].Visitor, recorder.VisitorOf(Request("84.1.2.3", Phone)));
+        Assert.NotEqual(recorder.VisitorOf(Request("84.1.2.3", Phone)), recorder.VisitorOf(Request("84.1.2.3", Desktop)));
+        Assert.Null(recorder.VisitorOf(Request("84.1.2.3", "Googlebot/2.1")));
     }
 
     [Theory]

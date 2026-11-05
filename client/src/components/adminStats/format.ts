@@ -61,6 +61,15 @@ export const number = (value: number) => value.toLocaleString('en-US');
 
 export const percent = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '–');
 
+const pad = (value: number) => String(value).padStart(2, '0');
+
+export const duration = (seconds: number) => {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${pad(seconds % 60)}s`;
+  return `${Math.floor(minutes / 60)}h ${pad(minutes % 60)}m`;
+};
+
 export const changeFrom = (now: number, before: number | null): string | undefined => {
   if (!before) return undefined;
   const change = Math.round(((now - before) / before) * 100);

@@ -243,8 +243,6 @@ export interface StatsRange {
   key: 'today' | '7d' | '30d' | '90d';
   from: string;
   to: string;
-  /** People seen in both months count twice, since everyone's anonymous code changes each month. */
-  spansMonths: boolean;
   users: number;
   previousUsers: number | null;
   visitors: number;
@@ -268,6 +266,18 @@ export interface StatsRange {
   devices: StatsCount[];
   sources: StatsCount[];
   tools: StatsCount[];
+  /** Median seconds a visitor had the site in view; null when nobody's time was measured. */
+  timeMedian: number | null;
+  previousTimeMedian: number | null;
+  timeMean: number | null;
+  timeVisitors: number;
+  sourceTime: StatsDuration[];
+}
+
+export interface StatsDuration {
+  key: string;
+  seconds: number;
+  visitors: number;
 }
 
 export interface StatsMonth {
@@ -279,13 +289,14 @@ export interface StatsMonth {
   players: number;
   shareOpens: number;
   newFromShare: number;
+  timeMedian: number | null;
 }
 
 export interface StatsReport {
   generatedAt: string;
   retentionDays: number;
-  /** Visitors seen in the last few minutes, counted in memory only. */
-  activeNow: number;
+  /** Visitors with the site open in view when the report was made; the live connection keeps it current. */
+  inView: number;
   filters: StatsFilters;
   ranges: StatsRange[];
   months: StatsMonth[];

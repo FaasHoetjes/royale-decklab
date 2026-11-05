@@ -1,27 +1,9 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
-using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 
 namespace RoyaleDeckLab.Api.Services.Stats;
-
-/// <param name="Visitor">An HMAC of the visitor's IP address and browser with the month's secret.</param>
-/// <param name="Tag">An HMAC of the player tag with the same secret, or empty.</param>
-public sealed record StatsEvent(
-    long AtMs, string Kind, byte[] Visitor, byte[] Tag, string Tool, string? Country, string? Device, string? Source,
-    string? Campaign = null);
-
-/// <summary>Narrows the stats to the visitors who, in the period, came from that source, country and device.</summary>
-public sealed record StatsFilter(string? Source = null, string? Country = null, string? Device = null)
-{
-    [JsonIgnore]
-    public bool IsEmpty => Source is null && Country is null && Device is null;
-}
-
-public sealed record StatsHour(string Hour, long Users, long Visitors);
-
-public sealed record StatsTotal(string Metric, string Dim, long Value);
 
 /// <summary>
 /// The usage stats in their own SQLite file, apart from the rebuildable meta. Events are kept for
@@ -32,6 +14,9 @@ public sealed class StatsStore
     public const int RetentionDays = 90;
     public static readonly TimeSpan ConversionWindow = TimeSpan.FromDays(7);
 
+    /// <summary>Caps one visitor's time on the site in a day, however many screens they leave it open on.</summary>
+    public static readonly TimeSpan MaxTimePerDay = TimeSpan.FromHours(4);
+
     public static class Kinds
     {
         public const string Lookup = "lookup";
@@ -41,56 +26,6 @@ public sealed class StatsStore
         public const string Preview = "preview";
     }
 
-    private const string Range = "day BETWEEN @from AND @to";
-
-    // Anyone who opened a page; previews come from the sites fetching a link, not from people.
-    private const string Visit = "kind <> 'preview'";
-
-    private static readonly (string Metric, Func<string, string> Sql)[] Scalars =
-    [
-        ("users", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'lookup' AND {Range}"),
-        ("visitors", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range}"),
-        ("lookups", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'lookup' AND {Range}"),
-        ("players", t => $"SELECT COUNT(DISTINCT tag) FROM {t} WHERE kind = 'lookup' AND {Range}"),
-        ("returning", t => $"SELECT COUNT(*) FROM (SELECT visitor FROM {t} WHERE kind = 'lookup' AND {Range} GROUP BY visitor HAVING COUNT(DISTINCT day) > 1)"),
-        ("share_taps", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'share' AND {Range}"),
-        ("previews", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'preview' AND {Range}"),
-        ("share_opens", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'share_open' AND {Range}"),
-        // A friend who opened a shared lineup and then looked up a different player, their own, having looked up
-        // no one else before it.
-        ("new_from_share", t =>
-            $"""
-            SELECT COUNT(DISTINCT o.visitor) FROM {t} o
-            WHERE o.kind = 'share_open' AND o.{Range}
-              AND EXISTS (SELECT 1 FROM {t} l WHERE l.visitor = o.visitor AND l.kind = 'lookup' AND l.tag <> o.tag
-                          AND l.at_ms >= o.at_ms AND l.at_ms <= o.at_ms + @window)
-              AND NOT EXISTS (SELECT 1 FROM {t} p WHERE p.visitor = o.visitor AND p.kind = 'lookup' AND p.tag <> o.tag
-                              AND p.at_ms < o.at_ms)
-            """),
-    ];
-
-    private static readonly (string Metric, Func<string, string> Sql)[] Groups =
-    [
-        ("daily_users", t => $"SELECT day, COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'lookup' AND {Range} GROUP BY day"),
-        ("daily_visitors", t => $"SELECT day, COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range} GROUP BY day"),
-        ("country", t => $"SELECT COALESCE(country, 'XX'), COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range} GROUP BY 1"),
-        ("country_users", t => LookedUpBy(t, "COALESCE(country, 'XX')")),
-        ("device", t => $"SELECT COALESCE(device, 'desktop'), COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'lookup' AND {Range} GROUP BY 1"),
-        ("source", t => $"SELECT COALESCE(source, 'direct'), COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range} GROUP BY 1"),
-        ("source_users", t => LookedUpBy(t, "COALESCE(source, 'direct')")),
-        ("campaign", t => $"SELECT campaign, COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range} AND campaign IS NOT NULL GROUP BY 1"),
-        ("tool", t => $"SELECT tool, COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'tool' AND {Range} GROUP BY tool"),
-    ];
-
-    // Per value of the column: how many of the visitors who came with it looked up a player in the period.
-    private static string LookedUpBy(string table, string column) =>
-        $"""
-        SELECT v.dim, COUNT(DISTINCT l.visitor) FROM {table} l
-        JOIN (SELECT DISTINCT visitor, {column} AS dim FROM {table} WHERE {Visit} AND {Range}) v ON v.visitor = l.visitor
-        WHERE l.kind = 'lookup' AND l.{Range}
-        GROUP BY 1
-        """;
-
     private readonly string _connectionString;
     private readonly ConcurrentDictionary<string, byte[]> _secrets = new();
     private bool _checkpointPending;
@@ -99,40 +34,7 @@ public sealed class StatsStore
     {
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
         using var connection = Open();
-        Execute(connection, "PRAGMA journal_mode=WAL;");
-        Execute(connection,
-            """
-            CREATE TABLE IF NOT EXISTS secrets (
-                month TEXT NOT NULL PRIMARY KEY,
-                key BLOB NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS events (
-                day TEXT NOT NULL,
-                kind TEXT NOT NULL,
-                visitor BLOB NOT NULL,
-                tag BLOB NOT NULL,
-                tool TEXT NOT NULL,
-                at_ms INTEGER NOT NULL,
-                country TEXT,
-                device TEXT,
-                source TEXT,
-                campaign TEXT,
-                PRIMARY KEY (day, kind, visitor, tag, tool)
-            ) WITHOUT ROWID;
-            CREATE INDEX IF NOT EXISTS events_by_visitor ON events (visitor, kind, at_ms);
-            CREATE TABLE IF NOT EXISTS totals (
-                period TEXT NOT NULL,
-                metric TEXT NOT NULL,
-                dim TEXT NOT NULL,
-                value INTEGER NOT NULL,
-                PRIMARY KEY (period, metric, dim)
-            ) WITHOUT ROWID;
-            """);
-        using var campaignColumn = Command(connection, "SELECT 1 FROM pragma_table_info('events') WHERE name = 'campaign'");
-        if (campaignColumn.ExecuteScalar() is null)
-        {
-            Execute(connection, "ALTER TABLE events ADD COLUMN campaign TEXT;");
-        }
+        StatsSchema.Ensure(connection);
     }
 
     public static string Day(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -183,6 +85,44 @@ public sealed class StatsStore
         transaction.Commit();
     }
 
+    public void AddTime(IReadOnlyList<VisitTime> times)
+    {
+        if (times.Count == 0)
+        {
+            return;
+        }
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var upsert = Command(connection,
+            """
+            INSERT INTO time_in_view (day, visitor, ms) VALUES (@day, @visitor, MIN(@ms, @cap))
+            ON CONFLICT (day, visitor) DO UPDATE SET ms = MIN(ms + excluded.ms, @cap)
+            """);
+        upsert.Transaction = transaction;
+        foreach (var time in times)
+        {
+            upsert.Parameters.Clear();
+            upsert.Parameters.AddWithValue("@day", Day(time.Day));
+            upsert.Parameters.AddWithValue("@visitor", time.Visitor);
+            upsert.Parameters.AddWithValue("@ms", time.Ms);
+            upsert.Parameters.AddWithValue("@cap", (long)MaxTimePerDay.TotalMilliseconds);
+            upsert.ExecuteNonQuery();
+        }
+        transaction.Commit();
+    }
+
+    /// <summary>Deletes everything stored under the visitor's code: the admin's own visits from before their browser was excluded.</summary>
+    public void Forget(byte[] visitor)
+    {
+        using var connection = Open();
+        foreach (var table in new[] { "events", "time_in_view" })
+        {
+            using var delete = Command(connection, $"DELETE FROM {table} WHERE visitor = @visitor");
+            delete.Parameters.AddWithValue("@visitor", visitor);
+            delete.ExecuteNonQuery();
+        }
+    }
+
     /// <summary>
     /// Every metric over the stored events of the days from <paramref name="from"/> to <paramref name="to"/>, or
     /// just the <paramref name="metrics"/> named.
@@ -190,7 +130,7 @@ public sealed class StatsStore
     public IReadOnlyList<StatsTotal> Compute(DateOnly from, DateOnly to, StatsFilter? filter = null, IReadOnlySet<string>? metrics = null)
     {
         using var connection = Open();
-        return WithEvents(connection, from, to, filter, table => Compute(connection, table, from, to, metrics: metrics));
+        return WithEvents(connection, from, to, filter, table => StatsMetrics.Compute(connection, table, from, to, metrics: metrics));
     }
 
     /// <summary>The day's visitors and real users by the UTC hour they first showed up in, each counted once.</summary>
@@ -203,7 +143,7 @@ public sealed class StatsStore
                 $"""
                 SELECT hour, COUNT(*), SUM(looked_up) FROM (
                     SELECT strftime('%H', MIN(at_ms) / 1000, 'unixepoch') AS hour, MAX(kind = 'lookup') AS looked_up
-                    FROM {table} WHERE {Visit} AND {Range} GROUP BY visitor)
+                    FROM {table} WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range} GROUP BY visitor)
                 GROUP BY hour
                 """, day, day);
             var hours = new List<StatsHour>();
@@ -278,19 +218,25 @@ public sealed class StatsStore
             using var transaction = connection.BeginTransaction();
             if (!HasTotals(connection, transaction, Month(day)))
             {
-                SaveTotals(connection, transaction, Month(day), Compute(connection, "events", first, first.AddMonths(1).AddDays(-1), transaction));
+                SaveTotals(connection, transaction, Month(day), StatsMetrics.Compute(connection, "events", first, first.AddMonths(1).AddDays(-1), transaction));
             }
             if (!HasTotals(connection, transaction, dayText))
             {
-                SaveTotals(connection, transaction, dayText, Compute(connection, "events", day, day, transaction));
+                SaveTotals(connection, transaction, dayText, StatsMetrics.Compute(connection, "events", day, day, transaction));
             }
-            using (var delete = Command(connection, "DELETE FROM events WHERE day = @day"))
+            foreach (var table in new[] { "events", "time_in_view" })
             {
+                using var delete = Command(connection, $"DELETE FROM {table} WHERE day = @day");
                 delete.Transaction = transaction;
                 delete.Parameters.AddWithValue("@day", dayText);
                 delete.ExecuteNonQuery();
             }
             transaction.Commit();
+        }
+        using (var strays = Command(connection, "DELETE FROM time_in_view WHERE day < @cutoff"))
+        {
+            strays.Parameters.AddWithValue("@cutoff", cutoff);
+            deleted |= strays.ExecuteNonQuery() > 0;
         }
 
         var month = Month(today);
@@ -314,27 +260,6 @@ public sealed class StatsStore
         }
     }
 
-    private static IReadOnlyList<StatsTotal> Compute(
-        SqliteConnection connection, string table, DateOnly from, DateOnly to, SqliteTransaction? transaction = null, IReadOnlySet<string>? metrics = null)
-    {
-        var totals = new List<StatsTotal>();
-        foreach (var (metric, sql) in Scalars.Where(q => metrics is null || metrics.Contains(q.Metric)))
-        {
-            using var command = RangeCommand(connection, sql(table), from, to, transaction);
-            totals.Add(new StatsTotal(metric, "", (long)command.ExecuteScalar()!));
-        }
-        foreach (var (metric, sql) in Groups.Where(q => metrics is null || metrics.Contains(q.Metric)))
-        {
-            using var command = RangeCommand(connection, sql(table), from, to, transaction);
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                totals.Add(new StatsTotal(metric, reader.GetString(0), reader.GetInt64(1)));
-            }
-        }
-        return totals;
-    }
-
     /// <summary>
     /// Runs the query on the events table or, with a filter, on a temporary copy of the events of the visitors it
     /// matches in the period. The copy keeps all of their events, since some metrics look outside the period.
@@ -350,7 +275,7 @@ public sealed class StatsStore
         using (var copy = RangeCommand(connection,
             $"""
             CREATE TEMP TABLE filtered AS SELECT * FROM events WHERE visitor IN (
-                SELECT visitor FROM events WHERE {Visit} AND {Range}
+                SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range}
                   AND (@source IS NULL OR COALESCE(source, 'direct') = @source)
                   AND (@country IS NULL OR COALESCE(country, 'XX') = @country)
                   AND (@device IS NULL OR COALESCE(device, 'desktop') = @device))
@@ -394,7 +319,7 @@ public sealed class StatsStore
         }
     }
 
-    private static SqliteCommand RangeCommand(SqliteConnection connection, string sql, DateOnly from, DateOnly to, SqliteTransaction? transaction = null)
+    internal static SqliteCommand RangeCommand(SqliteConnection connection, string sql, DateOnly from, DateOnly to, SqliteTransaction? transaction = null)
     {
         var command = Command(connection, sql);
         command.Transaction = transaction;
@@ -416,14 +341,14 @@ public sealed class StatsStore
         return connection;
     }
 
-    private static SqliteCommand Command(SqliteConnection connection, string sql)
+    internal static SqliteCommand Command(SqliteConnection connection, string sql)
     {
         var command = connection.CreateCommand();
         command.CommandText = sql;
         return command;
     }
 
-    private static void Execute(SqliteConnection connection, string sql)
+    internal static void Execute(SqliteConnection connection, string sql)
     {
         using var command = Command(connection, sql);
         command.ExecuteNonQuery();

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ApiError, fetchAdminStats, type StatsCount, type StatsFilters, type StatsRange } from '../api';
+import { ApiError, fetchAdminStats, type StatsCount, type StatsDuration, type StatsFilters, type StatsRange } from '../api';
 import { ActivityChart } from '../components/adminStats/ActivityChart';
 import { Breakdown } from '../components/adminStats/Breakdown';
 import { FilterBar } from '../components/adminStats/FilterBar';
@@ -11,6 +11,7 @@ import { SharingFunnel } from '../components/adminStats/SharingFunnel';
 import { StatTiles } from '../components/adminStats/StatTiles';
 import { RangeTabs, StatsHeader } from '../components/adminStats/StatsHeader';
 import { statsStyles } from '../components/adminStats/styles';
+import { useLiveInView } from '../hooks/useLiveInView';
 import { readAdminToken, saveAdminToken } from '../lib/adminToken';
 import { excludeThisBrowser } from '../lib/stats';
 import { getTheme } from '../theme';
@@ -18,6 +19,8 @@ import { getTheme } from '../theme';
 const FILTER_KEYS = ['source', 'country', 'device'] as const;
 const LIVE_REFRESH_MS = 30_000;
 const REFRESH_MS = 60_000;
+// Below this, one visitor who left a tab open would set a source's time on their own.
+const MIN_TIMED_VISITORS = 3;
 
 const activeFilters = (filters: StatsFilters): [keyof StatsFilters, string][] =>
   FILTER_KEYS.flatMap((name): [keyof StatsFilters, string][] => {
@@ -26,6 +29,9 @@ const activeFilters = (filters: StatsFilters): [keyof StatsFilters, string][] =>
   });
 
 const toMap = (counts: StatsCount[]) => new Map(counts.map((c) => [c.key, c.users]));
+
+const timesOf = (durations: StatsDuration[]) =>
+  new Map(durations.filter((d) => d.visitors >= MIN_TIMED_VISITORS).map((d) => [d.key, d.seconds]));
 
 const hourLabel = (key: string) => `${key}:00`;
 const dayLabel = (key: string) => key;
@@ -36,6 +42,7 @@ export default function AdminStats() {
   const [rangeKey, setRangeKey] = useState<StatsRange['key']>('7d');
   const [wrongToken, setWrongToken] = useState(false);
   const [filters, setFilters] = useState<StatsFilters>({});
+  const [live, setLive] = useState(true);
 
   const stats = useQuery({
     queryKey: ['admin-stats', token, filters],
@@ -43,10 +50,12 @@ export default function AdminStats() {
     enabled: token !== '',
     retry: false,
     staleTime: LIVE_REFRESH_MS,
-    refetchInterval: rangeKey === 'today' ? LIVE_REFRESH_MS : REFRESH_MS,
-    refetchOnWindowFocus: true,
+    refetchInterval: live && (rangeKey === 'today' ? LIVE_REFRESH_MS : REFRESH_MS),
+    refetchOnWindowFocus: live,
     placeholderData: keepPreviousData,
   });
+
+  const liveInView = useLiveInView(live && stats.isSuccess ? token : '');
 
   const status = stats.error instanceof ApiError ? stats.error.status : null;
   const rejected = status === 401 || status === 403;
@@ -72,6 +81,11 @@ export default function AdminStats() {
   const signOut = () => {
     saveAdminToken('');
     setToken('');
+  };
+
+  const toggleLive = () => {
+    if (!live) stats.refetch();
+    setLive(!live);
   };
 
   const toggleFilter = (name: keyof StatsFilters, key: string) =>
@@ -121,14 +135,13 @@ export default function AdminStats() {
 
   return (
     <div style={styles.page}>
-      <StatsHeader activeNow={report.activeNow} refreshing={stats.isFetching} onRefresh={() => stats.refetch()} onSignOut={signOut} />
+      <StatsHeader inView={liveInView ?? report.inView} live={live} onToggleLive={toggleLive} onSignOut={signOut} />
       <RangeTabs ranges={report.ranges} selected={range.key} onSelect={setRangeKey} />
       {filtersShown.length > 0 && <FilterBar filters={filtersShown} onRemove={toggleFilter} onClear={() => setFilters({})} />}
 
       <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>
         {period} (UTC) · Updated {new Date(stats.dataUpdatedAt).toLocaleTimeString()}
-        {stats.isError && ' · Couldn’t refresh, trying again in a minute'}
-        {range.spansMonths && ' · People who came in both months count twice here, as their anonymous code changes each month.'}
+        {live && stats.isError && ' · Couldn’t refresh, trying again in a minute'}
       </p>
 
       <StatTiles range={range} />
@@ -166,6 +179,7 @@ export default function AdminStats() {
           total={range.visitors}
           label={sourceLabel}
           lookedUp={toMap(range.sourceUsers)}
+          times={timesOf(range.sourceTime)}
           selected={filters.source}
           onSelect={(key) => toggleFilter('source', key)}
           extra={range.campaigns.length > 0 ? { title: 'Campaign links', counts: range.campaigns } : undefined}

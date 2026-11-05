@@ -8,7 +8,7 @@ using RoyaleDeckLab.Api.Services.Stats;
 namespace RoyaleDeckLab.Api.Controllers;
 
 [ApiController]
-public sealed class StatsController(StatsRecorder recorder, StatsStore store, TimeProvider clock) : ControllerBase
+public sealed class StatsController(StatsRecorder recorder, LivePresence presence, StatsStore store, TimeProvider clock) : ControllerBase
 {
     public sealed record EventBody(string? Kind, string? Tag, string? Tool, string? Ref, string? UtmSource, string? UtmCampaign);
 
@@ -49,6 +49,6 @@ public sealed class StatsController(StatsRecorder recorder, StatsStore store, Ti
             source is not null && StatsClassify.Sources.Contains(source) ? source : null,
             StatsClassify.Country(country),
             device is "phone" or "desktop" ? device : null);
-        return Ok(StatsReport.Build(store, clock.GetUtcNow(), filter, recorder.ActiveNow()));
+        return Ok(StatsReport.Build(store, clock.GetUtcNow(), filter, presence.InView));
     }
 }

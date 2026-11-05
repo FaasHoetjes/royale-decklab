@@ -9,11 +9,13 @@ public static class StatsReport
 
     public sealed record Point(string Key, long Users, long Visitors);
 
+    /// <summary>The median time in view, in seconds, of the visitors that came with the key.</summary>
+    public sealed record Duration(string Key, long Seconds, long Visitors);
+
     public sealed record RangeReport(
         string Key,
         string From,
         string To,
-        bool SpansMonths,
         long Users,
         long? PreviousUsers,
         long Visitors,
@@ -25,6 +27,11 @@ public static class StatsReport
         long Previews,
         long ShareOpens,
         long NewFromShare,
+        long? TimeMedian,
+        long? PreviousTimeMedian,
+        long? TimeMean,
+        long TimeVisitors,
+        IReadOnlyList<Duration> SourceTime,
         IReadOnlyList<Point> Daily,
         IReadOnlyList<Point>? PreviousDaily,
         IReadOnlyList<Point>? Hourly,
@@ -36,20 +43,21 @@ public static class StatsReport
         IReadOnlyList<Count> Campaigns,
         IReadOnlyList<Count> Tools);
 
-    public sealed record MonthReport(string Month, bool Partial, long Users, long Visitors, long Lookups, long Players, long ShareOpens, long NewFromShare);
+    public sealed record MonthReport(
+        string Month, bool Partial, long Users, long Visitors, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian);
 
     public sealed record Report(
         DateTimeOffset GeneratedAt,
         int RetentionDays,
-        int ActiveNow,
+        int InView,
         StatsFilter Filters,
         IReadOnlyList<RangeReport> Ranges,
         IReadOnlyList<MonthReport> Months);
 
-    private static readonly IReadOnlySet<string> TrendMetrics = new HashSet<string> { "users", "visitors", "daily_users", "daily_visitors" };
+    private static readonly IReadOnlySet<string> TrendMetrics = new HashSet<string> { "users", "visitors", "daily_users", "daily_visitors", "time_median" };
 
     /// <param name="filter">Applies to the ranges; the months are always the whole site.</param>
-    public static Report Build(StatsStore store, DateTimeOffset now, StatsFilter? filter = null, int activeNow = 0)
+    public static Report Build(StatsStore store, DateTimeOffset now, StatsFilter? filter = null, int inView = 0)
     {
         filter ??= new StatsFilter();
         var today = DateOnly.FromDateTime(now.UtcDateTime);
@@ -60,7 +68,7 @@ public static class StatsReport
             Range(store, filter, "30d", today.AddDays(-29), today, hasPrevious: true),
             Range(store, filter, "90d", today.AddDays(-(StatsStore.RetentionDays - 1)), today, hasPrevious: false),
         };
-        return new Report(now, StatsStore.RetentionDays, activeNow, filter, ranges, Months(store, today));
+        return new Report(now, StatsStore.RetentionDays, inView, filter, ranges, Months(store, today));
     }
 
     private static RangeReport Range(StatsStore store, StatsFilter filter, string key, DateOnly from, DateOnly to, bool hasPrevious, int? hourlyUntil = null)
@@ -85,7 +93,6 @@ public static class StatsReport
             key,
             StatsStore.Day(from),
             StatsStore.Day(to),
-            StatsStore.Month(from) != StatsStore.Month(to),
             Scalar("users"),
             previous is null ? null : ScalarOf(previous, "users"),
             Scalar("visitors"),
@@ -97,6 +104,11 @@ public static class StatsReport
             Scalar("previews"),
             Scalar("share_opens"),
             Scalar("new_from_share"),
+            OptionalScalarOf(totals, "time_median"),
+            previous is null ? null : OptionalScalarOf(previous, "time_median"),
+            OptionalScalarOf(totals, "time_mean"),
+            Scalar("time_visitors"),
+            SourceTime(totals),
             Daily(totals, from, to),
             previous is null ? null : Daily(previous, from.AddDays(-length), from.AddDays(-1)),
             hourlyUntil is { } hour ? Hourly(store.Hourly(from, filter), hour) : null,
@@ -111,6 +123,22 @@ public static class StatsReport
 
     private static long ScalarOf(IReadOnlyList<StatsTotal> totals, string metric)
         => totals.FirstOrDefault(t => t.Metric == metric && t.Dim == "")?.Value ?? 0;
+
+    // Time in view is missing, not zero, for a period nobody's time was measured in.
+    private static long? OptionalScalarOf(IReadOnlyList<StatsTotal> totals, string metric)
+        => totals.FirstOrDefault(t => t.Metric == metric && t.Dim == "")?.Value;
+
+    private static List<Duration> SourceTime(IReadOnlyList<StatsTotal> totals)
+    {
+        var visitors = totals
+            .Where(t => t.Metric == "source_time_visitors")
+            .ToDictionary(t => t.Dim, t => t.Value);
+        return [.. totals
+            .Where(t => t.Metric == "source_time")
+            .Select(t => new Duration(t.Dim, t.Value, visitors.GetValueOrDefault(t.Dim)))
+            .OrderByDescending(d => d.Visitors)
+            .ThenBy(d => d.Key, StringComparer.Ordinal)];
+    }
 
     private static List<Point> Daily(IReadOnlyList<StatsTotal> totals, DateOnly from, DateOnly to)
     {
@@ -152,5 +180,6 @@ public static class StatsReport
 
     private static MonthReport Month(string month, IReadOnlyList<StatsTotal> totals, bool partial)
         => new(month, partial, ScalarOf(totals, "users"), ScalarOf(totals, "visitors"), ScalarOf(totals, "lookups"),
-            ScalarOf(totals, "players"), ScalarOf(totals, "share_opens"), ScalarOf(totals, "new_from_share"));
+            ScalarOf(totals, "players"), ScalarOf(totals, "share_opens"), ScalarOf(totals, "new_from_share"),
+            OptionalScalarOf(totals, "time_median"));
 }
