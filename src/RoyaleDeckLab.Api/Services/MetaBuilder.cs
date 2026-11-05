@@ -65,8 +65,9 @@ public sealed class MetaBuilder(
                 {
                     return await client.GetClanMemberTagsAsync(tag, ct);
                 }
-                catch
+                catch (Exception ex) when (!ct.IsCancellationRequested)
                 {
+                    logger.LogWarning(ex, "Couldn't fetch the members of clan {ClanTag}; skipping it", tag);
                     return (IReadOnlyList<string>)[];
                 }
             }));
@@ -189,7 +190,7 @@ public sealed class MetaBuilder(
 
         var cardIds = cards.Select(c => c.Id).OrderBy(id => id).ToArray();
 
-        var cardVersions = cards.Select(card => new CardVersion(card.Id, VersionOf(card))).ToList();
+        var cardVersions = cards.Select(card => new CardVersion(card.Id, FieldedVersion(card))).ToList();
 
         return new BattleRecord
         {
@@ -203,14 +204,20 @@ public sealed class MetaBuilder(
         };
     }
 
-    private static CardVersionKind VersionOf(CrBattleCard card)
+    // In a battle the level is the one version the card was played as (0, 1 or 2), not the bitmask of what the player
+    // owns. A 3 only appears in boat defense lists and means "owns both", which doesn't say which one was played.
+    public static CardVersionKind FieldedVersion(CrBattleCard card)
     {
-        var evolutionLevel = card.EvolutionLevel ?? 0;
-        if (card.Rarity == "champion" || evolutionLevel >= EvolutionBits.Hero)
+        if (card.Rarity == "champion")
         {
             return CardVersionKind.Hero;
         }
-        return evolutionLevel == EvolutionBits.Evo ? CardVersionKind.Evo : CardVersionKind.Normal;
+        return card.EvolutionLevel switch
+        {
+            EvolutionBits.Evo => CardVersionKind.Evo,
+            EvolutionBits.Hero => CardVersionKind.Hero,
+            _ => CardVersionKind.Normal,
+        };
     }
 
     public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records, long epochStartMs = 0)
