@@ -35,14 +35,14 @@ public sealed class DomainMathTests
     [Fact]
     public void PosteriorQuantile_RatesASixForSixDeck_BarelyAboveTheBaseline()
     {
-        // A handful of perfect games is promising, not proof: 51.8%, where plain shrinkage (k=30) said 58%.
+        // A handful of perfect games is promising, not proof: about 52%.
         Assert.InRange(Cautious(6, 6), 0.51, 0.53);
     }
 
     [Fact]
     public void LargeProvenSample_OutranksAHotStreak()
     {
-        // 60% over 550 games beats 80% over 25: the 30-game shrinkage ranked the streak first (0.636 vs 0.595).
+        // 60% over 550 games beats 80% over 25.
         Assert.True(Cautious(330, 550) > Cautious(20, 25));
     }
 

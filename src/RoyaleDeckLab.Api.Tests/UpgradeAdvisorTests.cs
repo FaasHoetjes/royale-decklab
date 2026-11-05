@@ -165,8 +165,7 @@ public sealed class UpgradeAdvisorTests
     [Fact]
     public void FlagsALineupChange_WhenAnUpgradePromotesADifferentDeck()
     {
-        // X (1-8) and Y (1-7,9) overlap, so only one is picked. Odds-space, odds=1.5, exponent 4:
-        // Y at level 12 (S=1.1⁻¹) scores ≈0.589, edging out X's 0.58 - the one-level bump to card 9 flips the pick.
+        // X (1-8) and Y (1-7,9) overlap, so only one is picked; raising card 9 flips the pick to Y.
         var cards = Build.Collection(1, 2, 3, 4, 5, 6, 7, 8)
             .Concat([Build.Card(9, level: 12)]).ToList();
         var meta = new[]

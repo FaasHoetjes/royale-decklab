@@ -120,7 +120,6 @@ public sealed class DeckAnalyzerScoringTests
     [Fact]
     public void PlayerScore_PrefersANearMaxedDeck_OverAnUnderleveledStrongerDeck()
     {
-        // The underleveled 60% deck must rank below the near-maxed 51% deck.
         var cards = Enumerable.Range(1, 4).Select(id => Build.Card(id, level: 12))
             .Concat(Enumerable.Range(5, 4).Select(id => Build.Card(id, level: 11)))
             .Concat(Enumerable.Range(9, 8).Select(id => Build.Card(id, level: 13)))
