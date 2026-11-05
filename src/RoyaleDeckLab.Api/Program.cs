@@ -190,6 +190,17 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
         }
     }
     app.UseForwardedHeaders(forwarded);
+    app.Use((context, next) =>
+    {
+        var visitor = CloudflareClientIp.Resolve(
+            context.Connection.RemoteIpAddress,
+            context.Request.Headers[CloudflareClientIp.HeaderName].ToString());
+        if (visitor is not null)
+        {
+            context.Connection.RemoteIpAddress = visitor;
+        }
+        return next(context);
+    });
 }
 
 app.Use(async (context, next) =>
