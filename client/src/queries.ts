@@ -19,6 +19,8 @@ import {
   type ScoreDeckCard,
 } from './api';
 
+const FIVE_MINUTES_MS = 5 * 60_000;
+
 export const queryKeys = {
   metaStatus: ['meta', 'status'] as const,
   cards: ['cards'] as const,
@@ -100,7 +102,7 @@ export function upgradeAdviceOptions(tag: string) {
   return {
     queryKey: queryKeys.playerUpgrades(tag),
     queryFn: ({ signal }: { signal: AbortSignal }) => fetchUpgradeAdvice(tag, signal),
-    staleTime: 5 * 60_000,
+    staleTime: FIVE_MINUTES_MS,
   };
 }
 
@@ -126,7 +128,7 @@ function bestDecksOptions() {
   return {
     queryKey: queryKeys.bestDecks,
     queryFn: ({ signal }: { signal: AbortSignal }) => fetchBestDecks(signal),
-    staleTime: 5 * 60_000,
+    staleTime: FIVE_MINUTES_MS,
   };
 }
 
@@ -138,7 +140,7 @@ export function useCardStats() {
   return useQuery({
     queryKey: queryKeys.cardStats,
     queryFn: ({ signal }) => fetchCardStats(signal),
-    staleTime: 5 * 60_000,
+    staleTime: FIVE_MINUTES_MS,
   });
 }
 
@@ -147,7 +149,7 @@ export function useCardDecks(cardId: number | undefined) {
     queryKey: queryKeys.cardDecks(cardId ?? 0),
     queryFn: ({ signal }) => fetchCardDecks(cardId!, signal),
     enabled: cardId != null,
-    staleTime: 5 * 60_000,
+    staleTime: FIVE_MINUTES_MS,
   });
 }
 

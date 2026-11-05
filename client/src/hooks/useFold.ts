@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { prefersReducedMotion } from '../lib/motion';
 
 /** Folds an element away to nothing and back out again, animating its height. Returns a ref for the element. */
 export function useFold<T extends HTMLElement>(open: boolean) {
@@ -10,7 +11,7 @@ export function useFold<T extends HTMLElement>(open: boolean) {
     const el = ref.current;
     if (!el) return;
     running.current?.cancel();
-    const animate = !first.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const animate = !first.current && !prefersReducedMotion();
     first.current = false;
 
     if (open) {

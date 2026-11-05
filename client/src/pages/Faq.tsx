@@ -7,6 +7,9 @@ import { GridIcon, SearchIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../co
 import Fold from '../components/Fold';
 import { faqItems, type FaqPage } from './faqContent';
 
+const FAQ_ANCHOR_OFFSET_MOBILE = 64;
+const FAQ_ANCHOR_OFFSET_DESKTOP = 16;
+
 // Pages behind a player tag send visitors without one to the tag search instead.
 function pageLink(page: FaqPage, playerTag: string | null): { to: string; label: string; icon: ReactNode } {
   if (page === 'best-decks') return { to: '/best-decks', label: 'See the Best War Decks', icon: <TrophyIcon /> };
@@ -34,7 +37,7 @@ export default function Faq() {
     const idx = faqItems.findIndex((item) => item.id === id);
     if (idx < 0) return;
     setOpenIndex(idx);
-    const offset = isMobile ? 64 : 16;
+    const offset = isMobile ? FAQ_ANCHOR_OFFSET_MOBILE : FAQ_ANCHOR_OFFSET_DESKTOP;
     requestAnimationFrame(() => {
       const el = document.getElementById(id);
       if (!el) return;

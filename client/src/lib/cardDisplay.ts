@@ -30,9 +30,12 @@ export function localArtUrl(url: string): string {
   return match ? `/img/${match[1]}/${match[2]}.webp` : url;
 }
 
+/** The top of the unified king-level scale, which every card's level is normalized to. */
+export const MAX_DISPLAY_LEVEL = 16;
+
 /** Normalizes to the unified /16 king-level scale (rarities cap below 16). */
 export function displayLevel(level: number, maxLevel: number): number {
-  return level + (16 - maxLevel);
+  return level + (MAX_DISPLAY_LEVEL - maxLevel);
 }
 
 export function avgElixir(cards: Array<{ elixirCost?: number }>): number {

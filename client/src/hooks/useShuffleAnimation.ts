@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
+import { prefersReducedMotion } from '../lib/motion';
 
 type Spot = { x: number; y: number };
 
@@ -16,7 +17,7 @@ export function useShuffleAnimation(orderKey: string) {
     const now = new Map<number, Spot>();
     els.current.forEach((el, id) => now.set(id, { x: el.offsetLeft, y: el.offsetTop }));
 
-    if (orderKey !== lastKey.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (orderKey !== lastKey.current && !prefersReducedMotion()) {
       els.current.forEach((el, id) => {
         const from = spots.current.get(id);
         const to = now.get(id);

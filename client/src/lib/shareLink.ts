@@ -5,6 +5,7 @@
 import { MAX_DECKS } from './generatorOptions';
 
 const CARDS_PER_DECK = 8;
+const CHARS_PER_CARD = 2;
 const PER_TYPE = 432;
 const FIRST_TYPE = 26;
 const TYPES = 3;
@@ -13,7 +14,7 @@ function encodeCard(id: number): string | null {
   const type = Math.floor(id / 1_000_000) - FIRST_TYPE;
   const n = id % 1_000_000;
   if (!Number.isInteger(id) || type < 0 || type >= TYPES || n >= PER_TYPE) return null;
-  return (type * PER_TYPE + n).toString(36).padStart(2, '0');
+  return (type * PER_TYPE + n).toString(36).padStart(CHARS_PER_CARD, '0');
 }
 
 /** Null when a card falls outside the compact range, so the caller can share the plain player link instead. */
@@ -38,7 +39,8 @@ export function decodeShare(raw: string | null): number[][] | null {
     if (!/^[0-9a-z]{16}$/.test(part)) return null;
     const deck: number[] = [];
     for (let i = 0; i < CARDS_PER_DECK; i++) {
-      const k = parseInt(part.slice(i * 2, i * 2 + 2), 36);
+      const start = i * CHARS_PER_CARD;
+      const k = parseInt(part.slice(start, start + CHARS_PER_CARD), 36);
       if (k >= TYPES * PER_TYPE) return null;
       const id = (FIRST_TYPE + Math.floor(k / PER_TYPE)) * 1_000_000 + (k % PER_TYPE);
       if (seen.has(id)) return null;

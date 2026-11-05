@@ -10,6 +10,11 @@ export interface Placement {
   bump?: { from: number; to: number };
 }
 
+function hasChampionAt(deck: Deck, slot: number, cardById: Map<number, BuilderCard>): boolean {
+  const id = deck[slot];
+  return id != null && cardById.get(id)?.rarity === 'champion';
+}
+
 export function deckCards(deck: Deck, cardById: Map<number, BuilderCard>): BuilderCard[] {
   return deck.flatMap((id) => {
     const card = id != null ? cardById.get(id) : undefined;
@@ -38,13 +43,13 @@ export function placeInDeck(
   if (card?.rarity !== 'champion' || CHAMPION_SLOTS.includes(open)) return { slot: open };
   const freeHero = CHAMPION_SLOTS.find((i) => deck[i] == null);
   if (freeHero != null) return { slot: freeHero };
-  const taken = CHAMPION_SLOTS.find((i) => cardById.get(deck[i]!)?.rarity !== 'champion');
+  const taken = CHAMPION_SLOTS.find((i) => !hasChampionAt(deck, i, cardById));
   return taken == null ? null : { slot: taken, bump: { from: taken, to: open } };
 }
 
 /** Whether a champion can still be added: the deck has room and a hero slot without a champion. */
 export function championFits(deck: Deck, cardById: Map<number, BuilderCard>): boolean {
-  return deck.includes(null) && CHAMPION_SLOTS.some((i) => cardById.get(deck[i]!)?.rarity !== 'champion');
+  return deck.includes(null) && CHAMPION_SLOTS.some((i) => !hasChampionAt(deck, i, cardById));
 }
 
 /** Complete decks get their archetype name; the rest are numbered. */

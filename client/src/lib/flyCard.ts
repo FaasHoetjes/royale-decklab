@@ -1,6 +1,8 @@
+import { prefersReducedMotion } from './motion';
+
 /** Flies a copy of a card's art from where it was picked to the slot it landed in. */
 export function flyCard(from: DOMRect, to: HTMLElement) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (prefersReducedMotion()) return;
   const src = to.querySelector('img')?.src;
   if (!src) return;
 
