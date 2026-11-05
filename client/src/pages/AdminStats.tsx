@@ -243,7 +243,7 @@ export default function AdminStats() {
         <Breakdown title="Countries" counts={range.countries} total={range.users} label={(key) => countryNames?.of(key) ?? key} />
         <Breakdown title="Phone or desktop" counts={range.devices} total={range.users} label={(key) => DEVICE_LABELS[key] ?? key} />
         <Breakdown title="Where users came from" counts={range.sources} total={range.users} label={(key) => SOURCE_LABELS[key] ?? key} />
-        <Breakdown title="Which tools are used" counts={range.tools} total={range.users} label={(key) => TOOL_LABELS[key] ?? key} />
+        <Breakdown title="Which tools are used" counts={range.tools} label={(key) => TOOL_LABELS[key] ?? key} />
       </div>
 
       {report.months.length > 0 && (
@@ -340,10 +340,12 @@ function Funnel({ steps }: { steps: { label: string; value: number; hint?: strin
   );
 }
 
-function Breakdown({ title, counts, total, label }: { title: string; counts: StatsCount[]; total: number; label: (key: string) => string }) {
+/** Without a total, the counts aren't shares of the users above (tools count every visitor), so bars scale to the largest. */
+function Breakdown({ title, counts, total, label }: { title: string; counts: StatsCount[]; total?: number; label: (key: string) => string }) {
   const theme = getTheme();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? counts : counts.slice(0, 8);
+  const scale = total ?? Math.max(1, ...counts.map((c) => c.users));
   return (
     <section style={styles.panel}>
       <h2 style={{ ...styles.heading, color: theme.text.primary }}>{title}</h2>
@@ -356,11 +358,11 @@ function Breakdown({ title, counts, total, label }: { title: string; counts: Sta
               <div style={styles.listRow}>
                 <span style={{ color: theme.text.primary }}>{label(c.key)}</span>
                 <span style={{ ...styles.listValue, color: theme.text.secondary }}>
-                  {number(c.users)} · {percent(c.users, total)}
+                  {total === undefined ? number(c.users) : `${number(c.users)} · ${percent(c.users, total)}`}
                 </span>
               </div>
               <div style={{ ...styles.track, backgroundColor: theme.bg.tertiary }}>
-                <div style={{ ...styles.fill, width: `${total > 0 ? Math.min(100, (c.users / total) * 100) : 0}%`, backgroundColor: theme.accent }} />
+                <div style={{ ...styles.fill, width: `${scale > 0 ? Math.min(100, (c.users / scale) * 100) : 0}%`, backgroundColor: theme.accent }} />
               </div>
             </div>
           ))}
