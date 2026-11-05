@@ -13,26 +13,19 @@ public sealed class RequireAdminTokenAttribute : Attribute, IAuthorizationFilter
 
     public void OnAuthorization(AuthorizationFilterContext context)
     {
+        // Unset and wrong look identical from outside, so the endpoints don't reveal whether they're enabled.
         var expected = Environment.GetEnvironmentVariable(EnvVar);
-        if (string.IsNullOrWhiteSpace(expected))
-        {
-            context.Result = new ObjectResult(new { error = "Admin endpoints are disabled: ADMIN_TOKEN is not configured" })
-            {
-                StatusCode = StatusCodes.Status403Forbidden,
-            };
-            return;
-        }
-
         var provided = context.HttpContext.Request.Headers[HeaderName].ToString();
-        if (!TokensMatch(provided, expected))
+        if (string.IsNullOrWhiteSpace(expected) || !TokensMatch(provided, expected))
         {
             context.Result = new UnauthorizedObjectResult(new { error = $"Missing or invalid {HeaderName} header" });
         }
     }
 
+    // Hashing first gives both sides the same length, so FixedTimeEquals doesn't return early on a length mismatch.
     public static bool TokensMatch(string provided, string expected)
         => provided.Length > 0
            && CryptographicOperations.FixedTimeEquals(
-               Encoding.UTF8.GetBytes(provided),
-               Encoding.UTF8.GetBytes(expected));
+               SHA256.HashData(Encoding.UTF8.GetBytes(provided)),
+               SHA256.HashData(Encoding.UTF8.GetBytes(expected)));
 }
