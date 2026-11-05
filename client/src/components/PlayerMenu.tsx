@@ -9,7 +9,6 @@ interface PlayerMenuProps {
   onDone: () => void;
 }
 
-/** The active player, the others searched on this device to switch to, and a way to add one. */
 export default function PlayerMenu({ switcher, theme, onDone }: PlayerMenuProps) {
   const { tag, name, others, switchTo, addPlayer, forget } = switcher;
 

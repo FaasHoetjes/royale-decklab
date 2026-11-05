@@ -202,7 +202,6 @@ export function WarDecksSkeleton({ isMobile }: { isMobile: boolean }) {
           </div>
         </section>
 
-        {/* The generator controls row. */}
         <div style={{ ...styles.inline, gap: '8px', overflow: 'hidden', marginBottom: isMobile ? '16px' : '24px' }}>
           {[96, 104, 100, 104].map((width, pill) => (
             <Skeleton key={pill} style={{ width: `${width}px`, height: isMobile ? '44px' : '40px', borderRadius: '999px', flexShrink: 0 }} />

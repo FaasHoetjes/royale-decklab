@@ -20,7 +20,9 @@ const UNLOCK_LABEL = {
 } as const;
 
 export function upgradeSlotIndex(s: UpgradeSuggestion): number | undefined {
-  return s.kind === 'evo' ? 0 : s.kind === 'hero' ? 1 : undefined;
+  if (s.kind === 'evo') return 0;
+  if (s.kind === 'hero') return 1;
+  return undefined;
 }
 
 export function upgradeStep(s: UpgradeSuggestion): string {
