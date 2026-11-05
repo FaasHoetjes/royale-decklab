@@ -4,18 +4,9 @@ namespace RoyaleDeckLab.Api.Services;
 
 public sealed class DeckAnalyzer
 {
-    // Slot 1 takes an Evo, slot 2 a Hero, slot 3 either; caps are a safety net,
-    // correct meta data already respects them.
-    private const int MaxEvo = 2;
-    private const int MaxHero = 2;
-    private const int MaxSpecials = 3;
-
     // CR card stats compound ~10% per level; only used for the builder's fieldability readout.
     // Scoring uses the war-fitted LevelModel instead.
     private const double StatGrowthPerLevel = 1.10;
-
-    // ~6% weaker per missing special version, compounding across the deck.
-    private const double MissingSpecialMultiplier = 0.94;
 
     private const int MinDistinctPlayers = 5;
     private const double NeutralWinRate = 0.5;
@@ -28,165 +19,7 @@ public sealed class DeckAnalyzer
 
     private const int DecksPerLineup = 4;
 
-    private const long SearchNodeBudget = 2_000_000;
-
     public sealed record BuilderScore(double Score, double WinRate, double Fieldability, bool IsMeta, int Players);
-
-    private static bool IsChampion(int cardId, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-        => cardMap.TryGetValue(cardId, out var card) && card.Rarity == Rarity.Champion;
-
-    private static List<CardVersion> WithChampionVersions(
-        IReadOnlyList<int> cardIds,
-        IReadOnlyList<CardVersion>? cardVersions,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-    {
-        var raw = new Dictionary<int, CardVersionKind>();
-        foreach (var v in cardVersions ?? [])
-        {
-            raw[v.CardId] = v.Version;
-        }
-
-        var result = new List<CardVersion>(cardIds.Count);
-        foreach (var cardId in cardIds)
-        {
-            var version = IsChampion(cardId, cardMap)
-                ? CardVersionKind.Hero
-                : raw.GetValueOrDefault(cardId, CardVersionKind.Normal);
-            result.Add(new CardVersion(cardId, version));
-        }
-        return result;
-    }
-
-    private static IReadOnlyList<CardVersion>? CapEvolutions(IReadOnlyList<CardVersion>? cardVersions)
-    {
-        if (cardVersions is null)
-        {
-            return null;
-        }
-
-        var evo = 0;
-        var hero = 0;
-        var total = 0;
-        var illegal = false;
-        var capped = new List<CardVersion>(cardVersions.Count);
-        foreach (var v in cardVersions)
-        {
-            if (v.Version == CardVersionKind.Normal)
-            {
-                capped.Add(v);
-                continue;
-            }
-            var fitsType = v.Version == CardVersionKind.Evo ? evo < MaxEvo : hero < MaxHero;
-            var hasRoomForSpecial = total < MaxSpecials;
-            if (fitsType && hasRoomForSpecial)
-            {
-                if (v.Version == CardVersionKind.Evo)
-                {
-                    evo++;
-                }
-                else
-                {
-                    hero++;
-                }
-                total++;
-                capped.Add(v);
-            }
-            else
-            {
-                illegal = true;
-                capped.Add(new CardVersion(v.CardId, CardVersionKind.Normal));
-            }
-        }
-        return illegal ? capped : cardVersions;
-    }
-
-    private static IReadOnlyList<CardVersion>? PersonalizeVersions(
-        IReadOnlyList<CardVersion>? cardVersions,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-    {
-        if (cardVersions is null)
-        {
-            return null;
-        }
-
-        var changed = false;
-        var personalized = new List<CardVersion>(cardVersions.Count);
-        foreach (var v in cardVersions)
-        {
-            if (v.Version == CardVersionKind.Normal || IsChampion(v.CardId, cardMap))
-            {
-                personalized.Add(v);
-                continue;
-            }
-            var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
-            if (EvolutionBits.Owns(owned, v.Version))
-            {
-                personalized.Add(v);
-                continue;
-            }
-            changed = true;
-            personalized.Add(new CardVersion(v.CardId, CardVersionKind.Normal));
-        }
-        return changed ? personalized : cardVersions;
-    }
-
-    private static IReadOnlyList<CardVersion>? UpgradeIntoFreeSlots(
-        IReadOnlyList<CardVersion>? personalized,
-        IReadOnlyList<CardVersion>? metaVersions,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-    {
-        if (personalized is null || metaVersions is null)
-        {
-            return personalized;
-        }
-
-        var evo = 0;
-        var hero = 0;
-        foreach (var v in metaVersions)
-        {
-            if (v.Version == CardVersionKind.Evo)
-            {
-                evo++;
-            }
-            else if (v.Version == CardVersionKind.Hero)
-            {
-                hero++;
-            }
-        }
-        var total = evo + hero;
-
-        var changed = false;
-        var upgraded = new List<CardVersion>(personalized.Count);
-        for (var i = 0; i < personalized.Count; i++)
-        {
-            var v = personalized[i];
-            if (v.Version != CardVersionKind.Normal || metaVersions[i].Version != CardVersionKind.Normal)
-            {
-                upgraded.Add(v);
-                continue;
-            }
-            var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
-            if (EvolutionBits.OwnsHero(owned) && hero < MaxHero && total < MaxSpecials)
-            {
-                hero++;
-                total++;
-                changed = true;
-                upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Hero));
-            }
-            else if (EvolutionBits.OwnsEvo(owned) && evo < MaxEvo && total < MaxSpecials)
-            {
-                evo++;
-                total++;
-                changed = true;
-                upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Evo));
-            }
-            else
-            {
-                upgraded.Add(v);
-            }
-        }
-        return changed ? upgraded : personalized;
-    }
 
     public double? ScoreDeckForPlayer(
         IReadOnlyList<PlayerItemLevel> playerCards,
@@ -221,14 +54,14 @@ public sealed class DeckAnalyzer
 
             levels[i] = LevelModel.DisplayLevel(playerCard);
 
-            if (cardVersions is not null && !IsChampion(cardId, cardMap))
+            if (cardVersions is not null && !CardVersionRules.IsChampion(cardId, cardMap))
             {
                 var metaCardVersion = cardVersions.FirstOrDefault(c => c.CardId == cardId);
                 var isMissingSpecial = metaCardVersion is not null
                     && !EvolutionBits.Owns(playerCard.EvolutionLevel, metaCardVersion.Version);
                 if (isMissingSpecial)
                 {
-                    versionFit *= MissingSpecialMultiplier;
+                    versionFit *= CardVersionRules.MissingSpecialMultiplier;
                 }
             }
         }
@@ -262,49 +95,6 @@ public sealed class DeckAnalyzer
         return totalStatFraction / validCards;
     }
 
-    private static bool SlotCanField(CardVersionKind version, int slotIndex)
-        => version == CardVersionKind.Hero ? slotIndex is 1 or 2 : slotIndex is 0 or 2;
-
-    private static double PlacementFit(
-        IReadOnlyList<int?> slots,
-        IReadOnlyList<CardVersion>? metaVersions,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-    {
-        if (metaVersions is null)
-        {
-            return 1;
-        }
-
-        var fit = 1.0;
-        foreach (var v in metaVersions)
-        {
-            if (v.Version == CardVersionKind.Normal || IsChampion(v.CardId, cardMap))
-            {
-                continue;
-            }
-            var owned = cardMap.TryGetValue(v.CardId, out var card) ? card.EvolutionLevel : 0;
-            if (!EvolutionBits.Owns(owned, v.Version))
-            {
-                continue;
-            }
-
-            var fielded = false;
-            for (var i = 0; i < slots.Count; i++)
-            {
-                if (slots[i] == v.CardId)
-                {
-                    fielded = SlotCanField(v.Version, i);
-                    break;
-                }
-            }
-            if (!fielded)
-            {
-                fit *= MissingSpecialMultiplier;
-            }
-        }
-        return fit;
-    }
-
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyList<PlayerItemLevel> playerCards,
         IReadOnlyList<int> cardIds,
@@ -331,7 +121,7 @@ public sealed class DeckAnalyzer
             {
                 return null;
             }
-            var placementFit = slots is null ? 1.0 : PlacementFit(slots, meta.CardVersions, cardMap);
+            var placementFit = slots is null ? 1.0 : CardVersionRules.PlacementFit(slots, meta.CardVersions, cardMap);
             return new BuilderScore(
                 score.Value * placementFit,
                 meta.Confidence,
@@ -360,10 +150,10 @@ public sealed class DeckAnalyzer
             }
         }
 
-        var versions = WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
-        var metaVersions = CapEvolutions(versions);
-        var personalized = UpgradeIntoFreeSlots(
-            CapEvolutions(PersonalizeVersions(versions, cardMap)), metaVersions, cardMap);
+        var versions = CardVersionRules.WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
+        var metaVersions = CardVersionRules.CapEvolutions(versions);
+        var personalized = CardVersionRules.UpgradeIntoFreeSlots(
+            CardVersionRules.CapEvolutions(CardVersionRules.PersonalizeVersions(versions, cardMap)), metaVersions, cardMap);
 
         return new ScoredDeck
         {
@@ -378,219 +168,6 @@ public sealed class DeckAnalyzer
             CardVersions = personalized,
             MetaCardVersions = metaVersions,
         };
-    }
-
-    private const int BitsPerWord = 64;
-
-    private static List<(DeckMeta deck, double score)> FindOptimalLineup(
-        IReadOnlyList<(DeckMeta deck, double score)> pool,
-        int target,
-        IReadOnlySet<int> requiredCards)
-    {
-        var n = pool.Count;
-        if (n == 0 || target <= 0)
-        {
-            return [];
-        }
-
-        var bitOf = new Dictionary<int, int>();
-        foreach (var (deck, _) in pool)
-        {
-            foreach (var id in deck.CardIds)
-            {
-                bitOf.TryAdd(id, bitOf.Count);
-            }
-        }
-        var words = (bitOf.Count + BitsPerWord - 1) / BitsPerWord;
-        var masks = new ulong[n][];
-        for (var i = 0; i < n; i++)
-        {
-            var mask = new ulong[words];
-            foreach (var id in pool[i].deck.CardIds)
-            {
-                SetBit(mask, bitOf[id]);
-            }
-            masks[i] = mask;
-        }
-
-        // A lineup only counts once it uses every required card; a required card that no deck in the pool has can't be met.
-        var required = new ulong[words];
-        foreach (var id in requiredCards)
-        {
-            if (!bitOf.TryGetValue(id, out var bit))
-            {
-                return [];
-            }
-            SetBit(required, bit);
-        }
-        var hasRequired = requiredCards.Count > 0;
-
-        // reachable[i]: every card in decks i..n-1, to stop early once a missing required card can no longer be added.
-        var reachable = new ulong[n + 1][];
-        reachable[n] = new ulong[words];
-        for (var i = n - 1; i >= 0; i--)
-        {
-            reachable[i] = new ulong[words];
-            for (var w = 0; w < words; w++)
-            {
-                reachable[i][w] = reachable[i + 1][w] | masks[i][w];
-            }
-        }
-
-        var prefix = new double[n + 1];
-        for (var i = 0; i < n; i++)
-        {
-            prefix[i + 1] = prefix[i] + pool[i].score;
-        }
-
-        var bestPicks = GreedyPicks(pool, masks, words, target);
-        if (hasRequired && !Covers(required, UnionOf(bestPicks, masks, words)))
-        {
-            bestPicks = [];
-        }
-        var bestCount = bestPicks.Length;
-        var bestScore = 0.0;
-        foreach (var p in bestPicks)
-        {
-            bestScore += pool[p].score;
-        }
-
-        var usedAt = new ulong[target + 1][];
-        for (var d = 0; d <= target; d++)
-        {
-            usedAt[d] = new ulong[words];
-        }
-        var picks = new int[target];
-        var nodes = 0L;
-
-        void Search(int start, int depth, double score)
-        {
-            var used = usedAt[depth];
-            var next = usedAt[depth + 1];
-            for (var i = start; i < n; i++)
-            {
-                var take = Math.Min(target - depth, n - i);
-                var boundCount = depth + take;
-                var boundScore = score + prefix[i + take] - prefix[i];
-                var cannotBeatBest = boundCount < bestCount || (boundCount == bestCount && boundScore <= bestScore);
-                if (cannotBeatBest)
-                {
-                    return;
-                }
-                if (++nodes > SearchNodeBudget)
-                {
-                    return;
-                }
-                if (hasRequired && !CanStillCover(required, used, reachable[i]))
-                {
-                    return;
-                }
-
-                var mask = masks[i];
-                if (Overlaps(used, mask))
-                {
-                    continue;
-                }
-
-                for (var w = 0; w < words; w++)
-                {
-                    next[w] = used[w] | mask[w];
-                }
-                picks[depth] = i;
-                var newScore = score + pool[i].score;
-                var beatsBest = depth + 1 > bestCount || (depth + 1 == bestCount && newScore > bestScore);
-                if (beatsBest && (!hasRequired || Covers(required, next)))
-                {
-                    bestCount = depth + 1;
-                    bestScore = newScore;
-                    bestPicks = picks[..(depth + 1)];
-                }
-                if (depth + 1 < target)
-                {
-                    Search(i + 1, depth + 1, newScore);
-                }
-            }
-        }
-        Search(0, 0, 0);
-
-        var lineup = new List<(DeckMeta deck, double score)>(bestCount);
-        foreach (var p in bestPicks)
-        {
-            lineup.Add(pool[p]);
-        }
-        return lineup;
-    }
-
-    private static void SetBit(ulong[] bits, int bit)
-        => bits[bit / BitsPerWord] |= 1UL << (bit % BitsPerWord);
-
-    private static bool Covers(ulong[] required, ulong[] used)
-    {
-        for (var w = 0; w < required.Length; w++)
-        {
-            if ((required[w] & ~used[w]) != 0)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static bool CanStillCover(ulong[] required, ulong[] used, ulong[] reachable)
-    {
-        for (var w = 0; w < required.Length; w++)
-        {
-            if ((required[w] & ~(used[w] | reachable[w])) != 0)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static bool Overlaps(ulong[] used, ulong[] mask)
-    {
-        for (var w = 0; w < used.Length; w++)
-        {
-            if ((used[w] & mask[w]) != 0)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static ulong[] UnionOf(int[] picks, ulong[][] masks, int words)
-    {
-        var used = new ulong[words];
-        foreach (var p in picks)
-        {
-            for (var w = 0; w < words; w++)
-            {
-                used[w] |= masks[p][w];
-            }
-        }
-        return used;
-    }
-
-    private static int[] GreedyPicks(
-        IReadOnlyList<(DeckMeta deck, double score)> pool, ulong[][] masks, int words, int target)
-    {
-        var used = new ulong[words];
-        var picks = new List<int>(target);
-        for (var i = 0; i < pool.Count && picks.Count < target; i++)
-        {
-            if (Overlaps(used, masks[i]))
-            {
-                continue;
-            }
-            for (var w = 0; w < words; w++)
-            {
-                used[w] |= masks[i][w];
-            }
-            picks.Add(i);
-        }
-        return [.. picks];
     }
 
     public WarDeckResult FindBestWarDecks(
@@ -743,7 +320,7 @@ public sealed class DeckAnalyzer
             }
             lastPoolCount = pool.Count;
             poolMinPlayers = gate;
-            lineup = FindOptimalLineup(pool, deckCount, required);
+            lineup = LineupSearch.FindOptimalLineup(pool, deckCount, required);
             if (lineup.Count >= deckCount)
             {
                 break;
