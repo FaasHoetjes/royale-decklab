@@ -16,6 +16,7 @@ using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Options;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
+using RoyaleDeckLab.Api.Services.Stats;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +73,14 @@ builder.Services.AddHttpClient(CardArtCache.HttpClientName, http => http.MaxResp
     .AddStandardResilienceHandler();
 builder.Services.AddSingleton<CardArtCache>();
 builder.Services.AddSingleton<ShareImageService>();
+builder.Services.AddSingleton(sp =>
+{
+    var meta = sp.GetRequiredService<IOptions<MetaOptions>>().Value;
+    var metaDb = Path.GetFullPath(meta.DbPath, contentRoot);
+    return new StatsStore(Path.Combine(Path.GetDirectoryName(metaDb)!, "stats.db"));
+});
+builder.Services.AddSingleton<StatsRecorder>();
+builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddHostedService<SeasonWatchService>();
@@ -110,6 +119,13 @@ builder.Services.AddRateLimiter(o =>
         static _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+    o.AddPolicy(RateLimitPolicies.Stats, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        static _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 60,
             Window = TimeSpan.FromMinutes(1),
         }));
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
@@ -198,6 +214,7 @@ if (Environment.GetEnvironmentVariable("TRUST_PROXY_HEADERS") == "true")
         if (visitor is not null)
         {
             context.Connection.RemoteIpAddress = visitor;
+            context.Items[StatsRecorder.ViaCloudflare] = true;
         }
         return next(context);
     });
@@ -259,6 +276,7 @@ app.MapGet("/robots.txt", () => Results.Text(
     $"""
     User-agent: *
     Allow: /
+    Disallow: /admin
 
     Sitemap: {SpaPages.Origin}/sitemap.xml
     """, "text/plain"));

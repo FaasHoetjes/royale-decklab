@@ -11,6 +11,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { usePrefetchAppData } from '../queries';
 import { isValidTag } from '../lib/playerTag';
 import { documentMeta, toolItems } from './navItems';
+import { toolForPath, track } from '../lib/stats';
 
 // Where each history entry was scrolled to, so going back returns there.
 const scrollPositions = new Map<string, number>();
@@ -64,6 +65,11 @@ export default function Layout() {
   }, [key]);
 
   usePrefetchAppData(activePlayerTag);
+
+  useEffect(() => {
+    const tool = toolForPath(pathname);
+    if (tool) track({ kind: 'tool', tool });
+  }, [pathname]);
 
   const { title, description } = documentMeta(pathname, toolItems(activePlayerTag), isPlayerDeepLink);
   // A card page names its card in the title, so it sets its own once the card is known.

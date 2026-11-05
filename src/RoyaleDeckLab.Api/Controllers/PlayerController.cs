@@ -5,6 +5,7 @@ using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
+using RoyaleDeckLab.Api.Services.Stats;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
@@ -14,6 +15,7 @@ public sealed class PlayerController(
     PlayerProfileCache players,
     MetaCache cache,
     DeckAnalyzer analyzer,
+    StatsRecorder stats,
     ILogger<PlayerController> logger) : ControllerBase
 {
     [HttpGet("api/player/{tag}/collection")]
@@ -92,6 +94,7 @@ public sealed class PlayerController(
             }
 
             var warDecks = analyzer.FindBestWarDecks(cache.Meta, cardMap, options);
+            stats.NoteServed(tag);
 
             return Ok(new
             {

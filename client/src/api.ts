@@ -221,3 +221,56 @@ export async function scoreBuilderDecks(
   }
   return response.json();
 }
+
+export interface StatsCount {
+  key: string;
+  users: number;
+}
+
+export interface StatsRange {
+  key: 'today' | '7d' | '30d' | '90d';
+  from: string;
+  to: string;
+  /** People seen in both months count twice, since everyone's anonymous code changes each month. */
+  spansMonths: boolean;
+  users: number;
+  previousUsers: number | null;
+  lookups: number;
+  players: number;
+  returning: number;
+  shareTaps: number;
+  previews: number;
+  shareOpens: number;
+  newFromShare: number;
+  daily: StatsCount[];
+  countries: StatsCount[];
+  devices: StatsCount[];
+  sources: StatsCount[];
+  tools: StatsCount[];
+}
+
+export interface StatsMonth {
+  month: string;
+  partial: boolean;
+  users: number;
+  lookups: number;
+  players: number;
+  shareOpens: number;
+  newFromShare: number;
+}
+
+export interface StatsReport {
+  generatedAt: string;
+  retentionDays: number;
+  ranges: StatsRange[];
+  months: StatsMonth[];
+}
+
+/** The token goes in a header, never the URL, where logs and history would keep it. */
+export async function fetchAdminStats(token: string, signal?: AbortSignal): Promise<StatsReport> {
+  const response = await fetch('/api/admin/stats', { headers: { 'X-Admin-Token': token }, signal, cache: 'no-store' });
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch stats', response.status);
+  }
+  return response.json();
+}

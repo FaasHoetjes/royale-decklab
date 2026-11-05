@@ -4,4 +4,5 @@ public static class RateLimitPolicies
 {
     public const string Player = "player";
     public const string Admin = "admin";
+    public const string Stats = "stats";
 }
