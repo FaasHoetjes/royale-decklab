@@ -24,6 +24,7 @@ const BestWarDecks = lazy(loadBestDecks)
 const UpgradeAdvisor = lazy(loadUpgrades)
 const Cards = lazy(loadCards)
 const CardPage = lazy(loadCardPage)
+const AdminStats = lazy(() => import('./pages/AdminStats'))
 
 // Fetch them once the first page is up, so switching tabs never waits on the network.
 const preloadPages = () => [loadBuilder, loadFaq, loadBestDecks, loadUpgrades, loadCards, loadCardPage].forEach((load) => load().catch(() => {}))
@@ -60,6 +61,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/upgrades" element={<UpgradeAdvisor />} />
               <Route path="/cards" element={<Cards />} />
               <Route path="/cards/:slug" element={<CardPage />} />
+              <Route path="/admin/stats" element={<AdminStats />} />
               <Route path="/:playerId" element={<WarDeckGenerator />} />
               <Route path="*" element={<NotFound />} />
             </Route>

@@ -73,7 +73,7 @@ images, and smoke-tests `/healthz`. It needs two repo **Actions secrets**:
 | Env var                  | Purpose                                             | Default            |
 |--------------------------|-----------------------------------------------------|--------------------|
 | `CLASH_ROYALE_API_KEY`   | CR API token (see IP note below). **Never baked in.** | none (required for live meta) |
-| `ADMIN_TOKEN`            | Shared secret for the admin endpoints (`POST /api/meta/refresh`, `POST /api/meta/epoch`), sent as the `X-Admin-Token` header. Unset ⇒ those endpoints are disabled (403). | none (admin endpoints disabled) |
+| `ADMIN_TOKEN`            | Shared secret for the admin endpoints (`POST /api/meta/refresh`, `POST /api/meta/epoch`, `GET /api/admin/stats`), sent as the `X-Admin-Token` header. Unset ⇒ those endpoints reject every request with 401, the same as a wrong token. | none (admin endpoints reject every request) |
 | `TRUST_PROXY_HEADERS`    | Set to `true` when running behind a reverse proxy so `X-Forwarded-For` (one hop) supplies the client IP for per-IP rate limiting. A request whose proxy hop is one of Cloudflare's published ranges then takes the visitor from `CF-Connecting-IP` (Caddy doesn't trust Cloudflare, so it forwards Cloudflare's address). Leave unset if :3000 is reached directly. | unset |
 | `TRUSTED_PROXY_IPS`      | Optional, with `TRUST_PROXY_HEADERS=true`: comma-separated proxy IPs and/or CIDRs (e.g. `10.0.0.5,172.16.0.0/12`). Pins `X-Forwarded-For` trust to those addresses so a client that reaches :3000 directly can't spoof its IP past the rate limiter. When unset, any direct connection is treated as the proxy — then :3000 must only be reachable via the proxy (firewall/private network). | unset |
 | `ASPNETCORE_URLS`        | Bind address. Set to `http://0.0.0.0:3000` in-image. | `http://0.0.0.0:3000` |
@@ -111,6 +111,18 @@ of truth, and it's gitignored. Mount a volume at `/data` so it survives restarts
   `-v /abs/path/meta.db:/data/meta.db`, or with the compose setup copy it into
   the named volume (see the production section above). Everything cache-backed
   (`/api/meta/status`, `/api/score-decks`) works immediately, offline.
+
+### Usage stats (`stats.db`)
+
+Anonymous visitor counts live in `stats.db`, next to `meta.db` on the same `/data`
+volume. Unlike `meta.db` it can't be rebuilt, so keep the volume. Nothing in it
+identifies anyone: visitors and player tags are stored only as keyed hashes whose
+key changes every month and is deleted once the month ends, and single visits are
+deleted after 90 days, leaving only daily and monthly totals.
+
+View them at `https://<host>/admin/stats` by entering `ADMIN_TOKEN`; the page keeps
+it for the browser tab only, and that browser stops counting as a visitor. The
+same data is at `GET /api/admin/stats` with the `X-Admin-Token` header.
 
 ## The IP-bound API key (important for cloud deploys)
 

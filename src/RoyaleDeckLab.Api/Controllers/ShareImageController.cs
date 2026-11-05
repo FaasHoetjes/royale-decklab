@@ -2,12 +2,13 @@ using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Services;
+using RoyaleDeckLab.Api.Services.Stats;
 
 namespace RoyaleDeckLab.Api.Controllers;
 
 // Not under the player limit: chat apps fetch previews from a few shared IPs, and the image is cached.
 [ApiController]
-public sealed class ShareImageController(ShareImageService images, ILogger<ShareImageController> logger) : ControllerBase
+public sealed class ShareImageController(ShareImageService images, StatsRecorder stats, ILogger<ShareImageController> logger) : ControllerBase
 {
     [HttpGet("api/player/{tag}/share-image")]
     [RequireMetaLoaded]
@@ -25,6 +26,8 @@ public sealed class ShareImageController(ShareImageService images, ILogger<Share
             {
                 return NotFound(new { error = "No shared lineup to draw" });
             }
+            // Each app that fetches the picture counts once a day per link: roughly, the times the link was posted.
+            stats.Record(HttpContext, StatsStore.Kinds.Preview, $"{StatsRecorder.NormalizeTag(tag)}/{share}");
             Response.Headers.CacheControl = "public, max-age=86400";
             return File(jpeg, "image/jpeg");
         }
@@ -34,7 +37,7 @@ public sealed class ShareImageController(ShareImageService images, ILogger<Share
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogError(ex, "Error drawing the share image for {Tag}", tag);
+            logger.LogError(ex, "Error drawing the share image");
             return StatusCode(500, new { error = "Failed to draw the share image" });
         }
     }

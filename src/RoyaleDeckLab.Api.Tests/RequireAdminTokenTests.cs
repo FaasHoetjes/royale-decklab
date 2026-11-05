@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -35,12 +36,15 @@ public sealed class RequireAdminTokenTests
     }
 
     [Fact]
-    public void NoTokenConfigured_FailsClosed_With403()
+    public void NoTokenConfigured_RejectsLikeAWrongToken()
     {
-        var context = Run(envToken: null, header: "anything");
+        var unset = Run(envToken: null, header: "anything");
+        var wrong = Run(envToken: "s3cret", header: "not-the-token");
 
-        var result = Assert.IsType<ObjectResult>(context.Result);
-        Assert.Equal(StatusCodes.Status403Forbidden, result.StatusCode);
+        var unsetResult = Assert.IsType<UnauthorizedObjectResult>(unset.Result);
+        var wrongResult = Assert.IsType<UnauthorizedObjectResult>(wrong.Result);
+        Assert.Equal(wrongResult.StatusCode, unsetResult.StatusCode);
+        Assert.Equal(JsonSerializer.Serialize(wrongResult.Value), JsonSerializer.Serialize(unsetResult.Value));
     }
 
     [Fact]
@@ -72,6 +76,7 @@ public sealed class RequireAdminTokenTests
     [InlineData("s3cret", "s3cret", true)]
     [InlineData("s3cre", "s3cret", false)]  // prefix / length mismatch
     [InlineData("S3CRET", "s3cret", false)] // case-sensitive
+    [InlineData("s3cret-extra", "s3cret", false)] // longer than expected
     public void TokensMatch_ComparesExactly(string provided, string expected, bool match)
     {
         Assert.Equal(match, RequireAdminTokenAttribute.TokensMatch(provided, expected));

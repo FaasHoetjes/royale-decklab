@@ -138,7 +138,7 @@ public sealed class MetaBuilder(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error processing war battle log for {PlayerTag}", playerTag);
+            logger.LogError(ex, "Error processing a war battle log");
         }
         return records;
     }

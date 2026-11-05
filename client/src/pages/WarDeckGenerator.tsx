@@ -6,6 +6,7 @@ import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } fr
 import { toBuilderCards } from '../lib/builderCards';
 import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
 import { decodeShare } from '../lib/shareLink';
+import { track } from '../lib/stats';
 import { useApp } from '../AppContext';
 import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
@@ -79,6 +80,11 @@ export default function WarDeckGenerator() {
   // Decks); someone else's shared lineup leaves the reader's own player alone.
   useEffect(() => {
     if (warDecks.isSuccess && tag && !shared) setActivePlayerTag(tag);
+  }, [warDecks.isSuccess, tag, shared]);
+
+  // A friend opening a shared lineup isn't a lookup of the owner: only a tag of their own counts as one.
+  useEffect(() => {
+    if (warDecks.isSuccess && tag) track({ kind: shared ? 'share_open' : 'lookup', tag });
   }, [warDecks.isSuccess, tag, shared]);
 
   useEffect(() => {

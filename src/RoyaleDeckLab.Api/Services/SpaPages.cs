@@ -34,6 +34,7 @@ public static partial class SpaPages
     private const string SiteName = "Royale DeckLab";
     private const string SiteDescription = "Generate your best four Clash Royale War Decks tuned to the cards you actually own.";
     private const string CardsPath = "/cards";
+    private const string AdminStatsPath = "/admin/stats";
 
     /// <summary>Heading is the page's h1 as the app shows it.</summary>
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
@@ -75,6 +76,11 @@ public static partial class SpaPages
         if (IsCardPath(path))
         {
             return CardPage(path[(CardsPath.Length + 1)..], cards, stats, now);
+        }
+        // The stats page holds no data until the admin token is entered; it just shouldn't be found.
+        if (string.Equals(path, AdminStatsPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return new(200, $"Stats · {SiteName}", SiteDescription, null, true);
         }
         var segment = path[1..];
         // Player pages are endless and differ only in whose cards they use, so they stay shareable but unindexed.

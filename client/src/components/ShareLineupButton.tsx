@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { copyText } from '../lib/clipboard';
+import { track } from '../lib/stats';
 
 interface ShareLineupButtonProps {
   url: string;
@@ -20,6 +21,7 @@ export default function ShareLineupButton({ url, title, isMobile }: ShareLineupB
   );
 
   const share = async () => {
+    track({ kind: 'share' });
     if (isMobile && typeof navigator.share === 'function') {
       try {
         await navigator.share({ title, url });

@@ -27,6 +27,9 @@ battle-store.json
 meta.db
 meta.db-wal
 meta.db-shm
+stats.db
+stats.db-wal
+stats.db-shm
 card-art/
 
 [Bb]in/
