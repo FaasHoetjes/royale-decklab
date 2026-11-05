@@ -14,20 +14,18 @@ public sealed class CardCatalog(IServiceScopeFactory scopeFactory)
     private IReadOnlyList<CatalogCard>? _cards;
     private DateTimeOffset _fetchedAt;
 
-    private bool Fresh => _cards is not null && DateTimeOffset.UtcNow - _fetchedAt < Ttl;
-
     public async Task<IReadOnlyList<CatalogCard>> GetAsync(CancellationToken ct = default)
     {
-        if (Fresh)
+        if (TryGetFresh(out var fresh))
         {
-            return _cards!;
+            return fresh;
         }
         await _gate.WaitAsync(ct);
         try
         {
-            if (Fresh)
+            if (TryGetFresh(out fresh))
             {
-                return _cards!;
+                return fresh;
             }
             using var scope = scopeFactory.CreateScope();
             var client = scope.ServiceProvider.GetRequiredService<ClashRoyaleClient>();
@@ -51,5 +49,12 @@ public sealed class CardCatalog(IServiceScopeFactory scopeFactory)
         {
             _gate.Release();
         }
+    }
+
+    private bool TryGetFresh(out IReadOnlyList<CatalogCard> cards)
+    {
+        var current = _cards;
+        cards = current ?? [];
+        return current is not null && DateTimeOffset.UtcNow - _fetchedAt < Ttl;
     }
 }

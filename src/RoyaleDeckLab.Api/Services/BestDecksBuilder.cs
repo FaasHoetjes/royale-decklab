@@ -37,11 +37,7 @@ public sealed class BestDecksBuilder
         IReadOnlyList<DeckMeta> meta,
         IReadOnlyDictionary<int, CatalogCard> catalog)
     {
-        var scored = meta
-            .Where(d => d.Players is null || d.Players >= MinPlayers)
-            .Select(d => (deck: d, score: d.Confidence))
-            .OrderByDescending(x => x.score)
-            .ToList();
+        var scored = RankByConfidence(meta.Where(HasEnoughPlayers));
 
         var eligible = CollapseToArchetypes(scored, ArchetypePoolSize);
         var sets = BuildDiverseSets(eligible);
@@ -61,16 +57,20 @@ public sealed class BestDecksBuilder
         IReadOnlyDictionary<int, CatalogCard> catalog,
         int count)
     {
-        var scored = meta
-            .Where(d => d.CardIds.Contains(cardId) && (d.Players is null || d.Players >= MinPlayers))
-            .Select(d => (deck: d, score: d.Confidence))
-            .OrderByDescending(x => x.score)
-            .ToList();
+        var scored = RankByConfidence(meta.Where(d => d.CardIds.Contains(cardId) && HasEnoughPlayers(d)));
 
         return CollapseToArchetypes(scored, count)
             .Select(d => ToEntry(d.deck, d.score, catalog))
             .ToList();
     }
+
+    private static bool HasEnoughPlayers(DeckMeta deck) => deck.Players is null || deck.Players >= MinPlayers;
+
+    private static List<(DeckMeta deck, double score)> RankByConfidence(IEnumerable<DeckMeta> decks)
+        => decks
+            .Select(d => (deck: d, score: d.Confidence))
+            .OrderByDescending(x => x.score)
+            .ToList();
 
     private static List<(DeckMeta deck, double score)> CollapseToArchetypes(
         List<(DeckMeta deck, double score)> scored, int limit)

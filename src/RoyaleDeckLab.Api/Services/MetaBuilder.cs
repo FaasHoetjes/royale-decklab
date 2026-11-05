@@ -61,8 +61,14 @@ public sealed class MetaBuilder(
         {
             var rosters = await Task.WhenAll(clanBatch.Select(async tag =>
             {
-                try { return await client.GetClanMemberTagsAsync(tag, ct); }
-                catch { return (IReadOnlyList<string>)[]; }
+                try
+                {
+                    return await client.GetClanMemberTagsAsync(tag, ct);
+                }
+                catch
+                {
+                    return (IReadOnlyList<string>)[];
+                }
             }));
 
             var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
@@ -145,10 +151,7 @@ public sealed class MetaBuilder(
         List<CrBattleCard>? oppCards, int oppCrowns,
         string keySuffix = "")
     {
-        var isDraw = teamCrowns == oppCrowns;
-        var playerWon = teamCrowns > oppCrowns;
-        var playerResult = isDraw ? BattleResult.Draw : playerWon ? BattleResult.Win : BattleResult.Loss;
-        var opponentResult = isDraw ? BattleResult.Draw : playerWon ? BattleResult.Loss : BattleResult.Win;
+        var (playerResult, opponentResult) = ResultsFor(teamCrowns, oppCrowns);
 
         var playerRecord = ToBattleRecord(playerTag, battleTime, teamCards, playerResult, keySuffix);
         if (playerRecord is not null)
@@ -165,6 +168,17 @@ public sealed class MetaBuilder(
         }
     }
 
+    private static (BattleResult player, BattleResult opponent) ResultsFor(int teamCrowns, int oppCrowns)
+    {
+        if (teamCrowns == oppCrowns)
+        {
+            return (BattleResult.Draw, BattleResult.Draw);
+        }
+        return teamCrowns > oppCrowns
+            ? (BattleResult.Win, BattleResult.Loss)
+            : (BattleResult.Loss, BattleResult.Win);
+    }
+
     private static BattleRecord? ToBattleRecord(
         string tag, string battleTime, List<CrBattleCard>? cards, BattleResult result, string keySuffix = "")
     {
@@ -175,14 +189,7 @@ public sealed class MetaBuilder(
 
         var cardIds = cards.Select(c => c.Id).OrderBy(id => id).ToArray();
 
-        var cardVersions = cards.Select(card =>
-        {
-            var evo = card.EvolutionLevel ?? 0;
-            var version = card.Rarity == "champion" || evo >= 2 ? CardVersionKind.Hero
-                : evo == 1 ? CardVersionKind.Evo
-                : CardVersionKind.Normal;
-            return new CardVersion(card.Id, version);
-        }).ToList();
+        var cardVersions = cards.Select(card => new CardVersion(card.Id, VersionOf(card))).ToList();
 
         return new BattleRecord
         {
@@ -194,6 +201,16 @@ public sealed class MetaBuilder(
             Result = result,
             CardVersions = cardVersions,
         };
+    }
+
+    private static CardVersionKind VersionOf(CrBattleCard card)
+    {
+        var evolutionLevel = card.EvolutionLevel ?? 0;
+        if (card.Rarity == "champion" || evolutionLevel >= EvolutionBits.Hero)
+        {
+            return CardVersionKind.Hero;
+        }
+        return evolutionLevel == EvolutionBits.Evo ? CardVersionKind.Evo : CardVersionKind.Normal;
     }
 
     public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records, long epochStartMs = 0)
@@ -211,15 +228,11 @@ public sealed class MetaBuilder(
                 byDeck[deckKey] = agg;
             }
 
-            var weight = epochStartMs > 0 && record.BattleTimeMs < epochStartMs ? _opt.PreEpochWeight : 1.0;
+            var isPreEpoch = epochStartMs > 0 && record.BattleTimeMs < epochStartMs;
+            var weight = isPreEpoch ? _opt.PreEpochWeight : 1.0;
             agg.Games++;
             agg.WeightedGames += weight;
-            agg.WeightedWins += weight * record.Result switch
-            {
-                BattleResult.Win => 1.0,
-                BattleResult.Draw => 0.5,
-                _ => 0.0,
-            };
+            agg.WeightedWins += weight * record.Result.WinShare();
             agg.Players.Add(record.PlayerTag);
 
             var comboKey = string.Join(',',

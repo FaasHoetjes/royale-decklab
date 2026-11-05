@@ -64,7 +64,9 @@ public sealed class DeckAnalyzer
             return null;
         }
 
-        int evo = 0, hero = 0, total = 0;
+        var evo = 0;
+        var hero = 0;
+        var total = 0;
         var illegal = false;
         var capped = new List<CardVersion>(cardVersions.Count);
         foreach (var v in cardVersions)
@@ -75,9 +77,17 @@ public sealed class DeckAnalyzer
                 continue;
             }
             var fitsType = v.Version == CardVersionKind.Evo ? evo < MaxEvo : hero < MaxHero;
-            if (fitsType && total < MaxSpecials)
+            var hasRoomForSpecial = total < MaxSpecials;
+            if (fitsType && hasRoomForSpecial)
             {
-                if (v.Version == CardVersionKind.Evo) { evo++; } else { hero++; }
+                if (v.Version == CardVersionKind.Evo)
+                {
+                    evo++;
+                }
+                else
+                {
+                    hero++;
+                }
                 total++;
                 capped.Add(v);
             }
@@ -130,12 +140,20 @@ public sealed class DeckAnalyzer
             return personalized;
         }
 
-        int evo = 0, hero = 0, total = 0;
+        var evo = 0;
+        var hero = 0;
         foreach (var v in metaVersions)
         {
-            if (v.Version == CardVersionKind.Evo) { evo++; total++; }
-            else if (v.Version == CardVersionKind.Hero) { hero++; total++; }
+            if (v.Version == CardVersionKind.Evo)
+            {
+                evo++;
+            }
+            else if (v.Version == CardVersionKind.Hero)
+            {
+                hero++;
+            }
         }
+        var total = evo + hero;
 
         var changed = false;
         var upgraded = new List<CardVersion>(personalized.Count);
@@ -206,7 +224,9 @@ public sealed class DeckAnalyzer
             if (cardVersions is not null && !IsChampion(cardId, cardMap))
             {
                 var metaCardVersion = cardVersions.FirstOrDefault(c => c.CardId == cardId);
-                if (metaCardVersion is not null && !EvolutionBits.Owns(playerCard.EvolutionLevel, metaCardVersion.Version))
+                var isMissingSpecial = metaCardVersion is not null
+                    && !EvolutionBits.Owns(playerCard.EvolutionLevel, metaCardVersion.Version);
+                if (isMissingSpecial)
                 {
                     versionFit *= MissingSpecialMultiplier;
                 }
@@ -312,7 +332,12 @@ public sealed class DeckAnalyzer
                 return null;
             }
             var placementFit = slots is null ? 1.0 : PlacementFit(slots, meta.CardVersions, cardMap);
-            return new BuilderScore(score.Value * placementFit, meta.Confidence, fieldability.Value, IsMeta: true, meta.Players ?? 0);
+            return new BuilderScore(
+                score.Value * placementFit,
+                meta.Confidence,
+                fieldability.Value,
+                IsMeta: true,
+                meta.Players ?? 0);
         }
 
         var levels = cardIds.Select(id => LevelModel.DisplayLevel(cardMap[id])).ToList();
@@ -355,6 +380,8 @@ public sealed class DeckAnalyzer
         };
     }
 
+    private const int BitsPerWord = 64;
+
     private static List<(DeckMeta deck, double score)> FindOptimalLineup(
         IReadOnlyList<(DeckMeta deck, double score)> pool,
         int target,
@@ -371,21 +398,17 @@ public sealed class DeckAnalyzer
         {
             foreach (var id in deck.CardIds)
             {
-                if (!bitOf.ContainsKey(id))
-                {
-                    bitOf[id] = bitOf.Count;
-                }
+                bitOf.TryAdd(id, bitOf.Count);
             }
         }
-        var words = (bitOf.Count + 63) >> 6;
+        var words = (bitOf.Count + BitsPerWord - 1) / BitsPerWord;
         var masks = new ulong[n][];
         for (var i = 0; i < n; i++)
         {
             var mask = new ulong[words];
             foreach (var id in pool[i].deck.CardIds)
             {
-                var bit = bitOf[id];
-                mask[bit >> 6] |= 1UL << (bit & 63);
+                SetBit(mask, bitOf[id]);
             }
             masks[i] = mask;
         }
@@ -398,7 +421,7 @@ public sealed class DeckAnalyzer
             {
                 return [];
             }
-            required[bit >> 6] |= 1UL << (bit & 63);
+            SetBit(required, bit);
         }
         var hasRequired = requiredCards.Count > 0;
 
@@ -414,18 +437,6 @@ public sealed class DeckAnalyzer
             }
         }
 
-        bool Covers(ulong[] used)
-        {
-            for (var w = 0; w < words; w++)
-            {
-                if ((required[w] & ~used[w]) != 0)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         var prefix = new double[n + 1];
         for (var i = 0; i < n; i++)
         {
@@ -433,7 +444,7 @@ public sealed class DeckAnalyzer
         }
 
         var bestPicks = GreedyPicks(pool, masks, words, target);
-        if (hasRequired && !Covers(UnionOf(bestPicks, masks, words)))
+        if (hasRequired && !Covers(required, UnionOf(bestPicks, masks, words)))
         {
             bestPicks = [];
         }
@@ -461,7 +472,8 @@ public sealed class DeckAnalyzer
                 var take = Math.Min(target - depth, n - i);
                 var boundCount = depth + take;
                 var boundScore = score + prefix[i + take] - prefix[i];
-                if (boundCount < bestCount || (boundCount == bestCount && boundScore <= bestScore))
+                var cannotBeatBest = boundCount < bestCount || (boundCount == bestCount && boundScore <= bestScore);
+                if (cannotBeatBest)
                 {
                     return;
                 }
@@ -469,29 +481,13 @@ public sealed class DeckAnalyzer
                 {
                     return;
                 }
-                if (hasRequired)
+                if (hasRequired && !CanStillCover(required, used, reachable[i]))
                 {
-                    var reach = reachable[i];
-                    for (var w = 0; w < words; w++)
-                    {
-                        if ((required[w] & ~(used[w] | reach[w])) != 0)
-                        {
-                            return;
-                        }
-                    }
+                    return;
                 }
 
                 var mask = masks[i];
-                var overlaps = false;
-                for (var w = 0; w < words; w++)
-                {
-                    if ((used[w] & mask[w]) != 0)
-                    {
-                        overlaps = true;
-                        break;
-                    }
-                }
-                if (overlaps)
+                if (Overlaps(used, mask))
                 {
                     continue;
                 }
@@ -502,8 +498,8 @@ public sealed class DeckAnalyzer
                 }
                 picks[depth] = i;
                 var newScore = score + pool[i].score;
-                if ((depth + 1 > bestCount || (depth + 1 == bestCount && newScore > bestScore))
-                    && (!hasRequired || Covers(next)))
+                var beatsBest = depth + 1 > bestCount || (depth + 1 == bestCount && newScore > bestScore);
+                if (beatsBest && (!hasRequired || Covers(required, next)))
                 {
                     bestCount = depth + 1;
                     bestScore = newScore;
@@ -523,6 +519,45 @@ public sealed class DeckAnalyzer
             lineup.Add(pool[p]);
         }
         return lineup;
+    }
+
+    private static void SetBit(ulong[] bits, int bit)
+        => bits[bit / BitsPerWord] |= 1UL << (bit % BitsPerWord);
+
+    private static bool Covers(ulong[] required, ulong[] used)
+    {
+        for (var w = 0; w < required.Length; w++)
+        {
+            if ((required[w] & ~used[w]) != 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool CanStillCover(ulong[] required, ulong[] used, ulong[] reachable)
+    {
+        for (var w = 0; w < required.Length; w++)
+        {
+            if ((required[w] & ~(used[w] | reachable[w])) != 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool Overlaps(ulong[] used, ulong[] mask)
+    {
+        for (var w = 0; w < used.Length; w++)
+        {
+            if ((used[w] & mask[w]) != 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ulong[] UnionOf(int[] picks, ulong[][] masks, int words)
@@ -545,23 +580,13 @@ public sealed class DeckAnalyzer
         var picks = new List<int>(target);
         for (var i = 0; i < pool.Count && picks.Count < target; i++)
         {
-            var mask = masks[i];
-            var overlaps = false;
-            for (var w = 0; w < words; w++)
-            {
-                if ((used[w] & mask[w]) != 0)
-                {
-                    overlaps = true;
-                    break;
-                }
-            }
-            if (overlaps)
+            if (Overlaps(used, masks[i]))
             {
                 continue;
             }
             for (var w = 0; w < words; w++)
             {
-                used[w] |= mask[w];
+                used[w] |= masks[i][w];
             }
             picks.Add(i);
         }
@@ -640,7 +665,8 @@ public sealed class DeckAnalyzer
                 continue;
             }
 
-            var estimate = ScoreBuilderDeck(cardMap, ids, meta: null)!;
+            var estimate = ScoreBuilderDeck(cardMap, ids, meta: null)
+                ?? throw new InvalidOperationException("A locked deck whose cards are all owned always has a builder score");
             var unproven = new DeckMeta
             {
                 CardIds = ids,
@@ -682,7 +708,11 @@ public sealed class DeckAnalyzer
     public static int CompareCandidates((DeckMeta deck, double score) x, (DeckMeta deck, double score) y)
     {
         var byScore = y.score.CompareTo(x.score);
-        return byScore != 0 ? byScore : (y.deck.Players ?? 0).CompareTo(x.deck.Players ?? 0);
+        if (byScore != 0)
+        {
+            return byScore;
+        }
+        return (y.deck.Players ?? 0).CompareTo(x.deck.Players ?? 0);
     }
 
     /// <summary>

@@ -33,7 +33,16 @@ public sealed class MetaCache(
     public long EpochStart => Interlocked.Read(ref _epochStart);
 
     public long Version => Interlocked.Read(ref _version);
-    public bool IsBuilding { get { lock (_buildLock) { return _isBuilding; } } }
+    public bool IsBuilding
+    {
+        get
+        {
+            lock (_buildLock)
+            {
+                return _isBuilding;
+            }
+        }
+    }
 
     /// <summary>False after a restart until the stored battles are aggregated, or startup finds there are none.</summary>
     public bool IsLoaded => _isLoaded;
@@ -140,7 +149,10 @@ public sealed class MetaCache(
         }
         finally
         {
-            lock (_buildLock) { _isBuilding = false; }
+            lock (_buildLock)
+            {
+                _isBuilding = false;
+            }
         }
     }
 

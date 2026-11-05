@@ -95,6 +95,48 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 
         var candidates = 0;
 
+        void EmitLevelUpgrades(PlayerItemLevel card)
+        {
+            candidates++;
+            var (delta, result) = Simulate(card with { Level = card.Level + 1 });
+            var oneLevelChangesLineup = ChangesLineup(result);
+            if (delta > MinDelta)
+            {
+                Emit(card, UpgradeKind.Level, card.Level + 1, delta, result);
+            }
+
+            if (oneLevelChangesLineup || card.MaxLevel <= card.Level + 1)
+            {
+                return;
+            }
+            var (maxDelta, maxResult) = Simulate(card with { Level = card.MaxLevel });
+            if (!ChangesLineup(maxResult) || maxDelta <= MinDelta)
+            {
+                return;
+            }
+            var (jumpLevel, jumpDelta, jumpResult) = (card.MaxLevel, maxDelta, maxResult);
+            for (var to = card.Level + 2; to < card.MaxLevel; to++)
+            {
+                var (d, r) = Simulate(card with { Level = to });
+                if (ChangesLineup(r))
+                {
+                    (jumpLevel, jumpDelta, jumpResult) = (to, d, r);
+                    break;
+                }
+            }
+            Emit(card, UpgradeKind.Level, jumpLevel, jumpDelta, jumpResult);
+        }
+
+        void EmitSpecialUnlock(PlayerItemLevel card, string kind, int evolutionBit)
+        {
+            candidates++;
+            var (delta, result) = Simulate(card with { EvolutionLevel = card.EvolutionLevel | evolutionBit });
+            if (delta > MinDelta)
+            {
+                Emit(card, kind, card.Level, delta, result);
+            }
+        }
+
         foreach (var card in playerCards)
         {
             if (!metaCardIds.Contains(card.Id))
@@ -104,32 +146,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 
             if (card.Level < card.MaxLevel)
             {
-                candidates++;
-                var (delta, result) = Simulate(card with { Level = card.Level + 1 });
-                var oneLevelChangesLineup = ChangesLineup(result);
-                if (delta > MinDelta)
-                {
-                    Emit(card, UpgradeKind.Level, card.Level + 1, delta, result);
-                }
-
-                if (!oneLevelChangesLineup && card.MaxLevel > card.Level + 1)
-                {
-                    var (maxDelta, maxResult) = Simulate(card with { Level = card.MaxLevel });
-                    if (ChangesLineup(maxResult) && maxDelta > MinDelta)
-                    {
-                        var (jumpLevel, jumpDelta, jumpResult) = (card.MaxLevel, maxDelta, maxResult);
-                        for (var to = card.Level + 2; to < card.MaxLevel; to++)
-                        {
-                            var (d, r) = Simulate(card with { Level = to });
-                            if (ChangesLineup(r))
-                            {
-                                (jumpLevel, jumpDelta, jumpResult) = (to, d, r);
-                                break;
-                            }
-                        }
-                        Emit(card, UpgradeKind.Level, jumpLevel, jumpDelta, jumpResult);
-                    }
-                }
+                EmitLevelUpgrades(card);
             }
 
             // Champions are neither evo nor hero: owning the card IS owning the
@@ -139,21 +156,11 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             {
                 if (!EvolutionBits.OwnsEvo(card.EvolutionLevel) && evoFielded.Contains(card.Id))
                 {
-                    candidates++;
-                    var (delta, result) = Simulate(card with { EvolutionLevel = card.EvolutionLevel | EvolutionBits.Evo });
-                    if (delta > MinDelta)
-                    {
-                        Emit(card, UpgradeKind.Evo, card.Level, delta, result);
-                    }
+                    EmitSpecialUnlock(card, UpgradeKind.Evo, EvolutionBits.Evo);
                 }
                 if (!EvolutionBits.OwnsHero(card.EvolutionLevel) && heroFielded.Contains(card.Id))
                 {
-                    candidates++;
-                    var (delta, result) = Simulate(card with { EvolutionLevel = card.EvolutionLevel | EvolutionBits.Hero });
-                    if (delta > MinDelta)
-                    {
-                        Emit(card, UpgradeKind.Hero, card.Level, delta, result);
-                    }
+                    EmitSpecialUnlock(card, UpgradeKind.Hero, EvolutionBits.Hero);
                 }
             }
         }
@@ -175,7 +182,8 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             return unchanged;
         }
         var merged = new List<(DeckMeta deck, double score)>(unchanged.Count + changed.Count);
-        int i = 0, j = 0;
+        var i = 0;
+        var j = 0;
         while (i < unchanged.Count && j < changed.Count)
         {
             merged.Add(DeckAnalyzer.CompareCandidates(unchanged[i], changed[j]) <= 0

@@ -42,7 +42,9 @@ public static class SpaContent
         // A deck can show up in several sets; like the page, it keeps one name across all of them.
         var unique = sets.SelectMany(s => s.Decks).DistinctBy(d => MetaCache.DeckKey(d.CardIds)).ToList();
         var names = DeckNames(unique);
-        var nameOf = unique.Select((d, i) => (Key: MetaCache.DeckKey(d.CardIds), Name: names[i])).ToDictionary(x => x.Key, x => x.Name);
+        var nameOf = unique
+            .Select((d, i) => (Key: MetaCache.DeckKey(d.CardIds), Name: names[i]))
+            .ToDictionary(x => x.Key, x => x.Name);
         for (var i = 0; i < sets.Count; i++)
         {
             html.Append("<section>").Append(H2($"Set {i + 1}"))
@@ -59,7 +61,10 @@ public static class SpaContent
         {
             var statById = stats.Cards.ToDictionary(s => s.Id);
             html.Append("<table><thead><tr><th>Card</th><th>Win rate</th><th>Play rate</th></tr></thead><tbody>");
-            foreach (var card in cards.OrderByDescending(c => statById.GetValueOrDefault(c.Id)?.PlayRate ?? -1).ThenBy(c => c.Name, StringComparer.Ordinal))
+            var ordered = cards
+                .OrderByDescending(c => statById.GetValueOrDefault(c.Id)?.PlayRate ?? -1)
+                .ThenBy(c => c.Name, StringComparer.Ordinal);
+            foreach (var card in ordered)
             {
                 var stat = statById.GetValueOrDefault(card.Id);
                 html.Append("<tr><td>").Append(CardLink(card.Name)).Append("</td><td>")
@@ -85,7 +90,8 @@ public static class SpaContent
         }
         if (stat is not null)
         {
-            html.Append(P($"{Percent(stat.WinRate)} win rate · {Percent(stat.PlayRate)} play rate · {stat.Games.ToString("N0", CultureInfo.InvariantCulture)} games"));
+            var games = stat.Games.ToString("N0", CultureInfo.InvariantCulture);
+            html.Append(P($"{Percent(stat.WinRate)} win rate · {Percent(stat.PlayRate)} play rate · {games} games"));
         }
         else if (statsLoaded)
         {
@@ -105,7 +111,12 @@ public static class SpaContent
     }
 
     private static IReadOnlyList<string> DeckNames(IEnumerable<BestDeckEntry> decks)
-        => DeckArchetypes.DistinctNames(decks.Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList()).ToList());
+    {
+        var cardLists = decks
+            .Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList())
+            .ToList();
+        return DeckArchetypes.DistinctNames(cardLists);
+    }
 
     private static string DeckList(IEnumerable<(BestDeckEntry Deck, string Name)> decks)
     {

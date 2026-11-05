@@ -10,11 +10,15 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
 {
     private const int MaxCards = 250;
     private const int MaxDecks = 8;
-    private const int MaxDeckSlots = 8;
+    private const int MaxDeckSlots = LineupOptions.CardsPerDeck;
+    private const int MaxRequestBytes = 64 * 1024;
+
+    private static readonly BuilderDeckScore Unscored =
+        new(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
 
     [HttpPost("api/score-decks")]
     [RequireMetaLoaded]
-    [RequestSizeLimit(64 * 1024)]
+    [RequestSizeLimit(MaxRequestBytes)]
     public IActionResult ScoreDecks([FromBody] ScoreDecksRequest request)
     {
         var cards = request.Cards ?? [];
@@ -47,26 +51,31 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
 
         var index = cache.GetMetaIndex();
 
-        var scored = decks.Select(deck =>
-        {
-            var slots = deck ?? [];
-            var cardIds = slots.Where(id => id.HasValue).Select(id => id!.Value).ToList();
-            if (cardIds.Count == 0)
-            {
-                return new BuilderDeckScore(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
-            }
-
-            DeckMeta? meta = cardIds.Count == 8 && index.TryGetValue(MetaCache.DeckKey(cardIds), out var m) ? m : null;
-            var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta, slots);
-            if (result is null)
-            {
-                return new BuilderDeckScore(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
-            }
-
-            return new BuilderDeckScore(result.Score, result.IsMeta, result.WinRate, result.Fieldability, result.Players);
-        }).ToList();
+        var scored = decks.Select(deck => ScoreDeck(deck ?? [], cardMap, index)).ToList();
 
         var total = scored.Sum(d => d.Score ?? 0);
         return Ok(new { decks = scored, total });
+    }
+
+    private BuilderDeckScore ScoreDeck(
+        List<int?> slots,
+        Dictionary<int, PlayerItemLevel> cardMap,
+        IReadOnlyDictionary<string, DeckMeta> index)
+    {
+        var cardIds = slots.OfType<int>().ToList();
+        if (cardIds.Count == 0)
+        {
+            return Unscored;
+        }
+
+        var isFullDeck = cardIds.Count == LineupOptions.CardsPerDeck;
+        var meta = isFullDeck && index.TryGetValue(MetaCache.DeckKey(cardIds), out var m) ? m : null;
+        var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta, slots);
+        if (result is null)
+        {
+            return Unscored;
+        }
+
+        return new BuilderDeckScore(result.Score, result.IsMeta, result.WinRate, result.Fieldability, result.Players);
     }
 }

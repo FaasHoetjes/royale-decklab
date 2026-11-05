@@ -18,12 +18,7 @@ public sealed class CardTallier((long From, long To)[] periods)
         }
 
         _battles[p]++;
-        var win = battle.Result switch
-        {
-            BattleResult.Win => 1.0,
-            BattleResult.Draw => 0.5,
-            _ => 0.0,
-        };
+        var win = battle.Result.WinShare();
         foreach (var id in battle.CardIds)
         {
             if (!_cards[p].TryGetValue(id, out var counts))
@@ -38,8 +33,14 @@ public sealed class CardTallier((long From, long To)[] periods)
         {
             if (v.Version != CardVersionKind.Normal && _cards[p].TryGetValue(v.CardId, out var counts))
             {
-                if (v.Version == CardVersionKind.Evo) counts.Evo++;
-                else counts.Hero++;
+                if (v.Version == CardVersionKind.Evo)
+                {
+                    counts.Evo++;
+                }
+                else
+                {
+                    counts.Hero++;
+                }
             }
         }
     }
@@ -100,11 +101,12 @@ public static class CardPeriods
         double? previousWinRate = before is { Games: > 0 } ? before.Wins / before.Games : null;
         double? change = null;
         double? margin = null;
-        if (previousWinRate is { } p0 && card.Games >= MinGamesForChange && before!.Games >= MinGamesForChange)
+        var hasEnoughGames = card.Games >= MinGamesForChange && before is { Games: >= MinGamesForChange };
+        if (previousWinRate is { } p0 && before is { } previous && hasEnoughGames)
         {
             change = winRate - p0;
             // Two standard errors of the difference between two independent win rates.
-            margin = 2 * Math.Sqrt(winRate * (1 - winRate) / card.Games + p0 * (1 - p0) / before.Games);
+            margin = 2 * Math.Sqrt(winRate * (1 - winRate) / card.Games + p0 * (1 - p0) / previous.Games);
         }
 
         return new CardStat(

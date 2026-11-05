@@ -68,7 +68,9 @@ public static class ShareImageRenderer
     {
         const float saturation = 1.4f;
         const float opacity = 0.55f;
-        float r = 0.213f * (1 - saturation), g = 0.715f * (1 - saturation), b = 0.072f * (1 - saturation);
+        var r = 0.213f * (1 - saturation);
+        var g = 0.715f * (1 - saturation);
+        var b = 0.072f * (1 - saturation);
         using var paint = new SKPaint
         {
             ColorFilter = SKColorFilter.CreateColorMatrix(
@@ -95,7 +97,8 @@ public static class ShareImageRenderer
         var titleBlock = 20 * NormalLineHeight + 38 * 1.05f;
         var y = top + (height - titleBlock) / 2;
         DrawLine(canvas, "Shared war decks", eyebrow, Muted, Margin, y, 20 * NormalLineHeight);
-        DrawLine(canvas, Fit($"{playerName}'s war decks", title, right - Margin - 220), title, Text, Margin, y + 20 * NormalLineHeight, 38 * 1.05f);
+        DrawLine(canvas, Fit($"{playerName}'s war decks", title, right - Margin - 220), title, Text,
+            Margin, y + 20 * NormalLineHeight, 38 * 1.05f);
 
         using var brandTop = new SKFont(Black, 30 * 0.56f);
         using var brandBottom = new SKFont(Black, 30);
@@ -157,7 +160,9 @@ public static class ShareImageRenderer
             canvas.DrawText(text, x, baseline, align, font, paint);
             return;
         }
-        var advances = text.Select((c, i) => font.MeasureText(c.ToString()) + letterSpacing + (kerning?[i] ?? 0) * font.Size).ToList();
+        var advances = text
+            .Select((c, i) => font.MeasureText(c.ToString()) + letterSpacing + (kerning?[i] ?? 0) * font.Size)
+            .ToList();
         var cursor = align == SKTextAlign.Right ? x - advances.Sum() : x;
         for (var i = 0; i < text.Length; i++)
         {

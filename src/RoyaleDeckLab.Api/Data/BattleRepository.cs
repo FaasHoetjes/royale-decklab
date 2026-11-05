@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
@@ -58,13 +59,13 @@ public sealed partial class BattleRepository(MetaDbContext db)
                 (key, battle_time, battle_time_ms, player_tag, card_ids, result, card_versions)
             VALUES ($key, $battleTime, $battleTimeMs, $playerTag, $cardIds, $result, $cardVersions)
             """;
-        var pKey = cmd.CreateParameter(); pKey.ParameterName = "$key"; cmd.Parameters.Add(pKey);
-        var pTime = cmd.CreateParameter(); pTime.ParameterName = "$battleTime"; cmd.Parameters.Add(pTime);
-        var pTimeMs = cmd.CreateParameter(); pTimeMs.ParameterName = "$battleTimeMs"; cmd.Parameters.Add(pTimeMs);
-        var pTag = cmd.CreateParameter(); pTag.ParameterName = "$playerTag"; cmd.Parameters.Add(pTag);
-        var pCards = cmd.CreateParameter(); pCards.ParameterName = "$cardIds"; cmd.Parameters.Add(pCards);
-        var pResult = cmd.CreateParameter(); pResult.ParameterName = "$result"; cmd.Parameters.Add(pResult);
-        var pVersions = cmd.CreateParameter(); pVersions.ParameterName = "$cardVersions"; cmd.Parameters.Add(pVersions);
+        var pKey = AddParameter(cmd, "$key");
+        var pTime = AddParameter(cmd, "$battleTime");
+        var pTimeMs = AddParameter(cmd, "$battleTimeMs");
+        var pTag = AddParameter(cmd, "$playerTag");
+        var pCards = AddParameter(cmd, "$cardIds");
+        var pResult = AddParameter(cmd, "$result");
+        var pVersions = AddParameter(cmd, "$cardVersions");
 
         var added = 0;
         foreach (var r in records)
@@ -80,6 +81,14 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
         await tx.CommitAsync(ct);
         return added;
+    }
+
+    private static DbParameter AddParameter(SqliteCommand cmd, string name)
+    {
+        var parameter = cmd.CreateParameter();
+        parameter.ParameterName = name;
+        cmd.Parameters.Add(parameter);
+        return parameter;
     }
 
     public async Task<int> PruneAsync(long cutoffMs, CancellationToken ct = default)

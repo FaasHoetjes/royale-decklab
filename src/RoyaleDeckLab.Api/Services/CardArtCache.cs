@@ -37,7 +37,9 @@ public sealed partial class CardArtCache
         _catalog = catalog;
         _logger = logger;
         var dbPath = Path.GetFullPath(options.Value.DbPath, env.ContentRootPath);
-        _dir = Path.Combine(Path.GetDirectoryName(dbPath)!, "card-art");
+        var dbFolder = Path.GetDirectoryName(dbPath)
+            ?? throw new InvalidOperationException($"The meta database path has no folder: {dbPath}");
+        _dir = Path.Combine(dbFolder, "card-art");
     }
 
     [GeneratedRegex("^(cards|cardevolutions|cardheroes)$")]
@@ -111,7 +113,7 @@ public sealed partial class CardArtCache
             using var webp = bitmap.Encode(SKEncodedImageFormat.Webp, WebpQuality)
                 ?? throw new InvalidDataException($"Could not encode {upstream} as WebP");
 
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            Directory.CreateDirectory(Path.GetDirectoryName(path) ?? _dir);
             var temp = $"{path}.{Guid.NewGuid():N}.tmp";
             await File.WriteAllBytesAsync(temp, webp.ToArray());
             File.Move(temp, path, overwrite: true);

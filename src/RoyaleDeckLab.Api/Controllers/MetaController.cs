@@ -12,6 +12,8 @@ namespace RoyaleDeckLab.Api.Controllers;
 [Route("api/meta")]
 public sealed class MetaController(MetaCache cache, BattleRepository store) : ControllerBase
 {
+    private const long FutureTimestampToleranceMs = 5 * 60_000;
+
     [HttpGet("status")]
     public IActionResult Status()
     {
@@ -91,7 +93,7 @@ public sealed class MetaController(MetaCache cache, BattleRepository store) : Co
             ts = parsed.ToUnixTimeMilliseconds();
         }
 
-        if (ts > now + 5 * 60_000)
+        if (ts > now + FutureTimestampToleranceMs)
         {
             return StatusCode(400, new { status = "error", message = "Timestamp is in the future." });
         }
