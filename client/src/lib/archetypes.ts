@@ -26,7 +26,6 @@ interface Rule {
   /** The deck's well-known name; without one it's the win condition plus the play style. */
   name?: string | ((deck: DeckInfo) => string);
   winCondition: string;
-  /** All of these must be in the deck. */
   needs: string[];
   /** Extra condition, e.g. one of several support cards. */
   when?: (deck: DeckInfo) => boolean;
