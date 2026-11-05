@@ -1,9 +1,13 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace RoyaleDeckLab.Api.Services.Stats;
+
+/// <summary>Where a visit came from: the referring site, or a campaign link's utm_ tags, which win over it.</summary>
+public sealed record VisitOrigin(string? ReferrerHost, string? UtmSource = null, string? UtmCampaign = null);
 
 /// <summary>
 /// Turns a request into an anonymous stats event: the IP address and browser only go into an HMAC with the month's
@@ -22,6 +26,9 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
     public const int MaxEventsPerDay = 200_000;
 
     private static readonly TimeSpan ServedFor = TimeSpan.FromMinutes(30);
+    private const int MaxActive = 50_000;
+
+    public static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(5);
 
     private readonly object _capLock = new();
     private DateOnly _capDay;
@@ -32,6 +39,9 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
         new BoundedChannelOptions(10_000) { FullMode = BoundedChannelFullMode.DropWrite, SingleReader = true });
 
     private readonly MemoryCache _served = new(new MemoryCacheOptions { SizeLimit = 50_000 });
+
+    private readonly ConcurrentDictionary<string, long> _lastSeen = new();
+    private long _nextPruneMs;
 
     public int DailyCap { get; init; } = MaxEventsPerDay;
 
@@ -46,7 +56,7 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
     public bool WasServed(string tag) => _served.TryGetValue(NormalizeTag(tag), out _);
 
     /// <param name="subject">What the event is about, hashed before it's stored: a player tag, or a tag and share code.</param>
-    public bool Record(HttpContext context, string kind, string? subject = null, string? tool = null, string? referrerHost = null)
+    public bool Record(HttpContext context, string kind, string? subject = null, string? tool = null, VisitOrigin? origin = null)
     {
         try
         {
@@ -72,18 +82,24 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
             var country = context.Items.ContainsKey(ViaCloudflare)
                 ? StatsClassify.Country(context.Request.Headers["CF-IPCountry"].ToString())
                 : null;
+            var visitor = Hash(secret, "visitor", $"{ip}\n{userAgent}");
             var written = _queue.Writer.TryWrite(new StatsEvent(
                 now.ToUnixTimeMilliseconds(),
                 kind,
-                Hash(secret, "visitor", $"{ip}\n{userAgent}"),
+                visitor,
                 subject is null ? [] : Hash(secret, "subject", subject),
                 tool ?? "",
                 country,
                 StatsClassify.Device(userAgent),
-                StatsClassify.Source(referrerHost)));
+                StatsClassify.UtmSource(origin?.UtmSource) ?? StatsClassify.Source(origin?.ReferrerHost),
+                StatsClassify.Campaign(origin?.UtmCampaign)));
             if (written)
             {
                 CountEvent(day);
+                if (kind != StatsStore.Kinds.Preview)
+                {
+                    NoteActive(visitor, now.ToUnixTimeMilliseconds());
+                }
             }
             return written;
         }
@@ -91,6 +107,33 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
         {
             logger.LogWarning(ex, "Couldn't record a {Kind} stats event", kind);
             return false;
+        }
+    }
+
+    /// <summary>Visitors seen in the last <see cref="ActiveWindow"/>, kept in memory only; a restart starts it at zero.</summary>
+    public int ActiveNow()
+    {
+        var since = clock.GetUtcNow().ToUnixTimeMilliseconds() - (long)ActiveWindow.TotalMilliseconds;
+        return _lastSeen.Count(entry => entry.Value >= since);
+    }
+
+    // Once full, it sheds visitors who left at most every few seconds, and meanwhile only updates the ones it has,
+    // so a flood can't grow it or make every request scan it.
+    private void NoteActive(byte[] visitor, long atMs)
+    {
+        if (_lastSeen.Count >= MaxActive && atMs >= Interlocked.Read(ref _nextPruneMs))
+        {
+            Interlocked.Exchange(ref _nextPruneMs, atMs + 10_000);
+            var since = atMs - (long)ActiveWindow.TotalMilliseconds;
+            foreach (var entry in _lastSeen.Where(e => e.Value < since))
+            {
+                _lastSeen.TryRemove(entry);
+            }
+        }
+        var key = Convert.ToHexString(visitor);
+        if (_lastSeen.Count < MaxActive || _lastSeen.ContainsKey(key))
+        {
+            _lastSeen[key] = atMs;
         }
     }
 

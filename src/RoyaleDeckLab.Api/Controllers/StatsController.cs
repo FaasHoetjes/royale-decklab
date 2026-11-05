@@ -10,7 +10,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 [ApiController]
 public sealed class StatsController(StatsRecorder recorder, StatsStore store, TimeProvider clock) : ControllerBase
 {
-    public sealed record EventBody(string? Kind, string? Tag, string? Tool, string? Ref);
+    public sealed record EventBody(string? Kind, string? Tag, string? Tool, string? Ref, string? UtmSource, string? UtmCampaign);
 
     /// <summary>
     /// The page's pings. Only fixed kinds and tools are accepted, and a lookup or shared-lineup open only for a
@@ -23,17 +23,17 @@ public sealed class StatsController(StatsRecorder recorder, StatsStore store, Ti
     public IActionResult Event([FromBody] EventBody body)
     {
         var tag = body.Tag is { } raw && PlayerTag.IsValid(raw.TrimStart('#')) ? StatsRecorder.NormalizeTag(raw) : null;
-        var referrer = body.Ref is { Length: <= 253 } host ? host : null;
+        var origin = new VisitOrigin(body.Ref is { Length: <= 253 } host ? host : null, body.UtmSource, body.UtmCampaign);
         switch (body.Kind)
         {
             case StatsStore.Kinds.Lookup or StatsStore.Kinds.ShareOpen when tag is not null && recorder.WasServed(tag):
-                recorder.Record(HttpContext, body.Kind, tag, referrerHost: referrer);
+                recorder.Record(HttpContext, body.Kind, tag, origin: origin);
                 break;
             case StatsStore.Kinds.ShareTap:
-                recorder.Record(HttpContext, body.Kind, referrerHost: referrer);
+                recorder.Record(HttpContext, body.Kind, origin: origin);
                 break;
             case StatsStore.Kinds.Tool when body.Tool is { } tool && StatsClassify.Tools.Contains(tool):
-                recorder.Record(HttpContext, body.Kind, tool: tool, referrerHost: referrer);
+                recorder.Record(HttpContext, body.Kind, tool: tool, origin: origin);
                 break;
         }
         return NoContent();
@@ -41,10 +41,14 @@ public sealed class StatsController(StatsRecorder recorder, StatsStore store, Ti
 
     [HttpGet("api/admin/stats")]
     [RequireAdminToken]
-    [EnableRateLimiting(RateLimitPolicies.Admin)]
-    public IActionResult Report()
+    [EnableRateLimiting(RateLimitPolicies.AdminStats)]
+    public IActionResult Report([FromQuery] string? source, [FromQuery] string? country, [FromQuery] string? device)
     {
         Response.Headers.CacheControl = "no-store";
-        return Ok(StatsReport.Build(store, clock.GetUtcNow()));
+        var filter = new StatsFilter(
+            source is not null && StatsClassify.Sources.Contains(source) ? source : null,
+            StatsClassify.Country(country),
+            device is "phone" or "desktop" ? device : null);
+        return Ok(StatsReport.Build(store, clock.GetUtcNow(), filter, recorder.ActiveNow()));
     }
 }

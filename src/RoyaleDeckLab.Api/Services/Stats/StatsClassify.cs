@@ -10,6 +10,11 @@ public static partial class StatsClassify
         "home", "generator", "builder", "upgrades", "best-decks", "cards", "card", "faq",
     };
 
+    public static readonly IReadOnlySet<string> Sources = new HashSet<string>
+    {
+        "direct", "reddit", "ai", "google", "bing", "duckduckgo", "discord", "youtube", "x", "facebook", "instagram", "other",
+    };
+
     public static bool IsBot(string? userAgent) => string.IsNullOrWhiteSpace(userAgent) || BotRegex().IsMatch(userAgent);
 
     public static string Device(string? userAgent) => userAgent is not null && PhoneRegex().IsMatch(userAgent) ? "phone" : "desktop";
@@ -49,11 +54,43 @@ public static partial class StatsClassify
         return "other";
     }
 
+    /// <summary>
+    /// A campaign link's utm_source as one of the <see cref="Sources"/>: a known name such as "reddit", or a site
+    /// such as "chatgpt.com", which ChatGPT adds to its links. Null when the link had none.
+    /// </summary>
+    public static string? UtmSource(string? value)
+    {
+        var name = value?.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(name))
+        {
+            return null;
+        }
+        if (name == "twitter")
+        {
+            return "x";
+        }
+        if (name.Contains('.'))
+        {
+            return Source(name);
+        }
+        return name != "direct" && Sources.Contains(name) ? name : "other";
+    }
+
+    /// <summary>A campaign link's utm_campaign, kept only as a short plain name.</summary>
+    public static string? Campaign(string? value)
+    {
+        var name = value?.Trim().ToLowerInvariant();
+        return name is not null && CampaignRegex().IsMatch(name) ? name : null;
+    }
+
     [GeneratedRegex(@"bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|embedly|whatsapp|telegram|discord|curl|wget|python|okhttp|go-http", RegexOptions.IgnoreCase)]
     private static partial Regex BotRegex();
 
     [GeneratedRegex("Mobi|Android|iPhone|iPad|iPod", RegexOptions.IgnoreCase)]
     private static partial Regex PhoneRegex();
+
+    [GeneratedRegex(@"^[a-z0-9][a-z0-9._-]{0,31}$")]
+    private static partial Regex CampaignRegex();
 
     [GeneratedRegex(@"(^|\.)google\.[a-z.]{2,6}$")]
     private static partial Regex GoogleRegex();

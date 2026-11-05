@@ -12,6 +12,34 @@ export type StatsEvent =
 const EXCLUDE_KEY = 'statsExcluded';
 const sent = new Set<string>();
 
+export interface Campaign {
+  utmSource?: string;
+  utmCampaign?: string;
+}
+
+/**
+ * Reads a campaign link's utm_ tags and takes them out of the address bar, so a link copied from the page doesn't
+ * credit the campaign again. Runs once, before the router reads the URL.
+ */
+export function takeCampaign(location: { href: string }, replace: (url: string) => void): Campaign {
+  try {
+    const url = new URL(location.href);
+    const utmSource = url.searchParams.get('utm_source')?.slice(0, 64) || undefined;
+    const utmCampaign = url.searchParams.get('utm_campaign')?.slice(0, 64) || undefined;
+    const tags = [...url.searchParams.keys()].filter((key) => key.startsWith('utm_'));
+    if (tags.length === 0) return {};
+    tags.forEach((key) => url.searchParams.delete(key));
+    replace(url.pathname + url.search + url.hash);
+    return { utmSource, utmCampaign };
+  } catch {
+    return {};
+  }
+}
+
+const campaign: Campaign = typeof window === 'undefined'
+  ? {}
+  : takeCampaign(window.location, (url) => window.history.replaceState(window.history.state, '', url));
+
 /** Set on the admin's own browsers, so testing the site doesn't count as visits. */
 export function isStatsExcluded(): boolean {
   try {
@@ -56,7 +84,7 @@ export function track(event: StatsEvent): void {
   fetch('/api/stats/event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...event, ref: referrerHost() }),
+    body: JSON.stringify({ ...event, ref: referrerHost(), ...campaign }),
     keepalive: true,
   }).catch(() => {});
 }

@@ -227,6 +227,18 @@ export interface StatsCount {
   users: number;
 }
 
+export interface StatsPoint {
+  key: string;
+  users: number;
+  visitors: number;
+}
+
+export interface StatsFilters {
+  source?: string;
+  country?: string;
+  device?: string;
+}
+
 export interface StatsRange {
   key: 'today' | '7d' | '30d' | '90d';
   from: string;
@@ -244,8 +256,15 @@ export interface StatsRange {
   previews: number;
   shareOpens: number;
   newFromShare: number;
-  daily: StatsCount[];
+  daily: StatsPoint[];
+  /** The period before, day by day, lined up with daily; null where there's no period before to compare. */
+  previousDaily: StatsPoint[] | null;
+  hourly: StatsPoint[] | null;
   countries: StatsCount[];
+  /** Per country and source: how many of its visitors looked up a player. */
+  countryUsers: StatsCount[];
+  sourceUsers: StatsCount[];
+  campaigns: StatsCount[];
   devices: StatsCount[];
   sources: StatsCount[];
   tools: StatsCount[];
@@ -265,13 +284,17 @@ export interface StatsMonth {
 export interface StatsReport {
   generatedAt: string;
   retentionDays: number;
+  /** Visitors seen in the last few minutes, counted in memory only. */
+  activeNow: number;
+  filters: StatsFilters;
   ranges: StatsRange[];
   months: StatsMonth[];
 }
 
 /** The token goes in a header, never the URL, where logs and history would keep it. */
-export async function fetchAdminStats(token: string, signal?: AbortSignal): Promise<StatsReport> {
-  const response = await fetch('/api/admin/stats', { headers: { 'X-Admin-Token': token }, signal, cache: 'no-store' });
+export async function fetchAdminStats(token: string, filters: StatsFilters, signal?: AbortSignal): Promise<StatsReport> {
+  const query = new URLSearchParams(Object.entries(filters).filter((entry): entry is [string, string] => !!entry[1])).toString();
+  const response = await fetch(`/api/admin/stats${query ? `?${query}` : ''}`, { headers: { 'X-Admin-Token': token }, signal, cache: 'no-store' });
   if (!response.ok) {
     throw new ApiError('Failed to fetch stats', response.status);
   }

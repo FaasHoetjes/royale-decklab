@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { referrerHost, toolForPath } from './stats';
+import { referrerHost, takeCampaign, toolForPath } from './stats';
 
 describe('toolForPath', () => {
   test.each([
@@ -26,5 +26,22 @@ describe('referrerHost', () => {
     expect(referrerHost('https://royaledecklab.com/faq', 'royaledecklab.com')).toBe('');
     expect(referrerHost('', 'royaledecklab.com')).toBe('');
     expect(referrerHost('not a url', 'royaledecklab.com')).toBe('');
+  });
+});
+
+describe('takeCampaign', () => {
+  test('reads the utm tags and removes only them from the address bar', () => {
+    let replaced = '';
+    const campaign = takeCampaign(
+      { href: 'https://royaledecklab.com/2QGG92L9?share=a.b&utm_source=reddit&utm_campaign=update-post&utm_medium=social#x' },
+      (url) => (replaced = url),
+    );
+    expect(campaign).toEqual({ utmSource: 'reddit', utmCampaign: 'update-post' });
+    expect(replaced).toBe('/2QGG92L9?share=a.b#x');
+  });
+  test('leaves a normal address alone', () => {
+    let replaced: string | null = null;
+    expect(takeCampaign({ href: 'https://royaledecklab.com/faq?x=1' }, (url) => (replaced = url))).toEqual({});
+    expect(replaced).toBeNull();
   });
 });

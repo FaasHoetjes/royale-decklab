@@ -121,6 +121,13 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = 5,
             Window = TimeSpan.FromMinutes(1),
         }));
+    o.AddPolicy(RateLimitPolicies.AdminStats, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        RateLimitKey.For(ctx.Connection.RemoteIpAddress),
+        static _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+        }));
     o.AddPolicy(RateLimitPolicies.Stats, ctx => RateLimitPartition.GetFixedWindowLimiter(
         RateLimitKey.For(ctx.Connection.RemoteIpAddress),
         static _ => new FixedWindowRateLimiterOptions

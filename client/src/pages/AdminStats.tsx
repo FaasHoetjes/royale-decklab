@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { ApiError, fetchAdminStats, type StatsCount, type StatsRange } from '../api';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { ApiError, fetchAdminStats, type StatsCount, type StatsFilters, type StatsPoint, type StatsRange } from '../api';
 import { excludeThisBrowser } from '../lib/stats';
 import { getTheme } from '../theme';
 
@@ -42,6 +42,8 @@ const TOOL_LABELS: Record<string, string> = {
 
 const DEVICE_LABELS: Record<string, string> = { phone: 'Phone', desktop: 'Desktop' };
 
+const FILTER_NAMES: Record<keyof StatsFilters, string> = { source: 'Source', country: 'Country', device: 'Device' };
+
 const countryNames = (() => {
   try {
     return new Intl.DisplayNames(['en'], { type: 'region' });
@@ -49,6 +51,11 @@ const countryNames = (() => {
     return null;
   }
 })();
+
+const countryLabel = (key: string) => (key === 'XX' ? 'Unknown' : countryNames?.of(key) ?? key);
+const sourceLabel = (key: string) => SOURCE_LABELS[key] ?? key;
+const deviceLabel = (key: string) => DEVICE_LABELS[key] ?? key;
+const FILTER_LABELS: Record<keyof StatsFilters, (key: string) => string> = { source: sourceLabel, country: countryLabel, device: deviceLabel };
 
 function readToken(): string {
   try {
@@ -82,16 +89,21 @@ export default function AdminStats() {
   const [draft, setDraft] = useState('');
   const [rangeKey, setRangeKey] = useState<StatsRange['key']>('7d');
   const [wrongToken, setWrongToken] = useState(false);
+  const [filters, setFilters] = useState<StatsFilters>({});
 
   const stats = useQuery({
-    queryKey: ['admin-stats', token],
-    queryFn: ({ signal }) => fetchAdminStats(token, signal),
+    queryKey: ['admin-stats', token, filters],
+    queryFn: ({ signal }) => fetchAdminStats(token, filters, signal),
     enabled: token !== '',
     retry: false,
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: rangeKey === 'today' ? 30_000 : 60_000,
     refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
+
+  const toggleFilter = (name: keyof StatsFilters, key: string) =>
+    setFilters((current) => ({ ...current, [name]: current[name] === key ? undefined : key }));
 
   const status = stats.error instanceof ApiError ? stats.error.status : null;
   const rejected = status === 401 || status === 403;
@@ -177,11 +189,22 @@ export default function AdminStats() {
   const report = stats.data;
   const range = report.ranges.find((r) => r.key === rangeKey) ?? report.ranges[0];
   if (!range) return null;
+  const activeFilters = (Object.entries(filters) as [keyof StatsFilters, string | undefined][])
+    .filter((entry): entry is [keyof StatsFilters, string] => !!entry[1]);
+  const chartPoints = range.key === 'today' ? range.hourly ?? [] : range.daily;
+  const sourceUsers = new Map(range.sourceUsers.map((c) => [c.key, c.users]));
+  const countryUsers = new Map(range.countryUsers.map((c) => [c.key, c.users]));
 
   return (
     <div style={styles.page}>
       <div style={styles.header}>
-        <h1 style={{ ...styles.title, color: theme.text.primary }}>Stats</h1>
+        <div style={styles.titleRow}>
+          <h1 style={{ ...styles.title, color: theme.text.primary }}>Stats</h1>
+          <span style={{ ...styles.live, color: theme.text.secondary }} title="Visitors who opened a page in the last 5 minutes">
+            <span style={{ ...styles.liveDot, backgroundColor: report.activeNow > 0 ? '#2fb463' : theme.text.tertiary }} />
+            {number(report.activeNow)} on the site now
+          </span>
+        </div>
         <div style={styles.row}>
           <button type="button" onClick={() => stats.refetch()} disabled={stats.isFetching} style={{ ...styles.ghost, color: theme.text.secondary, borderColor: theme.border }}>
             {stats.isFetching ? 'Refreshing…' : 'Refresh'}
@@ -215,6 +238,26 @@ export default function AdminStats() {
         })}
       </div>
 
+      {activeFilters.length > 0 && (
+        <div style={styles.filterBar}>
+          {activeFilters.map(([name, key]) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => toggleFilter(name, key)}
+              aria-label={`Remove filter ${FILTER_NAMES[name]}: ${FILTER_LABELS[name](key)}`}
+              style={{ ...styles.chip, backgroundColor: theme.accent, color: theme.onAccent }}
+            >
+              {FILTER_NAMES[name]}: {FILTER_LABELS[name](key)} ✕
+            </button>
+          ))}
+          <button type="button" onClick={() => setFilters({})} style={{ ...styles.link, alignSelf: 'center', color: theme.accent }}>
+            Clear filters
+          </button>
+          <span style={{ ...styles.note, color: theme.text.tertiary }}>Only visitors who match, within the period. The months table isn't filtered.</span>
+        </div>
+      )}
+
       <p style={{ ...styles.note, color: theme.text.tertiary }}>
         {range.from === range.to ? range.from : `${range.from} to ${range.to}`} (UTC) · Updated {new Date(stats.dataUpdatedAt).toLocaleTimeString()}
         {stats.isError && ' · Couldn’t refresh, trying again in a minute'}
@@ -223,16 +266,20 @@ export default function AdminStats() {
 
       <div style={styles.tiles}>
         <Tile label="Visitors (any page)" value={number(range.visitors)} detail={changeFrom(range.visitors, range.previousVisitors)} />
-        <Tile label="Real users" value={number(range.users)} detail={['Looked up a player', changeFrom(range.users, range.previousUsers)].filter(Boolean).join(' · ')} />
+        <Tile label="Real users" value={number(range.users)} detail={[range.visitors > 0 ? `${percent(range.users, range.visitors)} of visitors looked up a player` : 'Looked up a player', changeFrom(range.users, range.previousUsers)].filter(Boolean).join(' · ')} />
         <Tile label="Player lookups" value={number(range.lookups)} detail={range.users > 0 ? `${(range.lookups / range.users).toFixed(1)} per user` : undefined} />
         <Tile label="Different players" value={number(range.players)} />
         <Tile label="Came back" value={percent(range.returning, range.users)} detail={`${number(range.returning)} on more than one day`} />
       </div>
 
-      {range.daily.length > 1 && (
+      {chartPoints.length > 0 && (
         <section style={styles.panel}>
-          <h2 style={{ ...styles.heading, color: theme.text.primary }}>Users per day</h2>
-          <DailyBars days={range.daily} />
+          <h2 style={{ ...styles.heading, color: theme.text.primary }}>{range.key === 'today' ? 'Today, per hour (UTC)' : 'Per day'}</h2>
+          <ActivityChart
+            points={chartPoints}
+            previous={range.key === 'today' ? null : range.previousDaily}
+            keyLabel={range.key === 'today' ? (key) => `${key}:00` : (key) => key}
+          />
         </section>
       )}
 
@@ -249,9 +296,33 @@ export default function AdminStats() {
       </section>
 
       <div style={styles.grid}>
-        <Breakdown title="Countries" counts={range.countries} total={range.visitors} label={(key) => countryNames?.of(key) ?? key} />
-        <Breakdown title="Phone or desktop" counts={range.devices} total={range.users} label={(key) => DEVICE_LABELS[key] ?? key} />
-        <Breakdown title="Where users came from" counts={range.sources} total={range.visitors} label={(key) => SOURCE_LABELS[key] ?? key} />
+        <Breakdown
+          title="Countries"
+          counts={range.countries}
+          total={range.visitors}
+          label={countryLabel}
+          lookedUp={countryUsers}
+          selected={filters.country}
+          onSelect={(key) => toggleFilter('country', key)}
+        />
+        <Breakdown
+          title="Phone or desktop"
+          counts={range.devices}
+          total={range.users}
+          label={deviceLabel}
+          selected={filters.device}
+          onSelect={(key) => toggleFilter('device', key)}
+        />
+        <Breakdown
+          title="Where users came from"
+          counts={range.sources}
+          total={range.visitors}
+          label={sourceLabel}
+          lookedUp={sourceUsers}
+          selected={filters.source}
+          onSelect={(key) => toggleFilter('source', key)}
+          extra={range.campaigns.length > 0 ? { title: 'Campaign links', counts: range.campaigns } : undefined}
+        />
         <Breakdown title="Which tools are used" counts={range.tools} label={(key) => TOOL_LABELS[key] ?? key} />
       </div>
 
@@ -293,7 +364,7 @@ export default function AdminStats() {
       )}
 
       <p style={{ ...styles.note, color: theme.text.tertiary }}>
-        Visits are kept for {report.retentionDays} days, then only the totals remain. Bots, and browsers that opened this page, aren't counted.
+        Visits are kept for {report.retentionDays} days, then only the totals remain. Bots, and browsers that opened this page, aren't counted. Click a country, device or source to filter the page by it.
       </p>
     </div>
   );
@@ -310,22 +381,42 @@ function Tile({ label, value, detail }: { label: string; value: string; detail?:
   );
 }
 
-function DailyBars({ days }: { days: StatsCount[] }) {
+function ActivityChart({ points, previous, keyLabel }: { points: StatsPoint[]; previous: StatsPoint[] | null; keyLabel: (key: string) => string }) {
   const theme = getTheme();
-  const max = Math.max(1, ...days.map((d) => d.users));
+  const max = Math.max(1, ...points.map((p) => p.visitors), ...(previous ?? []).map((p) => p.visitors));
+  const y = (value: number) => 100 - (value / max) * 100;
+  const last = points.length - 1;
   return (
     <div>
-      <div style={styles.bars}>
-        {days.map((d) => (
-          <div key={d.key} title={`${d.key}: ${number(d.users)}`} style={styles.barSlot}>
-            <div style={{ ...styles.bar, height: `${(d.users / max) * 100}%`, backgroundColor: theme.accent }} />
-          </div>
+      <svg viewBox={`0 0 ${points.length * 10} 100`} preserveAspectRatio="none" width="100%" height="160" role="img" aria-label="Visitors and real users per period" style={styles.chart}>
+        {points.map((p, i) => (
+          <g key={p.key} opacity={i === last ? 0.45 : 1}>
+            <title>{`${keyLabel(p.key)}${i === last ? ' (so far)' : ''}: ${number(p.visitors)} visitors, ${number(p.users)} real users${previous?.[i] ? `, ${number(previous[i].visitors)} visitors the period before` : ''}`}</title>
+            <rect x={i * 10 + 1} y={y(p.visitors)} width={8} height={100 - y(p.visitors)} fill="var(--accent)" fillOpacity={0.3} />
+            <rect x={i * 10 + 1} y={y(p.users)} width={8} height={100 - y(p.users)} fill="var(--accent)" />
+          </g>
         ))}
-      </div>
+        {previous && previous.length > 1 && (
+          <polyline
+            points={previous.map((p, i) => `${i * 10 + 5},${y(p.visitors)}`).join(' ')}
+            fill="none"
+            stroke="var(--text-secondary)"
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </svg>
       <div style={{ ...styles.barAxis, color: theme.text.tertiary }}>
-        <span>{days[0]?.key}</span>
+        <span>{points[0] && keyLabel(points[0].key)}</span>
         <span>max {number(max)}</span>
-        <span>{days[days.length - 1]?.key}</span>
+        <span>{points[last] && keyLabel(points[last].key)}</span>
+      </div>
+      <div style={{ ...styles.legend, color: theme.text.secondary }}>
+        <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent, opacity: 0.3 }} />Visitors</span>
+        <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent }} />Real users</span>
+        {previous && <span style={styles.legendItem}><span style={{ ...styles.dash, borderColor: theme.text.secondary }} />Visitors, period before</span>}
+        <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent, opacity: 0.45 }} />Faded: still in progress</span>
       </div>
     </div>
   );
@@ -351,8 +442,20 @@ function Funnel({ steps }: { steps: { label: string; value: number; hint?: strin
   );
 }
 
-/** Without a total, the counts aren't shares of the users above (tools count every visitor), so bars scale to the largest. */
-function Breakdown({ title, counts, total, label }: { title: string; counts: StatsCount[]; total?: number; label: (key: string) => string }) {
+type BreakdownProps = {
+  title: string;
+  counts: StatsCount[];
+  /** Without a total, the counts aren't shares of the users above (tools count every visitor), so bars scale to the largest. */
+  total?: number;
+  label: (key: string) => string;
+  /** How many of each row's visitors looked up a player. */
+  lookedUp?: Map<string, number>;
+  selected?: string;
+  onSelect?: (key: string) => void;
+  extra?: { title: string; counts: StatsCount[] };
+};
+
+function Breakdown({ title, counts, total, label, lookedUp, selected, onSelect, extra }: BreakdownProps) {
   const theme = getTheme();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? counts : counts.slice(0, 8);
@@ -364,25 +467,59 @@ function Breakdown({ title, counts, total, label }: { title: string; counts: Sta
         <p style={{ ...styles.note, color: theme.text.tertiary }}>Nothing yet.</p>
       ) : (
         <div style={styles.list}>
-          {shown.map((c) => (
-            <div key={c.key}>
-              <div style={styles.listRow}>
-                <span style={{ color: theme.text.primary }}>{label(c.key)}</span>
-                <span style={{ ...styles.listValue, color: theme.text.secondary }}>
-                  {total === undefined ? number(c.users) : `${number(c.users)} · ${percent(c.users, total)}`}
-                </span>
-              </div>
-              <div style={{ ...styles.track, backgroundColor: theme.bg.tertiary }}>
-                <div style={{ ...styles.fill, width: `${scale > 0 ? Math.min(100, (c.users / scale) * 100) : 0}%`, backgroundColor: theme.accent }} />
-              </div>
-            </div>
-          ))}
+          {shown.map((c) => {
+            const row = (
+              <>
+                <div style={styles.listRow}>
+                  <span style={{ color: theme.text.primary, fontWeight: selected === c.key ? 700 : 400 }}>
+                    {label(c.key)}
+                    {lookedUp && c.users > 0 && (
+                      <span style={{ ...styles.lookedUp, color: theme.text.tertiary }}> · {percent(lookedUp.get(c.key) ?? 0, c.users)} looked up</span>
+                    )}
+                  </span>
+                  <span style={{ ...styles.listValue, color: theme.text.secondary }}>
+                    {total === undefined ? number(c.users) : `${number(c.users)} · ${percent(c.users, total)}`}
+                  </span>
+                </div>
+                <div style={{ ...styles.track, backgroundColor: theme.bg.tertiary }}>
+                  <div style={{ ...styles.fill, width: `${scale > 0 ? Math.min(100, (c.users / scale) * 100) : 0}%`, backgroundColor: theme.accent }} />
+                </div>
+              </>
+            );
+            return onSelect ? (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => onSelect(c.key)}
+                aria-pressed={selected === c.key}
+                title={selected === c.key ? 'Remove this filter' : 'Show only these visitors'}
+                style={styles.rowButton}
+              >
+                {row}
+              </button>
+            ) : (
+              <div key={c.key}>{row}</div>
+            );
+          })}
           {counts.length > 8 && (
             <button type="button" onClick={() => setExpanded(!expanded)} style={{ ...styles.link, color: theme.accent }}>
               {expanded ? 'Show fewer' : `Show all ${counts.length}`}
             </button>
           )}
         </div>
+      )}
+      {extra && (
+        <>
+          <h3 style={{ ...styles.subheading, color: theme.text.secondary }}>{extra.title}</h3>
+          <div style={styles.list}>
+            {extra.counts.slice(0, 8).map((c) => (
+              <div key={c.key} style={styles.listRow}>
+                <span style={{ color: theme.text.primary }}>{c.key}</span>
+                <span style={{ ...styles.listValue, color: theme.text.secondary }}>{number(c.users)}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </section>
   );
@@ -407,6 +544,79 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '28px',
+  },
+  titleRow: {
+    display: 'flex' as const,
+    alignItems: 'baseline' as const,
+    gap: '14px',
+    flexWrap: 'wrap' as const,
+  },
+  live: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '6px',
+    fontSize: '14px',
+    fontWeight: 600 as const,
+  },
+  liveDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+  },
+  filterBar: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '10px',
+    flexWrap: 'wrap' as const,
+  },
+  chip: {
+    padding: '6px 12px',
+    borderRadius: '999px',
+    border: 'none',
+    fontWeight: 600 as const,
+    fontSize: '13px',
+    cursor: 'pointer',
+  },
+  rowButton: {
+    display: 'block' as const,
+    width: '100%',
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    font: 'inherit',
+    textAlign: 'left' as const,
+    cursor: 'pointer',
+  },
+  lookedUp: {
+    fontSize: '12px',
+  },
+  subheading: {
+    margin: '16px 0 8px',
+    fontSize: '13px',
+  },
+  chart: {
+    display: 'block' as const,
+  },
+  legend: {
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    gap: '6px 16px',
+    fontSize: '12px',
+    marginTop: '10px',
+  },
+  legendItem: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '6px',
+  },
+  swatch: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '2px',
+  },
+  dash: {
+    width: '14px',
+    borderTop: '2px dashed',
   },
   row: {
     display: 'flex' as const,
@@ -487,7 +697,7 @@ const styles = {
   },
   tiles: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
     gap: '12px',
   },
   tile: {
@@ -516,23 +726,6 @@ const styles = {
     margin: '0 0 12px',
     fontSize: '16px',
   },
-  bars: {
-    display: 'flex' as const,
-    alignItems: 'flex-end' as const,
-    gap: '2px',
-    height: '140px',
-  },
-  barSlot: {
-    flex: 1,
-    height: '100%',
-    display: 'flex' as const,
-    alignItems: 'flex-end' as const,
-  },
-  bar: {
-    width: '100%',
-    minHeight: '2px',
-    borderRadius: '3px 3px 0 0',
-  },
   barAxis: {
     display: 'flex' as const,
     justifyContent: 'space-between' as const,
@@ -541,7 +734,7 @@ const styles = {
   },
   grid: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: '16px',
   },
   list: {
