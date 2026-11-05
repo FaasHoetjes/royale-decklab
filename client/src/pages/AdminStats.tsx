@@ -125,7 +125,7 @@ export default function AdminStats() {
 
   if (!token) {
     return (
-      <div style={styles.page}>
+      <div style={styles.gate}>
         <h1 style={{ ...styles.title, color: theme.text.primary }}>Stats</h1>
         <form onSubmit={submit} style={{ ...styles.panel, ...styles.form }}>
           <label htmlFor="admin-token" style={{ color: theme.text.secondary }}>Admin token</label>
@@ -148,7 +148,7 @@ export default function AdminStats() {
 
   if (stats.isPending) {
     return (
-      <div style={styles.page}>
+      <div style={styles.gate}>
         <h1 style={{ ...styles.title, color: theme.text.primary }}>Stats</h1>
         <p style={{ color: theme.text.secondary }}>Loading…</p>
       </div>
@@ -157,12 +157,12 @@ export default function AdminStats() {
 
   if (!stats.data) {
     return (
-      <div style={styles.page}>
+      <div style={styles.gate}>
         <h1 style={{ ...styles.title, color: theme.text.primary }}>Stats</h1>
         <p style={{ color: theme.text.secondary }}>
           {status === 429 ? 'Too many tries. Wait a minute and try again.' : 'The stats couldn’t be loaded.'}
         </p>
-        <div style={styles.row}>
+        <div style={{ ...styles.row, justifyContent: 'center' }}>
           <button type="button" onClick={() => stats.refetch()} style={{ ...styles.button, backgroundColor: theme.accent, color: theme.onAccent }}>
             Try again
           </button>
@@ -421,11 +421,23 @@ const styles = {
     padding: '16px',
     minWidth: 0,
   },
+  gate: {
+    maxWidth: '400px',
+    margin: '0 auto',
+    padding: '80px 16px 48px',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    alignItems: 'center' as const,
+    gap: '16px',
+    textAlign: 'center' as const,
+  },
   form: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: '10px',
+    width: '100%',
     maxWidth: '360px',
+    textAlign: 'left' as const,
   },
   input: {
     padding: '10px 12px',
