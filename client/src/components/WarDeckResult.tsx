@@ -273,7 +273,6 @@ export default function WarDeckResult({
   );
 }
 
-/** Says the options left fewer decks than asked for, and offers one-tap ways to loosen them. */
 function Shortfall({ found, options, onChange, isMobile }: {
   found: number;
   options: GeneratorOptions;
@@ -337,7 +336,6 @@ function Shortfall({ found, options, onChange, isMobile }: {
   );
 }
 
-/** Shown when not one popular war deck can be built from the player's cards. */
 function NoDecks({ onNewSearch, isMobile }: { onNewSearch: () => void; isMobile: boolean }) {
   return (
     <div style={{ ...styles.empty, minHeight: isMobile ? 'calc(100dvh - 180px)' : 'calc(100dvh - 100px)' }} role="status">

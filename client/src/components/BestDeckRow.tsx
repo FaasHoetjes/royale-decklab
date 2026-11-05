@@ -15,7 +15,6 @@ interface BestDeckRowProps {
   lazyLoad?: boolean;
 }
 
-/** One deck of a best set: its name and stats, the eight cards, and the link to open it in game. */
 export default function BestDeckRow({ deck, name, theme, isMobile, lazyLoad }: BestDeckRowProps) {
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const deckLink = buildDeckLink(cards.map((c) => c.id));

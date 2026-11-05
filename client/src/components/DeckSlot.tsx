@@ -15,7 +15,6 @@ interface DeckSlotProps {
   isDragging: boolean;
   isDropTarget: boolean;
   isInvalidDropTarget: boolean;
-  /** The empty slot the next picked card goes into. */
   isTarget?: boolean;
   onClick: () => void;
   onToggleVersion: (versions: SpecialVersion[]) => void;

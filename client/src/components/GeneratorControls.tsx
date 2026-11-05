@@ -363,7 +363,6 @@ function DeckSegment({ value, onPick }: { value: number; onPick: (n: number) => 
   return <Segment label="Number of decks" choices={DECK_CHOICES} value={value} onPick={onPick} text={String} />;
 }
 
-/** Any | 10 … 16, plus a bar that fills with the share of the player's cards a minimum keeps. */
 function LevelSegment({ levels, value, onPick }: {
   levels: number[];
   value: number | null;

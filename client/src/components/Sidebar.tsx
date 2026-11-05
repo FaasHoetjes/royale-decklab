@@ -91,7 +91,6 @@ export default function Sidebar() {
   );
 }
 
-/** The active player, with a menu above it to switch to another one. */
 function PlayerCard() {
   const theme = getTheme();
   const switcher = usePlayerSwitcher();

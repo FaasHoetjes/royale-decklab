@@ -19,7 +19,6 @@ interface GeneratorHeaderProps {
   totalScore: number;
   /** Replaces the generator's explanation of the total score. */
   scoreTip?: ReactNode;
-  /** Actions under the score, e.g. a button. */
   children?: ReactNode;
   style?: CSSProperties;
   /** Makes the whole banner a button that folds the content it controls. */
@@ -27,7 +26,6 @@ interface GeneratorHeaderProps {
   isMobile: boolean;
 }
 
-/** The banner above a lineup: its title, the decks' win conditions fanned out, and the total score. */
 export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
   const art = decks
     .map((deck) => {

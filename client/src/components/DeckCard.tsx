@@ -30,7 +30,6 @@ interface DeckCardProps {
   onToggleLock?: () => void;
 }
 
-/** One generated deck: a banner named after its win condition, its eight cards, and its actions. */
 export default function DeckCard({
   cards,
   metaWinRate,

@@ -7,7 +7,6 @@ interface DeckLinkActionProps {
   style: CSSProperties;
   className?: string;
   label?: string;
-  /** Shows a link icon instead of the copy icon. */
   linkIcon?: boolean;
 }
 

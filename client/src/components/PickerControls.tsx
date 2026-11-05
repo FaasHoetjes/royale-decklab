@@ -20,7 +20,6 @@ interface PickerControlsProps {
   trailing?: ReactNode;
 }
 
-/** Search, filter, sort direction and sort order for a grid of cards. */
 export default function PickerControls({
   query,
   setQuery,

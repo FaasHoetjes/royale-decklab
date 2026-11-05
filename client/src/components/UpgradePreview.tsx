@@ -27,7 +27,6 @@ interface UpgradePreviewProps {
   isMobile: boolean;
 }
 
-/** Shows what the picked upgrade does to the lineup: the new score, the deck it helps, or the deck it brings in. */
 export default function UpgradePreview({ suggestion: s, pick, baselineScore, lineup, unlockedName, effect, theme, isMobile }: UpgradePreviewProps) {
   const bringsDeck = s.changesLineup && !!s.unlockedDeck;
 
