@@ -1,3 +1,5 @@
+import { SLOTS_PER_DECK } from './deckBoard';
+
 const PRINCESS_TOWER_TROOP_ID = 159000000;
 
 export function buildDeckLink(cardIds: Array<number | null | undefined>): string {
@@ -6,5 +8,5 @@ export function buildDeckLink(cardIds: Array<number | null | undefined>): string
 }
 
 export function isCompleteDeck(cardIds: Array<number | null | undefined>): boolean {
-  return cardIds.filter((id) => typeof id === 'number').length === 8;
+  return cardIds.filter((id) => typeof id === 'number').length === SLOTS_PER_DECK;
 }

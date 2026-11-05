@@ -16,7 +16,9 @@ export type CardType = 'Troop' | 'Building' | 'Spell';
 /** The CR API numbers troops 26xxxxxx, buildings 27xxxxxx and spells 28xxxxxx. */
 export function cardType(id: number): CardType {
   const group = Math.floor(id / 1_000_000);
-  return group === 27 ? 'Building' : group === 28 ? 'Spell' : 'Troop';
+  if (group === 27) return 'Building';
+  if (group === 28) return 'Spell';
+  return 'Troop';
 }
 
 /** `maxEvolutionLevel` is a bitmask like a player's evolutionLevel: 1 = has an Evo, 2 = has a Hero. */

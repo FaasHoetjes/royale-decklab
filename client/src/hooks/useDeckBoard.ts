@@ -29,6 +29,18 @@ export interface SlotRef {
 
 export type DeckBoard = ReturnType<typeof useDeckBoard>;
 
+const DRAG_START_DISTANCE_SQ = 36;
+const EDGE_SCROLL_MARGIN = 90;
+const EDGE_SCROLL_STEP = 14;
+const CLICK_SUPPRESS_MS = 150;
+
+const isSameSlot = (a: SlotRef | null, b: SlotRef | null) => a?.deckIndex === b?.deckIndex && a?.slotIndex === b?.slotIndex;
+
+function scrollNearEdges(clientY: number) {
+  if (clientY < EDGE_SCROLL_MARGIN) window.scrollBy(0, -EDGE_SCROLL_STEP);
+  else if (clientY > window.innerHeight - EDGE_SCROLL_MARGIN) window.scrollBy(0, EDGE_SCROLL_STEP);
+}
+
 export function useDeckBoard(cardById: Map<number, BuilderCard>) {
   const [decks, setDecks] = useState<DeckState>(loadDecks);
   const [slotVersion, setSlotVersion] = useState<SlotVersionMap>(loadSlotVersions);
@@ -135,9 +147,7 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     if (!dragSource) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = isChampionViolation(dragSource, slot) ? 'none' : 'move';
-    if (dragOver?.deckIndex !== slot.deckIndex || dragOver?.slotIndex !== slot.slotIndex) {
-      setDragOver(slot);
-    }
+    if (!isSameSlot(dragOver, slot)) setDragOver(slot);
   };
 
   const handleDrop = (e: DragEvent, slot: SlotRef) => {
@@ -176,18 +186,14 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     if (!t.active) {
       const dx = e.clientX - t.startX;
       const dy = e.clientY - t.startY;
-      if (dx * dx + dy * dy < 36) return;
+      if (dx * dx + dy * dy < DRAG_START_DISTANCE_SQ) return;
       t.active = true;
       e.currentTarget.setPointerCapture(e.pointerId);
       setDragSource(t.slot);
     }
     const over = slotFromPoint(e.clientX, e.clientY);
-    setDragOver((prev) =>
-      prev?.deckIndex === over?.deckIndex && prev?.slotIndex === over?.slotIndex ? prev : over
-    );
-    const margin = 90;
-    if (e.clientY < margin) window.scrollBy(0, -14);
-    else if (e.clientY > window.innerHeight - margin) window.scrollBy(0, 14);
+    setDragOver((prev) => (isSameSlot(prev, over) ? prev : over));
+    scrollNearEdges(e.clientY);
   };
 
   const handlePointerUp = (e: ReactPointerEvent) => {
@@ -197,7 +203,7 @@ export function useDeckBoard(cardById: Map<number, BuilderCard>) {
     suppressClick.current = true;
     window.setTimeout(() => {
       suppressClick.current = false;
-    }, 150);
+    }, CLICK_SUPPRESS_MS);
     const target = slotFromPoint(e.clientX, e.clientY);
     if (target && !isChampionViolation(t.slot, target)) {
       swapSlots(t.slot, target);

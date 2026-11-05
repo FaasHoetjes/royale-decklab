@@ -6,6 +6,8 @@
 // named after the card that pairs with them. Decks without a well-known name are called after their
 // win condition and play style, e.g. "Graveyard Cycle". Card names match the API's.
 
+import { avgElixir } from './cardDisplay';
+
 export type PlayStyle = 'Beatdown' | 'Cycle' | 'Control' | 'Siege' | 'Bait' | 'Bridge Spam';
 
 export interface Archetype {
@@ -33,6 +35,10 @@ interface Rule {
   style?: PlayStyle | ((deck: DeckInfo) => PlayStyle);
 }
 
+const BEATDOWN_TANKS = ['Golem', 'Lava Hound', 'Electro Giant', 'Giant', 'Goblin Giant'];
+const BEATDOWN_MIN_AVG_ELIXIR = 3.8;
+const CYCLE_MAX_AVG_ELIXIR = 3.2;
+
 const BAIT_SUPPORT = ['Princess', 'Goblin Gang', 'Dart Goblin', 'Rascals', 'Skeleton Barrel', 'Spear Goblins', 'Bats'];
 const BRIDGE_SUPPORT = ['Battle Ram', 'Bandit', 'Royal Ghost', 'Dark Prince', 'Prince', 'Elite Barbarians', 'Ram Rider'];
 
@@ -49,7 +55,7 @@ const RULES: Rule[] = [
   { winCondition: 'Royal Giant', needs: ['Royal Giant'] },
   { winCondition: 'Elixir Golem', needs: ['Elixir Golem'] },
   { winCondition: 'Rune Giant', needs: ['Rune Giant'] },
-  { name: (d) => (d.avg <= 3.2 ? 'X-Bow Cycle' : 'X-Bow Siege'), winCondition: 'X-Bow', needs: ['X-Bow'], style: 'Siege' },
+  { name: (d) => (d.avg <= CYCLE_MAX_AVG_ELIXIR ? 'X-Bow Cycle' : 'X-Bow Siege'), winCondition: 'X-Bow', needs: ['X-Bow'], style: 'Siege' },
   { name: 'Mortar Bait', winCondition: 'Mortar', needs: ['Mortar'], when: (d) => d.hasAny(...BAIT_SUPPORT), style: 'Siege' },
   { winCondition: 'Mortar', needs: ['Mortar'], style: 'Siege' },
   {
@@ -115,11 +121,11 @@ const RULES: Rule[] = [
   { winCondition: 'Mega Knight', needs: ['Mega Knight'] },
 ];
 
-const BEATDOWN_TANKS = ['Golem', 'Lava Hound', 'Electro Giant', 'Giant', 'Goblin Giant'];
-
 /** Beatdown, Cycle or Control from the elixir cost alone; rules can name a more specific style. */
 function styleByElixir(deck: DeckInfo): PlayStyle {
-  return deck.hasAny(...BEATDOWN_TANKS) && deck.avg >= 3.8 ? 'Beatdown' : deck.avg <= 3.2 ? 'Cycle' : 'Control';
+  const hasTank = deck.hasAny(...BEATDOWN_TANKS);
+  if (hasTank && deck.avg >= BEATDOWN_MIN_AVG_ELIXIR) return 'Beatdown';
+  return deck.avg <= CYCLE_MAX_AVG_ELIXIR ? 'Cycle' : 'Control';
 }
 
 export function classifyDeck(cards: Array<{ name: string; elixirCost?: number }>): Archetype {
@@ -127,7 +133,7 @@ export function classifyDeck(cards: Array<{ name: string; elixirCost?: number }>
   const deck: DeckInfo = {
     has: (...n) => n.every((x) => names.has(x)),
     hasAny: (...n) => n.some((x) => names.has(x)),
-    avg: cards.length ? cards.reduce((s, c) => s + (c.elixirCost ?? 0), 0) / cards.length : 0,
+    avg: avgElixir(cards),
   };
   const rule = RULES.find((r) => deck.has(...r.needs) && (r.when?.(deck) ?? true));
   if (!rule) {

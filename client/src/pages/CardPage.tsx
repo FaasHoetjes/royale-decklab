@@ -26,6 +26,13 @@ const VERSION_SLOT = { evo: 0, hero: 1, normal: undefined } as const;
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+function specialVersionLabel(versions: { evo: boolean; hero: boolean }): string | null {
+  if (versions.evo && versions.hero) return 'has Evo and Hero';
+  if (versions.evo) return 'has an Evo';
+  if (versions.hero) return 'has a Hero';
+  return null;
+}
+
 /** The generator with this card required, for the active player; without one, the landing page carries it to the generator. */
 function buildLink(cardId: number, activePlayerTag: string | null): string {
   const query = toQuery({ ...parseOptions(new URLSearchParams()), require: [cardId] });
@@ -120,7 +127,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
     card.elixirCost != null ? `${card.elixirCost} elixir` : null,
     card.rarity ? capitalize(card.rarity) : null,
     cardType(card.id),
-    versions.evo && versions.hero ? 'has Evo and Hero' : versions.evo ? 'has an Evo' : versions.hero ? 'has a Hero' : null,
+    specialVersionLabel(versions),
   ].filter(Boolean);
 
   const rough = stat ? isLowSample(stat) : false;

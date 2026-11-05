@@ -7,6 +7,7 @@ import { useBestDecks, fetchCollectionOnce } from '../queries';
 import type { BestDeckSet } from '../api';
 import { versionOf, orderBySlots } from '../lib/cardDisplay';
 import { distinctDeckNames } from '../lib/archetypes';
+import { deckKey } from '../lib/generatorOptions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { slideFold } from '../lib/motion';
 import GeneratorHeader from '../components/GeneratorHeader';
@@ -23,7 +24,6 @@ import {
   type SlotVersionMap,
 } from '../lib/deckBoard';
 
-const deckKey = (cardIds: number[]) => [...cardIds].sort((a, b) => a - b).join(',');
 // A set is remembered by its decks, not its rank, so it stays folded when the ranking shifts.
 const setKey = (set: BestDeckSet) => set.decks.map((d) => deckKey(d.cardIds)).sort().join('|');
 

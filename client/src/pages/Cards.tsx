@@ -15,6 +15,10 @@ import FilterPopover from '../components/FilterPopover';
 import LoadError from '../components/LoadError';
 import InfoTip from '../components/InfoTip';
 
+const EAGER_TILE_COUNT = 25;
+const MOBILE_SKELETON_TILES = 16;
+const DESKTOP_SKELETON_TILES = 30;
+
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 const battlesIn = (stats: CardStatsResponse) => `${stats.battles.toLocaleString('en-US')} battles in the top 100 war clans`;
@@ -75,27 +79,13 @@ export default function Cards() {
 
   const failed = catalog.isError || statsQuery.isError;
   const loading = !failed && (!catalog.data || !stats);
-  const gamesPeriod = stats?.isLastPatch ? 'last patch' : stats?.since ? 'this patch' : 'in the last 30 days';
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
       <div style={{ marginBottom: isMobile ? '14px' : '20px' }}>
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Cards</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
-          {!stats ? (
-            'How every card does in Clan War.'
-          ) : isMobile ? (
-            <>
-              {stats.isLastPatch ? 'How every card did in Clan War last patch.' : 'How every card does in Clan War.'}
-              <span style={styles.sourceTip}>
-                <InfoTip ariaLabel="Which battles these numbers come from" color={theme.text.secondary} width={250} placement="bottom">
-                  {sourceNote(stats)}
-                </InfoTip>
-              </span>
-            </>
-          ) : (
-            periodNote(stats)
-          )}
+          <IntroSummary stats={stats} isMobile={isMobile} theme={theme} />
           <span style={{ display: 'block' }}>{isMobile ? 'Tap' : 'Click'} a card for its detailed stats.</span>
         </p>
       </div>
@@ -185,14 +175,14 @@ export default function Cards() {
             const rough = isLowSample(stat);
             return (
               <CardLink key={card.id} name={card.name}>
-                <div style={{ opacity: rough ? 0.55 : 1 }} title={rough ? `Rarely played: only ${stat.games.toLocaleString('en-US')} games ${gamesPeriod}, too few for a reliable win rate.` : undefined}>
+                <div style={{ opacity: rough ? 0.55 : 1 }} title={rough ? `Rarely played: only ${stat.games.toLocaleString('en-US')} games ${gamesPeriodOf(stats)}, too few for a reliable win rate.` : undefined}>
                   <CardTile
                     name={card.name}
                     iconUrl={cardIconUrl(card.iconUrls, mostPlayedVersion(stat))}
                     elixirCost={card.elixirCost}
                     nameColor={theme.text.primary}
                     nameSize={isMobile ? '11px' : '12px'}
-                    lazyLoad={i > 24}
+                    lazyLoad={i >= EAGER_TILE_COUNT}
                   />
                   <TileStats theme={theme} stat={stat} />
                 </div>
@@ -206,6 +196,26 @@ export default function Cards() {
         <p style={{ ...styles.empty, color: theme.text.secondary }}>No cards match. Try another search or clear the filters.</p>
       )}
     </div>
+  );
+}
+
+function gamesPeriodOf(stats: CardStatsResponse): string {
+  if (stats.isLastPatch) return 'last patch';
+  return stats.since ? 'this patch' : 'in the last 30 days';
+}
+
+function IntroSummary({ stats, isMobile, theme }: { stats: CardStatsResponse | undefined; isMobile: boolean; theme: Theme }) {
+  if (!stats) return <>How every card does in Clan War.</>;
+  if (!isMobile) return <>{periodNote(stats)}</>;
+  return (
+    <>
+      {stats.isLastPatch ? 'How every card did in Clan War last patch.' : 'How every card does in Clan War.'}
+      <span style={styles.sourceTip}>
+        <InfoTip ariaLabel="Which battles these numbers come from" color={theme.text.secondary} width={250} placement="bottom">
+          {sourceNote(stats)}
+        </InfoTip>
+      </span>
+    </>
   );
 }
 
@@ -254,7 +264,7 @@ function GridSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div role="status" aria-live="polite" aria-label="Loading cards">
       <div aria-hidden="true" style={{ ...styles.grid, ...(isMobile ? styles.gridMobile : {}) }}>
-        {Array.from({ length: isMobile ? 16 : 30 }, (_, i) => (
+        {Array.from({ length: isMobile ? MOBILE_SKELETON_TILES : DESKTOP_SKELETON_TILES }, (_, i) => (
           <div key={i}>
             <span className="skeleton" style={styles.skeletonArt} />
             <span className="skeleton" style={styles.skeletonLine} />

@@ -33,6 +33,10 @@ export interface PickerPrefs {
 
 const DEFAULT_PREFS: PickerPrefs = { filters: [], sortIndex: 0, descending: false };
 
+function isSortIndex(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < SORT_TYPES.length;
+}
+
 export function loadPickerPrefs(): PickerPrefs {
   try {
     const saved = sessionStorage.getItem(PREFS_KEY);
@@ -43,13 +47,7 @@ export function loadPickerPrefs(): PickerPrefs {
       filters: Array.isArray(parsed.filters)
         ? parsed.filters.filter((k): k is FilterKey => typeof k === 'string' && validKeys.has(k))
         : [],
-      sortIndex:
-        typeof parsed.sortIndex === 'number' &&
-        Number.isInteger(parsed.sortIndex) &&
-        parsed.sortIndex >= 0 &&
-        parsed.sortIndex < SORT_TYPES.length
-          ? parsed.sortIndex
-          : 0,
+      sortIndex: isSortIndex(parsed.sortIndex) ? parsed.sortIndex : 0,
       descending: parsed.descending === true,
     };
   } catch {
