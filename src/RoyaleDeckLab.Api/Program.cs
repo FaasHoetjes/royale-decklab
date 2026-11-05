@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Configuration;
+using RoyaleDeckLab.Api.Controllers;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Options;
 using RoyaleDeckLab.Api.Security;
@@ -74,6 +75,7 @@ builder.Services.AddSingleton(sp =>
     return new StatsStore(Path.Combine(Path.GetDirectoryName(metaDb)!, "stats.db"));
 });
 builder.Services.AddSingleton<StatsRecorder>();
+builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
@@ -131,10 +133,16 @@ if (app.Environment.IsDevelopment())
     app.UseCors();
 }
 app.UseRateLimiter();
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(20),
+    KeepAliveTimeout = TimeSpan.FromSeconds(20),
+});
 
 app.MapSiteFiles();
 app.UseSpaStaticFiles();
 app.MapControllers();
+app.MapLiveEndpoints();
 app.MapSpaFallback();
 
 app.Logger.LogInformation("Royale DeckLab API running on http://localhost:3000");

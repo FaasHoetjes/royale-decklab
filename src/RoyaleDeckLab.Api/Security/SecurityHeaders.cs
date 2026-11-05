@@ -2,12 +2,13 @@ namespace RoyaleDeckLab.Api.Security;
 
 public static class SecurityHeaders
 {
+    // Older Safari doesn't let 'self' cover the site's own wss: address, so the live connection names it too.
     private const string ContentSecurityPolicy =
         "default-src 'self'; " +
         "script-src 'self' https://static.cloudflareinsights.com; " +
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: https://api-assets.clashroyale.com; " +
-        "connect-src 'self' https://cloudflareinsights.com; " +
+        "connect-src 'self' wss://royaledecklab.com https://cloudflareinsights.com; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self'";

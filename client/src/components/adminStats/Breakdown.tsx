@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { StatsCount } from '../../api';
 import { getTheme } from '../../theme';
-import { number, percent } from './format';
+import { duration, number, percent } from './format';
 import { statsStyles } from './styles';
 
 const ROWS_SHOWN = 8;
@@ -13,18 +13,21 @@ type BreakdownProps = {
   total?: number;
   label: (key: string) => string;
   lookedUp?: Map<string, number>;
+  /** Median seconds in view per key, left out for keys with too few measured visitors. */
+  times?: Map<string, number>;
   selected?: string;
   onSelect?: (key: string) => void;
   extra?: { title: string; counts: StatsCount[] };
 };
 
-export function Breakdown({ title, counts, total, label, lookedUp, selected, onSelect, extra }: BreakdownProps) {
+export function Breakdown({ title, counts, total, label, lookedUp, times, selected, onSelect, extra }: BreakdownProps) {
   const theme = getTheme();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? counts : counts.slice(0, ROWS_SHOWN);
   const scale = total ?? Math.max(1, ...counts.map((c) => c.users));
 
   const row = (c: StatsCount) => {
+    const time = times?.get(c.key);
     const value = total === undefined ? number(c.users) : `${number(c.users)} · ${percent(c.users, total)}`;
     const width = scale > 0 ? Math.min(100, (c.users / scale) * 100) : 0;
     return (
@@ -35,6 +38,7 @@ export function Breakdown({ title, counts, total, label, lookedUp, selected, onS
             {lookedUp && c.users > 0 && (
               <span style={{ ...styles.lookedUp, color: theme.text.tertiary }}> · {percent(lookedUp.get(c.key) ?? 0, c.users)} looked up</span>
             )}
+            {time !== undefined && <span style={{ ...styles.lookedUp, color: theme.text.tertiary }}> · {duration(time)}</span>}
           </span>
           <span style={{ ...statsStyles.listValue, color: theme.text.secondary }}>{value}</span>
         </div>

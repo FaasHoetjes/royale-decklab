@@ -1,15 +1,16 @@
 import type { StatsMonth } from '../../api';
 import { getTheme } from '../../theme';
-import { number } from './format';
+import { duration, number } from './format';
 import { statsStyles } from './styles';
 
-const COLUMNS: { label: string; value: (m: StatsMonth) => number }[] = [
-  { label: 'Visitors', value: (m) => m.visitors },
-  { label: 'Users', value: (m) => m.users },
-  { label: 'Lookups', value: (m) => m.lookups },
-  { label: 'Players', value: (m) => m.players },
-  { label: 'Shares opened', value: (m) => m.shareOpens },
-  { label: 'New from sharing', value: (m) => m.newFromShare },
+const COLUMNS: { label: string; value: (m: StatsMonth) => string }[] = [
+  { label: 'Visitors', value: (m) => number(m.visitors) },
+  { label: 'Users', value: (m) => number(m.users) },
+  { label: 'Lookups', value: (m) => number(m.lookups) },
+  { label: 'Players', value: (m) => number(m.players) },
+  { label: 'Shares opened', value: (m) => number(m.shareOpens) },
+  { label: 'New from sharing', value: (m) => number(m.newFromShare) },
+  { label: 'Time on site', value: (m) => (m.timeMedian === null ? '–' : duration(m.timeMedian)) },
 ];
 
 export function MonthsTable({ months }: { months: StatsMonth[] }) {
@@ -32,7 +33,7 @@ export function MonthsTable({ months }: { months: StatsMonth[] }) {
                   {m.month}
                   {m.partial && <span style={{ color: theme.text.tertiary }}> (so far)</span>}
                 </td>
-                {COLUMNS.map((c) => <td key={c.label} style={styles.tdNumber}>{number(c.value(m))}</td>)}
+                {COLUMNS.map((c) => <td key={c.label} style={styles.tdNumber}>{c.value(m)}</td>)}
               </tr>
             ))}
           </tbody>

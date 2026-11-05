@@ -6,27 +6,34 @@ import { statsStyles } from './styles';
 const LIVE_COLOR = '#2fb463';
 
 type StatsHeaderProps = {
-  activeNow: number;
-  refreshing: boolean;
-  onRefresh: () => void;
+  inView: number;
+  live: boolean;
+  onToggleLive: () => void;
   onSignOut: () => void;
 };
 
-export function StatsHeader({ activeNow, refreshing, onRefresh, onSignOut }: StatsHeaderProps) {
+export function StatsHeader({ inView, live, onToggleLive, onSignOut }: StatsHeaderProps) {
   const theme = getTheme();
   const ghost = { ...statsStyles.ghost, color: theme.text.secondary, borderColor: theme.border };
   return (
     <div style={styles.header}>
       <div style={styles.titleRow}>
         <h1 style={{ ...statsStyles.title, color: theme.text.primary }}>Stats</h1>
-        <span style={{ ...styles.live, color: theme.text.secondary }} title="Visitors who opened a page in the last 5 minutes">
-          <span style={{ ...styles.liveDot, backgroundColor: activeNow > 0 ? LIVE_COLOR : theme.text.tertiary }} />
-          {number(activeNow)} on the site now
+        <span style={{ ...styles.live, color: theme.text.secondary }} title="Visitors with the site open in view right now">
+          <span style={{ ...styles.liveDot, backgroundColor: live && inView > 0 ? LIVE_COLOR : theme.text.tertiary }} />
+          {number(inView)} on the site now
         </span>
       </div>
       <div style={statsStyles.row}>
-        <button type="button" onClick={onRefresh} disabled={refreshing} style={ghost}>
-          {refreshing ? 'Refreshing…' : 'Refresh'}
+        <button
+          type="button"
+          onClick={onToggleLive}
+          aria-pressed={live}
+          title={live ? 'Updating as it happens. Click to pause.' : 'Paused. Click to update as it happens again.'}
+          style={{ ...ghost, ...styles.liveButton }}
+        >
+          <span style={{ ...styles.liveDot, backgroundColor: live ? LIVE_COLOR : theme.text.tertiary }} />
+          {live ? 'Live' : 'Paused'}
         </button>
         <button type="button" onClick={onSignOut} style={ghost}>
           Forget token
@@ -84,6 +91,11 @@ const styles = {
     gap: '6px',
     fontSize: '14px',
     fontWeight: 600 as const,
+  },
+  liveButton: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '6px',
   },
   liveDot: {
     width: '8px',

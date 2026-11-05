@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
@@ -26,9 +25,6 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
     public const int MaxEventsPerDay = 200_000;
 
     private static readonly TimeSpan ServedFor = TimeSpan.FromMinutes(30);
-    private const int MaxActive = 50_000;
-
-    public static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(5);
 
     private readonly object _capLock = new();
     private DateOnly _capDay;
@@ -39,9 +35,6 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
         new BoundedChannelOptions(10_000) { FullMode = BoundedChannelFullMode.DropWrite, SingleReader = true });
 
     private readonly MemoryCache _served = new(new MemoryCacheOptions { SizeLimit = 50_000 });
-
-    private readonly ConcurrentDictionary<string, long> _lastSeen = new();
-    private long _nextPruneMs;
 
     public int DailyCap { get; init; } = MaxEventsPerDay;
 
@@ -78,11 +71,10 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
             }
 
             var secret = store.SecretFor(StatsStore.Month(day));
-            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "";
             var country = context.Items.ContainsKey(ViaCloudflare)
                 ? StatsClassify.Country(context.Request.Headers["CF-IPCountry"].ToString())
                 : null;
-            var visitor = Hash(secret, "visitor", $"{ip}\n{userAgent}");
+            var visitor = VisitorCode(secret, context, userAgent);
             var written = _queue.Writer.TryWrite(new StatsEvent(
                 now.ToUnixTimeMilliseconds(),
                 kind,
@@ -96,10 +88,6 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
             if (written)
             {
                 CountEvent(day);
-                if (kind != StatsStore.Kinds.Preview)
-                {
-                    NoteActive(visitor, now.ToUnixTimeMilliseconds());
-                }
             }
             return written;
         }
@@ -110,31 +98,16 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
         }
     }
 
-    /// <summary>Visitors seen in the last <see cref="ActiveWindow"/>, kept in memory only; a restart starts it at zero.</summary>
-    public int ActiveNow()
+    /// <summary>The visitor's anonymous code for this month, the same one their events carry, or null for a bot.</summary>
+    public byte[]? VisitorOf(HttpContext context)
     {
-        var since = clock.GetUtcNow().ToUnixTimeMilliseconds() - (long)ActiveWindow.TotalMilliseconds;
-        return _lastSeen.Count(entry => entry.Value >= since);
-    }
-
-    // Once full, it sheds visitors who left at most every few seconds, and meanwhile only updates the ones it has,
-    // so a flood can't grow it or make every request scan it.
-    private void NoteActive(byte[] visitor, long atMs)
-    {
-        if (_lastSeen.Count >= MaxActive && atMs >= Interlocked.Read(ref _nextPruneMs))
+        var userAgent = context.Request.Headers.UserAgent.ToString();
+        if (StatsClassify.IsBot(userAgent))
         {
-            Interlocked.Exchange(ref _nextPruneMs, atMs + 10_000);
-            var since = atMs - (long)ActiveWindow.TotalMilliseconds;
-            foreach (var entry in _lastSeen.Where(e => e.Value < since))
-            {
-                _lastSeen.TryRemove(entry);
-            }
+            return null;
         }
-        var key = Convert.ToHexString(visitor);
-        if (_lastSeen.Count < MaxActive || _lastSeen.ContainsKey(key))
-        {
-            _lastSeen[key] = atMs;
-        }
+        var month = StatsStore.Month(DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime));
+        return VisitorCode(store.SecretFor(month), context, userAgent);
     }
 
     private bool UnderDailyCap(DateOnly day)
@@ -169,6 +142,9 @@ public sealed class StatsRecorder(StatsStore store, TimeProvider clock, ILogger<
             }
         }
     }
+
+    private static byte[] VisitorCode(byte[] secret, HttpContext context, string userAgent)
+        => Hash(secret, "visitor", $"{context.Connection.RemoteIpAddress?.ToString() ?? ""}\n{userAgent}");
 
     private static byte[] Hash(byte[] secret, string purpose, string value)
         => HMACSHA256.HashData(secret, Encoding.UTF8.GetBytes($"{purpose}\n{value}"))[..16];

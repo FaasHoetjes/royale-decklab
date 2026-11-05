@@ -11,6 +11,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { usePrefetchAppData } from '../queries';
 import { isValidTag } from '../lib/playerTag';
 import { documentMeta, toolItems } from './navItems';
+import { startPresence } from '../lib/live';
 import { toolForPath, track } from '../lib/stats';
 
 // Where each history entry was scrolled to, so going back returns there.
@@ -70,6 +71,12 @@ export default function Layout() {
     const tool = toolForPath(pathname);
     if (tool) track({ kind: 'tool', tool });
   }, [pathname]);
+
+  const isAdminPage = pathname.startsWith('/admin');
+  useEffect(() => {
+    if (isAdminPage) return;
+    return startPresence();
+  }, [isAdminPage]);
 
   const { title, description } = documentMeta(pathname, toolItems(activePlayerTag), isPlayerDeepLink);
   // A card page names its card in the title, so it sets its own once the card is known.
