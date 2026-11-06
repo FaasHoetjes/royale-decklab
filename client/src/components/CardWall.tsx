@@ -81,6 +81,8 @@ const styles = {
   card: {
     display: 'block' as const,
     width: '100%',
+    // Reserve the art's natural proportions before it loads, keeping the drifting columns stable.
+    aspectRatio: '285 / 420',
   },
   fade: {
     position: 'absolute' as const,
