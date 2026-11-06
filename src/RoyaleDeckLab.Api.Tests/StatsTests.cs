@@ -1,10 +1,12 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RoyaleDeckLab.Api.Services;
 using RoyaleDeckLab.Api.Services.Stats;
+using RoyaleDeckLab.Api.Controllers;
 
 namespace RoyaleDeckLab.Api.Tests;
 
@@ -83,6 +85,85 @@ public sealed class StatsTests : IDisposable
         Assert.Equal(1, Metric(Today, Today, "country", "US"));
         Assert.Equal(2, Metric(Today, Today, "tool", "builder"));
         Assert.Equal(1, Metric(Today, Today, "share_taps"));
+    }
+
+    [Fact]
+    public void Exports_CountEveryActionAndDistinctPeopleAcrossToolsAndDays()
+    {
+        var copy = Event(StatsStore.Kinds.DeckCopy, 1, Noon, tool: "generator", country: "NL", source: "reddit");
+        _store.Add([
+            copy, copy, copy with { AtMs = Noon.AddHours(1).ToUnixTimeMilliseconds() },
+            Event(StatsStore.Kinds.DeckOpen, 1, Noon, tool: "generator", country: "NL", source: "reddit"),
+            Event(StatsStore.Kinds.DeckCopy, 1, Noon, tool: "builder", country: "NL", source: "reddit"),
+            Event(StatsStore.Kinds.DeckOpen, 2, Noon, tool: "best-decks", country: "US", source: "google"),
+            Event(StatsStore.Kinds.DeckOpen, 1, Noon.AddDays(-1), tool: "generator", country: "NL", source: "reddit"),
+        ]);
+
+        var report = StatsReport.Build(_store, Noon);
+        var today = report.Ranges.Single(r => r.Key == "today").DeckExports;
+        Assert.Equal((4L, 2L, 2L), (today.Copies, today.Opens, today.Visitors));
+        var week = report.Ranges.Single(r => r.Key == "7d").DeckExports;
+        Assert.Equal((4L, 3L, 2L), (week.Copies, week.Opens, week.Visitors));
+        Assert.Equal(new StatsReport.ExportTool("generator", 3, 2, 1), week.Tools[0]);
+        Assert.Contains(new StatsReport.ExportTool("builder", 1, 0, 1), week.Tools);
+        Assert.Contains(new StatsReport.ExportTool("best-decks", 0, 1, 1), week.Tools);
+        var month = Assert.Single(report.Months);
+        Assert.Equal((4L, 3L, 2L), (month.DeckCopies, month.DeckOpens, month.DeckExporters));
+
+        var filtered = StatsReport.Build(_store, Noon, new StatsFilter(Source: "reddit", Country: "NL", Device: "phone"))
+            .Ranges.Single(r => r.Key == "7d").DeckExports;
+        Assert.Equal((4L, 2L, 1L), (filtered.Copies, filtered.Opens, filtered.Visitors));
+        Assert.DoesNotContain(filtered.Tools, t => t.Key == "best-decks");
+    }
+
+    [Fact]
+    public void Exports_KeepDailyAndMonthlyTotalsAfterEventsExpire()
+    {
+        var old = Noon.AddDays(-StatsStore.RetentionDays);
+        var oldDay = DateOnly.FromDateTime(old.UtcDateTime);
+        var copy = Event(StatsStore.Kinds.DeckCopy, 1, old, tool: "upgrades");
+        _store.Add([copy, copy, Event(StatsStore.Kinds.DeckOpen, 1, old, tool: "generator")]);
+        _store.Maintain(Today);
+
+        Assert.Equal(0, Metric(oldDay, oldDay, "deck_copies"));
+        var day = _store.StoredTotals(periodLength: 10)[StatsStore.Day(oldDay)];
+        Assert.Equal(2, day.Single(t => t.Metric == "deck_copies").Value);
+        Assert.Equal(1, day.Single(t => t.Metric == "deck_opens").Value);
+        Assert.Equal(1, day.Single(t => t.Metric == "deck_exporters").Value);
+        var month = Assert.Single(StatsReport.Build(_store, Noon).Months);
+        Assert.Equal((2L, 1L, 1L), (month.DeckCopies, month.DeckOpens, month.DeckExporters));
+    }
+
+    [Theory]
+    [InlineData("deck_copy", "generator", true)]
+    [InlineData("deck_copy", "builder", true)]
+    [InlineData("deck_open", "upgrades", true)]
+    [InlineData("deck_open", "best-decks", true)]
+    [InlineData("deck_copy", null, false)]
+    [InlineData("deck_open", "home", false)]
+    [InlineData("deck_open", "clan", false)]
+    [InlineData("deck_copy", "untrusted", false)]
+    [InlineData("unknown", "builder", false)]
+    public void Controller_AcceptsOnlyKnownExportKindsAndTools(string kind, string? tool, bool accepted)
+    {
+        var clock = new Clock(Noon);
+        var recorder = new StatsRecorder(_store, clock, NullLogger<StatsRecorder>.Instance);
+        var controller = new StatsController(recorder, new LivePresence(clock), _store, clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = Request("84.1.2.3", Phone) },
+        };
+        Assert.IsType<NoContentResult>(controller.Event(new StatsController.EventBody(kind, "#YPP2RJ92C", tool, null, null, null)));
+        var events = Drain(recorder);
+        if (accepted)
+        {
+            var recorded = Assert.Single(events);
+            Assert.Equal((kind, tool), (recorded.Kind, recorded.Tool));
+            Assert.Empty(recorded.Tag);
+        }
+        else
+        {
+            Assert.Empty(events);
+        }
     }
 
     [Fact]
@@ -421,7 +502,7 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
-    public void Store_AddsTheCampaignColumnToAnOlderFile()
+    public void Store_MigratesOldEventsForCampaignsAndExportCounts()
     {
         var path = Path.Combine(Path.GetTempPath(), $"stats-{Guid.NewGuid():N}.db");
         try
@@ -437,6 +518,8 @@ public sealed class StatsTests : IDisposable
                         at_ms INTEGER NOT NULL, country TEXT, device TEXT, source TEXT,
                         PRIMARY KEY (day, kind, visitor, tag, tool)
                     ) WITHOUT ROWID;
+                    INSERT INTO events (day, kind, visitor, tag, tool, at_ms)
+                    VALUES ('2026-11-05', 'lookup', X'01', X'02', '', 1793880000000);
                     """;
                 create.ExecuteNonQuery();
             }
@@ -444,6 +527,12 @@ public sealed class StatsTests : IDisposable
             var store = new StatsStore(path);
             store.Add([Event(StatsStore.Kinds.Tool, 1, Noon, tool: "home", campaign: "launch")]);
             Assert.Equal(1, store.Compute(Today, Today).Single(t => t.Metric == "campaign").Value);
+            var copy = Event(StatsStore.Kinds.DeckCopy, 1, Noon, tool: "builder");
+            store.Add([copy, copy]);
+            var reopened = new StatsStore(path);
+            var totals = reopened.Compute(Today, Today);
+            Assert.Equal(1, totals.Single(t => t.Metric == "lookups").Value);
+            Assert.Equal(2, totals.Single(t => t.Metric == "deck_copies").Value);
         }
         finally
         {

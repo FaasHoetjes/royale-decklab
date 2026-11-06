@@ -32,6 +32,10 @@ public sealed class StatsController(StatsRecorder recorder, LivePresence presenc
             case StatsStore.Kinds.ShareTap:
                 recorder.Record(HttpContext, body.Kind, origin: origin);
                 break;
+            case StatsStore.Kinds.DeckCopy or StatsStore.Kinds.DeckOpen
+                when body.Tool is { } exportTool && StatsClassify.DeckExportTools.Contains(exportTool):
+                recorder.Record(HttpContext, body.Kind, tool: exportTool, origin: origin);
+                break;
             case StatsStore.Kinds.Tool when body.Tool is { } tool && StatsClassify.Tools.Contains(tool):
                 recorder.Record(HttpContext, body.Kind, tool: tool, origin: origin);
                 break;

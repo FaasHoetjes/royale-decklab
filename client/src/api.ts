@@ -361,6 +361,7 @@ export interface StatsRange {
   devices: StatsCount[];
   sources: StatsCount[];
   tools: StatsCount[];
+  deckExports: StatsDeckExports;
   /** Median seconds a visitor had the site in view; null when nobody's time was measured. */
   timeMedian: number | null;
   previousTimeMedian: number | null;
@@ -375,6 +376,13 @@ export interface StatsDuration {
   visitors: number;
 }
 
+export interface StatsDeckExports {
+  copies: number;
+  opens: number;
+  visitors: number;
+  tools: { key: string; copies: number; opens: number; visitors: number }[];
+}
+
 export interface StatsMonth {
   month: string;
   partial: boolean;
@@ -385,6 +393,9 @@ export interface StatsMonth {
   shareOpens: number;
   newFromShare: number;
   timeMedian: number | null;
+  deckCopies: number;
+  deckOpens: number;
+  deckExporters: number;
 }
 
 export interface StatsReport {

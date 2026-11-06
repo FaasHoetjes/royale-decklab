@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { copyText } from '../lib/clipboard';
+import { trackDeckExport } from '../lib/stats';
 
 interface DeckLinkActionProps {
   link: string;
@@ -33,6 +34,8 @@ export default function DeckLinkAction({
     return (
       <a
         href={link}
+        onClick={() => trackDeckExport('deck_open')}
+        onAuxClick={(event) => { if (event.button === 1) trackDeckExport('deck_open'); }}
         target="_blank"
         rel="noopener noreferrer"
         className={className}
@@ -47,7 +50,8 @@ export default function DeckLinkAction({
   }
 
   const copyLink = async () => {
-    await copyText(link);
+    if (!await copyText(link)) return;
+    trackDeckExport('deck_copy');
     setCopied(true);
     if (resetTimer.current != null) window.clearTimeout(resetTimer.current);
     resetTimer.current = window.setTimeout(() => setCopied(false), 1800);

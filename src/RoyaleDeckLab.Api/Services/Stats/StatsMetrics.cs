@@ -22,6 +22,9 @@ internal static class StatsMetrics
         ("share_taps", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'share' AND {Range}"),
         ("previews", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'preview' AND {Range}"),
         ("share_opens", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'share_open' AND {Range}"),
+        ("deck_copies", t => $"SELECT COALESCE(SUM(occurrences), 0) FROM {t} WHERE kind = 'deck_copy' AND {Range}"),
+        ("deck_opens", t => $"SELECT COALESCE(SUM(occurrences), 0) FROM {t} WHERE kind = 'deck_open' AND {Range}"),
+        ("deck_exporters", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE kind IN ('deck_copy', 'deck_open') AND {Range}"),
         // A friend who opened a shared lineup and then looked up a different player, their own, having looked up
         // no one else before it.
         ("new_from_share", t =>
@@ -46,6 +49,9 @@ internal static class StatsMetrics
         ("source_users", t => LookedUpBy(t, "COALESCE(source, 'direct')")),
         ("campaign", t => $"SELECT campaign, COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range} AND campaign IS NOT NULL GROUP BY 1"),
         ("tool", t => $"SELECT tool, COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'tool' AND {Range} GROUP BY tool"),
+        ("tool_deck_copies", t => $"SELECT tool, SUM(occurrences) FROM {t} WHERE kind = 'deck_copy' AND {Range} GROUP BY tool"),
+        ("tool_deck_opens", t => $"SELECT tool, SUM(occurrences) FROM {t} WHERE kind = 'deck_open' AND {Range} GROUP BY tool"),
+        ("tool_deck_exporters", t => $"SELECT tool, COUNT(DISTINCT visitor) FROM {t} WHERE kind IN ('deck_copy', 'deck_open') AND {Range} GROUP BY tool"),
     ];
 
     // Per value of the column: how many of the visitors who came with it looked up a player in the period.

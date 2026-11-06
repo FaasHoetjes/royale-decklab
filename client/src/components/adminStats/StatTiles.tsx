@@ -18,6 +18,7 @@ const lookupsDetail = (range: StatsRange) =>
   range.users > 0 ? `${(range.lookups / range.users).toFixed(1)} per user` : undefined;
 
 export function StatTiles({ range }: { range: StatsRange }) {
+  const showReturning = range.from !== range.to;
   return (
     <div style={styles.groups}>
       <div style={styles.tiles}>
@@ -25,9 +26,9 @@ export function StatTiles({ range }: { range: StatsRange }) {
         <Tile label="Real users" value={number(range.users)} detail={usersDetail(range)} />
         <Tile label="Player lookups" value={number(range.lookups)} detail={lookupsDetail(range)} />
       </div>
-      <div style={styles.tiles}>
+      <div style={{ ...styles.tiles, gridTemplateColumns: `repeat(${showReturning ? 3 : 2}, minmax(0, 1fr))` }}>
         <Tile label="Different players" value={number(range.players)} />
-        <Tile label="Came back" value={percent(range.returning, range.users)} detail={`${number(range.returning)} on more than one day`} />
+        {showReturning && <Tile label="Came back" value={percent(range.returning, range.users)} detail={`${number(range.returning)} on more than one day`} />}
         <Tile label="Time on site" value={range.timeMedian === null ? '–' : duration(range.timeMedian)} detail={timeDetail(range)} />
       </div>
     </div>

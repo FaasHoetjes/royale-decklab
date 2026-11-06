@@ -24,6 +24,8 @@ public sealed class StatsStore
         public const string ShareTap = "share";
         public const string Tool = "tool";
         public const string Preview = "preview";
+        public const string DeckCopy = "deck_copy";
+        public const string DeckOpen = "deck_open";
     }
 
     private readonly string _connectionString;
@@ -56,15 +58,17 @@ public sealed class StatsStore
         return (byte[])select.ExecuteScalar()!;
     });
 
-    /// <summary>Stores the events; one that repeats a visitor's event of the same kind that day is ignored.</summary>
+    /// <summary>Counts every deck export; other events are kept once per visitor, subject and tool each day.</summary>
     public void Add(IReadOnlyList<StatsEvent> events)
     {
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
         using var insert = Command(connection,
             """
-            INSERT OR IGNORE INTO events (day, kind, visitor, tag, tool, at_ms, country, device, source, campaign)
+            INSERT INTO events (day, kind, visitor, tag, tool, at_ms, country, device, source, campaign)
             VALUES (@day, @kind, @visitor, @tag, @tool, @at, @country, @device, @source, @campaign)
+            ON CONFLICT (day, kind, visitor, tag, tool) DO UPDATE SET occurrences = occurrences + 1
+            WHERE events.kind IN ('deck_copy', 'deck_open')
             """);
         insert.Transaction = transaction;
         foreach (var e in events)

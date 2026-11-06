@@ -15,6 +15,11 @@ public static partial class StatsClassify
         "direct", "reddit", "ai", "google", "bing", "duckduckgo", "discord", "youtube", "x", "facebook", "instagram", "other",
     };
 
+    public static readonly IReadOnlySet<string> DeckExportTools = new HashSet<string>
+    {
+        "generator", "builder", "upgrades", "best-decks",
+    };
+
     public static bool IsBot(string? userAgent) => string.IsNullOrWhiteSpace(userAgent) || BotRegex().IsMatch(userAgent);
 
     public static string Device(string? userAgent) => userAgent is not null && PhoneRegex().IsMatch(userAgent) ? "phone" : "desktop";

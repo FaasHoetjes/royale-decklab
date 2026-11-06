@@ -1,12 +1,15 @@
-// Anonymous usage pings for the admin stats page. Nothing is stored in the visitor's browser for this: repeats
-// within a page load are skipped here, and the server counts each visitor once a day per event.
+// Anonymous usage pings for the admin stats page. Deck exports count every action; other events skip repeats
+// within a page load here and count each visitor once a day per event on the server.
 import { isValidTag } from './playerTag';
 
 export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq';
+type DeckExportTool = Extract<StatsTool, 'generator' | 'builder' | 'upgrades' | 'best-decks'>;
+type DeckExportKind = 'deck_copy' | 'deck_open';
 
 export type StatsEvent =
   | { kind: 'lookup' | 'share_open'; tag: string }
   | { kind: 'share' }
+  | { kind: DeckExportKind; tool: DeckExportTool }
   | { kind: 'tool'; tool: StatsTool };
 
 const EXCLUDE_KEY = 'statsExcluded';
@@ -79,13 +82,23 @@ export function toolForPath(pathname: string): StatsTool | null {
 
 export function track(event: StatsEvent): void {
   if (isStatsExcluded()) return;
-  const key = JSON.stringify(event);
-  if (sent.has(key)) return;
-  sent.add(key);
+  if (event.kind !== 'deck_copy' && event.kind !== 'deck_open') {
+    const key = JSON.stringify(event);
+    if (sent.has(key)) return;
+    sent.add(key);
+  }
   fetch('/api/stats/event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...event, ref: referrerHost(), ...campaign }),
     keepalive: true,
   }).catch(() => {});
+}
+
+/** Only the page category is sent: no deck URL, cards, or player tag. */
+export function trackDeckExport(kind: DeckExportKind): void {
+  const tool = toolForPath(window.location.pathname);
+  if (tool === 'generator' || tool === 'builder' || tool === 'upgrades' || tool === 'best-decks') {
+    track({ kind, tool });
+  }
 }

@@ -30,7 +30,7 @@ export default function ShareLineupButton({ url, title, isMobile }: ShareLineupB
         if (error instanceof DOMException && error.name === 'AbortError') return;
       }
     }
-    await copyText(url);
+    if (!await copyText(url)) return;
     setCopied(true);
     if (resetTimer.current != null) window.clearTimeout(resetTimer.current);
     resetTimer.current = window.setTimeout(() => setCopied(false), 1800);

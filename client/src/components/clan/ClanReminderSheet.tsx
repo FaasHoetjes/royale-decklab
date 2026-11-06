@@ -60,7 +60,7 @@ const ClanReminderSheet = ({ war, onClose }: { war: ClanWar; onClose: () => void
   };
 
   const copy = async () => {
-    await copyText(text);
+    if (!await copyText(text)) return;
     setCopied(true);
     if (resetTimer.current != null) window.clearTimeout(resetTimer.current);
     resetTimer.current = window.setTimeout(() => setCopied(false), COPIED_FOR_MS);

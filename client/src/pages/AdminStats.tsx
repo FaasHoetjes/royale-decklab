@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError, fetchAdminStats, type StatsCount, type StatsDuration, type StatsFilters, type StatsRange } from '../api';
 import { ActivityChart } from '../components/adminStats/ActivityChart';
 import { Breakdown } from '../components/adminStats/Breakdown';
+import { DeckExports } from '../components/adminStats/DeckExports';
 import { FilterBar } from '../components/adminStats/FilterBar';
 import { countryLabel, deviceLabel, sourceLabel, toolLabel } from '../components/adminStats/format';
 import { Gate, TokenForm } from '../components/adminStats/Gate';
@@ -153,6 +154,7 @@ export default function AdminStats() {
         </section>
       )}
 
+      <DeckExports range={range} />
       <SharingFunnel range={range} />
 
       <div style={styles.grid}>

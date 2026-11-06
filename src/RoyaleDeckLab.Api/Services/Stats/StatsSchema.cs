@@ -25,6 +25,7 @@ internal static class StatsSchema
                 device TEXT,
                 source TEXT,
                 campaign TEXT,
+                occurrences INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY (day, kind, visitor, tag, tool)
             ) WITHOUT ROWID;
             CREATE INDEX IF NOT EXISTS events_by_visitor ON events (visitor, kind, at_ms);
@@ -46,6 +47,11 @@ internal static class StatsSchema
         if (campaignColumn.ExecuteScalar() is null)
         {
             StatsStore.Execute(connection, "ALTER TABLE events ADD COLUMN campaign TEXT;");
+        }
+        using var occurrencesColumn = StatsStore.Command(connection, "SELECT 1 FROM pragma_table_info('events') WHERE name = 'occurrences'");
+        if (occurrencesColumn.ExecuteScalar() is null)
+        {
+            StatsStore.Execute(connection, "ALTER TABLE events ADD COLUMN occurrences INTEGER NOT NULL DEFAULT 1;");
         }
     }
 }

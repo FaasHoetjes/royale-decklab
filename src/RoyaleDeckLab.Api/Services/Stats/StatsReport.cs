@@ -12,6 +12,10 @@ public static class StatsReport
     /// <summary>The median time in view, in seconds, of the visitors that came with the key.</summary>
     public sealed record Duration(string Key, long Seconds, long Visitors);
 
+    public sealed record ExportTool(string Key, long Copies, long Opens, long Visitors);
+
+    public sealed record DeckExports(long Copies, long Opens, long Visitors, IReadOnlyList<ExportTool> Tools);
+
     public sealed record RangeReport(
         string Key,
         string From,
@@ -41,10 +45,12 @@ public static class StatsReport
         IReadOnlyList<Count> Sources,
         IReadOnlyList<Count> SourceUsers,
         IReadOnlyList<Count> Campaigns,
-        IReadOnlyList<Count> Tools);
+        IReadOnlyList<Count> Tools,
+        DeckExports DeckExports);
 
     public sealed record MonthReport(
-        string Month, bool Partial, long Users, long Visitors, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian);
+        string Month, bool Partial, long Users, long Visitors, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian,
+        long DeckCopies, long DeckOpens, long DeckExporters);
 
     public sealed record Report(
         DateTimeOffset GeneratedAt,
@@ -118,7 +124,20 @@ public static class StatsReport
             Group("source"),
             Group("source_users"),
             Group("campaign"),
-            Group("tool"));
+            Group("tool"),
+            Exports(totals));
+    }
+
+    private static DeckExports Exports(IReadOnlyList<StatsTotal> totals)
+    {
+        var copies = totals.Where(t => t.Metric == "tool_deck_copies").ToDictionary(t => t.Dim, t => t.Value);
+        var opens = totals.Where(t => t.Metric == "tool_deck_opens").ToDictionary(t => t.Dim, t => t.Value);
+        var tools = totals.Where(t => t.Metric == "tool_deck_exporters")
+            .Select(t => new ExportTool(t.Dim, copies.GetValueOrDefault(t.Dim), opens.GetValueOrDefault(t.Dim), t.Value))
+            .OrderByDescending(t => t.Copies + t.Opens)
+            .ThenBy(t => t.Key, StringComparer.Ordinal)
+            .ToList();
+        return new DeckExports(ScalarOf(totals, "deck_copies"), ScalarOf(totals, "deck_opens"), ScalarOf(totals, "deck_exporters"), tools);
     }
 
     private static long ScalarOf(IReadOnlyList<StatsTotal> totals, string metric)
@@ -181,5 +200,6 @@ public static class StatsReport
     private static MonthReport Month(string month, IReadOnlyList<StatsTotal> totals, bool partial)
         => new(month, partial, ScalarOf(totals, "users"), ScalarOf(totals, "visitors"), ScalarOf(totals, "lookups"),
             ScalarOf(totals, "players"), ScalarOf(totals, "share_opens"), ScalarOf(totals, "new_from_share"),
-            OptionalScalarOf(totals, "time_median"));
+            OptionalScalarOf(totals, "time_median"), ScalarOf(totals, "deck_copies"), ScalarOf(totals, "deck_opens"),
+            ScalarOf(totals, "deck_exporters"));
 }
