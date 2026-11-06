@@ -127,7 +127,7 @@ public sealed class ClanWarTests
     }
 
     [Fact]
-    public void PlayersWhoLeft_AreNotMembers_AndOnlyCountWhenTheyPlayedThisWeek()
+    public void PlayersWhoLeft_AreNotMembers()
     {
         var clan = Clan(Member("#A", "Anna"));
         var race = Race("warDay", 4, Played("#A", 2, 6), Played("#GONE", 0, 4), Played("#IDLE", 0, 0));
@@ -135,7 +135,6 @@ public sealed class ClanWarTests
         var war = ClanWar.From(clan, race, NoHistory, Now);
 
         Assert.Equal(["#A"], war.Members.Select(m => m.Tag));
-        Assert.Equal(1, war.LeaversWithDecks);
     }
 
     [Fact]

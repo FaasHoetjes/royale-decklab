@@ -15,7 +15,6 @@ public sealed record ClanWar(
     int Day,
     IReadOnlyList<ClanWarMember> Members,
     IReadOnlyList<PastWarWeek> PastWeeks,
-    int LeaversWithDecks,
     IReadOnlyList<RaceClan> Race,
     DateTimeOffset? DayEndsAt,
     DateTimeOffset? WarStartsAt)
@@ -44,18 +43,15 @@ public sealed record ClanWar(
         var pastWeeks = PastWeeksOf(tag, log);
 
         var members = new List<ClanWarMember>();
-        var memberTags = new HashSet<string>(StringComparer.Ordinal);
         foreach (var member in clan.MemberList ?? [])
         {
             if (member.Tag is not { } memberTag)
             {
                 continue;
             }
-            memberTags.Add(memberTag);
             members.Add(ToMember(member, memberTag, thisWeek, pastWeeks, isBattleDay));
         }
 
-        var leaversWithDecks = thisWeek.Count(pair => HasLeftAfterPlaying(pair.Key, pair.Value, memberTags));
         var dayEndsAt = race is null ? null : NextReset(pastWeeks, now);
         var warStartsAt = race is null || isBattleDay ? null : dayEndsAt?.AddDays(TrainingDays - day);
 
@@ -67,7 +63,6 @@ public sealed record ClanWar(
             day,
             Sort(members, isBattleDay),
             pastWeeks.Select(w => w.Week).ToList(),
-            leaversWithDecks,
             race is null ? [] : RaceOf(race),
             dayEndsAt,
             warStartsAt);
@@ -170,12 +165,6 @@ public sealed record ClanWar(
             return int.MaxValue;
         }
         return member.DecksUsedPastWeeks[0] ?? int.MaxValue;
-    }
-
-    private static bool HasLeftAfterPlaying(string tag, CrRiverRaceParticipant participant, HashSet<string> memberTags)
-    {
-        var hasLeft = !memberTags.Contains(tag);
-        return hasLeft && participant.DecksUsed > 0;
     }
 
     private static Dictionary<string, CrRiverRaceParticipant> ParticipantsByTag(CrRiverRaceClan? clan)

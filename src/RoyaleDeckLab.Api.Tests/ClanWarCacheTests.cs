@@ -85,7 +85,6 @@ public sealed class ClanWarCacheTests
         Assert.Equal(8, war.Members[1].DecksUsedThisWeek);
         Assert.Equal(900, war.Members[1].Fame);
         Assert.Equal([6], war.Members[0].DecksUsedPastWeeks);
-        Assert.Equal(1, war.LeaversWithDecks);
         Assert.Equal(2, Assert.Single(war.PastWeeks).Rank);
         Assert.Equal([900], war.Members[0].FamePastWeeks);
         Assert.Equal(new RaceClan("#OTHER", "Other", 835, 14_450), war.Race[1]);

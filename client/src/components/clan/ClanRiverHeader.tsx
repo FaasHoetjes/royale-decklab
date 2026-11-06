@@ -1,7 +1,7 @@
 import type { ClanWar } from '../../api';
 import { FINISH_FAME, dayLabel, ordinal, raceStanding } from '../../lib/clanWar';
 import SlotNumber from '../SlotNumber';
-import { BannerStat, BannerTop, CountdownChip, RaceLanes, RiverWater, water } from './RiverBanner';
+import { BannerStat, BannerTop, CountdownChip, RaceLanes, RiverWater } from './RiverBanner';
 
 interface ClanRiverHeaderProps {
   war: ClanWar;
@@ -42,9 +42,6 @@ const ClanRiverHeader = ({ war, updatedAt, isMobile }: ClanRiverHeaderProps) => 
         {standing && !isColosseum && fameToGo <= 0 && <BannerStat value="✓" label="crossed the finish" />}
         <BannerStat value={<SlotNumber value={war.decksLeftToday} />} label={war.decksLeftToday === 1 ? 'deck left today' : 'decks left today'} />
       </div>
-      {war.leaversWithDecks > 0 && (
-        <p style={styles.note}>{war.leaversWithDecks === 1 ? '1 player' : `${war.leaversWithDecks} players`} left this week.</p>
-      )}
     </RiverWater>
   );
 };
@@ -56,10 +53,5 @@ const styles = {
     display: 'flex' as const,
     flexWrap: 'wrap' as const,
     gap: '4px 18px',
-  },
-  note: {
-    margin: '8px 0 0',
-    fontSize: '12px',
-    color: water.muted,
   },
 };

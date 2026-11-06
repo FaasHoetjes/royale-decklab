@@ -200,7 +200,6 @@ export interface ClanWar {
   members: ClanWarMember[];
   pastWeeks: PastWarWeek[];
   /** Players who left the clan after using decks for it this week. */
-  leaversWithDecks: number;
   /** Every clan in the race, furthest boat first. */
   race: RaceClan[];
   /** Estimates from when past races ended; null without past races. */
