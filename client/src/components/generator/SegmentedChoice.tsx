@@ -15,7 +15,7 @@ function choiceColor(isSelected: boolean, isDimmed: boolean) {
 }
 
 /** A row of choices with a highlight that slides to the pick. */
-function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim }: {
+export function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim }: {
   label: string;
   choices: T[];
   value: T;

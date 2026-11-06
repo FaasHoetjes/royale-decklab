@@ -102,25 +102,52 @@ describe('clan war today', () => {
     expect(groups.done.map((m) => m.name)).toEqual(['Cas']);
   });
 
-  test('the clan chat reminder names who has not started and who still has decks, most decks first', () => {
-    const members = [playing('Zoe', 0), playing('Anna', 0), playing('Bram', 3), playing('Cas', 1), playing('Dirk', 4)];
-    const text = clanChatReminder(war({ period: 'warDay', day: 2, isBattleDay: true, decksLeftToday: 12, members }));
+  const today = (members: ClanWarMember[], decksLeftToday: number) =>
+    war({ tag: '#9LRQC28V', period: 'warDay', day: 2, isBattleDay: true, decksLeftToday, members });
+  const members = [playing('Zoe', 0), playing('Anna', 0), playing('Bram', 3), playing('Cas', 1), playing('Dirk', 4)];
 
-    expect(text).toBe(
+  test('the short reminder only counts, and links to the clan', () => {
+    expect(clanChatReminder(today(members, 12), 'short')).toBe(
       [
-        'War day 2 of 4: 12 decks still open! 🚣',
-        'Not started: Anna, Zoe',
-        'Still to finish: Cas (3), Bram (1)',
-        'Your best war decks: royaledecklab.com',
+        'War day 2 of 4: 12 decks still open 🚣',
+        "2 haven't played yet, 2 are halfway.",
+        'Check yours: royaledecklab.com/clan/9LRQC28V',
       ].join('\n')
     );
+    expect(clanChatReminder(today([playing('Bram', 3)], 1), 'short')).toContain('1 deck still open');
+    expect(clanChatReminder(today([playing('Bram', 3)], 1), 'short')).toContain('\n1 is halfway.\n');
   });
 
-  test('the reminder shortens a long list of names', () => {
-    const members = Array.from({ length: 10 }, (_, i) => playing(`P${i}`, 0));
-    const text = clanChatReminder(war({ period: 'warDay', day: 1, isBattleDay: true, decksLeftToday: 40, members }));
+  test('the reminder with names lists who has not played yet, at most five', () => {
+    expect(clanChatReminder(today(members, 12), 'names')).toBe(
+      [
+        'War day 2 of 4: 12 decks still open 🚣',
+        'Not played yet: Anna, Zoe',
+        "Everyone's status: royaledecklab.com/clan/9LRQC28V",
+      ].join('\n')
+    );
+    const many = Array.from({ length: 8 }, (_, i) => playing(`P${i}`, 0));
+    expect(clanChatReminder(today(many, 32), 'names')).toContain('Not played yet: P0, P1, P2, P3, P4 +3\n');
+  });
 
-    expect(text).toContain('P7 +2 more');
+  test('once everyone has started, the reminder with names lists who still has decks', () => {
+    expect(clanChatReminder(today([playing('Bram', 3), playing('Cas', 1)], 4), 'names')).toContain('Still to finish: Cas, Bram\n');
+  });
+
+  test('the full reminder names everyone, most decks left first', () => {
+    expect(clanChatReminder(today(members, 12), 'full')).toBe(
+      [
+        '🚣 War day 2 of 4 · 12 decks still open',
+        '',
+        'Not played yet (2)',
+        'Anna, Zoe',
+        '',
+        'Decks left to finish',
+        'Cas 3 · Bram 1',
+        '',
+        'royaledecklab.com/clan/9LRQC28V',
+      ].join('\n')
+    );
   });
 });
 

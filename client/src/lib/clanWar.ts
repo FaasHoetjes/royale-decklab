@@ -100,25 +100,49 @@ export const reliability = (member: ClanWarMember): Reliability => {
   return 'steady';
 };
 
-const REMINDER_NAMES = 8;
+export type ReminderStyle = 'short' | 'names' | 'full';
+export const REMINDER_STYLES: ReminderStyle[] = ['short', 'names', 'full'];
+export const reminderStyleLabel: Record<ReminderStyle, string> = { short: 'Short', names: 'With names', full: 'Full list' };
+
+const NAMES_SHOWN = 5;
 const SITE = 'royaledecklab.com';
 
-const nameList = (names: string[]): string =>
-  names.length > REMINDER_NAMES
-    ? `${names.slice(0, REMINDER_NAMES).join(', ')} +${names.length - REMINDER_NAMES} more`
-    : names.join(', ');
+const byName = (a: ClanWarMember, b: ClanWarMember) => a.name.localeCompare(b.name);
+const decksWord = (n: number) => (n === 1 ? 'deck' : 'decks');
+const clanLink = (war: ClanWar) => `${SITE}/clan/${war.tag.replace('#', '')}`;
 
-/** A message to paste in clan chat naming who still has decks to play today. */
-export const clanChatReminder = (war: ClanWar): string => {
+const shortList = (names: string[]): string =>
+  names.length > NAMES_SHOWN ? `${names.slice(0, NAMES_SHOWN).join(', ')} +${names.length - NAMES_SHOWN}` : names.join(', ');
+
+/** A message to paste in clan chat about who still has decks to play today, from a one-liner to everyone named. */
+export const clanChatReminder = (war: ClanWar, style: ReminderStyle): string => {
   const groups = groupByToday(war.members);
-  const byName = (a: ClanWarMember, b: ClanWarMember) => a.name.localeCompare(b.name);
-  const lines = [`${dayLabel(war)}: ${war.decksLeftToday} ${war.decksLeftToday === 1 ? 'deck' : 'decks'} still open! 🚣`];
-  if (groups.notStarted.length > 0) lines.push(`Not started: ${nameList([...groups.notStarted].sort(byName).map((m) => m.name))}`);
-  if (groups.started.length > 0) {
-    const started = [...groups.started].sort((a, b) => b.decksLeftToday - a.decksLeftToday || byName(a, b));
-    lines.push(`Still to finish: ${nameList(started.map((m) => `${m.name} (${m.decksLeftToday})`))}`);
+  const notStarted = [...groups.notStarted].sort(byName).map((m) => m.name);
+  const started = [...groups.started].sort((a, b) => b.decksLeftToday - a.decksLeftToday || byName(a, b));
+  const open = `${war.decksLeftToday} ${decksWord(war.decksLeftToday)} still open`;
+
+  if (style === 'full') {
+    const blocks = [`🚣 ${dayLabel(war)} · ${open}`];
+    if (notStarted.length > 0) blocks.push(`Not played yet (${notStarted.length})\n${notStarted.join(', ')}`);
+    if (started.length > 0) blocks.push(`Decks left to finish\n${started.map((m) => `${m.name} ${m.decksLeftToday}`).join(' · ')}`);
+    blocks.push(clanLink(war));
+    return blocks.join('\n\n');
   }
-  lines.push(`Your best war decks: ${SITE}`);
+
+  const lines = [`${dayLabel(war)}: ${open} 🚣`];
+  if (style === 'names') {
+    if (notStarted.length > 0) lines.push(`Not played yet: ${shortList(notStarted)}`);
+    else lines.push(`Still to finish: ${shortList(started.map((m) => m.name))}`);
+    lines.push(`Everyone's status: ${clanLink(war)}`);
+    return lines.join('\n');
+  }
+
+  const counts = [
+    notStarted.length > 0 && `${notStarted.length} ${notStarted.length === 1 ? "hasn't" : "haven't"} played yet`,
+    started.length > 0 && `${started.length} ${started.length === 1 ? 'is' : 'are'} halfway`,
+  ].filter(Boolean);
+  if (counts.length > 0) lines.push(`${counts.join(', ')}.`);
+  lines.push(`Check yours: ${clanLink(war)}`);
   return lines.join('\n');
 };
 

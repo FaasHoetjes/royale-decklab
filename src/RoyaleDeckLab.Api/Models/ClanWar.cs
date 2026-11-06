@@ -57,7 +57,7 @@ public sealed record ClanWar(
 
         return new ClanWar(
             tag,
-            clan.Name ?? tag,
+            DisplayName.Clean(clan.Name, tag),
             clan.BadgeId,
             period,
             day,
@@ -90,7 +90,7 @@ public sealed record ClanWar(
         {
             if (clan.Tag is { } clanTag)
             {
-                clans.Add(new RaceClan(clanTag, clan.Name ?? clanTag, clan.Fame, clan.PeriodPoints));
+                clans.Add(new RaceClan(clanTag, DisplayName.Clean(clan.Name, clanTag), clan.Fame, clan.PeriodPoints));
             }
         }
         return clans
@@ -135,7 +135,7 @@ public sealed record ClanWar(
 
         return new ClanWarMember(
             memberTag,
-            member.Name ?? memberTag,
+            DisplayName.Clean(member.Name, memberTag),
             ParseRole(member.Role),
             ApiTime.Parse(member.LastSeen),
             decksUsedToday,

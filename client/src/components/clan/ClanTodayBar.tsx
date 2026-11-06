@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ClanWarMember } from '../../api';
 import { getTheme } from '../../theme';
 import { groupByToday, todayStatusLabel, type TodayStatus } from '../../lib/clanWar';
@@ -7,6 +8,7 @@ interface ClanTodayBarProps {
   members: ClanWarMember[];
   filter: TodayStatus | null;
   onFilter: (status: TodayStatus | null) => void;
+  action?: ReactNode;
 }
 
 export const todayStatusColor: Record<TodayStatus, string> = {
@@ -18,28 +20,31 @@ export const todayStatusColor: Record<TodayStatus, string> = {
 const BAR_ORDER: TodayStatus[] = ['done', 'started', 'notStarted'];
 
 /** Done, Started and Not started as one bar; picking a part shows just those members below. */
-const ClanTodayBar = ({ members, filter, onFilter }: ClanTodayBarProps) => {
+const ClanTodayBar = ({ members, filter, onFilter, action }: ClanTodayBarProps) => {
   const theme = getTheme();
   const groups = groupByToday(members);
   const pick = (status: TodayStatus) => onFilter(filter === status ? null : status);
 
   return (
     <div style={styles.wrap}>
-      <div style={styles.bar} aria-hidden="true">
-        {BAR_ORDER.filter((status) => groups[status].length > 0).map((status, i) => (
-          <span
-            key={status}
-            className="clan-bar-segment"
-            onClick={() => pick(status)}
-            style={{
-              ...styles.segment,
-              flexGrow: groups[status].length,
-              backgroundColor: todayStatusColor[status],
-              opacity: filter && filter !== status ? 0.3 : 1,
-              animationDelay: `${i * 120}ms`,
-            }}
-          />
-        ))}
+      <div style={styles.barRow}>
+        <div style={styles.bar} aria-hidden="true">
+          {BAR_ORDER.filter((status) => groups[status].length > 0).map((status, i) => (
+            <span
+              key={status}
+              className="clan-bar-segment"
+              onClick={() => pick(status)}
+              style={{
+                ...styles.segment,
+                flexGrow: groups[status].length,
+                backgroundColor: todayStatusColor[status],
+                opacity: filter && filter !== status ? 0.3 : 1,
+                animationDelay: `${i * 120}ms`,
+              }}
+            />
+          ))}
+        </div>
+        {action}
       </div>
       <div style={styles.legend} role="group" aria-label="Show members by today's progress">
         {BAR_ORDER.map((status) => {
@@ -77,7 +82,13 @@ const styles = {
   wrap: {
     marginTop: '18px',
   },
+  barRow: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '12px',
+  },
   bar: {
+    flex: 1,
     display: 'flex' as const,
     gap: '3px',
     height: '14px',

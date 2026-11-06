@@ -105,12 +105,12 @@ const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean
           aria-label="Today"
           style={{ ...styles.today, padding: isMobile ? '14px 16px 16px' : '16px 24px 20px', borderColor: theme.border, backgroundColor: theme.bg.secondary }}
         >
-          <ClanTodayBar members={war.data.members} filter={filter} onFilter={setFilter} />
-          {war.data.decksLeftToday > 0 && (
-            <div style={styles.todayActions}>
-              <ClanReminderButton war={war.data} />
-            </div>
-          )}
+          <ClanTodayBar
+            members={war.data.members}
+            filter={filter}
+            onFilter={setFilter}
+            action={war.data.decksLeftToday > 0 && <ClanReminderButton war={war.data} />}
+          />
         </section>
       )}
       <MemberList war={war.data} filter={filter} youTag={youTag} isMobile={isMobile} />
@@ -185,9 +185,6 @@ const styles = {
     border: '1px solid',
     borderRadius: '14px',
     margin: '-8px 0 22px',
-  },
-  todayActions: {
-    marginTop: '14px',
   },
   listTitle: {
     margin: '0 0 4px',
