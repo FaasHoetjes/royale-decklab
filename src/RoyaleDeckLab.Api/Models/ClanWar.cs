@@ -10,6 +10,7 @@ namespace RoyaleDeckLab.Api.Models;
 public sealed record ClanWar(
     string Tag,
     string Name,
+    int? BadgeId,
     WarPeriod Period,
     int Day,
     IReadOnlyList<ClanWarMember> Members,
@@ -60,6 +61,7 @@ public sealed record ClanWar(
         return new ClanWar(
             tag,
             clan.Name ?? tag,
+            clan.BadgeId,
             period,
             day,
             Sort(members, isBattleDay),

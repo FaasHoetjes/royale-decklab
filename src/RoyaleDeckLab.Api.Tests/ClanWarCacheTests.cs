@@ -9,7 +9,7 @@ namespace RoyaleDeckLab.Api.Tests;
 public sealed class ClanWarCacheTests
 {
     private const string ClanJson = """
-        {"tag":"#L9VRJ","name":"Example","members":2,"memberList":[
+        {"tag":"#L9VRJ","name":"Example","badgeId":16000067,"members":2,"memberList":[
           {"tag":"#AAA","name":"Anna","role":"leader","lastSeen":"20261106T154147.000Z","trophies":14000},
           {"tag":"#BBB","name":"Bob","role":"member","lastSeen":"20261105T230420.000Z","trophies":13000}]}
         """;
@@ -75,6 +75,7 @@ public sealed class ClanWarCacheTests
         var war = await _cache.GetAsync(_tag);
 
         Assert.Equal("Example", war.Name);
+        Assert.Equal(16000067, war.BadgeId);
         Assert.Equal(WarPeriod.WarDay, war.Period);
         Assert.Equal(2, war.Day);
         Assert.Equal(["#BBB", "#AAA"], war.Members.Select(m => m.Tag));

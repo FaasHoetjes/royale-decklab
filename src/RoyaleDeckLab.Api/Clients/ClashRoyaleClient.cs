@@ -36,6 +36,13 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return clan ?? throw new InvalidOperationException("Empty clan response");
     }
 
+    public async Task<IReadOnlyList<CrClanSummary>> SearchClansAsync(string name, int limit, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(name);
+        var data = await http.GetFromJsonAsync<CrClanSearch>($"clans?name={encoded}&limit={limit}", Json, ct);
+        return data?.Items ?? [];
+    }
+
     public async Task<CrRiverRace> GetCurrentRiverRaceAsync(string clanTag, CancellationToken ct = default)
     {
         var encoded = Uri.EscapeDataString(clanTag);

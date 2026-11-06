@@ -14,10 +14,11 @@ public static partial class SpaHosting
     {
         OnPrepareResponse = ctx =>
         {
+            var path = ctx.Context.Request.Path;
             ctx.Context.Response.Headers.CacheControl =
-                ctx.Context.Request.Path.StartsWithSegments("/assets")
-                    ? "public, max-age=31536000, immutable"
-                    : "no-cache";
+                path.StartsWithSegments("/assets") ? "public, max-age=31536000, immutable"
+                : path.StartsWithSegments("/badges") ? "public, max-age=604800"
+                : "no-cache";
         },
     });
 

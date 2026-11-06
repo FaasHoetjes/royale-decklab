@@ -45,7 +45,7 @@ export interface ScoredDeck {
 }
 
 export interface PlayerResponse {
-  player: { tag: string; name: string; clanTag: string | null };
+  player: { tag: string; name: string; clanTag: string | null; clanName: string | null; clanBadgeId: number | null };
   warDecks: {
     decks: ScoredDeck[];
     totalScore: number;
@@ -189,6 +189,8 @@ export interface RaceClan {
 export interface ClanWar {
   tag: string;
   name: string;
+  /** Which in-game shield the clan uses; null when the API leaves it out. */
+  badgeId: number | null;
   period: WarPeriod;
   /** Day within the period: training days 1-3, battle days 1-4. */
   day: number;
@@ -215,6 +217,22 @@ export interface WarDecksToday {
   decksUsed: number;
   decks: WarDeckPlayed[];
 }
+
+export type ClanJoinType = 'open' | 'inviteOnly' | 'closed';
+
+export interface ClanSummary {
+  tag: string;
+  name: string;
+  badgeId: number | null;
+  members: number;
+  warTrophies: number;
+  location: string | null;
+  joinType: ClanJoinType;
+}
+
+/** Clans with this name, strongest war clan first. */
+export const searchClans = (name: string, signal?: AbortSignal): Promise<ClanSummary[]> =>
+  getJson(`/api/clans?name=${encodeURIComponent(name)}`, 'Failed to search clans', signal);
 
 export const fetchClanWar = (clanTag: string, signal?: AbortSignal): Promise<ClanWar> =>
   getJson(`/api/clans/${encodeURIComponent(clanTag)}/war`, 'Failed to fetch clan war', signal);

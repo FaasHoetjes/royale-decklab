@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { ApiError, type ClanWar } from '../api';
@@ -7,8 +7,9 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { useClanWar, usePlayerWarDecks } from '../queries';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { routeFlag } from '../lib/routeState';
+import { rememberClan } from '../lib/recentClans';
 import { TODAY_STATUSES, groupByToday, todayStatusLabel, type TodayStatus } from '../lib/clanWar';
-import ClanSearch from '../components/clan/ClanSearch';
+import ClanFinder from '../components/clan/ClanFinder';
 import ClanRiverHeader from '../components/clan/ClanRiverHeader';
 import ClanTrainingHeader from '../components/clan/ClanTrainingHeader';
 import ClanMemberRow from '../components/clan/ClanMemberRow';
@@ -29,19 +30,12 @@ const ClanWarPlanner = () => {
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div
-        style={{
-          ...styles.header,
-          borderBottomColor: theme.border,
-          marginBottom: isMobile ? '18px' : '24px',
-          paddingBottom: isMobile ? '14px' : '18px',
-        }}
-      >
+      <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ ...styles.title, color: theme.text.primary }}>
           Clan War Planner
         </h1>
-        <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
-          Who in your clan still has war decks to play today, and how everyone did in the last weeks.
+        <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
+          See who still has war decks to play today, and the best decks for each member.
         </p>
       </div>
       {body}
@@ -56,15 +50,15 @@ const OwnClan = ({ isMobile }: { isMobile: boolean }) => {
   const { activePlayerTag } = useApp();
   const location = useLocation();
   const wantsOtherClan = routeFlag(location.state, 'pickClan');
-  const player = usePlayerWarDecks(wantsOtherClan ? null : activePlayerTag);
+  const player = usePlayerWarDecks(activePlayerTag);
 
-  if (wantsOtherClan || !activePlayerTag) return <ClanSearch />;
+  if (wantsOtherClan || !activePlayerTag) return <ClanFinder />;
   if (player.isLoading) return <ClanWarSkeleton isMobile={isMobile} />;
 
   const ownClanTag = player.data?.player.clanTag;
   if (ownClanTag) return <Navigate to={`/clan/${normalizeTag(ownClanTag)}`} replace />;
-  if (player.data) return <ClanSearch notice={`${player.data.player.name} isn't in a clan.`} />;
-  return <ClanSearch />;
+  if (player.data) return <ClanFinder notice={`${player.data.player.name} isn't in a clan.`} />;
+  return <ClanFinder />;
 };
 
 const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean }) => {
@@ -73,9 +67,14 @@ const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean
   const isTagValid = isValidTag(clanTag);
   const war = useClanWar(isTagValid ? `#${clanTag}` : null);
   const [filter, setFilter] = useState<TodayStatus | null>(null);
+  const loaded = war.data;
 
-  if (!isTagValid || isStatus(war.error, 400)) return <ClanSearch notice={`#${clanTag} isn't a valid clan tag.`} />;
-  if (isStatus(war.error, 404)) return <ClanSearch notice={`There's no clan with the tag #${clanTag}.`} />;
+  useEffect(() => {
+    if (loaded) rememberClan({ tag: loaded.tag, name: loaded.name, badgeId: loaded.badgeId });
+  }, [loaded?.tag, loaded?.name, loaded?.badgeId]);
+
+  if (!isTagValid || isStatus(war.error, 400)) return <ClanFinder notice={`#${clanTag} isn't a valid clan tag.`} />;
+  if (isStatus(war.error, 404)) return <ClanFinder notice={`There's no clan with the tag #${clanTag}.`} />;
   if (war.isLoading) return <ClanWarSkeleton isMobile={isMobile} />;
   if (!war.data) {
     return (
@@ -170,17 +169,13 @@ const styles = {
     maxWidth: '760px',
     margin: '0 auto',
   },
-  header: {
-    borderBottom: '1px solid',
-  },
   title: {
     margin: 0,
     fontSize: '1.5em',
   },
   subtitle: {
     fontSize: '15px',
-    lineHeight: 1.6,
-    margin: 0,
+    margin: '8px 0 0',
   },
   today: {
     border: '1px solid',

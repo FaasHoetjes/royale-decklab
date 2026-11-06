@@ -15,6 +15,7 @@ import {
   fetchCardDecks,
   fetchUpgradeAdvice,
   fetchClanWar,
+  searchClans,
   fetchWarDecksToday,
   scoreBuilderDecks,
   isMetaLoading,
@@ -34,6 +35,7 @@ export const queryKeys = {
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
+  clanSearch: (name: string) => ['clan-search', name] as const,
   scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
     ['score-decks', cards, decks] as const,
 };
@@ -182,6 +184,17 @@ export const useClanWar = (clanTag: string | null) =>
     queryFn: ({ signal }) => fetchClanWar(clanTag ?? '', signal),
     enabled: !!clanTag,
     refetchInterval: 60_000,
+  });
+
+/** Keeps the last results up while the next name loads, so the list doesn't blink as someone types. */
+export const useClanSearch = (name: string | null) =>
+  useQuery({
+    queryKey: queryKeys.clanSearch(name ?? ''),
+    queryFn: ({ signal }) => searchClans(name ?? '', signal),
+    enabled: !!name,
+    staleTime: FIVE_MINUTES_MS,
+    placeholderData: keepPreviousData,
+    retry: 1,
   });
 
 export const useWarDecksToday = (playerTag: string | null) =>

@@ -4,7 +4,7 @@ interface SkeletonProps {
   style?: CSSProperties;
 }
 
-function Skeleton({ style }: SkeletonProps) {
+export function Skeleton({ style }: SkeletonProps) {
   return <span className="skeleton" style={{ ...styles.skeleton, ...style }} />;
 }
 

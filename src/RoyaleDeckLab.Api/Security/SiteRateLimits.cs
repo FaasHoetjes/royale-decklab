@@ -17,6 +17,7 @@ public static class SiteRateLimits
         };
         o.AddPolicy(RateLimitPolicies.Player, ctx => PerMinute(ctx, 30));
         o.AddPolicy(RateLimitPolicies.Clan, ctx => PerMinute(ctx, 20));
+        o.AddPolicy(RateLimitPolicies.ClanSearch, ctx => PerMinute(ctx, 40));
         o.AddPolicy(RateLimitPolicies.Admin, ctx => PerMinute(ctx, 5));
         o.AddPolicy(RateLimitPolicies.AdminStats, ctx => PerMinute(ctx, 30));
         o.AddPolicy(RateLimitPolicies.Stats, ctx => PerMinute(ctx, 60));

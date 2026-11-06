@@ -99,7 +99,14 @@ public sealed class PlayerController(
 
             return Ok(new
             {
-                player = new { tag = player.Tag, name = player.Name, clanTag = player.Clan?.Tag },
+                player = new
+                {
+                    tag = player.Tag,
+                    name = player.Name,
+                    clanTag = player.Clan?.Tag,
+                    clanName = player.Clan?.Name,
+                    clanBadgeId = player.Clan?.BadgeId,
+                },
                 warDecks,
             });
         }
