@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import type { ClanWar, ClanWarMember } from '../../api';
 import { getTheme } from '../../theme';
-import { timeAgo } from '../../lib/timeAgo';
+import { ZapIcon } from '../navIcons';
+import MedalIcon from './MedalIcon';
 import {
   DECKS_PER_DAY,
   DECKS_PER_WEEK,
@@ -38,10 +39,9 @@ const progressNote = (war: ClanWar, member: ClanWarMember): string => {
   return lastWeekDecks == null ? 'joined since last week' : `${lastWeekDecks}/${DECKS_PER_WEEK} last week`;
 };
 
-/** The API calls a member's medals "fame"; zero is left out, the decks note already says they didn't play. */
 const medalsNote = (war: ClanWar, member: ClanWarMember): string => {
   const medals = war.isBattleDay ? member.fame : (member.famePastWeeks[0] ?? 0);
-  return medals > 0 ? `${medals.toLocaleString('en-US')} medals` : '';
+  return medals.toLocaleString('en-US');
 };
 
 const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => {
@@ -50,7 +50,6 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
   const bars = pastWeekBars(war, member);
   const isDone = war.isBattleDay && member.decksLeftToday === 0;
   const playerPath = `/${member.tag.replace('#', '')}`;
-  const notes = [progressNote(war, member), medalsNote(war, member), member.lastSeen ? `seen ${timeAgo(member.lastSeen)}` : ''].filter(Boolean);
 
   const today = war.isBattleDay && (
     <div style={styles.today} aria-label={`${member.decksUsedToday} of ${DECKS_PER_DAY} decks played today`}>
@@ -76,6 +75,7 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
   const badge = reliability(member);
   const reliabilityBadge = bars.length > 0 && war.period !== 'notRacing' && (
     <span
+      tabIndex={0}
       title={weeks}
       aria-label={`${reliabilityLabel[badge]}. ${weeks}`}
       style={{
@@ -101,21 +101,25 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
       <div style={styles.who}>
         <span style={styles.nameLine}>
           <span style={{ ...styles.name, color: theme.text.primary }}>{member.name}</span>
+          {reliabilityBadge}
           {isYou && <span style={{ ...styles.role, ...styles.youTag, color: theme.onAccent, backgroundColor: theme.accent }}>You</span>}
           {role && <span style={{ ...styles.role, color: theme.text.secondary, borderColor: theme.border }}>{role}</span>}
         </span>
-        <span style={{ ...styles.meta, color: theme.text.secondary }}>{notes.join(' · ')}</span>
+        <span style={{ ...styles.meta, color: theme.text.secondary }}>
+          <span title={war.isBattleDay ? 'Medals this week' : 'Medals in the last race'} aria-label={`${medalsNote(war, member)} medals ${war.isBattleDay ? 'this week' : 'in the last race'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><MedalIcon />{medalsNote(war, member)}</span>
+          <span>{progressNote(war, member) && `· ${progressNote(war, member)}`}</span>
+        </span>
       </div>
-      {reliabilityBadge}
       {today}
       <Link
         to={playerPath}
         state={{ fromClan: true }}
         className="mobile-touch-target"
         aria-label={`${member.name}'s best war decks`}
+        title="Generate best war decks for this member"
         style={{ ...styles.decksLink, color: theme.accent }}
       >
-        {isMobile ? 'Decks' : 'Best decks'}
+        <span aria-hidden="true" style={{ display: 'flex' }}><ZapIcon /></span>{isMobile ? 'Decks' : 'Best decks'}
       </Link>
     </li>
   );
@@ -127,7 +131,7 @@ const styles = {
   row: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    padding: '12px 4px',
+    padding: '16px 4px',
     borderBottom: '1px solid',
   },
   you: {
@@ -170,6 +174,10 @@ const styles = {
   },
   meta: {
     fontSize: '13px',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    flexWrap: 'wrap' as const,
+    gap: '5px',
   },
   badge: {
     flexShrink: 0,
@@ -201,6 +209,9 @@ const styles = {
     fontWeight: 600 as const,
   },
   decksLink: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
     flexShrink: 0,
     fontSize: '13px',
     fontWeight: 600 as const,

@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import type { ClanWar, RaceClan } from '../../api';
 import { prefersReducedMotion } from '../../lib/motion';
 import { useNow } from '../../hooks/useNow';
-import { boatProgress, countdownText } from '../../lib/clanWar';
-import LiveUpdated from './LiveUpdated';
+import { boatProgress } from '../../lib/clanWar';
 
 const OUR_BOAT = '#e8b24a';
 const OTHER_BOATS = [1, 2, 3, 4, 5].map((n) => `var(--boat-${n})`);
@@ -31,19 +30,17 @@ export const RiverWater = ({ children, isMobile }: { children: ReactNode; isMobi
 interface BannerTopProps {
   war: ClanWar;
   eyebrow: string;
-  updatedAt: number;
   isMobile: boolean;
   aside?: ReactNode;
 }
 
-export const BannerTop = ({ war, eyebrow, updatedAt, isMobile, aside }: BannerTopProps) => (
+export const BannerTop = ({ war, eyebrow, isMobile, aside }: BannerTopProps) => (
   <div style={styles.top}>
     <div style={styles.titleBlock}>
       <span style={styles.eyebrow}>{eyebrow}</span>
       <h2 style={{ ...styles.name, fontSize: isMobile ? '24px' : '30px' }}>{war.name}</h2>
       <div style={styles.tagLine}>
         <span style={styles.tag}>{war.tag}</span>
-        <LiveUpdated updatedAt={updatedAt} color={water.muted} />
       </div>
     </div>
     <div style={isMobile ? { ...styles.aside, ...styles.asideRow } : styles.aside}>
@@ -55,15 +52,14 @@ export const BannerTop = ({ war, eyebrow, updatedAt, isMobile, aside }: BannerTo
   </div>
 );
 
-/** A live countdown chip; the reset time is estimated, hence the "~". */
-export const CountdownChip = ({ lead, target }: { lead: string; target: string }) => {
-  const now = useNow(1000);
+export const CountdownChip = ({ target, finalDay = false }: { target: string; finalDay?: boolean }) => {
+  const now = useNow(60_000);
+  const minutes = Math.max(0, Math.ceil((Date.parse(target) - now) / 60_000));
+  const time = minutes >= 60 ? `${Math.ceil(minutes / 60)}h` : `${minutes}m`;
+  const description = finalDay ? 'Time till war ends' : 'Time till next war day';
   return (
-    <span style={styles.chip}>
-      <span className="clan-live-dot" style={styles.chipDot} aria-hidden="true" />
-      <span>
-        {lead} ~<span style={styles.chipTime}>{countdownText(Date.parse(target) - now)}</span>
-      </span>
+    <span tabIndex={0} title={description} aria-label={`${description}: about ${time} left`} style={{ fontSize: '12px', color: water.muted }}>
+      <span aria-hidden="true">◷ </span>~<span style={styles.chipTime}>{time}</span> left
     </span>
   );
 };
@@ -232,25 +228,6 @@ const styles = {
     textUnderlineOffset: '3px',
     textDecorationColor: water.muted,
   },
-  chip: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    gap: '7px',
-    padding: '5px 12px',
-    borderRadius: '999px',
-    fontSize: '12px',
-    fontWeight: 700 as const,
-    whiteSpace: 'nowrap' as const,
-    color: water.text,
-    background: 'var(--water-chip-bg)',
-    border: '1px solid var(--water-chip-border)',
-  },
-  chipDot: {
-    width: '7px',
-    height: '7px',
-    borderRadius: '50%',
-    backgroundColor: '#4ade80',
-  },
   chipTime: {
     fontVariantNumeric: 'tabular-nums' as const,
   },
@@ -327,7 +304,7 @@ const styles = {
   stat: {
     fontSize: '13px',
     color: water.muted,
-    whiteSpace: 'nowrap' as const,
+    whiteSpace: 'normal' as const,
   },
   statValue: {
     fontWeight: 700 as const,

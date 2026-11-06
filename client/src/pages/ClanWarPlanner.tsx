@@ -26,18 +26,34 @@ const ClanWarPlanner = () => {
   const { clanTag } = useParams();
   const isMobile = useIsMobile();
   const theme = getTheme();
+  const normalizedClanTag = clanTag ? normalizeTag(clanTag) : null;
+  const war = useClanWar(normalizedClanTag && isValidTag(normalizedClanTag) ? `#${normalizedClanTag}` : null);
+  const [refreshAnimating, setRefreshAnimating] = useState(false);
+  const refreshing = war.isFetching || refreshAnimating;
 
-  const body = clanTag ? <ClanWarView clanTag={normalizeTag(clanTag)} isMobile={isMobile} /> : <OwnClan isMobile={isMobile} />;
+  useEffect(() => {
+    if (!refreshAnimating || war.isFetching) return;
+    const timer = window.setTimeout(() => setRefreshAnimating(false), 650);
+    return () => window.clearTimeout(timer);
+  }, [refreshAnimating, war.isFetching]);
+
+  const body = normalizedClanTag ? <ClanWarView clanTag={normalizedClanTag} isMobile={isMobile} war={war} /> : <OwnClan isMobile={isMobile} />;
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
+      <div style={{ marginBottom: isMobile ? '18px' : '26px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{ minWidth: 0 }}>
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ ...styles.title, color: theme.text.primary }}>
           Clan War Planner
         </h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           See who still has war decks to play today, and the best decks for each member.
         </p>
+        </div>
+        {war.data && <button type="button" onClick={() => { setRefreshAnimating(true); void war.refetch(); }} disabled={refreshing} aria-busy={refreshing} title="Fetch the latest available data. Clan results are cached for up to 60 seconds." aria-label="Refresh clan war data" style={{ font: 'inherit', fontSize: '12px', padding: '5px 0 5px 10px', border: 0, background: 'none', color: theme.text.secondary, cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+          <svg className={refreshing ? 'clan-refreshing' : undefined} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 7v5h-5" /><path d="M20 12a8 8 0 1 0-2.3 5.7M20 7v5" /></svg>
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>}
       </div>
       {body}
     </div>
@@ -62,11 +78,10 @@ const OwnClan = ({ isMobile }: { isMobile: boolean }) => {
   return <ClanFinder />;
 };
 
-const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean }) => {
+const ClanWarView = ({ clanTag, isMobile, war }: { clanTag: string; isMobile: boolean; war: ReturnType<typeof useClanWar> }) => {
   const theme = getTheme();
   const { activePlayerTag } = useApp();
   const isTagValid = isValidTag(clanTag);
-  const war = useClanWar(isTagValid ? `#${clanTag}` : null);
   const [filter, setFilter] = useState<TodayStatus | null>(null);
   const loaded = war.data;
 
@@ -93,12 +108,13 @@ const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean
 
   return (
     <>
+      {war.isRefetchError && <p role="status" style={{ fontSize: '12px', color: theme.text.secondary, marginBottom: '10px' }}>Couldn’t refresh. Showing the last loaded results.</p>}
       {war.data.isBattleDay ? (
-        <ClanRiverHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+        <ClanRiverHeader key={war.data.tag} war={war.data} isMobile={isMobile} />
       ) : war.data.period === 'notRacing' ? (
-        <ClanNotRacingHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+        <ClanNotRacingHeader war={war.data} isMobile={isMobile} />
       ) : (
-        <ClanTrainingHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+        <ClanTrainingHeader war={war.data} isMobile={isMobile} />
       )}
       {hasToday && (
         <section
@@ -131,9 +147,12 @@ const MemberList = ({ war, filter, youTag, isMobile }: MemberListProps) => {
   if (war.members.length === 0) {
     return <p style={{ ...styles.empty, color: theme.text.secondary }}>This clan has no members.</p>;
   }
+  const members = [...war.members].sort((a, b) =>
+    war.isBattleDay ? b.fame - a.fame : (b.famePastWeeks[0] ?? 0) - (a.famePastWeeks[0] ?? 0)
+  );
 
   if (war.isBattleDay) {
-    const groups = groupByToday(war.members);
+    const groups = groupByToday(members);
     const shown = (filter ? [filter] : TODAY_STATUSES).filter((status) => groups[status].length > 0);
     return (
       <>
@@ -155,12 +174,12 @@ const MemberList = ({ war, filter, youTag, isMobile }: MemberListProps) => {
   }
 
   const lastRace = war.period === 'notRacing' ? 'Last race' : 'Last week';
-  const heading: ReactNode = war.pastWeeks.length > 0 ? `${lastRace}, fewest decks first` : 'Members';
+  const heading: ReactNode = war.pastWeeks.length > 0 ? `${lastRace}, most medals first` : 'Members';
   return (
     <>
       <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>{heading}</h3>
       <ul style={styles.list}>
-        {war.members.map((member) => (
+        {members.map((member) => (
           <ClanMemberRow key={member.tag} member={member} war={war} isMobile={isMobile} isYou={member.tag === youTag} />
         ))}
       </ul>

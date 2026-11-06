@@ -80,8 +80,9 @@
   --down: #dc2626;
   --warn: #b45309;
   --info: #2563eb;
-  --water: linear-gradient(180deg, #e7eff7, #d5e3f1);
-  --water-waves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14 T90 14 T120 14' fill='none' stroke='rgba(30,110,190,0.08)' stroke-width='2'/%3E%3C/svg%3E");
+  --status-started: #d97706;
+  --water: linear-gradient(180deg, #e0ecf8, #c9ddf2);
+  --water-waves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14 T90 14 T120 14' fill='none' stroke='rgba(30,110,190,0.10)' stroke-width='2'/%3E%3C/svg%3E");
   --water-border: rgba(0, 0, 0, 0.08);
   --water-text: #0f2a47;
   --water-muted: rgba(15, 42, 71, 0.7);
@@ -94,6 +95,7 @@
   --water-label-text: #0f2a47;
   --water-chip-bg: rgba(255, 255, 255, 0.6);
   --water-chip-border: rgba(15, 42, 71, 0.14);
+  --water-tab-active: #ffffff;
   --boat-1: #0284c7;
   --boat-2: #7c3aed;
   --boat-3: #e11d48;
@@ -155,6 +157,7 @@
   --down: #f87171;
   --warn: #fbbf24;
   --info: #60a5fa;
+  --status-started: #e8b24a;
   --water: linear-gradient(180deg, #0e2747, #0a1a31);
   --water-waves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14 T90 14 T120 14' fill='none' stroke='rgba(140,190,255,0.10)' stroke-width='2'/%3E%3C/svg%3E");
   --water-border: rgba(125, 180, 255, 0.18);
@@ -169,6 +172,7 @@
   --water-label-text: rgba(255, 255, 255, 0.85);
   --water-chip-bg: rgba(0, 0, 0, 0.35);
   --water-chip-border: rgba(255, 255, 255, 0.14);
+  --water-tab-active: rgba(255, 255, 255, 0.16);
   --boat-1: #7dd3fc;
   --boat-2: #c4b5fd;
   --boat-3: #fca5a5;
@@ -378,6 +382,10 @@ input:disabled {
   to { transform: rotate(360deg); }
 }
 
+.clan-refreshing {
+  animation: spin 650ms linear infinite;
+}
+
 .skeleton {
   background: linear-gradient(
     90deg,
@@ -567,6 +575,7 @@ input:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .clan-refreshing,
   .nav-glide,
   .tab-pill,
   .gc-pill,

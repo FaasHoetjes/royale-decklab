@@ -177,13 +177,15 @@ export function fetchCollectionOnce(qc: QueryClient, tag: string) {
   return qc.fetchQuery(playerCollectionOptions(tag));
 }
 
-/** Refreshes every minute while open, as members play their decks; the server caches a clan for a minute too. */
+/** Fetch on opening/returning or manual refresh; the server shares a clan snapshot for 60 seconds. */
 export const useClanWar = (clanTag: string | null) =>
   useQuery({
     queryKey: queryKeys.clanWar(clanTag ?? ''),
     queryFn: ({ signal }) => fetchClanWar(clanTag ?? '', signal),
     enabled: !!clanTag,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 
 /** Keeps the last results up while the next name loads, so the list doesn't blink as someone types. */

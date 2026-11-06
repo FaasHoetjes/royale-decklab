@@ -6,15 +6,14 @@ import LastWeekPodium from './LastWeekPodium';
 
 interface ClanTrainingHeaderProps {
   war: ClanWar;
-  updatedAt: number;
   isMobile: boolean;
 }
 
 /** The training-day header: every boat waits at the start line while the clock runs down to the war. */
-const ClanTrainingHeader = ({ war, updatedAt, isMobile }: ClanTrainingHeaderProps) => (
+const ClanTrainingHeader = ({ war, isMobile }: ClanTrainingHeaderProps) => (
   <>
     <RiverWater isMobile={isMobile}>
-      <BannerTop war={war} eyebrow={dayLabel(war)} updatedAt={updatedAt} isMobile={isMobile} />
+      <BannerTop war={war} eyebrow={dayLabel(war)} isMobile={isMobile} />
       <div style={styles.stage}>
         {war.race.length > 0 && <RaceLanes war={war} atStartLine showFinish={false} />}
         <div style={styles.countdown}>

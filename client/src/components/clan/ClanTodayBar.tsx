@@ -13,7 +13,7 @@ interface ClanTodayBarProps {
 
 export const todayStatusColor: Record<TodayStatus, string> = {
   notStarted: 'var(--text-tertiary)',
-  started: 'var(--accent)',
+  started: 'var(--status-started)',
   done: 'var(--up)',
 };
 
