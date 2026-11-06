@@ -90,3 +90,27 @@ export function saveDefaults(options: GeneratorOptions): void {
     // Storage blocked (private mode): the options still work through the URL.
   }
 }
+
+/** The API takes at most this many cards in one ban or require list. */
+const MAX_LISTED_CARDS = 40;
+
+/**
+ * The rest of today's war: only the decks still to play, and none of the cards already played today, since a
+ * card can be in just one war deck a day. Bans of the player's own fill whatever room the API leaves.
+ */
+export function planRestOfToday(options: GeneratorOptions, decksUsed: number, playedCards: number[]): GeneratorOptions | null {
+  const decksLeft = MAX_DECKS - decksUsed;
+  if (decksUsed < 1 || decksLeft < 1) return null;
+  const played = new Set(playedCards);
+  return {
+    ...options,
+    decks: decksLeft,
+    ban: [...new Set([...playedCards, ...options.ban])].slice(0, MAX_LISTED_CARDS),
+    require: options.require.filter((id) => !played.has(id)),
+    lock: options.lock.filter((deck) => deck.every((id) => !played.has(id))).slice(0, decksLeft),
+  };
+}
+
+/** Whether the options already skip every card played today and ask for just the decks left. */
+export const isPlannedAround = (options: GeneratorOptions, decksUsed: number, playedCards: number[]) =>
+  options.decks === MAX_DECKS - decksUsed && playedCards.every((id) => options.ban.includes(id));

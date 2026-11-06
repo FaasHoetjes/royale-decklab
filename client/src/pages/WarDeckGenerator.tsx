@@ -160,7 +160,12 @@ export default function WarDeckGenerator() {
       updateFailed={optionsFailed}
       onRetry={() => warDecks.refetch()}
       shared={shared ? { onGetMine: getMyDecks, decks: shared } : undefined}
-      playedToday={shared || !tag ? undefined : <PlayedToday playerTag={tag} isMobile={isMobile} />}
+      playedToday={
+        shared || !tag ? undefined : (
+          // Not saved as the remembered defaults: tomorrow starts with four decks again.
+          <PlayedToday playerTag={tag} options={options} onPlan={(next) => showOptions(toQuery(next))} isMobile={isMobile} />
+        )
+      }
     />
   ) : tag || activePlayerTag ? (
     <WarDecksSkeleton isMobile={isMobile} />
