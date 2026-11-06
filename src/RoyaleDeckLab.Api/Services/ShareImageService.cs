@@ -46,12 +46,7 @@ public sealed class ShareImageService(
             cardMap[card.Id] = card.ToPlayerItemLevel();
         }
 
-        var options = new LineupOptions
-        {
-            DeckCount = shared.Count,
-            LockedDecks = [.. shared.Select(d => d.Order().ToArray())],
-        };
-        var lineup = analyzer.FindBestWarDecks(meta.Meta, cardMap, options);
+        var lineup = analyzer.ScoreLockedDecks(meta.GetMetaIndex(), cardMap, shared);
 
         var images = new List<SKImage?>();
         try
@@ -61,20 +56,15 @@ public sealed class ShareImageService(
             foreach (var ids in shared)
             {
                 // A locked deck the player can't field is left out of the lineup, like on the shared page.
-                var scored = lineup.Decks.FirstOrDefault(d => d.CardIds.Order().SequenceEqual(ids.Order()));
+                var scored = lineup.FirstOrDefault(d => d.CardIds.Order().SequenceEqual(ids.Order()));
                 if (scored is null)
                 {
                     continue;
                 }
                 var cards = ids.Select(id => scored.Cards.First(c => c.Id == id)).ToList();
-                var arts = new List<SKImage?>();
-                foreach (var card in cards)
-                {
-                    var version = scored.CardVersions?.FirstOrDefault(v => v.CardId == card.Id)?.Version ?? CardVersionKind.Normal;
-                    var image = await LoadArtAsync(IconUrl(card, version), ct);
-                    images.Add(image);
-                    arts.Add(image);
-                }
+                // At most eight downloads per preview at once; Task.WhenAll preserves the shared card order.
+                var arts = await LoadArtsAsync(cards, scored.CardVersions, ct);
+                images.AddRange(arts);
                 var named = cards.Select(c => (c.Name ?? "", c.ElixirCost)).ToList();
                 glow ??= arts[DeckArchetypes.FeaturedIndex(named)];
                 decks.Add(new ShareImageDeck(
@@ -117,5 +107,32 @@ public sealed class ShareImageService(
         }
         var path = await art.GetAsync(kind, hash, ct);
         return path is null ? null : SKImage.FromEncodedData(path);
+    }
+
+    private async Task<SKImage?[]> LoadArtsAsync(
+        IReadOnlyList<PlayerItemLevel> cards, IReadOnlyList<CardVersion>? versions, CancellationToken ct)
+    {
+        var pending = cards.Select(card =>
+        {
+            var version = versions?.FirstOrDefault(v => v.CardId == card.Id)?.Version ?? CardVersionKind.Normal;
+            return LoadArtAsync(IconUrl(card, version), ct);
+        }).ToArray();
+        try
+        {
+            return await Task.WhenAll(pending);
+        }
+        catch
+        {
+            // When one load fails or is cancelled, WhenAll still waits for every load. Dispose the images
+            // returned by successful loads too: they haven't yet been transferred to the render's owner.
+            foreach (var task in pending)
+            {
+                if (task.IsCompletedSuccessfully)
+                {
+                    task.Result?.Dispose();
+                }
+            }
+            throw;
+        }
     }
 }

@@ -41,7 +41,8 @@ public sealed class DeckAnalyzer
         IReadOnlyList<CardVersion>? cardVersions,
         double opponentLevel)
     {
-        var levels = new int[metaDeck.CardIds.Length];
+        long totalLevel = 0;
+        var minLevel = int.MaxValue;
         var versionFit = 1.0;
 
         for (var i = 0; i < metaDeck.CardIds.Length; i++)
@@ -52,22 +53,36 @@ public sealed class DeckAnalyzer
                 return null;
             }
 
-            levels[i] = LevelModel.DisplayLevel(playerCard);
+            var level = LevelModel.DisplayLevel(playerCard);
+            totalLevel += level;
+            minLevel = Math.Min(minLevel, level);
 
-            if (cardVersions is not null && !CardVersionRules.IsChampion(cardId, cardMap))
+            if (cardVersions is not null && playerCard.Rarity != Rarity.Champion)
             {
-                var metaCardVersion = cardVersions.FirstOrDefault(c => c.CardId == cardId);
-                var isMissingSpecial = metaCardVersion is not null
-                    && !EvolutionBits.Owns(playerCard.EvolutionLevel, metaCardVersion.Version);
-                if (isMissingSpecial)
+                for (var v = 0; v < cardVersions.Count; v++)
                 {
-                    versionFit *= CardVersionRules.MissingSpecialMultiplier;
+                    var version = cardVersions[v];
+                    if (version.CardId != cardId)
+                    {
+                        continue;
+                    }
+                    if (!EvolutionBits.Owns(playerCard.EvolutionLevel, version.Version))
+                    {
+                        versionFit *= CardVersionRules.MissingSpecialMultiplier;
+                    }
+                    break;
                 }
             }
         }
 
-        var expectedWinRate = LevelModel.WinProbability(
-            metaDeck.Confidence, LevelModel.LevelLogit(levels, opponentLevel));
+        if (metaDeck.CardIds.Length == 0)
+        {
+            throw new InvalidOperationException("Sequence contains no elements");
+        }
+        var meanLevel = (double)totalLevel / metaDeck.CardIds.Length;
+        var levelLogit = LevelModel.PerLevel * (meanLevel - opponentLevel)
+            - LevelModel.WeakestCard * (meanLevel - minLevel);
+        var expectedWinRate = LevelModel.WinProbability(metaDeck.Confidence, levelLogit);
         return expectedWinRate * versionFit;
     }
 
@@ -229,6 +244,26 @@ public sealed class DeckAnalyzer
             byKey.TryAdd(MetaCache.DeckKey(deck.CardIds), deck);
         }
 
+        return ScoreLockedDecks(byKey, cardMap, lockedDecks, opponentLevel);
+    }
+
+    /// <summary>Scores only the supplied decks, with the same versions and unproven-deck fallback as generator locks.</summary>
+    public IReadOnlyList<ScoredDeck> ScoreLockedDecks(
+        IReadOnlyDictionary<string, DeckMeta> metaIndex,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        IReadOnlyList<int[]> lockedDecks)
+        => ScoreLockedDecks(metaIndex, cardMap, [.. lockedDecks.Select(ids => ids.Order().ToArray())],
+                LevelModel.OpponentLevel(cardMap.Values))
+            .Select(d => ToScoredDeck(d.deck, d.score, cardMap))
+            .ToList();
+
+    private List<(DeckMeta deck, double score)> ScoreLockedDecks(
+        IReadOnlyDictionary<string, DeckMeta> byKey,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        IReadOnlyList<int[]> lockedDecks,
+        double opponentLevel)
+    {
+        var locked = new List<(DeckMeta deck, double score)>(lockedDecks.Count);
         foreach (var ids in lockedDecks)
         {
             if (!ids.All(cardMap.ContainsKey))

@@ -288,6 +288,7 @@ public sealed class StatsStore
         }
         try
         {
+            Execute(connection, "CREATE INDEX temp.filtered_by_visitor ON filtered (visitor, kind, at_ms);");
             return query("temp.filtered");
         }
         finally

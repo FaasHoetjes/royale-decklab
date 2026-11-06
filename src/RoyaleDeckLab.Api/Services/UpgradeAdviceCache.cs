@@ -16,6 +16,8 @@ public sealed class UpgradeAdviceCache(
     private const int SweepThreshold = 256;
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new();
+    // Leave CPU capacity for ordinary requests, even when several different players ask for advice at once.
+    private readonly SemaphoreSlim _computeGate = new(Math.Clamp(Environment.ProcessorCount / 2, 1, 2));
 
     private sealed record Entry(long Stamp, long MetaVersion, Lazy<Task<Result>> Compute);
 
@@ -63,8 +65,16 @@ public sealed class UpgradeAdviceCache(
         {
             return new Result(player, null);
         }
-        var playerCards = player.Cards.Select(c => c.ToPlayerItemLevel()).ToList();
-        return new Result(player, advisor.Advise(playerCards, cache.Meta));
+        await _computeGate.WaitAsync();
+        try
+        {
+            var playerCards = player.Cards.Select(c => c.ToPlayerItemLevel()).ToList();
+            return new Result(player, advisor.Advise(playerCards, cache.Meta));
+        }
+        finally
+        {
+            _computeGate.Release();
+        }
     }
 
     private void SweepExpired()
