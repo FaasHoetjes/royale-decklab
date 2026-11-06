@@ -38,13 +38,19 @@ const progressNote = (war: ClanWar, member: ClanWarMember): string => {
   return lastWeekDecks == null ? 'joined since last week' : `${lastWeekDecks}/${DECKS_PER_WEEK} last week`;
 };
 
+/** The API calls a member's medals "fame"; zero is left out, the decks note already says they didn't play. */
+const medalsNote = (war: ClanWar, member: ClanWarMember): string => {
+  const medals = war.isBattleDay ? member.fame : (member.famePastWeeks[0] ?? 0);
+  return medals > 0 ? `${medals.toLocaleString('en-US')} medals` : '';
+};
+
 const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => {
   const theme = getTheme();
   const role = roleLabel(member.role);
   const bars = pastWeekBars(war, member);
   const isDone = war.isBattleDay && member.decksLeftToday === 0;
   const playerPath = `/${member.tag.replace('#', '')}`;
-  const notes = [progressNote(war, member), member.lastSeen ? `seen ${timeAgo(member.lastSeen)}` : ''].filter(Boolean);
+  const notes = [progressNote(war, member), medalsNote(war, member), member.lastSeen ? `seen ${timeAgo(member.lastSeen)}` : ''].filter(Boolean);
 
   const today = war.isBattleDay && (
     <div style={styles.today} aria-label={`${member.decksUsedToday} of ${DECKS_PER_DAY} decks played today`}>

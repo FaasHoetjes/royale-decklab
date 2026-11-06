@@ -38,7 +38,7 @@ const ClanRiverHeader = ({ war, updatedAt, isMobile }: ClanRiverHeaderProps) => 
             color={standing.todayRank <= 2 ? 'var(--up)' : 'var(--down)'}
           />
         )}
-        {fameToGo > 0 && <BannerStat value={<SlotNumber value={fameToGo} />} label="fame to the finish" />}
+        {fameToGo > 0 && <BannerStat value={<SlotNumber value={fameToGo} />} label="to finish" />}
         {standing && !isColosseum && fameToGo <= 0 && <BannerStat value="✓" label="crossed the finish" />}
         <BannerStat value={<SlotNumber value={war.decksLeftToday} />} label={war.decksLeftToday === 1 ? 'deck left today' : 'decks left today'} />
       </div>
