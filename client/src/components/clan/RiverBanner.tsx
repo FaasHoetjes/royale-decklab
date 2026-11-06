@@ -6,18 +6,18 @@ import { useNow } from '../../hooks/useNow';
 import { boatProgress, countdownText } from '../../lib/clanWar';
 import LiveUpdated from './LiveUpdated';
 
-const WAVES =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14 T90 14 T120 14' fill='none' stroke='rgba(140,190,255,0.10)' stroke-width='2'/%3E%3C/svg%3E\")";
 const OUR_BOAT = '#e8b24a';
-const OTHER_BOATS = ['#7dd3fc', '#c4b5fd', '#fca5a5', '#86efac', '#fdba74'];
+const OTHER_BOATS = [1, 2, 3, 4, 5].map((n) => `var(--boat-${n})`);
 const LANE_HEIGHT = 30;
 const LABEL_FLIP_AT = 0.6;
 
-/** Water stays dark in both themes: the banner is an illustration, so its colours are its own. */
+/** The river's own palette: a daylight lake in the light theme, night water in the dark one (see index.css). */
 export const water = {
-  text: '#ffffff',
-  muted: 'rgba(255, 255, 255, 0.72)',
-  line: 'rgba(125, 180, 255, 0.16)',
+  text: 'var(--water-text)',
+  muted: 'var(--water-muted)',
+  line: 'var(--water-line)',
+  mark: 'var(--water-mark)',
+  gold: 'var(--water-gold)',
 };
 
 export const RiverWater = ({ children, isMobile }: { children: ReactNode; isMobile: boolean }) => (
@@ -71,11 +71,11 @@ export const CountdownChip = ({ lead, target }: { lead: string; target: string }
 export const RaceBoat = ({ color, size, wake = false }: { color: string; size: number; wake?: boolean }) => (
   <svg width={size} height={size * 0.72} viewBox="0 0 48 34" className="clan-bob" style={styles.boat} aria-hidden="true">
     {wake && <ellipse className="clan-wake" cx="6" cy="29" rx="10" ry="2" fill="rgba(255,255,255,0.35)" />}
-    <line x1="24" y1="2" x2="24" y2="24" stroke="rgba(255,255,255,0.85)" strokeWidth="1.6" />
+    <line x1="24" y1="2" x2="24" y2="24" style={{ stroke: 'var(--water-mast)' }} strokeWidth="1.6" />
     <path d="M24 3 L24 22 L39 22 Z" fill="#f8fafc" />
     <path d="M22.5 7 L22.5 22 L12 22 Z" fill="#e2e8f0" />
-    <path d="M24 2 L31 4.5 L24 7 Z" fill={color} />
-    <path d="M3 24 H45 L39 32 H9 Z" fill={color} />
+    <path d="M24 2 L31 4.5 L24 7 Z" style={{ fill: color }} />
+    <path d="M3 24 H45 L39 32 H9 Z" style={{ fill: color }} />
     <path d="M3 24 H45 L44 26 H4 Z" fill="rgba(255,255,255,0.35)" />
   </svg>
 );
@@ -156,8 +156,8 @@ const styles = {
     position: 'relative' as const,
     overflow: 'hidden' as const,
     borderRadius: '18px',
-    border: '1px solid rgba(125, 180, 255, 0.18)',
-    background: 'linear-gradient(180deg, #0e2747, #0a1a31)',
+    border: '1px solid var(--water-border)',
+    background: 'var(--water)',
     color: water.text,
     marginBottom: '20px',
   },
@@ -165,7 +165,7 @@ const styles = {
     position: 'absolute' as const,
     inset: 0,
     width: '200%',
-    backgroundImage: WAVES,
+    backgroundImage: 'var(--water-waves)',
     backgroundSize: '120px 28px',
   },
   glow: {
@@ -197,7 +197,7 @@ const styles = {
     lineHeight: 1.15,
     fontWeight: 700 as const,
     color: water.text,
-    textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)',
+    textShadow: 'var(--water-shadow)',
     overflowWrap: 'anywhere' as const,
   },
   tagLine: {
@@ -230,7 +230,7 @@ const styles = {
     color: water.text,
     textDecoration: 'underline',
     textUnderlineOffset: '3px',
-    textDecorationColor: 'rgba(255, 255, 255, 0.4)',
+    textDecorationColor: water.muted,
   },
   chip: {
     display: 'inline-flex' as const,
@@ -242,8 +242,8 @@ const styles = {
     fontWeight: 700 as const,
     whiteSpace: 'nowrap' as const,
     color: water.text,
-    background: 'rgba(0, 0, 0, 0.35)',
-    border: '1px solid rgba(255, 255, 255, 0.14)',
+    background: 'var(--water-chip-bg)',
+    border: '1px solid var(--water-chip-border)',
   },
   chipDot: {
     width: '7px',
@@ -289,8 +289,8 @@ const styles = {
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden' as const,
     textOverflow: 'ellipsis' as const,
-    background: 'rgba(0, 0, 0, 0.45)',
-    color: 'rgba(255, 255, 255, 0.85)',
+    background: 'var(--water-label-bg)',
+    color: 'var(--water-label-text)',
   },
   labelRight: {
     left: '22px',
@@ -322,8 +322,7 @@ const styles = {
     bottom: '-6px',
     left: '18px',
     width: '3px',
-    opacity: 0.6,
-    background: 'repeating-linear-gradient(180deg, #fff 0 6px, transparent 6px 12px)',
+    background: `repeating-linear-gradient(180deg, ${water.mark} 0 6px, transparent 6px 12px)`,
   },
   stat: {
     fontSize: '13px',

@@ -80,6 +80,25 @@
   --down: #dc2626;
   --warn: #b45309;
   --info: #2563eb;
+  --water: linear-gradient(180deg, #f3f7fb, #e3edf7);
+  --water-waves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14 T90 14 T120 14' fill='none' stroke='rgba(30,110,190,0.08)' stroke-width='2'/%3E%3C/svg%3E");
+  --water-border: rgba(0, 0, 0, 0.08);
+  --water-text: #0f2a47;
+  --water-muted: rgba(15, 42, 71, 0.7);
+  --water-line: rgba(15, 60, 110, 0.14);
+  --water-mark: rgba(15, 42, 71, 0.55);
+  --water-mast: rgba(15, 42, 71, 0.6);
+  --water-gold: #a15c07;
+  --water-shadow: none;
+  --water-label-bg: rgba(255, 255, 255, 0.78);
+  --water-label-text: #0f2a47;
+  --water-chip-bg: rgba(255, 255, 255, 0.6);
+  --water-chip-border: rgba(15, 42, 71, 0.14);
+  --boat-1: #0284c7;
+  --boat-2: #7c3aed;
+  --boat-3: #e11d48;
+  --boat-4: #16a34a;
+  --boat-5: #ea580c;
 }
 
 :root[data-theme='dark'] {
@@ -136,6 +155,25 @@
   --down: #f87171;
   --warn: #fbbf24;
   --info: #60a5fa;
+  --water: linear-gradient(180deg, #0e2747, #0a1a31);
+  --water-waves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Cpath d='M0 14 Q15 6 30 14 T60 14 T90 14 T120 14' fill='none' stroke='rgba(140,190,255,0.10)' stroke-width='2'/%3E%3C/svg%3E");
+  --water-border: rgba(125, 180, 255, 0.18);
+  --water-text: #ffffff;
+  --water-muted: rgba(255, 255, 255, 0.72);
+  --water-line: rgba(125, 180, 255, 0.16);
+  --water-mark: rgba(255, 255, 255, 0.6);
+  --water-mast: rgba(255, 255, 255, 0.85);
+  --water-gold: #f3c468;
+  --water-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  --water-label-bg: rgba(0, 0, 0, 0.45);
+  --water-label-text: rgba(255, 255, 255, 0.85);
+  --water-chip-bg: rgba(0, 0, 0, 0.35);
+  --water-chip-border: rgba(255, 255, 255, 0.14);
+  --boat-1: #7dd3fc;
+  --boat-2: #c4b5fd;
+  --boat-3: #fca5a5;
+  --boat-4: #86efac;
+  --boat-5: #fdba74;
 }
 
 body {

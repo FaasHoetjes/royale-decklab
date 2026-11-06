@@ -35,7 +35,7 @@ const ClanRiverHeader = ({ war, updatedAt, isMobile }: ClanRiverHeaderProps) => 
           <BannerStat
             value={ordinal(standing.todayRank)}
             label="today"
-            color={standing.todayRank <= 2 ? '#4ade80' : '#f87171'}
+            color={standing.todayRank <= 2 ? 'var(--up)' : 'var(--down)'}
           />
         )}
         {fameToGo > 0 && <BannerStat value={<SlotNumber value={fameToGo} />} label="fame to the finish" />}
