@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, HelpIcon } from './navIcons';
+import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
@@ -23,7 +23,7 @@ export function homePath(activePlayerTag: string | null): string {
 export const SITE_NAME = 'Royale DeckLab';
 export const SITE_DESCRIPTION = 'Generate your best four Clash Royale War Decks tuned to the cards you actually own.';
 
-/** The five tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
+/** The tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
 export function toolItems(activePlayerTag: string | null): NavItem[] {
   return [
     {
@@ -69,6 +69,15 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       description: 'Find the card upgrade that raises your Clash Royale war lineup the most.',
       end: false,
       icon: <TrendingUpIcon />,
+    },
+    {
+      to: '/clan',
+      label: 'Clan War Planner',
+      tab: 'Clan',
+      title: 'Clash Royale Clan War Planner',
+      description: 'See who in your Clash Royale clan still has war decks to play today, and give every member their best four war decks.',
+      end: false,
+      icon: <ShieldIcon />,
     },
   ];
 }

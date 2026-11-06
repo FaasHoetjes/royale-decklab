@@ -9,7 +9,7 @@ import { toolItems, pageTitle, FAQ_ITEM } from './navItems';
 import { MailIcon, GitHubIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
-/** Phones: a top bar with the page title and your player, and the five tools in a tab bar at the bottom. */
+/** Phones: a top bar with the page title and your player, and the tools in a tab bar at the bottom. */
 export default function MobileNav() {
   const { activePlayerTag } = useApp();
   const { pathname } = useLocation();

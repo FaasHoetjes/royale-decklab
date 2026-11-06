@@ -45,7 +45,7 @@ export interface ScoredDeck {
 }
 
 export interface PlayerResponse {
-  player: { tag: string; name: string };
+  player: { tag: string; name: string; clanTag: string | null };
   warDecks: {
     decks: ScoredDeck[];
     totalScore: number;
@@ -149,6 +149,64 @@ export function fetchPlayerCollection(
 export function fetchUpgradeAdvice(playerTag: string, signal?: AbortSignal): Promise<UpgradeAdviceResponse> {
   return getJson(`/api/player/${encodeURIComponent(playerTag)}/upgrades`, 'Failed to fetch upgrade advice', signal);
 }
+
+export type WarPeriod = 'training' | 'warDay' | 'colosseum';
+
+export type ClanRole = 'member' | 'elder' | 'coLeader' | 'leader';
+
+export interface PastWarWeek {
+  seasonId: number;
+  /** 1-based week within the season. */
+  week: number;
+  rank: number;
+  fame: number;
+  endedAt: string | null;
+}
+
+export interface ClanWarMember {
+  tag: string;
+  name: string;
+  role: ClanRole;
+  lastSeen: string | null;
+  decksUsedToday: number;
+  decksLeftToday: number;
+  decksUsedThisWeek: number;
+  fame: number;
+  /** Lines up with ClanWar.pastWeeks; null when the member wasn't in the clan that week. */
+  decksUsedPastWeeks: (number | null)[];
+}
+
+/** Members come sorted: on a battle day by decks left, on a training day by last week's decks. */
+export interface ClanWar {
+  tag: string;
+  name: string;
+  period: WarPeriod;
+  /** Day within the period: training days 1-3, battle days 1-4. */
+  day: number;
+  isBattleDay: boolean;
+  decksLeftToday: number;
+  membersDoneToday: number;
+  members: ClanWarMember[];
+  pastWeeks: PastWarWeek[];
+  /** Players who left the clan after using decks for it this week. */
+  leaversWithDecks: number;
+}
+
+export interface WarDeckPlayed {
+  cardIds: number[];
+  cardVersions: CardVersionRef[];
+}
+
+export interface WarDecksToday {
+  decksUsed: number;
+  decks: WarDeckPlayed[];
+}
+
+export const fetchClanWar = (clanTag: string, signal?: AbortSignal): Promise<ClanWar> =>
+  getJson(`/api/clans/${encodeURIComponent(clanTag)}/war`, 'Failed to fetch clan war', signal);
+
+export const fetchWarDecksToday = (playerTag: string, signal?: AbortSignal): Promise<WarDecksToday> =>
+  getJson(`/api/player/${encodeURIComponent(playerTag)}/war-today`, "Failed to fetch today's war decks", signal);
 
 export interface MetaStatus {
   status: string;

@@ -30,6 +30,7 @@ const TOOL_LABELS: Record<string, string> = {
   'best-decks': 'Best decks',
   cards: 'Cards list',
   card: 'Card pages',
+  clan: 'Clan war planner',
   faq: 'FAQ',
 };
 

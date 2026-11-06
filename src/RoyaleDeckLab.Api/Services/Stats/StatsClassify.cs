@@ -7,7 +7,7 @@ public static partial class StatsClassify
 {
     public static readonly IReadOnlySet<string> Tools = new HashSet<string>
     {
-        "home", "generator", "builder", "upgrades", "best-decks", "cards", "card", "faq",
+        "home", "generator", "builder", "upgrades", "best-decks", "cards", "card", "clan", "faq",
     };
 
     public static readonly IReadOnlySet<string> Sources = new HashSet<string>

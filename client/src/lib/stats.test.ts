@@ -11,6 +11,8 @@ describe('toolForPath', () => {
     ['/faq', 'faq'],
     ['/cards', 'cards'],
     ['/cards/hog-rider', 'card'],
+    ['/clan', 'clan'],
+    ['/clan/L9VRJ', 'clan'],
     ['/admin/stats', null],
     ['/admin', null],
     ['/not-a-tag!', null],

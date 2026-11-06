@@ -17,7 +17,7 @@ import { toolForPath, track } from '../lib/stats';
 // Where each history entry was scrolled to, so going back returns there.
 const scrollPositions = new Map<string, number>();
 
-const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades', 'cards']);
+const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades', 'cards', 'clan']);
 
 export default function Layout() {
   const { activePlayerTag, setActivePlayerTag } = useApp();

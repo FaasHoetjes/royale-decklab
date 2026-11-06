@@ -2,7 +2,7 @@
 // within a page load are skipped here, and the server counts each visitor once a day per event.
 import { isValidTag } from './playerTag';
 
-export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'faq';
+export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq';
 
 export type StatsEvent =
   | { kind: 'lookup' | 'share_open'; tag: string }
@@ -71,6 +71,7 @@ export function toolForPath(pathname: string): StatsTool | null {
   const [first = '', second] = pathname.split('/').filter(Boolean);
   if (!first) return 'home';
   if (first === 'cards') return second ? 'card' : 'cards';
+  if (first === 'clan') return 'clan';
   if (second) return null;
   if (first === 'builder' || first === 'upgrades' || first === 'best-decks' || first === 'faq') return first;
   return isValidTag(first) ? 'generator' : null;

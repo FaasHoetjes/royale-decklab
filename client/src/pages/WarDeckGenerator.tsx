@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import WarDeckResult from '../components/WarDeckResult';
 import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } from '../queries';
@@ -7,15 +7,20 @@ import { toBuilderCards } from '../lib/builderCards';
 import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
 import { decodeShare } from '../lib/shareLink';
 import { track } from '../lib/stats';
+import { routeFlag } from '../lib/routeState';
 import { useApp } from '../AppContext';
 import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
+import PlayedToday from '../components/warDeck/PlayedToday';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function WarDeckGenerator() {
   const { playerId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activePlayerTag, setActivePlayerTag } = useApp();
+  // A clan member's decks opened from the clan planner: looking at a clanmate doesn't make them your player.
+  const fromClan = routeFlag(location.state, 'fromClan');
   const isMobile = useIsMobile();
 
   const tag = playerId ? `#${playerId}` : null;
@@ -42,7 +47,7 @@ export default function WarDeckGenerator() {
   }
 
   // Write remembered defaults and cleaned-up values back, so the address bar always matches what is shown.
-  const showOptions = (next: string) => navigate({ search: next ? `?${next}` : '' }, { replace: true });
+  const showOptions = (next: string) => navigate({ search: next ? `?${next}` : '' }, { replace: true, state: location.state });
   useEffect(() => {
     if (playerId && !shared && searchParams.toString().replace(/%2C/g, ',') !== query) showOptions(query);
   }, [playerId, query, shared]);
@@ -79,17 +84,18 @@ export default function WarDeckGenerator() {
   // Once a tag's decks load successfully, make that player active app-wide (used by the Builder + Best
   // Decks); someone else's shared lineup leaves the reader's own player alone.
   useEffect(() => {
-    if (warDecks.isSuccess && tag && !shared) setActivePlayerTag(tag);
-  }, [warDecks.isSuccess, tag, shared]);
+    if (warDecks.isSuccess && tag && !shared && !fromClan) setActivePlayerTag(tag);
+  }, [warDecks.isSuccess, tag, shared, fromClan]);
 
   // A friend opening a shared lineup isn't a lookup of the owner: only a tag of their own counts as one.
   useEffect(() => {
-    if (warDecks.isSuccess && tag) track({ kind: shared ? 'share_open' : 'lookup', tag });
-  }, [warDecks.isSuccess, tag, shared]);
+    if (!warDecks.isSuccess || !tag || fromClan) return;
+    track({ kind: shared ? 'share_open' : 'lookup', tag });
+  }, [warDecks.isSuccess, tag, shared, fromClan]);
 
   useEffect(() => {
     if (warDecks.isError && playerId && !fallback) {
-      if (!shared) setActivePlayerTag(null);
+      if (!shared && !fromClan) setActivePlayerTag(null);
       navigate('/', {
         replace: true,
         state: {
@@ -154,6 +160,7 @@ export default function WarDeckGenerator() {
       updateFailed={optionsFailed}
       onRetry={() => warDecks.refetch()}
       shared={shared ? { onGetMine: getMyDecks, decks: shared } : undefined}
+      playedToday={shared || !tag ? undefined : <PlayedToday playerTag={tag} isMobile={isMobile} />}
     />
   ) : tag || activePlayerTag ? (
     <WarDecksSkeleton isMobile={isMobile} />

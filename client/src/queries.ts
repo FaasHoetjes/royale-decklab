@@ -14,6 +14,8 @@ import {
   fetchCardStats,
   fetchCardDecks,
   fetchUpgradeAdvice,
+  fetchClanWar,
+  fetchWarDecksToday,
   scoreBuilderDecks,
   isMetaLoading,
   type ScoreDeckCard,
@@ -30,6 +32,8 @@ export const queryKeys = {
   playerWarDecks: (tag: string, options = '') => ['player', tag, 'war-decks', options] as const,
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
+  playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
+  clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
   scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
     ['score-decks', cards, decks] as const,
 };
@@ -170,3 +174,19 @@ export function useDeckScores(
 export function fetchCollectionOnce(qc: QueryClient, tag: string) {
   return qc.fetchQuery(playerCollectionOptions(tag));
 }
+
+/** Refreshes every minute while open, as members play their decks; the server caches a clan for a minute too. */
+export const useClanWar = (clanTag: string | null) =>
+  useQuery({
+    queryKey: queryKeys.clanWar(clanTag ?? ''),
+    queryFn: ({ signal }) => fetchClanWar(clanTag ?? '', signal),
+    enabled: !!clanTag,
+    refetchInterval: 60_000,
+  });
+
+export const useWarDecksToday = (playerTag: string | null) =>
+  useQuery({
+    queryKey: queryKeys.playerWarToday(playerTag ?? ''),
+    queryFn: ({ signal }) => fetchWarDecksToday(playerTag ?? '', signal),
+    enabled: !!playerTag,
+  });

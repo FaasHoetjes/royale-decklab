@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ScoredDeck } from '../api';
 import type { BuilderCard } from '../lib/builderCards';
 import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, type GeneratorOptions } from '../lib/generatorOptions';
@@ -32,6 +32,8 @@ interface WarDeckResultProps {
    * holds each deck's cards in the order the sharer saw them.
    */
   shared?: { onGetMine: () => void; decks: number[][] };
+  /** Shown above the decks: the war decks the player already used today. */
+  playedToday?: ReactNode;
 }
 
 interface KeptOrder {
@@ -59,6 +61,7 @@ export default function WarDeckResult({
   updateFailed,
   onRetry,
   shared,
+  playedToday,
 }: WarDeckResultProps) {
   const isMobile = useIsMobile();
   const lockedKeys = useMemo(() => new Set(options.lock.map(deckKey)), [options.lock]);
@@ -223,6 +226,8 @@ export default function WarDeckResult({
       {!updateFailed && !shared && shortBy > 0 && (
         <Shortfall found={decks.length} options={options} onChange={onOptionsChange} isMobile={isMobile} />
       )}
+
+      {playedToday}
 
       <div
         style={{

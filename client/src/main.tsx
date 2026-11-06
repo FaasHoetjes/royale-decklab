@@ -18,16 +18,18 @@ const loadBestDecks = () => import('./pages/BestWarDecks')
 const loadUpgrades = () => import('./pages/UpgradeAdvisor')
 const loadCards = () => import('./pages/Cards')
 const loadCardPage = () => import('./pages/CardPage')
+const loadClan = () => import('./pages/ClanWarPlanner')
 const WarDeckBuilder = lazy(loadBuilder)
 const Faq = lazy(loadFaq)
 const BestWarDecks = lazy(loadBestDecks)
 const UpgradeAdvisor = lazy(loadUpgrades)
 const Cards = lazy(loadCards)
 const CardPage = lazy(loadCardPage)
+const ClanWarPlanner = lazy(loadClan)
 const AdminStats = lazy(() => import('./pages/AdminStats'))
 
 // Fetch them once the first page is up, so switching tabs never waits on the network.
-const preloadPages = () => [loadBuilder, loadFaq, loadBestDecks, loadUpgrades, loadCards, loadCardPage].forEach((load) => load().catch(() => {}))
+const preloadPages = () => [loadBuilder, loadFaq, loadBestDecks, loadUpgrades, loadCards, loadCardPage, loadClan].forEach((load) => load().catch(() => {}))
 if ('requestIdleCallback' in window) {
   requestIdleCallback(preloadPages, { timeout: 3000 })
 } else {
@@ -61,6 +63,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/upgrades" element={<UpgradeAdvisor />} />
               <Route path="/cards" element={<Cards />} />
               <Route path="/cards/:slug" element={<CardPage />} />
+              <Route path="/clan" element={<ClanWarPlanner />} />
+              <Route path="/clan/:clanTag" element={<ClanWarPlanner />} />
               <Route path="/admin/stats" element={<AdminStats />} />
               <Route path="/:playerId" element={<WarDeckGenerator />} />
               <Route path="*" element={<NotFound />} />
