@@ -26,7 +26,7 @@ const ClanTodayBar = ({ members, filter, onFilter, action }: ClanTodayBarProps) 
   const pick = (status: TodayStatus) => onFilter(filter === status ? null : status);
 
   return (
-    <div style={styles.wrap}>
+    <div>
       <div style={styles.barRow}>
         <div style={styles.bar} aria-hidden="true">
           {BAR_ORDER.filter((status) => groups[status].length > 0).map((status, i) => (
@@ -79,9 +79,6 @@ const ClanTodayBar = ({ members, filter, onFilter, action }: ClanTodayBarProps) 
 export default ClanTodayBar;
 
 const styles = {
-  wrap: {
-    marginTop: '18px',
-  },
   barRow: {
     display: 'flex' as const,
     alignItems: 'center' as const,
@@ -105,7 +102,7 @@ const styles = {
     display: 'flex' as const,
     flexWrap: 'wrap' as const,
     gap: '4px 6px',
-    marginTop: '10px',
+    marginTop: '8px',
     marginLeft: '-8px',
   },
   chip: {

@@ -122,7 +122,7 @@ const ClanWarView = ({ clanTag, isMobile, war }: { clanTag: string; isMobile: bo
       {hasToday && (
         <section
           aria-label="Today"
-          style={{ ...styles.today, padding: isMobile ? '14px 16px 16px' : '16px 24px 20px', borderColor: theme.border, backgroundColor: theme.bg.secondary }}
+          style={{ ...styles.today, padding: isMobile ? '12px 16px 10px' : '14px 20px 12px', borderColor: theme.border, backgroundColor: theme.bg.secondary }}
         >
           <ClanTodayBar
             members={war.data.members}
