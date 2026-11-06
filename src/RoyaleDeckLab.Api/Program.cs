@@ -57,12 +57,17 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
         http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     })
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.All,
+    })
     .AddStandardResilienceHandler();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PlayerProfileCache>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ClanWarCache>();
+builder.Services.AddSingleton<ClanHistoryCache>();
 builder.Services.AddSingleton<ClanSearchCache>();
 builder.Services.AddSingleton<WarDecksTodayReader>();
 

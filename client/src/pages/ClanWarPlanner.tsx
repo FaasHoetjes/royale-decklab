@@ -4,7 +4,7 @@ import { useApp } from '../AppContext';
 import { ApiError, type ClanWar } from '../api';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { useClanWar, usePlayerWarDecks } from '../queries';
+import { useClanWar, usePlayerSummary } from '../queries';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { routeFlag } from '../lib/routeState';
 import { loadRecentClans, rememberClan } from '../lib/recentClans';
@@ -68,16 +68,16 @@ const OwnClan = ({ isMobile }: { isMobile: boolean }) => {
   const location = useLocation();
   const wantsOtherClan = routeFlag(location.state, 'pickClan');
   const [lastClan] = useState(() => loadRecentClans()[0] ?? null);
-  const player = usePlayerWarDecks(wantsOtherClan || lastClan ? null : activePlayerTag);
+  const player = usePlayerSummary(wantsOtherClan || lastClan ? null : activePlayerTag);
 
   if (wantsOtherClan) return <ClanFinder />;
   if (lastClan) return <Navigate to={`/clan/${normalizeTag(lastClan.tag)}`} replace />;
   if (!activePlayerTag) return <ClanFinder />;
   if (player.isLoading) return <ClanWarSkeleton isMobile={isMobile} />;
 
-  const ownClanTag = player.data?.player.clanTag;
+  const ownClanTag = player.data?.clanTag;
   if (ownClanTag) return <Navigate to={`/clan/${normalizeTag(ownClanTag)}`} replace />;
-  if (player.data) return <ClanFinder notice={`${player.data.player.name} isn't in a clan.`} />;
+  if (player.data) return <ClanFinder notice={`${player.data.name} isn't in a clan.`} />;
   return <ClanFinder />;
 };
 

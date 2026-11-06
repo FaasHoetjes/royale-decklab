@@ -4,22 +4,27 @@ using RoyaleDeckLab.Api.Models;
 namespace RoyaleDeckLab.Api.Clients;
 
 /// <summary>
-/// Every member opening the clan link asks for the same clan, so one fetch (3 CR API calls) serves them all for a
-/// minute. A failed fetch is dropped at once, so the next request tries again.
+/// One clan snapshot serves all visitors for a minute; race history has its own longer cache.
 /// </summary>
-public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache memory, TimeProvider clock)
+public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache memory, TimeProvider clock, ClanHistoryCache history)
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
 
-    private const int PastWeeks = 4;
+    private readonly object _gate = new();
 
     public async Task<ClanWar> GetAsync(ClanTag clanTag, CancellationToken ct = default)
     {
         var key = (nameof(ClanWarCache), clanTag.Value);
-        if (!memory.TryGetValue(key, out Lazy<Task<ClanWar>>? fetch) || fetch is null)
+        ct.ThrowIfCancellationRequested();
+        Lazy<Task<ClanWar>> fetch;
+        lock (_gate)
         {
-            fetch = new Lazy<Task<ClanWar>>(() => FetchAsync(clanTag));
-            memory.Set(key, fetch, Ttl);
+            if (!memory.TryGetValue(key, out Lazy<Task<ClanWar>>? cached) || cached is null)
+            {
+                cached = new Lazy<Task<ClanWar>>(() => FetchAsync(clanTag));
+                memory.Set(key, cached, Ttl);
+            }
+            fetch = cached;
         }
 
         try
@@ -28,17 +33,22 @@ public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache me
         }
         catch when (!ct.IsCancellationRequested)
         {
-            memory.Remove(key);
+            lock (_gate)
+            {
+                if (memory.TryGetValue(key, out Lazy<Task<ClanWar>>? cached) && ReferenceEquals(cached, fetch))
+                    memory.Remove(key);
+            }
             throw;
         }
     }
 
     private async Task<ClanWar> FetchAsync(ClanTag clanTag)
     {
-        var client = new ClashRoyaleClient(httpFactory.CreateClient(nameof(ClashRoyaleClient)));
+        using var http = httpFactory.CreateClient(nameof(ClashRoyaleClient));
+        var client = new ClashRoyaleClient(http);
         var clan = client.GetClanAsync(clanTag.Value, CancellationToken.None);
         var race = client.GetCurrentRiverRaceAsync(clanTag.Value, CancellationToken.None);
-        var log = client.GetRiverRaceLogAsync(clanTag.Value, PastWeeks, CancellationToken.None);
+        var log = history.GetAsync(clanTag, race);
         await Task.WhenAll(clan, race, log);
 
         return ClanWar.From(await clan, await race, await log, clock.GetUtcNow());

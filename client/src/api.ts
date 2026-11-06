@@ -1,5 +1,10 @@
 import type { CardVersionRef, CardIconUrls } from './lib/cardDisplay';
 
+export type PlayerSummary = PlayerResponse['player'];
+
+export const fetchPlayerSummary = (playerTag: string, signal?: AbortSignal): Promise<PlayerSummary> =>
+  getJson(`/api/player/${encodeURIComponent(playerTag)}/summary`, 'Failed to fetch player summary', signal);
+
 export class ApiError extends Error {
   status: number;
 

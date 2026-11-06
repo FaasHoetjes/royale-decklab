@@ -12,15 +12,22 @@ public sealed class ClanSearchCache(IHttpClientFactory httpFactory, IMemoryCache
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(5);
 
     private const int Limit = 20;
+    private readonly object _gate = new();
 
     public async Task<IReadOnlyList<ClanSummary>> SearchAsync(string name, CancellationToken ct = default)
     {
         var query = name.Trim();
         var key = (nameof(ClanSearchCache), query.ToLowerInvariant());
-        if (!memory.TryGetValue(key, out Lazy<Task<IReadOnlyList<ClanSummary>>>? fetch) || fetch is null)
+        ct.ThrowIfCancellationRequested();
+        Lazy<Task<IReadOnlyList<ClanSummary>>> fetch;
+        lock (_gate)
         {
-            fetch = new Lazy<Task<IReadOnlyList<ClanSummary>>>(() => FetchAsync(query));
-            memory.Set(key, fetch, Ttl);
+            if (!memory.TryGetValue(key, out Lazy<Task<IReadOnlyList<ClanSummary>>>? cached) || cached is null)
+            {
+                cached = new Lazy<Task<IReadOnlyList<ClanSummary>>>(() => FetchAsync(query));
+                memory.Set(key, cached, Ttl);
+            }
+            fetch = cached;
         }
 
         try
@@ -29,7 +36,11 @@ public sealed class ClanSearchCache(IHttpClientFactory httpFactory, IMemoryCache
         }
         catch when (!ct.IsCancellationRequested)
         {
-            memory.Remove(key);
+            lock (_gate)
+            {
+                if (memory.TryGetValue(key, out Lazy<Task<IReadOnlyList<ClanSummary>>>? cached) && ReferenceEquals(cached, fetch))
+                    memory.Remove(key);
+            }
             throw;
         }
     }

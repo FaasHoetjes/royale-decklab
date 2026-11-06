@@ -19,6 +19,21 @@ public sealed class PlayerController(
     StatsRecorder stats,
     ILogger<PlayerController> logger) : ControllerBase
 {
+    [HttpGet("api/player/{tag}/summary")]
+    public async Task<ActionResult<PlayerSummary>> Summary(string tag, CancellationToken ct)
+    {
+        if (!PlayerTag.IsValid(tag)) return BadRequest(new { error = "Invalid player tag" });
+        try
+        {
+            var player = await players.GetPlayerDataAsync(tag, ct);
+            return new PlayerSummary(player.Tag, player.Name, player.Clan?.Tag, player.Clan?.Name, player.Clan?.BadgeId);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return NotFound(new { error = "Player not found" });
+        }
+    }
+
     [HttpGet("api/player/{tag}/collection")]
     public async Task<IActionResult> Collection(string tag, CancellationToken ct)
     {

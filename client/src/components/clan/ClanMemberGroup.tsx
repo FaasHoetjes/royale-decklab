@@ -50,7 +50,7 @@ const ClanMemberGroup = ({ id, title, color, members, war, youTag, startsOpen, i
         </button>
       </h3>
       <ul ref={listRef} id={listId} style={{ ...styles.list, display: listShown ? 'block' : 'none' }}>
-        {members.map((member) => (
+        {listShown && members.map((member) => (
           <ClanMemberRow key={member.tag} member={member} war={war} isMobile={isMobile} isYou={member.tag === youTag} />
         ))}
       </ul>

@@ -8,6 +8,8 @@ import {
 import {
   fetchMetaStatus,
   fetchPlayerWarDecks,
+  fetchPlayerSummary,
+  type PlayerResponse,
   fetchAllCards,
   fetchPlayerCollection,
   fetchBestDecks,
@@ -31,6 +33,7 @@ export const queryKeys = {
   cardStats: ['card-stats'] as const,
   cardDecks: (cardId: number) => ['card-decks', cardId] as const,
   playerWarDecks: (tag: string, options = '') => ['player', tag, 'war-decks', options] as const,
+  playerSummary: (tag: string) => ['player', tag, 'summary'] as const,
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
@@ -70,6 +73,18 @@ export function playerWarDecksOptions(tag: string, options = '') {
     queryKey: queryKeys.playerWarDecks(tag, options),
     queryFn: ({ signal }: { signal: AbortSignal }) => fetchPlayerWarDecks(tag, options, signal),
   };
+}
+
+export function usePlayerSummary(tag: string | null) {
+  const qc = useQueryClient();
+  const decksKey = queryKeys.playerWarDecks(tag ?? '');
+  return useQuery({
+    queryKey: queryKeys.playerSummary(tag ?? ''),
+    queryFn: ({ signal }) => fetchPlayerSummary(tag ?? '', signal),
+    enabled: !!tag,
+    initialData: () => qc.getQueryData<PlayerResponse>(decksKey)?.player,
+    initialDataUpdatedAt: () => qc.getQueryState(decksKey)?.dataUpdatedAt,
+  });
 }
 
 export function usePlayerWarDecks(tag: string | null, enabled = true, options = '') {

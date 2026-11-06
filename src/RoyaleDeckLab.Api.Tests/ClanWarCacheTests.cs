@@ -66,7 +66,8 @@ public sealed class ClanWarCacheTests
 
     public ClanWarCacheTests()
     {
-        _cache = new ClanWarCache(new StubFactory(_api), new MemoryCache(new MemoryCacheOptions()), TimeProvider.System);
+        var factory = new StubFactory(_api);
+        _cache = new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), TimeProvider.System, new ClanHistoryCache(factory, TimeProvider.System));
         Assert.True(ClanTag.TryParse("l9vrj", out var tag));
         _tag = tag;
     }
@@ -108,6 +109,22 @@ public sealed class ClanWarCacheTests
         await _cache.GetAsync(_tag);
 
         Assert.Equal(3, _api.Calls);
+    }
+
+    [Fact]
+    public async Task ReloadingCurrentData_ReusesTheSeparateHistoryCache()
+    {
+        using var memory = new MemoryCache(new MemoryCacheOptions());
+        var factory = new StubFactory(_api);
+        var history = new ClanHistoryCache(factory, TimeProvider.System);
+        var cache = new ClanWarCache(factory, memory, TimeProvider.System, history);
+        await cache.GetAsync(_tag);
+        Assert.Equal(3, _api.Calls);
+        memory.Remove((nameof(ClanWarCache), _tag.Value));
+        var refreshed = await cache.GetAsync(_tag);
+        Assert.Equal(5, _api.Calls);
+        Assert.Equal(2, Assert.Single(refreshed.PastWeeks).Rank);
+        Assert.Equal([900], refreshed.Members[0].FamePastWeeks);
     }
 
     [Fact]

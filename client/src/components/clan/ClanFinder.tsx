@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../AppContext';
 import type { ClanSummary } from '../../api';
 import { getTheme } from '../../theme';
-import { useClanSearch, usePlayerWarDecks } from '../../queries';
+import { useClanSearch, usePlayerSummary } from '../../queries';
 import { normalizeTag } from '../../lib/playerTag';
 import { loadRecentClans, parseClanQuery, recentClansToShow, type ClanRef } from '../../lib/recentClans';
 import { Skeleton } from '../LoadingSkeletons';
@@ -29,7 +29,7 @@ const useDebounced = <T,>(value: T, delayMs: number) => {
 /** The active player's clan, for the way back after looking at another one. */
 const useOwnClan = (): ClanRef | null => {
   const { activePlayerTag } = useApp();
-  const player = usePlayerWarDecks(activePlayerTag)?.data?.player;
+  const player = usePlayerSummary(activePlayerTag).data;
   if (!player?.clanTag) return null;
   return { tag: player.clanTag, name: player.clanName ?? player.clanTag, badgeId: player.clanBadgeId ?? null };
 };
