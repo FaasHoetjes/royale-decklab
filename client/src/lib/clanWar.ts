@@ -52,3 +52,71 @@ export const lastWeekTurnout = (war: ClanWar): LastWeekTurnout | null => {
   const playedAll = decks.filter((d) => d >= DECKS_PER_WEEK).length;
   return { playedAll, missedSome: decks.length - playedAll };
 };
+
+export type TodayStatus = 'notStarted' | 'started' | 'done';
+
+export const TODAY_STATUSES: TodayStatus[] = ['notStarted', 'started', 'done'];
+
+export const todayStatusLabel: Record<TodayStatus, string> = {
+  notStarted: 'Not started',
+  started: 'Started',
+  done: 'Done',
+};
+
+export const todayStatus = (member: ClanWarMember): TodayStatus => {
+  if (member.decksLeftToday === 0) return 'done';
+  return member.decksUsedToday > 0 ? 'started' : 'notStarted';
+};
+
+export const groupByToday = (members: ClanWarMember[]): Record<TodayStatus, ClanWarMember[]> => {
+  const groups: Record<TodayStatus, ClanWarMember[]> = { notStarted: [], started: [], done: [] };
+  members.forEach((member) => groups[todayStatus(member)].push(member));
+  return groups;
+};
+
+export type Reliability = 'reliable' | 'steady' | 'slipping' | 'ghost' | 'new';
+
+export const RELIABILITIES: Reliability[] = ['reliable', 'steady', 'slipping', 'ghost', 'new'];
+
+export const reliabilityLabel: Record<Reliability, string> = {
+  reliable: 'Reliable',
+  steady: 'Steady',
+  slipping: 'Slipping',
+  ghost: 'Ghost',
+  new: 'New',
+};
+
+const SLIPPING_BELOW = 12;
+
+/** One word for how a member did in the past weeks, judged only on the weeks they were in the clan. */
+export const reliability = (member: ClanWarMember): Reliability => {
+  const weeks = member.decksUsedPastWeeks.filter((decks): decks is number => decks != null);
+  const [latest, previous] = weeks;
+  if (latest == null || previous == null) return 'new';
+  if (weeks.every((decks) => decks >= DECKS_PER_WEEK)) return 'reliable';
+  if (latest === 0 && previous === 0) return 'ghost';
+  if (latest < SLIPPING_BELOW) return 'slipping';
+  return 'steady';
+};
+
+const REMINDER_NAMES = 8;
+const SITE = 'royaledecklab.com';
+
+const nameList = (names: string[]): string =>
+  names.length > REMINDER_NAMES
+    ? `${names.slice(0, REMINDER_NAMES).join(', ')} +${names.length - REMINDER_NAMES} more`
+    : names.join(', ');
+
+/** A message to paste in clan chat naming who still has decks to play today. */
+export const clanChatReminder = (war: ClanWar): string => {
+  const groups = groupByToday(war.members);
+  const byName = (a: ClanWarMember, b: ClanWarMember) => a.name.localeCompare(b.name);
+  const lines = [`${dayLabel(war)}: ${war.decksLeftToday} ${war.decksLeftToday === 1 ? 'deck' : 'decks'} still open! 🚣`];
+  if (groups.notStarted.length > 0) lines.push(`Not started: ${nameList([...groups.notStarted].sort(byName).map((m) => m.name))}`);
+  if (groups.started.length > 0) {
+    const started = [...groups.started].sort((a, b) => b.decksLeftToday - a.decksLeftToday || byName(a, b));
+    lines.push(`Still to finish: ${nameList(started.map((m) => `${m.name} (${m.decksLeftToday})`))}`);
+  }
+  lines.push(`Your best war decks: ${SITE}`);
+  return lines.join('\n');
+};

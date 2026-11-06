@@ -78,6 +78,8 @@
 
   --up: #15803d;
   --down: #dc2626;
+  --warn: #b45309;
+  --info: #2563eb;
 }
 
 :root[data-theme='dark'] {
@@ -132,6 +134,8 @@
   --skeleton-highlight: #3a3a40;
   --up: #4ade80;
   --down: #f87171;
+  --warn: #fbbf24;
+  --info: #60a5fa;
 }
 
 body {
@@ -462,6 +466,31 @@ input:disabled {
   to { transform: none; }
 }
 
+.clan-bar-segment {
+  transform-origin: left;
+  animation: clan-bar-in 0.8s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+.clan-you {
+  animation: clan-you-glow 1.8s ease-out 0.5s 2;
+}
+.clan-live-dot {
+  animation: clan-live 1.6s ease-in-out infinite;
+}
+
+@keyframes clan-bar-in {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+
+@keyframes clan-you-glow {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  to { box-shadow: 0 0 0 14px transparent; }
+}
+
+@keyframes clan-live {
+  50% { opacity: 0.35; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nav-glide,
   .tab-pill,
@@ -479,6 +508,9 @@ input:disabled {
   .wdb-target,
   .wdb-matched,
   .wdb-bar,
+  .clan-bar-segment,
+  .clan-you,
+  .clan-live-dot,
   .card-link {
     animation: none;
     transition: none;

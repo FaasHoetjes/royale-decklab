@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { ApiError, type ClanWar } from '../api';
@@ -7,9 +7,13 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { useClanWar, usePlayerWarDecks } from '../queries';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { routeFlag } from '../lib/routeState';
+import { TODAY_STATUSES, groupByToday, todayStatusLabel, type TodayStatus } from '../lib/clanWar';
 import ClanSearch from '../components/clan/ClanSearch';
 import ClanWarSummary from '../components/clan/ClanWarSummary';
 import ClanMemberRow from '../components/clan/ClanMemberRow';
+import ClanMemberGroup from '../components/clan/ClanMemberGroup';
+import ClanTodayBar, { todayStatusColor } from '../components/clan/ClanTodayBar';
+import ClanReminderButton from '../components/clan/ClanReminderButton';
 import LoadError from '../components/LoadError';
 import { ClanWarSkeleton } from '../components/LoadingSkeletons';
 
@@ -63,8 +67,11 @@ const OwnClan = ({ isMobile }: { isMobile: boolean }) => {
 };
 
 const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean }) => {
+  const theme = getTheme();
+  const { activePlayerTag } = useApp();
   const isTagValid = isValidTag(clanTag);
   const war = useClanWar(isTagValid ? `#${clanTag}` : null);
+  const [filter, setFilter] = useState<TodayStatus | null>(null);
 
   if (!isTagValid || isStatus(war.error, 400)) return <ClanSearch notice={`#${clanTag} isn't a valid clan tag.`} />;
   if (isStatus(war.error, 404)) return <ClanSearch notice={`There's no clan with the tag #${clanTag}.`} />;
@@ -80,30 +87,73 @@ const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean
     );
   }
 
+  const youTag = activePlayerTag ? `#${normalizeTag(activePlayerTag)}` : null;
+  const hasToday = war.data.isBattleDay && war.data.members.length > 0;
+
   return (
     <>
-      <ClanWarSummary war={war.data} isMobile={isMobile} />
-      <MemberList war={war.data} isMobile={isMobile} />
+      <ClanWarSummary war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+      {hasToday && (
+        <section
+          aria-label="Today"
+          style={{ ...styles.today, padding: isMobile ? '14px 16px 16px' : '16px 24px 20px', borderColor: theme.border, backgroundColor: theme.bg.secondary }}
+        >
+          <ClanTodayBar members={war.data.members} filter={filter} onFilter={setFilter} />
+          {war.data.decksLeftToday > 0 && (
+            <div style={styles.todayActions}>
+              <ClanReminderButton war={war.data} />
+            </div>
+          )}
+        </section>
+      )}
+      <MemberList war={war.data} filter={filter} youTag={youTag} isMobile={isMobile} />
     </>
   );
 };
 
-const MemberList = ({ war, isMobile }: { war: ClanWar; isMobile: boolean }) => {
+interface MemberListProps {
+  war: ClanWar;
+  filter: TodayStatus | null;
+  youTag: string | null;
+  isMobile: boolean;
+}
+
+/** On war days the members to chase come first, in groups by how far they got today; Done starts folded. */
+const MemberList = ({ war, filter, youTag, isMobile }: MemberListProps) => {
   const theme = getTheme();
   if (war.members.length === 0) {
     return <p style={{ ...styles.empty, color: theme.text.secondary }}>This clan has no members.</p>;
   }
 
-  let heading: ReactNode = 'Members';
-  if (war.isBattleDay) heading = 'Decks left today';
-  else if (war.pastWeeks.length > 0) heading = 'Last week, fewest decks first';
+  if (war.isBattleDay) {
+    const groups = groupByToday(war.members);
+    const shown = (filter ? [filter] : TODAY_STATUSES).filter((status) => groups[status].length > 0);
+    return (
+      <>
+        {shown.map((status) => (
+          <ClanMemberGroup
+            key={filter ? `${status}-picked` : status}
+            id={status}
+            title={todayStatusLabel[status]}
+            color={todayStatusColor[status]}
+            members={groups[status]}
+            war={war}
+            youTag={youTag}
+            startsOpen={filter != null || status !== 'done'}
+            isMobile={isMobile}
+          />
+        ))}
+      </>
+    );
+  }
 
+  const heading: ReactNode = war.pastWeeks.length > 0 ? 'Last week, fewest decks first' : 'Members';
   return (
     <>
       <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>{heading}</h3>
       <ul style={styles.list}>
         {war.members.map((member) => (
-          <ClanMemberRow key={member.tag} member={member} war={war} isMobile={isMobile} />
+          <ClanMemberRow key={member.tag} member={member} war={war} isMobile={isMobile} isYou={member.tag === youTag} />
         ))}
       </ul>
     </>
@@ -126,6 +176,14 @@ const styles = {
     fontSize: '15px',
     lineHeight: 1.6,
     margin: 0,
+  },
+  today: {
+    border: '1px solid',
+    borderRadius: '14px',
+    margin: '-8px 0 22px',
+  },
+  todayActions: {
+    marginTop: '14px',
   },
   listTitle: {
     margin: '0 0 4px',

@@ -2,15 +2,31 @@ import { Link } from 'react-router-dom';
 import type { ClanWar, ClanWarMember } from '../../api';
 import { getTheme } from '../../theme';
 import { timeAgo } from '../../lib/timeAgo';
-import { DECKS_PER_DAY, DECKS_PER_WEEK, decksAvailableThisWeek, pastWeekBars, roleLabel } from '../../lib/clanWar';
+import {
+  DECKS_PER_DAY,
+  DECKS_PER_WEEK,
+  decksAvailableThisWeek,
+  pastWeekBars,
+  reliability,
+  reliabilityLabel,
+  roleLabel,
+  type Reliability,
+} from '../../lib/clanWar';
 
 interface ClanMemberRowProps {
   member: ClanWarMember;
   war: ClanWar;
   isMobile: boolean;
+  isYou: boolean;
 }
 
-const BAR_HEIGHT = 22;
+export const reliabilityColor: Record<Reliability, string> = {
+  reliable: 'var(--up)',
+  steady: 'var(--text-secondary)',
+  slipping: 'var(--warn)',
+  ghost: 'var(--down)',
+  new: 'var(--info)',
+};
 
 const progressNote = (war: ClanWar, member: ClanWarMember): string => {
   if (war.isBattleDay) return `${member.decksUsedThisWeek}/${decksAvailableThisWeek(war)} this week`;
@@ -19,7 +35,7 @@ const progressNote = (war: ClanWar, member: ClanWarMember): string => {
   return lastWeekDecks == null ? 'joined since last week' : `${lastWeekDecks}/${DECKS_PER_WEEK} last week`;
 };
 
-const ClanMemberRow = ({ member, war, isMobile }: ClanMemberRowProps) => {
+const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => {
   const theme = getTheme();
   const role = roleLabel(member.role);
   const bars = pastWeekBars(war, member);
@@ -47,38 +63,41 @@ const ClanMemberRow = ({ member, war, isMobile }: ClanMemberRowProps) => {
     </div>
   );
 
-  const history = bars.length > 0 && (
-    <div style={styles.history} title="Decks used in the last weeks, oldest first">
-      {bars.map((bar) => (
-        <span
-          key={bar.key}
-          style={bar.decks == null ? { ...styles.barTrack, ...styles.barAbsent, borderColor: theme.border } : { ...styles.barTrack, backgroundColor: theme.bg.tertiary }}
-          aria-label={bar.decks == null ? `${bar.label}: not in the clan` : `${bar.label}: ${bar.decks} of ${DECKS_PER_WEEK} decks`}
-        >
-          {bar.decks != null && (
-            <span
-              style={{
-                ...styles.barFill,
-                height: `${Math.max(bar.decks / DECKS_PER_WEEK, bar.decks > 0 ? 0.08 : 0) * BAR_HEIGHT}px`,
-                backgroundColor: bar.decks >= DECKS_PER_WEEK ? 'var(--up)' : 'var(--accent)',
-              }}
-            />
-          )}
-        </span>
-      ))}
-    </div>
+  const weeks = bars.map((bar) => `${bar.label}: ${bar.decks == null ? 'not in the clan' : `${bar.decks}/${DECKS_PER_WEEK}`}`).join(', ');
+  const badge = reliability(member);
+  const reliabilityBadge = bars.length > 0 && (
+    <span
+      title={weeks}
+      aria-label={`${reliabilityLabel[badge]}. ${weeks}`}
+      style={{
+        ...styles.badge,
+        color: reliabilityColor[badge],
+        backgroundColor: `color-mix(in srgb, ${reliabilityColor[badge]} 14%, transparent)`,
+      }}
+    >
+      {reliabilityLabel[badge]}
+    </span>
   );
 
   return (
-    <li style={{ ...styles.row, borderBottomColor: theme.border, gap: isMobile ? '10px' : '16px' }}>
+    <li
+      className={isYou ? 'clan-you' : undefined}
+      style={{
+        ...styles.row,
+        ...(isYou ? styles.you : {}),
+        borderBottomColor: theme.border,
+        gap: isMobile ? '10px' : '16px',
+      }}
+    >
       <div style={styles.who}>
         <span style={styles.nameLine}>
           <span style={{ ...styles.name, color: theme.text.primary }}>{member.name}</span>
+          {isYou && <span style={{ ...styles.role, ...styles.youTag, color: theme.onAccent, backgroundColor: theme.accent }}>You</span>}
           {role && <span style={{ ...styles.role, color: theme.text.secondary, borderColor: theme.border }}>{role}</span>}
         </span>
         <span style={{ ...styles.meta, color: theme.text.secondary }}>{notes.join(' · ')}</span>
       </div>
-      {history}
+      {reliabilityBadge}
       {today}
       <Link
         to={playerPath}
@@ -101,6 +120,15 @@ const styles = {
     alignItems: 'center' as const,
     padding: '12px 4px',
     borderBottom: '1px solid',
+  },
+  you: {
+    margin: '0 -6px',
+    padding: '12px 10px',
+    borderRadius: '12px',
+    backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+  },
+  youTag: {
+    borderColor: 'transparent',
   },
   who: {
     display: 'flex' as const,
@@ -134,26 +162,12 @@ const styles = {
   meta: {
     fontSize: '13px',
   },
-  history: {
-    display: 'flex' as const,
-    alignItems: 'flex-end' as const,
-    gap: '3px',
+  badge: {
     flexShrink: 0,
-  },
-  barTrack: {
-    display: 'flex' as const,
-    alignItems: 'flex-end' as const,
-    width: '7px',
-    height: `${BAR_HEIGHT}px`,
-    borderRadius: '2px',
-    overflow: 'hidden' as const,
-  },
-  barAbsent: {
-    boxSizing: 'border-box' as const,
-    border: '1px dashed',
-  },
-  barFill: {
-    width: '100%',
+    padding: '3px 9px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    fontWeight: 700 as const,
   },
   today: {
     display: 'flex' as const,

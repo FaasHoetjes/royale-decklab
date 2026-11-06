@@ -1,24 +1,38 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { ClanWar } from '../../api';
 import { getTheme } from '../../theme';
 import { dayLabel, lastWeek, lastWeekTurnout } from '../../lib/clanWar';
+import SlotNumber from '../SlotNumber';
+import LiveUpdated from './LiveUpdated';
 
 interface ClanWarSummaryProps {
   war: ClanWar;
+  updatedAt: number;
   isMobile: boolean;
 }
 
 interface Stat {
   key: string;
-  value: string;
+  value: ReactNode;
   label: string;
 }
 
-const formatFame = (fame: number) => fame.toLocaleString('en-US');
-
 const battleDayStats = (war: ClanWar): Stat[] => [
-  { key: 'left', value: String(war.decksLeftToday), label: war.decksLeftToday === 1 ? 'deck left today' : 'decks left today' },
-  { key: 'done', value: `${war.membersDoneToday}/${war.members.length}`, label: 'members done' },
+  {
+    key: 'left',
+    value: <SlotNumber value={war.decksLeftToday} />,
+    label: war.decksLeftToday === 1 ? 'deck left today' : 'decks left today',
+  },
+  {
+    key: 'done',
+    value: (
+      <>
+        <SlotNumber value={war.membersDoneToday} />/{war.members.length}
+      </>
+    ),
+    label: 'members done',
+  },
 ];
 
 const lastWeekStats = (war: ClanWar): Stat[] => {
@@ -26,14 +40,14 @@ const lastWeekStats = (war: ClanWar): Stat[] => {
   const turnout = lastWeekTurnout(war);
   if (!week || !turnout) return [];
   return [
-    { key: 'rank', value: `#${week.rank}`, label: 'last week' },
-    { key: 'fame', value: formatFame(week.fame), label: 'fame' },
-    { key: 'all', value: String(turnout.playedAll), label: 'played all 16' },
-    { key: 'missed', value: String(turnout.missedSome), label: 'missed decks' },
+    { key: 'rank', value: <>#<SlotNumber value={week.rank} /></>, label: 'last week' },
+    { key: 'fame', value: <SlotNumber value={week.fame} />, label: 'fame' },
+    { key: 'all', value: <SlotNumber value={turnout.playedAll} />, label: 'played all 16' },
+    { key: 'missed', value: <SlotNumber value={turnout.missedSome} />, label: 'missed decks' },
   ];
 };
 
-const ClanWarSummary = ({ war, isMobile }: ClanWarSummaryProps) => {
+const ClanWarSummary = ({ war, updatedAt, isMobile }: ClanWarSummaryProps) => {
   const theme = getTheme();
   const stats = war.isBattleDay ? battleDayStats(war) : lastWeekStats(war);
   const hasLeavers = war.isBattleDay && war.leaversWithDecks > 0;
@@ -57,7 +71,10 @@ const ClanWarSummary = ({ war, isMobile }: ClanWarSummaryProps) => {
         </Link>
       </div>
       <h2 style={{ ...styles.name, fontSize: isMobile ? '22px' : '26px', color: theme.text.primary }}>{war.name}</h2>
-      <span style={{ ...styles.tag, color: theme.text.secondary }}>{war.tag}</span>
+      <div style={styles.tagLine}>
+        <span style={{ ...styles.tag, color: theme.text.secondary }}>{war.tag}</span>
+        <LiveUpdated updatedAt={updatedAt} />
+      </div>
 
       {stats.length > 0 && (
         <div style={{ ...styles.stats, gap: isMobile ? '14px 22px' : '28px' }}>
@@ -107,6 +124,12 @@ const styles = {
   name: {
     margin: '6px 0 0',
     lineHeight: 1.2,
+  },
+  tagLine: {
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    alignItems: 'center' as const,
+    gap: '4px 14px',
   },
   tag: {
     fontSize: '13px',
