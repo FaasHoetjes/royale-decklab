@@ -8,6 +8,7 @@ import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { timeAgo } from '../lib/timeAgo';
+import { preloadGenerator } from '../lib/pageLoaders';
 import CardWall from '../components/CardWall';
 import SlotNumber from '../components/SlotNumber';
 
@@ -48,6 +49,7 @@ export default function Landing() {
   }, [value, queryClient, carriedQuery]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    preloadGenerator();
     setValue(normalizeTag(e.target.value));
   };
 
@@ -66,6 +68,7 @@ export default function Landing() {
     }
 
     const tag = `#${code}`;
+    preloadGenerator();
     setLoading(true);
     try {
       await queryClient.fetchQuery(playerWarDecksOptions(tag, carriedQuery));
@@ -106,7 +109,12 @@ export default function Landing() {
               aria-label="Your player tag"
               value={value}
               onChange={handleChange}
-              onFocus={() => setFocused(true)}
+              onFocus={() => {
+                setFocused(true);
+                // Desktop autofocus isn't navigation intent; typing or a user focus warms the route.
+                if (navigator.userActivation?.hasBeenActive ?? true) preloadGenerator();
+              }}
+              onPointerDown={preloadGenerator}
               onBlur={() => setFocused(false)}
               disabled={loading}
               autoFocus={!isMobile}

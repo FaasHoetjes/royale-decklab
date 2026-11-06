@@ -5,36 +5,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppProvider } from './AppContext'
 import { ThemeProvider } from './ThemeContext'
 import Layout from './components/Layout'
-import WarDeckGenerator from './pages/WarDeckGenerator'
 import NotFound from './pages/NotFound'
 import Landing from './pages/Landing'
 import { retryDelay, shouldRetry } from './lib/retry'
+import { pageLoaders } from './lib/pageLoaders'
 import './index.css'
 
-// The generator is where nearly every visit starts; the other pages load as separate chunks.
-const loadBuilder = () => import('./pages/WarDeckBuilder')
-const loadFaq = () => import('./pages/Faq')
-const loadBestDecks = () => import('./pages/BestWarDecks')
-const loadUpgrades = () => import('./pages/UpgradeAdvisor')
-const loadCards = () => import('./pages/Cards')
-const loadCardPage = () => import('./pages/CardPage')
-const loadClan = () => import('./pages/ClanWarPlanner')
-const WarDeckBuilder = lazy(loadBuilder)
-const Faq = lazy(loadFaq)
-const BestWarDecks = lazy(loadBestDecks)
-const UpgradeAdvisor = lazy(loadUpgrades)
-const Cards = lazy(loadCards)
-const CardPage = lazy(loadCardPage)
-const ClanWarPlanner = lazy(loadClan)
+// Route chunks load on navigation or a focused, hovered, or touched destination.
+const WarDeckGenerator = lazy(pageLoaders.generator)
+const WarDeckBuilder = lazy(pageLoaders.builder)
+const Faq = lazy(pageLoaders.faq)
+const BestWarDecks = lazy(pageLoaders.bestDecks)
+const UpgradeAdvisor = lazy(pageLoaders.upgrades)
+const Cards = lazy(pageLoaders.cards)
+const CardPage = lazy(pageLoaders.cardPage)
+const ClanWarPlanner = lazy(pageLoaders.clan)
 const AdminStats = lazy(() => import('./pages/AdminStats'))
-
-// Fetch them once the first page is up, so switching tabs never waits on the network.
-const preloadPages = () => [loadBuilder, loadFaq, loadBestDecks, loadUpgrades, loadCards, loadCardPage, loadClan].forEach((load) => load().catch(() => {}))
-if ('requestIdleCallback' in window) {
-  requestIdleCallback(preloadPages, { timeout: 3000 })
-} else {
-  setTimeout(preloadPages, 1500)
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef, type SyntheticEvent } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
@@ -13,11 +13,19 @@ import { isValidTag } from '../lib/playerTag';
 import { documentMeta, toolItems } from './navItems';
 import { startPresence } from '../lib/live';
 import { toolForPath, track } from '../lib/stats';
+import { preloadPage } from '../lib/pageLoaders';
 
 // Where each history entry was scrolled to, so going back returns there.
 const scrollPositions = new Map<string, number>();
 
 const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades', 'cards', 'clan']);
+
+function preloadLink({ target }: SyntheticEvent): void {
+  const link = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null;
+  if (!link || link.origin !== window.location.origin || link.hasAttribute('download')) return;
+  if (link.target && link.target !== '_self') return;
+  preloadPage(link.pathname);
+}
 
 export default function Layout() {
   const { activePlayerTag, setActivePlayerTag } = useApp();
@@ -89,6 +97,9 @@ export default function Layout() {
 
   return (
     <div
+      onPointerOver={preloadLink}
+      onFocus={preloadLink}
+      onPointerDown={preloadLink}
       style={{
         ...styles.shell,
         flexDirection: isMobile ? 'column' : 'row',
@@ -127,7 +138,7 @@ export default function Layout() {
         {/* Grows to fill the screen, so the footer stays at the bottom even on short pages. */}
         <div style={styles.page}>
           <MetaLoadingNotice />
-          <Suspense fallback={null}>
+          <Suspense fallback={<p role="status" style={{ padding: '20px 0', color: theme.text.secondary }}>Loading page…</p>}>
             <Outlet />
           </Suspense>
         </div>
