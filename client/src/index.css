@@ -477,6 +477,43 @@ input:disabled {
   animation: clan-live 1.6s ease-in-out infinite;
 }
 
+.clan-waves {
+  animation: clan-drift 14s linear infinite;
+}
+.clan-bob {
+  animation: clan-bob 2.6s ease-in-out infinite;
+}
+.clan-wake {
+  transform-origin: 16px 29px;
+  animation: clan-wake 1.4s ease-out infinite;
+}
+.clan-sail {
+  transition: transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.clan-podium-step {
+  transform-origin: bottom;
+  animation: clan-rise 0.6s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+
+@keyframes clan-drift {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes clan-bob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-2px) rotate(1.5deg); }
+}
+
+@keyframes clan-wake {
+  from { opacity: 0.6; transform: scaleX(0.4); }
+  to { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes clan-rise {
+  from { transform: scaleY(0); }
+  to { transform: none; }
+}
+
 @keyframes clan-bar-in {
   from { transform: scaleX(0); }
   to { transform: none; }
@@ -511,6 +548,11 @@ input:disabled {
   .clan-bar-segment,
   .clan-you,
   .clan-live-dot,
+  .clan-waves,
+  .clan-bob,
+  .clan-wake,
+  .clan-sail,
+  .clan-podium-step,
   .card-link {
     animation: none;
     transition: none;

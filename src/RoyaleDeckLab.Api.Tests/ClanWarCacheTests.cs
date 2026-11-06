@@ -18,6 +18,7 @@ public sealed class ClanWarCacheTests
         {"state":"full","clan":{"tag":"#L9VRJ","name":"Example","fame":3435,"participants":[
           {"tag":"#AAA","name":"Anna","fame":900,"repairPoints":0,"boatAttacks":0,"decksUsed":8,"decksUsedToday":4},
           {"tag":"#GONE","name":"Gone","fame":200,"repairPoints":0,"boatAttacks":0,"decksUsed":2,"decksUsedToday":0}]},
+         "clans":[{"tag":"#L9VRJ","name":"Example","fame":3435,"periodPoints":9950},{"tag":"#OTHER","name":"Other","fame":835,"periodPoints":14450}],
          "sectionIndex":0,"periodIndex":4,"periodType":"warDay"}
         """;
 
@@ -63,7 +64,7 @@ public sealed class ClanWarCacheTests
 
     public ClanWarCacheTests()
     {
-        _cache = new ClanWarCache(new StubFactory(_api), new MemoryCache(new MemoryCacheOptions()));
+        _cache = new ClanWarCache(new StubFactory(_api), new MemoryCache(new MemoryCacheOptions()), TimeProvider.System);
         Assert.True(ClanTag.TryParse("l9vrj", out var tag));
         _tag = tag;
     }
@@ -83,6 +84,8 @@ public sealed class ClanWarCacheTests
         Assert.Equal([6], war.Members[0].DecksUsedPastWeeks);
         Assert.Equal(1, war.LeaversWithDecks);
         Assert.Equal(2, Assert.Single(war.PastWeeks).Rank);
+        Assert.Equal([900], war.Members[0].FamePastWeeks);
+        Assert.Equal(new RaceClan("#OTHER", "Other", 835, 14_450), war.Race[1]);
     }
 
     [Fact]

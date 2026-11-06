@@ -9,7 +9,8 @@ import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { routeFlag } from '../lib/routeState';
 import { TODAY_STATUSES, groupByToday, todayStatusLabel, type TodayStatus } from '../lib/clanWar';
 import ClanSearch from '../components/clan/ClanSearch';
-import ClanWarSummary from '../components/clan/ClanWarSummary';
+import ClanRiverHeader from '../components/clan/ClanRiverHeader';
+import ClanTrainingHeader from '../components/clan/ClanTrainingHeader';
 import ClanMemberRow from '../components/clan/ClanMemberRow';
 import ClanMemberGroup from '../components/clan/ClanMemberGroup';
 import ClanTodayBar, { todayStatusColor } from '../components/clan/ClanTodayBar';
@@ -92,7 +93,11 @@ const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean
 
   return (
     <>
-      <ClanWarSummary war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+      {war.data.isBattleDay ? (
+        <ClanRiverHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+      ) : (
+        <ClanTrainingHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+      )}
       {hasToday && (
         <section
           aria-label="Today"

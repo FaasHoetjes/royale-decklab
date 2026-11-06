@@ -172,8 +172,17 @@ export interface ClanWarMember {
   decksLeftToday: number;
   decksUsedThisWeek: number;
   fame: number;
-  /** Lines up with ClanWar.pastWeeks; null when the member wasn't in the clan that week. */
+  /** These line up with ClanWar.pastWeeks; null when the member wasn't in the clan that week. */
   decksUsedPastWeeks: (number | null)[];
+  famePastWeeks: (number | null)[];
+}
+
+/** A clan in the river race: fame moves its boat, medalsToday ranks the day. */
+export interface RaceClan {
+  tag: string;
+  name: string;
+  fame: number;
+  medalsToday: number;
 }
 
 /** Members come sorted: on a battle day by decks left, on a training day by last week's decks. */
@@ -190,6 +199,11 @@ export interface ClanWar {
   pastWeeks: PastWarWeek[];
   /** Players who left the clan after using decks for it this week. */
   leaversWithDecks: number;
+  /** Every clan in the race, furthest boat first. */
+  race: RaceClan[];
+  /** Estimates from when past races ended; null without past races. */
+  dayEndsAt: string | null;
+  warStartsAt: string | null;
 }
 
 export interface WarDeckPlayed {

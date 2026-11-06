@@ -1,4 +1,4 @@
-import type { ClanRole, ClanWar, ClanWarMember, PastWarWeek } from '../api';
+import type { ClanRole, ClanWar, ClanWarMember, PastWarWeek, RaceClan } from '../api';
 
 export const DECKS_PER_DAY = 4;
 export const DECKS_PER_WEEK = 16;
@@ -120,3 +120,60 @@ export const clanChatReminder = (war: ClanWar): string => {
   lines.push(`Your best war decks: ${SITE}`);
   return lines.join('\n');
 };
+
+/** A war-day boat crosses the finish at this much fame; colosseum weeks have no finish line. */
+export const FINISH_FAME = 10_000;
+
+export const ordinal = (n: number): string => {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+};
+
+export interface RaceStanding {
+  ours: RaceClan;
+  position: number;
+  todayRank: number;
+}
+
+/** Where this clan's boat is among the race clans, and how it ranks on today's medals. */
+export const raceStanding = (war: ClanWar): RaceStanding | null => {
+  const position = war.race.findIndex((clan) => clan.tag === war.tag);
+  const ours = war.race[position];
+  if (!ours) return null;
+  const todayRank = 1 + war.race.filter((clan) => clan.medalsToday > ours.medalsToday).length;
+  return { ours, position: position + 1, todayRank };
+};
+
+/** How far along the river each boat is, 0 to 1. In a colosseum week the leader sets the scale. */
+export const boatProgress = (war: ClanWar, clan: RaceClan): number => {
+  const course = war.period === 'colosseum' ? Math.max(...war.race.map((c) => c.fame), 1) : FINISH_FAME;
+  return Math.min(clan.fame / course, 1);
+};
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** "1d 19h 21m" while days remain, then "4h 05m 12s". */
+export const countdownText = (ms: number): string => {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(total / 86_400);
+  const hours = Math.floor(total / 3600) % 24;
+  const minutes = Math.floor(total / 60) % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  return `${hours}h ${pad(minutes)}m ${pad(total % 60)}s`;
+};
+
+export interface PodiumPlace {
+  member: ClanWarMember;
+  fame: number;
+}
+
+/** Last week's three members with the most fame, best first. */
+export const lastWeekPodium = (war: ClanWar): PodiumPlace[] =>
+  war.members
+    .flatMap((member) => {
+      const fame = member.famePastWeeks[0];
+      return fame == null || fame === 0 ? [] : [{ member, fame }];
+    })
+    .sort((a, b) => b.fame - a.fame || a.member.name.localeCompare(b.member.name))
+    .slice(0, 3);

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { getTheme } from '../../theme';
+import { useNow } from '../../hooks/useNow';
 
 const TICK_MS = 5_000;
 
@@ -11,17 +11,12 @@ const sinceText = (updatedAt: number, now: number): string => {
 };
 
 /** Shows that the page keeps itself up to date, and how fresh it is. */
-const LiveUpdated = ({ updatedAt }: { updatedAt: number }) => {
+const LiveUpdated = ({ updatedAt, color }: { updatedAt: number; color?: string }) => {
   const theme = getTheme();
-  const [now, setNow] = useState(Date.now);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  const now = useNow(TICK_MS);
 
   return (
-    <span style={{ ...styles.wrap, color: theme.text.secondary }}>
+    <span style={{ ...styles.wrap, color: color ?? theme.text.secondary }}>
       <span className="clan-live-dot" style={styles.dot} aria-hidden="true" />
       Live · updated {sinceText(updatedAt, Math.max(now, updatedAt))}
     </span>

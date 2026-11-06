@@ -4,7 +4,8 @@ namespace RoyaleDeckLab.Api.Models;
 
 /// <summary>
 /// A clan's river race as a leader plans it: who still has war decks to play today, and how each member did in
-/// the last weeks. Members are sorted so the ones that need a nudge come first.
+/// the last weeks. Members are sorted so the ones that need a nudge come first. DayEndsAt and WarStartsAt are
+/// estimates, null for a clan without past races to estimate from.
 /// </summary>
 public sealed record ClanWar(
     string Tag,
@@ -13,7 +14,10 @@ public sealed record ClanWar(
     int Day,
     IReadOnlyList<ClanWarMember> Members,
     IReadOnlyList<PastWarWeek> PastWeeks,
-    int LeaversWithDecks)
+    int LeaversWithDecks,
+    IReadOnlyList<RaceClan> Race,
+    DateTimeOffset? DayEndsAt,
+    DateTimeOffset? WarStartsAt)
 {
     public const int DecksPerDay = 4;
     public const int WarDays = 4;
@@ -26,7 +30,7 @@ public sealed record ClanWar(
 
     public int MembersDoneToday => IsBattleDay ? Members.Count(m => m.DecksLeftToday == 0) : 0;
 
-    public static ClanWar From(ClanResponse clan, CrRiverRace race, CrRiverRaceLog log)
+    public static ClanWar From(ClanResponse clan, CrRiverRace race, CrRiverRaceLog log, DateTimeOffset now)
     {
         var tag = clan.Tag ?? throw new FormatException("The clan response has no tag");
         var period = ParsePeriod(race.PeriodType);
@@ -50,6 +54,8 @@ public sealed record ClanWar(
         }
 
         var leaversWithDecks = thisWeek.Count(pair => HasLeftAfterPlaying(pair.Key, pair.Value, memberTags));
+        var dayEndsAt = NextReset(pastWeeks, now);
+        var warStartsAt = isBattleDay ? null : dayEndsAt?.AddDays(TrainingDays - day);
 
         return new ClanWar(
             tag,
@@ -58,7 +64,41 @@ public sealed record ClanWar(
             day,
             Sort(members, isBattleDay),
             pastWeeks.Select(w => w.Week).ToList(),
-            leaversWithDecks);
+            leaversWithDecks,
+            RaceOf(race),
+            dayEndsAt,
+            warStartsAt);
+    }
+
+    /// <summary>
+    /// The CR API doesn't say when the day resets, but a clan's races end at the same minute every week, and its
+    /// days reset at that minute too; the next time it is that minute is the next reset.
+    /// </summary>
+    private static DateTimeOffset? NextReset(IReadOnlyList<WeekResult> pastWeeks, DateTimeOffset now)
+    {
+        if (pastWeeks.FirstOrDefault()?.Week.EndedAt is not { } lastEnd)
+        {
+            return null;
+        }
+        var today = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
+        var reset = today + lastEnd.UtcDateTime.TimeOfDay;
+        return reset > now ? reset : reset.AddDays(1);
+    }
+
+    private static List<RaceClan> RaceOf(CrRiverRace race)
+    {
+        var clans = new List<RaceClan>();
+        foreach (var clan in race.Clans ?? [])
+        {
+            if (clan.Tag is { } clanTag)
+            {
+                clans.Add(new RaceClan(clanTag, clan.Name ?? clanTag, clan.Fame, clan.PeriodPoints));
+            }
+        }
+        return clans
+            .OrderByDescending(c => c.Fame)
+            .ThenByDescending(c => c.MedalsToday)
+            .ToList();
     }
 
     private static WarPeriod ParsePeriod(string? periodType) => periodType switch
@@ -91,6 +131,9 @@ public sealed record ClanWar(
         var decksUsedPastWeeks = pastWeeks
             .Select(w => w.Participants.TryGetValue(memberTag, out var past) ? past.DecksUsed : (int?)null)
             .ToList();
+        var famePastWeeks = pastWeeks
+            .Select(w => w.Participants.TryGetValue(memberTag, out var past) ? past.Fame : (int?)null)
+            .ToList();
 
         return new ClanWarMember(
             memberTag,
@@ -101,7 +144,8 @@ public sealed record ClanWar(
             decksLeftToday,
             participant?.DecksUsed ?? 0,
             participant?.Fame ?? 0,
-            decksUsedPastWeeks);
+            decksUsedPastWeeks,
+            famePastWeeks);
     }
 
     /// <summary>On a battle day, whoever has the most decks left; otherwise whoever played the fewest last week.</summary>

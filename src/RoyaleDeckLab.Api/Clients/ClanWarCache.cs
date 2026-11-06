@@ -7,7 +7,7 @@ namespace RoyaleDeckLab.Api.Clients;
 /// Every member opening the clan link asks for the same clan, so one fetch (3 CR API calls) serves them all for a
 /// minute. A failed fetch is dropped at once, so the next request tries again.
 /// </summary>
-public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache memory)
+public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache memory, TimeProvider clock)
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
 
@@ -41,6 +41,6 @@ public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache me
         var log = client.GetRiverRaceLogAsync(clanTag.Value, PastWeeks, CancellationToken.None);
         await Task.WhenAll(clan, race, log);
 
-        return ClanWar.From(await clan, await race, await log);
+        return ClanWar.From(await clan, await race, await log, clock.GetUtcNow());
     }
 }

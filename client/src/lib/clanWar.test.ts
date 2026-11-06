@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import type { ClanWar, ClanWarMember } from '../api';
 import {
+  boatProgress,
   clanChatReminder,
+  countdownText,
+  lastWeekPodium,
+  ordinal,
+  raceStanding,
   dayLabel,
   decksAvailableThisWeek,
   groupByToday,
@@ -21,6 +26,7 @@ const member = (decksUsedPastWeeks: (number | null)[]): ClanWarMember => ({
   decksUsedThisWeek: 0,
   fame: 0,
   decksUsedPastWeeks,
+  famePastWeeks: decksUsedPastWeeks.map((decks) => (decks == null ? null : decks * 200)),
 });
 
 const war = (overrides: Partial<ClanWar>): ClanWar => ({
@@ -37,6 +43,9 @@ const war = (overrides: Partial<ClanWar>): ClanWar => ({
     { seasonId: 137, week: 3, rank: 4, fame: 25_000, endedAt: null },
   ],
   leaversWithDecks: 0,
+  race: [],
+  dayEndsAt: null,
+  warStartsAt: null,
   ...overrides,
 });
 
@@ -132,5 +141,51 @@ describe('reliability', () => {
   test('is slipping when last week fell short, steady otherwise', () => {
     expect(reliability(member([8, 16, 16]))).toBe('slipping');
     expect(reliability(member([14, 16, 12]))).toBe('steady');
+  });
+});
+
+describe('river race', () => {
+  const race = [
+    { tag: '#CLAN', name: 'Example', fame: 3_435, medalsToday: 9_950 },
+    { tag: '#B', name: 'B', fame: 2_212, medalsToday: 16_000 },
+    { tag: '#C', name: 'C', fame: 1_035, medalsToday: 22_950 },
+  ];
+
+  test("finds the boat position and the rank on today's medals", () => {
+    const standing = raceStanding(war({ period: 'warDay', isBattleDay: true, race }));
+
+    expect(standing?.position).toBe(1);
+    expect(standing?.todayRank).toBe(3);
+  });
+
+  test('has no standing when the clan is missing from the race', () => {
+    expect(raceStanding(war({ race: [] }))).toBeNull();
+  });
+
+  test('boats sail toward 10,000 fame on war days and toward the leader in the colosseum', () => {
+    expect(boatProgress(war({ period: 'warDay', race }), race[0]!)).toBeCloseTo(0.3435);
+    expect(boatProgress(war({ period: 'colosseum', race }), race[1]!)).toBeCloseTo(2_212 / 3_435);
+    expect(boatProgress(war({ period: 'warDay', race }), { ...race[0]!, fame: 12_000 })).toBe(1);
+  });
+
+  test('ordinals', () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 101].map(ordinal)).toEqual([
+      '1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '101st',
+    ]);
+  });
+
+  test('the countdown drops seconds while days remain', () => {
+    expect(countdownText(((1 * 24 + 19) * 60 + 21) * 60_000 + 14_000)).toBe('1d 19h 21m');
+    expect(countdownText((4 * 60 + 5) * 60_000 + 12_000)).toBe('4h 05m 12s');
+    expect(countdownText(-5_000)).toBe('0h 00m 00s');
+  });
+
+  test("last week's podium is the top three on fame, leaving out who wasn't there or scored nothing", () => {
+    const withFame = (name: string, fame: number | null) => ({ ...member([]), tag: `#${name}`, name, famePastWeeks: [fame] });
+    const podium = lastWeekPodium(
+      war({ members: [withFame('A', 1_200), withFame('B', 3_000), withFame('C', null), withFame('D', 0), withFame('E', 2_000), withFame('F', 900)] })
+    );
+
+    expect(podium.map((p) => p.member.name)).toEqual(['B', 'E', 'A']);
   });
 });

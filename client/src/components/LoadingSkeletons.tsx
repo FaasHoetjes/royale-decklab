@@ -185,13 +185,15 @@ export function UpgradeAdvisorSkeleton({ isMobile }: { isMobile: boolean }) {
 export function ClanWarSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <LoadingRegion label="Loading the clan war">
-      {/* Mirrors ClanWarSummary, then the member rows. */}
-      <section style={{ ...styles.panel, borderRadius: '14px', padding: isMobile ? '16px' : '20px 24px', marginBottom: '20px' }}>
-        <Skeleton style={{ width: '120px', height: '10px' }} />
-        <Skeleton style={{ width: isMobile ? '170px' : '240px', maxWidth: '100%', height: isMobile ? '22px' : '26px', marginTop: '10px' }} />
-        <div style={{ ...styles.inline, gap: '28px', marginTop: '18px' }}>
-          <Skeleton style={{ width: '64px', height: '30px' }} />
-          <Skeleton style={{ width: '64px', height: '30px' }} />
+      {/* Mirrors the river banner (clan name, five boat lanes, stats), then the member rows. */}
+      <section style={{ ...styles.panel, borderRadius: '18px', padding: isMobile ? '16px 16px 14px' : '20px 24px 16px', marginBottom: '20px' }}>
+        <Skeleton style={{ width: '150px', height: '10px' }} />
+        <Skeleton style={{ width: isMobile ? '170px' : '260px', maxWidth: '100%', height: isMobile ? '24px' : '30px', marginTop: '8px' }} />
+        <Skeleton style={{ width: '100%', height: '150px', marginTop: '18px', borderRadius: '10px' }} />
+        <div style={{ ...styles.inline, gap: '18px', marginTop: '12px' }}>
+          <Skeleton style={{ width: '80px', height: '14px' }} />
+          <Skeleton style={{ width: '60px', height: '14px' }} />
+          <Skeleton style={{ width: '110px', height: '14px' }} />
         </div>
       </section>
       {[0, 1, 2, 3, 4, 5].map((row) => (
