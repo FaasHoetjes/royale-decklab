@@ -21,7 +21,7 @@ public sealed record SpaPage(int StatusCode, string Title, string Description, s
     public string? Body { get; init; }
 }
 
-public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Builder, Upgrades, Faq }
+public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Builder, Upgrades, Clan, Faq }
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -34,6 +34,7 @@ public static partial class SpaPages
     private const string SiteName = "Royale DeckLab";
     private const string SiteDescription = "Generate your best four Clash Royale War Decks tuned to the cards you actually own.";
     private const string CardsPath = "/cards";
+    private const string ClanPath = "/clan";
     private const string AdminStatsPath = "/admin/stats";
 
     /// <summary>Heading is the page's h1 as the app shows it.</summary>
@@ -43,6 +44,7 @@ public static partial class SpaPages
         (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
         ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta.", SpaContentKind.Builder),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
+        (ClanPath, "Clash Royale Clan War Planner", "Clan War Planner", "See who in your Clash Royale clan still has war decks to play today, and give every member their best four war decks.", SpaContentKind.Clan),
         ("/faq", "Clash Royale War Deck FAQ", "FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.", SpaContentKind.Faq),
     ];
 
@@ -82,6 +84,10 @@ public static partial class SpaPages
         {
             return new(200, $"Stats · {SiteName}", SiteDescription, null, true);
         }
+        if (IsClanPagePath(path, out var clanTag))
+        {
+            return new(200, $"Clan War Planner · {SiteName}", "See who in this clan still has war decks to play today.", $"{ClanPath}/{clanTag}", true);
+        }
         var segment = path[1..];
         // Player pages are endless and differ only in whose cards they use, so they stay shareable but unindexed.
         if (!segment.Contains('/') && PlayerTag.IsValid(segment))
@@ -89,6 +95,22 @@ public static partial class SpaPages
             return new(200, $"War Deck Generator · {SiteName}", SiteDescription, path, true, "#" + segment.ToUpperInvariant());
         }
         return NotFound;
+    }
+
+    /// <summary>A clan's own page: shareable in the clan chat, but one per clan, so it stays unindexed.</summary>
+    private static bool IsClanPagePath(string path, out string clanTag)
+    {
+        clanTag = "";
+        if (!path.StartsWith(ClanPath + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        if (!ClanTag.TryParse(path[(ClanPath.Length + 1)..], out var tag))
+        {
+            return false;
+        }
+        clanTag = tag.Value.TrimStart('#');
+        return true;
     }
 
     public static bool IsShareCode(string? code) => ShareCode.TryDecode(code, out _);

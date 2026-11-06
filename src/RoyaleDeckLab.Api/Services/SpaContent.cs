@@ -19,6 +19,7 @@ public static class SpaContent
         ("/cards", "Cards"),
         ("/builder", "War Deck Builder"),
         ("/upgrades", "Upgrade Advisor"),
+        ("/clan", "Clan War Planner"),
         ("/faq", "FAQ"),
     ];
 
@@ -30,6 +31,9 @@ public static class SpaContent
 
     public static string Upgrades(string heading)
         => Page($"{H1(heading)}{P("Which card upgrade raises your war lineup the most.")}");
+
+    public static string Clan(string heading)
+        => Page($"{H1(heading)}{P("Who in your clan still has war decks to play today, and each member's best four war decks.")}");
 
     /// <summary>The FAQ's questions and answers, rendered from client/src/pages/faqContent.tsx at build time.</summary>
     public static string Faq(string heading, string? faqHtml)

@@ -118,6 +118,7 @@ public static partial class SpaHosting
             case SpaContentKind.Home: return SpaContent.Home(heading);
             case SpaContentKind.Builder: return SpaContent.Builder(heading);
             case SpaContentKind.Upgrades: return SpaContent.Upgrades(heading);
+            case SpaContentKind.Clan: return SpaContent.Clan(heading);
             case SpaContentKind.Faq: return SpaContent.Faq(heading, faqHtml);
         }
         if (page.Content is not (SpaContentKind.BestDecks or SpaContentKind.Cards or SpaContentKind.Card))

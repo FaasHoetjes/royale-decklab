@@ -15,6 +15,7 @@ public sealed class PlayerController(
     PlayerProfileCache players,
     MetaCache cache,
     DeckAnalyzer analyzer,
+    WarDecksTodayReader warDecksToday,
     StatsRecorder stats,
     ILogger<PlayerController> logger) : ControllerBase
 {
@@ -98,7 +99,7 @@ public sealed class PlayerController(
 
             return Ok(new
             {
-                player = new { tag = player.Tag, name = player.Name },
+                player = new { tag = player.Tag, name = player.Name, clanTag = player.Clan?.Tag },
                 warDecks,
             });
         }
@@ -110,6 +111,25 @@ public sealed class PlayerController(
         {
             logger.LogError(ex, "Error fetching player data");
             return StatusCode(500, new { error = "Failed to fetch player data" });
+        }
+    }
+
+    [HttpGet("api/player/{tag}/war-today")]
+    public async Task<ActionResult<WarDecksToday>> WarToday(string tag, CancellationToken ct)
+    {
+        if (!PlayerTag.IsValid(tag))
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            var player = await players.GetPlayerDataAsync(tag, ct);
+            return await warDecksToday.ReadAsync(player, ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return NotFound();
         }
     }
 }

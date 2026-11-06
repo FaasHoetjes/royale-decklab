@@ -29,6 +29,27 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return data?.MemberList?.Select(m => m.Tag).Where(t => !string.IsNullOrEmpty(t)).Cast<string>().ToList() ?? [];
     }
 
+    public async Task<ClanResponse> GetClanAsync(string clanTag, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(clanTag);
+        var clan = await http.GetFromJsonAsync<ClanResponse>($"clans/{encoded}", Json, ct);
+        return clan ?? throw new InvalidOperationException("Empty clan response");
+    }
+
+    public async Task<CrRiverRace> GetCurrentRiverRaceAsync(string clanTag, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(clanTag);
+        var race = await http.GetFromJsonAsync<CrRiverRace>($"clans/{encoded}/currentriverrace", Json, ct);
+        return race ?? throw new InvalidOperationException("Empty river race response");
+    }
+
+    public async Task<CrRiverRaceLog> GetRiverRaceLogAsync(string clanTag, int weeks, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(clanTag);
+        var log = await http.GetFromJsonAsync<CrRiverRaceLog>($"clans/{encoded}/riverracelog?limit={weeks}", Json, ct);
+        return log ?? new CrRiverRaceLog([]);
+    }
+
     public async Task<IReadOnlyList<CrBattle>> GetPlayerBattlelogAsync(string playerTag, CancellationToken ct = default)
     {
         var encoded = Uri.EscapeDataString(playerTag);

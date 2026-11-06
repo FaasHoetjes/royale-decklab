@@ -61,6 +61,9 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PlayerProfileCache>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ClanWarCache>();
+builder.Services.AddSingleton<WarDecksTodayReader>();
 
 builder.Services.AddScoped<MetaBuilder>();
 builder.Services.AddSingleton<CardCatalog>();

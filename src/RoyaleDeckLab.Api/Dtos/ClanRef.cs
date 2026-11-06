@@ -1,3 +1,5 @@
 namespace RoyaleDeckLab.Api.Dtos;
 
-public sealed record ClanRef(string? Tag);
+public sealed record ClanRef(
+    string? Tag,
+    string? Name);

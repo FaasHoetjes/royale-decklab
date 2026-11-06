@@ -1,3 +1,6 @@
 namespace RoyaleDeckLab.Api.Dtos;
 
-public sealed record ClanResponse(List<ClanMember>? MemberList);
+public sealed record ClanResponse(
+    string? Tag,
+    string? Name,
+    List<ClanMember>? MemberList);

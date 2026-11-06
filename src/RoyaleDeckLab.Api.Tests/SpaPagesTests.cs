@@ -24,6 +24,7 @@ public sealed class SpaPagesTests
     [InlineData("/FAQ/", "/faq")]
     [InlineData("/cards", "/cards")]
     [InlineData("/cards/mega-knight", "/cards/mega-knight")]
+    [InlineData("/clan", "/clan")]
     public void KnownPages_AreIndexedUnderTheirOwnPath(string path, string canonical)
     {
         var page = Resolve(path);
@@ -75,6 +76,15 @@ public sealed class SpaPagesTests
         => Assert.Equal("Shared war decks · Royale DeckLab", SpaPages.SharedLineup(Resolve("/2QGG92L9"), null, new string('a', 16)).Title);
 
     [Fact]
+    public void ClanPage_IsServedUnderItsTagButNotIndexed()
+    {
+        var page = Resolve("/clan/l9vrj");
+        Assert.Equal(200, page.StatusCode);
+        Assert.Equal("/clan/L9VRJ", page.CanonicalPath);
+        Assert.True(page.NoIndex);
+    }
+
+    [Fact]
     public void PlayerPage_CarriesItsTag()
     {
         Assert.Equal("#2QGG92L9", Resolve("/2qgg92l9").PlayerTag);
@@ -99,6 +109,8 @@ public sealed class SpaPagesTests
     [InlineData("/2QGG92L9/extra")]
     [InlineData("/cards/no-such-card")]
     [InlineData("/cards/mega-knight/extra")]
+    [InlineData("/clan/not-a-tag")]
+    [InlineData("/clan/L9VRJ/extra")]
     [InlineData("/assets/missing.js")]
     public void UnknownPaths_Are404(string path)
         => Assert.Equal(404, Resolve(path).StatusCode);
@@ -148,7 +160,8 @@ public sealed class SpaPagesTests
         Assert.Contains("<loc>https://royaledecklab.com/</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/best-decks</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/cards/mini-pekka</loc>", xml);
-        Assert.Equal(8, Count(xml, "<loc>"));
+        Assert.Contains("<loc>https://royaledecklab.com/clan</loc>", xml);
+        Assert.Equal(9, Count(xml, "<loc>"));
     }
 
     private static int Count(string text, string value) => text.Split(value).Length - 1;
