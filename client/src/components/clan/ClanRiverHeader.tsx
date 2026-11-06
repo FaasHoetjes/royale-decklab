@@ -16,6 +16,12 @@ const LAST_DAY = 4;
 const ClanRiverHeader = ({ war, isMobile }: ClanRiverHeaderProps) => {
   const standing = raceStanding(war);
   const [view, setView] = useState<'race' | 'medals'>('race');
+  // Remounting the lanes on each return to the race sails the boats out from the start line again.
+  const [raceVisits, setRaceVisits] = useState(0);
+  const showView = (tab: 'race' | 'medals') => {
+    if (tab === 'race' && view !== 'race') setRaceVisits((n) => n + 1);
+    setView(tab);
+  };
   const isColosseum = war.period === 'colosseum';
   const fameToGo = standing && !isColosseum ? FINISH_FAME - standing.ours.fame : 0;
 
@@ -36,7 +42,7 @@ const ClanRiverHeader = ({ war, isMobile }: ClanRiverHeaderProps) => {
             key={tab}
             type="button"
             aria-pressed={active}
-            onClick={() => setView(tab)}
+            onClick={() => showView(tab)}
             style={{
               ...styles.tab,
               ...(active ? styles.tabActive : {}),
@@ -47,7 +53,7 @@ const ClanRiverHeader = ({ war, isMobile }: ClanRiverHeaderProps) => {
       <div style={{ display: 'grid' }}>
       {war.race.length > 0 && <div aria-hidden={view !== 'medals'} style={{ gridArea: '1 / 1', minWidth: 0, visibility: view === 'medals' ? 'visible' : 'hidden' }}><ClanDailyStandings war={war} /></div>}
       <div aria-hidden={view !== 'race' && war.race.length > 0} style={{ gridArea: '1 / 1', minWidth: 0, visibility: view === 'race' || war.race.length === 0 ? 'visible' : 'hidden' }}>
-      {war.race.length > 0 && <RaceLanes war={war} showFinish={!isColosseum} />}
+      {war.race.length > 0 && <RaceLanes key={raceVisits} war={war} showFinish={!isColosseum} />}
       <div style={styles.stats}>
         {standing && <BannerStat value={ordinal(standing.position)} label="in the race" />}
         {standing && (
