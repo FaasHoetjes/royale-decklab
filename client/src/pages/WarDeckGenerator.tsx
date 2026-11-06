@@ -127,7 +127,7 @@ export default function WarDeckGenerator() {
   };
 
   const handleNewSearch = () => {
-    setActivePlayerTag(null);
+    if (!fromClan) setActivePlayerTag(null);
     navigate('/');
   };
 
