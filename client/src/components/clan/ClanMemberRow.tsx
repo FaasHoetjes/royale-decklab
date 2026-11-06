@@ -68,7 +68,7 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
 
   const weeks = bars.map((bar) => `${bar.label}: ${bar.decks == null ? 'not in the clan' : `${bar.decks}/${DECKS_PER_WEEK}`}`).join(', ');
   const badge = reliability(member);
-  const reliabilityBadge = bars.length > 0 && (
+  const reliabilityBadge = bars.length > 0 && war.period !== 'notRacing' && (
     <span
       title={weeks}
       aria-label={`${reliabilityLabel[badge]}. ${weeks}`}
