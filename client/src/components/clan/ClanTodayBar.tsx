@@ -113,12 +113,13 @@ const styles = {
     borderRadius: '3px',
   },
   count: {
-    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
-    fontSize: '19px',
+    fontSize: '16px',
+    fontWeight: 700 as const,
     lineHeight: 1,
+    fontVariantNumeric: 'tabular-nums' as const,
   },
   label: {
-    fontSize: '12px',
-    fontWeight: 600 as const,
+    fontSize: '13px',
+    fontWeight: 500 as const,
   },
 };

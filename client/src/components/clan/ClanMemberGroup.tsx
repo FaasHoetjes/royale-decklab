@@ -77,7 +77,7 @@ const styles = {
     background: 'none',
     font: 'inherit',
     fontSize: '15px',
-    fontWeight: 800 as const,
+    fontWeight: 700 as const,
     textAlign: 'left' as const,
     cursor: 'pointer' as const,
   },
@@ -87,9 +87,9 @@ const styles = {
     borderRadius: '50%',
   },
   count: {
-    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
-    fontSize: '17px',
-    fontWeight: 400 as const,
+    fontSize: '14px',
+    fontWeight: 600 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
   },
   chevron: {
     marginLeft: 'auto',

@@ -120,7 +120,7 @@ const styles = {
     padding: '9px 14px',
     font: 'inherit',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer' as const,
   },
   planned: {

@@ -88,10 +88,8 @@ const styles = {
   },
   eyebrow: {
     textAlign: 'center' as const,
-    fontSize: '12px',
-    fontWeight: 700 as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.04em',
+    fontSize: '13px',
+    fontWeight: 500 as const,
   },
   podium: {
     display: 'grid' as const,
@@ -118,8 +116,9 @@ const styles = {
     textOverflow: 'ellipsis' as const,
   },
   placeFame: {
-    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
-    fontSize: '14px',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
   },
   step: {
     width: '100%',
@@ -128,8 +127,8 @@ const styles = {
     placeItems: 'center' as const,
   },
   stepNumber: {
-    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
-    fontSize: '24px',
+    fontSize: '22px',
+    fontWeight: 700 as const,
     color: '#1a1407',
   },
   turnout: {

@@ -59,7 +59,7 @@ const styles = {
     borderRadius: '999px',
     font: 'inherit',
     fontSize: '13px',
-    fontWeight: 700 as const,
+    fontWeight: 600 as const,
     cursor: 'pointer' as const,
     transition: 'background-color 0.2s ease, color 0.2s ease',
   },

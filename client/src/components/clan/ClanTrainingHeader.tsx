@@ -33,7 +33,7 @@ const WarCountdown = ({ target, isMobile }: { target: string; isMobile: boolean 
   return (
     <>
       <span style={styles.lead}>War starts in</span>
-      <span style={{ ...styles.clock, fontSize: isMobile ? '34px' : '44px' }}>~{countdownText(Date.parse(target) - now)}</span>
+      <span style={{ ...styles.clock, fontSize: isMobile ? '30px' : '38px' }}>~{countdownText(Date.parse(target) - now)}</span>
     </>
   );
 };
@@ -55,11 +55,11 @@ const styles = {
   },
   lead: {
     fontSize: '15px',
-    fontWeight: 800 as const,
+    fontWeight: 600 as const,
     color: water.text,
   },
   clock: {
-    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
+    fontWeight: 700 as const,
     lineHeight: 1.1,
     color: '#f3c468',
     fontVariantNumeric: 'tabular-nums' as const,
