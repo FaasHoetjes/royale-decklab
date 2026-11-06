@@ -63,7 +63,7 @@ export default function Cards() {
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div style={{ marginBottom: isMobile ? '14px' : '20px' }}>
+      <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Cards</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           <IntroSummary stats={stats} isMobile={isMobile} theme={theme} />
@@ -234,7 +234,6 @@ const styles = {
   },
   subtitle: {
     fontSize: '15px',
-    lineHeight: 1.5,
     margin: '8px 0 0',
     maxWidth: '760px',
   },

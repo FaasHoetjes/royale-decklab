@@ -183,19 +183,10 @@ export default function UpgradeAdvisor() {
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
-      <div
-        style={{
-          ...styles.header,
-          borderBottomColor: theme.border,
-          marginBottom: isMobile ? '18px' : '24px',
-          paddingBottom: isMobile ? '14px' : '18px',
-        }}
-      >
+      <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Upgrade Advisor</h1>
-        <p style={{ ...styles.subtitle, marginTop: isMobile ? 0 : '6px', color: theme.text.secondary }}>
-          {data && suggestions.length > 0
-            ? 'Pick an upgrade to see what it does to your war lineup.'
-            : 'Which card upgrade raises your war lineup the most.'}
+        <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
+          See which card upgrades raise your war lineup score the most.
         </p>
       </div>
 
@@ -209,13 +200,9 @@ const styles = {
     maxWidth: '760px',
     margin: '0 auto',
   },
-  header: {
-    borderBottom: '1px solid',
-  },
   subtitle: {
     fontSize: '15px',
-    lineHeight: 1.6,
-    margin: 0,
+    margin: '8px 0 0',
   },
   panel: {
     border: '1px solid',
