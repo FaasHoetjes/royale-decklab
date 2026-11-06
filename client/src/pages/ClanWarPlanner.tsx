@@ -7,7 +7,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { useClanWar, usePlayerWarDecks } from '../queries';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { routeFlag } from '../lib/routeState';
-import { rememberClan } from '../lib/recentClans';
+import { loadRecentClans, rememberClan } from '../lib/recentClans';
 import { TODAY_STATUSES, groupByToday, todayStatusLabel, type TodayStatus } from '../lib/clanWar';
 import ClanFinder from '../components/clan/ClanFinder';
 import ClanRiverHeader from '../components/clan/ClanRiverHeader';
@@ -62,14 +62,17 @@ const ClanWarPlanner = () => {
 
 export default ClanWarPlanner;
 
-/** Without a tag in the address, the active player's clan opens, unless they came here to pick another one. */
+/** Without a tag in the address, the last clan viewed reopens, else the active player's own, unless they came to pick another. */
 const OwnClan = ({ isMobile }: { isMobile: boolean }) => {
   const { activePlayerTag } = useApp();
   const location = useLocation();
   const wantsOtherClan = routeFlag(location.state, 'pickClan');
-  const player = usePlayerWarDecks(activePlayerTag);
+  const [lastClan] = useState(() => loadRecentClans()[0] ?? null);
+  const player = usePlayerWarDecks(wantsOtherClan || lastClan ? null : activePlayerTag);
 
-  if (wantsOtherClan || !activePlayerTag) return <ClanFinder />;
+  if (wantsOtherClan) return <ClanFinder />;
+  if (lastClan) return <Navigate to={`/clan/${normalizeTag(lastClan.tag)}`} replace />;
+  if (!activePlayerTag) return <ClanFinder />;
   if (player.isLoading) return <ClanWarSkeleton isMobile={isMobile} />;
 
   const ownClanTag = player.data?.player.clanTag;
