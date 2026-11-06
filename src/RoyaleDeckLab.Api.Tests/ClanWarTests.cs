@@ -212,6 +212,24 @@ public sealed class ClanWarTests
     }
 
     [Fact]
+    public void AClanOutsideARiverRace_StillListsItsMembersByPastWeeks()
+    {
+        var clan = Clan(Member("#A", "Anna"), Member("#B", "Bob"));
+        var log = new CrRiverRaceLog([Week(2, 3, 20_000, Played("#A", 0, 16), Played("#B", 0, 4))]);
+
+        var war = ClanWar.From(clan, null, log, Now);
+
+        Assert.Equal(WarPeriod.NotRacing, war.Period);
+        Assert.False(war.IsBattleDay);
+        Assert.Equal(0, war.Day);
+        Assert.Empty(war.Race);
+        Assert.Null(war.DayEndsAt);
+        Assert.Null(war.WarStartsAt);
+        Assert.Equal(0, war.DecksLeftToday);
+        Assert.Equal(["#B", "#A"], war.Members.Select(m => m.Tag));
+    }
+
+    [Fact]
     public void AnUnknownPeriodType_FailsInsteadOfGuessing()
     {
         Assert.Throws<FormatException>(() => ClanWar.From(Clan(), Race("somethingNew", 3), NoHistory, Now));

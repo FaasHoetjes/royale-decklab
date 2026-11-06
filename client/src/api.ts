@@ -150,7 +150,7 @@ export function fetchUpgradeAdvice(playerTag: string, signal?: AbortSignal): Pro
   return getJson(`/api/player/${encodeURIComponent(playerTag)}/upgrades`, 'Failed to fetch upgrade advice', signal);
 }
 
-export type WarPeriod = 'training' | 'warDay' | 'colosseum';
+export type WarPeriod = 'training' | 'warDay' | 'colosseum' | 'notRacing';
 
 export type ClanRole = 'member' | 'elder' | 'coLeader' | 'leader';
 

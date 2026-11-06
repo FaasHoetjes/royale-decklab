@@ -34,6 +34,7 @@ public sealed class ClanWarCacheTests
         private int _calls;
         public int Calls => _calls;
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
+        public HttpStatusCode RaceStatus { get; set; } = HttpStatusCode.OK;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -45,7 +46,8 @@ public sealed class ClanWarCacheTests
                 _ when path.EndsWith("/riverracelog", StringComparison.Ordinal) => LogJson,
                 _ => ClanJson,
             };
-            return Task.FromResult(new HttpResponseMessage(Status)
+            var status = path.EndsWith("/currentriverrace", StringComparison.Ordinal) && Status == HttpStatusCode.OK ? RaceStatus : Status;
+            return Task.FromResult(new HttpResponseMessage(status)
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json"),
             });
@@ -87,6 +89,17 @@ public sealed class ClanWarCacheTests
         Assert.Equal(2, Assert.Single(war.PastWeeks).Rank);
         Assert.Equal([900], war.Members[0].FamePastWeeks);
         Assert.Equal(new RaceClan("#OTHER", "Other", 835, 14_450), war.Race[1]);
+    }
+
+    [Fact]
+    public async Task AClanNotInARiverRace_IsNotRacing_InsteadOfMissing()
+    {
+        _api.RaceStatus = HttpStatusCode.NotFound;
+
+        var war = await _cache.GetAsync(_tag);
+
+        Assert.Equal(WarPeriod.NotRacing, war.Period);
+        Assert.Equal(2, war.Members.Count);
     }
 
     [Fact]

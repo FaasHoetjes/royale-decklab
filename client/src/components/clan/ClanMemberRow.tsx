@@ -32,6 +32,9 @@ const progressNote = (war: ClanWar, member: ClanWarMember): string => {
   if (war.isBattleDay) return `${member.decksUsedThisWeek}/${decksAvailableThisWeek(war)} this week`;
   if (war.pastWeeks.length === 0) return '';
   const lastWeekDecks = member.decksUsedPastWeeks[0];
+  if (war.period === 'notRacing') {
+    return lastWeekDecks == null ? 'joined since the last race' : `${lastWeekDecks}/${DECKS_PER_WEEK} in the last race`;
+  }
   return lastWeekDecks == null ? 'joined since last week' : `${lastWeekDecks}/${DECKS_PER_WEEK} last week`;
 };
 

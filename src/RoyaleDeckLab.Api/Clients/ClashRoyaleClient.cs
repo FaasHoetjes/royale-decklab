@@ -43,10 +43,17 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return data?.Items ?? [];
     }
 
-    public async Task<CrRiverRace> GetCurrentRiverRaceAsync(string clanTag, CancellationToken ct = default)
+    /// <summary>Null for a clan that isn't in a river race this week: the API answers 404 for those.</summary>
+    public async Task<CrRiverRace?> GetCurrentRiverRaceAsync(string clanTag, CancellationToken ct = default)
     {
         var encoded = Uri.EscapeDataString(clanTag);
-        var race = await http.GetFromJsonAsync<CrRiverRace>($"clans/{encoded}/currentriverrace", Json, ct);
+        using var response = await http.GetAsync($"clans/{encoded}/currentriverrace", ct);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        response.EnsureSuccessStatusCode();
+        var race = await response.Content.ReadFromJsonAsync<CrRiverRace>(Json, ct);
         return race ?? throw new InvalidOperationException("Empty river race response");
     }
 

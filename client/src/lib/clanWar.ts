@@ -8,6 +8,7 @@ const BATTLE_DAYS = 4;
 export const dayLabel = (war: ClanWar): string => {
   if (war.period === 'training') return `Training day ${war.day} of ${TRAINING_DAYS}`;
   if (war.period === 'colosseum') return `Colosseum day ${war.day} of ${BATTLE_DAYS}`;
+  if (war.period === 'notRacing') return 'Not in a river race';
   return `War day ${war.day} of ${BATTLE_DAYS}`;
 };
 

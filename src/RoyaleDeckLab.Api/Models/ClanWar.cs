@@ -25,21 +25,22 @@ public sealed record ClanWar(
     private const int TrainingDays = 3;
     private const int DaysPerWeek = TrainingDays + WarDays;
 
-    public bool IsBattleDay => Period != WarPeriod.Training;
+    public bool IsBattleDay => Period is WarPeriod.WarDay or WarPeriod.Colosseum;
 
     public int DecksLeftToday => Members.Sum(m => m.DecksLeftToday);
 
     public int MembersDoneToday => IsBattleDay ? Members.Count(m => m.DecksLeftToday == 0) : 0;
 
-    public static ClanWar From(ClanResponse clan, CrRiverRace race, CrRiverRaceLog log, DateTimeOffset now)
+    /// <param name="race">Null when the clan isn't in a river race this week.</param>
+    public static ClanWar From(ClanResponse clan, CrRiverRace? race, CrRiverRaceLog log, DateTimeOffset now)
     {
         var tag = clan.Tag ?? throw new FormatException("The clan response has no tag");
-        var period = ParsePeriod(race.PeriodType);
-        var isBattleDay = period != WarPeriod.Training;
-        var dayOfWeek = race.PeriodIndex % DaysPerWeek;
-        var day = isBattleDay ? dayOfWeek - TrainingDays + 1 : dayOfWeek + 1;
+        var period = race is null ? WarPeriod.NotRacing : ParsePeriod(race.PeriodType);
+        var isBattleDay = period is WarPeriod.WarDay or WarPeriod.Colosseum;
+        var dayOfWeek = (race?.PeriodIndex ?? 0) % DaysPerWeek;
+        var day = race is null ? 0 : isBattleDay ? dayOfWeek - TrainingDays + 1 : dayOfWeek + 1;
 
-        var thisWeek = ParticipantsByTag(race.Clan);
+        var thisWeek = ParticipantsByTag(race?.Clan);
         var pastWeeks = PastWeeksOf(tag, log);
 
         var members = new List<ClanWarMember>();
@@ -55,8 +56,8 @@ public sealed record ClanWar(
         }
 
         var leaversWithDecks = thisWeek.Count(pair => HasLeftAfterPlaying(pair.Key, pair.Value, memberTags));
-        var dayEndsAt = NextReset(pastWeeks, now);
-        var warStartsAt = isBattleDay ? null : dayEndsAt?.AddDays(TrainingDays - day);
+        var dayEndsAt = race is null ? null : NextReset(pastWeeks, now);
+        var warStartsAt = race is null || isBattleDay ? null : dayEndsAt?.AddDays(TrainingDays - day);
 
         return new ClanWar(
             tag,
@@ -67,7 +68,7 @@ public sealed record ClanWar(
             Sort(members, isBattleDay),
             pastWeeks.Select(w => w.Week).ToList(),
             leaversWithDecks,
-            RaceOf(race),
+            race is null ? [] : RaceOf(race),
             dayEndsAt,
             warStartsAt);
     }

@@ -12,6 +12,7 @@ import { TODAY_STATUSES, groupByToday, todayStatusLabel, type TodayStatus } from
 import ClanFinder from '../components/clan/ClanFinder';
 import ClanRiverHeader from '../components/clan/ClanRiverHeader';
 import ClanTrainingHeader from '../components/clan/ClanTrainingHeader';
+import ClanNotRacingHeader from '../components/clan/ClanNotRacingHeader';
 import ClanMemberRow from '../components/clan/ClanMemberRow';
 import ClanMemberGroup from '../components/clan/ClanMemberGroup';
 import ClanTodayBar, { todayStatusColor } from '../components/clan/ClanTodayBar';
@@ -94,6 +95,8 @@ const ClanWarView = ({ clanTag, isMobile }: { clanTag: string; isMobile: boolean
     <>
       {war.data.isBattleDay ? (
         <ClanRiverHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
+      ) : war.data.period === 'notRacing' ? (
+        <ClanNotRacingHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
       ) : (
         <ClanTrainingHeader war={war.data} updatedAt={war.dataUpdatedAt} isMobile={isMobile} />
       )}
@@ -151,7 +154,8 @@ const MemberList = ({ war, filter, youTag, isMobile }: MemberListProps) => {
     );
   }
 
-  const heading: ReactNode = war.pastWeeks.length > 0 ? 'Last week, fewest decks first' : 'Members';
+  const lastRace = war.period === 'notRacing' ? 'Last race' : 'Last week';
+  const heading: ReactNode = war.pastWeeks.length > 0 ? `${lastRace}, fewest decks first` : 'Members';
   return (
     <>
       <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>{heading}</h3>
