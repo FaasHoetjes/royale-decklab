@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { GridIcon, SearchIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
+import { CardsIcon, GridIcon, SearchIcon, ShieldIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
 import Fold from '../components/Fold';
 import { faqItems, type FaqPage } from './faqContent';
 
@@ -13,6 +13,8 @@ const FAQ_ANCHOR_OFFSET_DESKTOP = 16;
 // Pages behind a player tag send visitors without one to the tag search instead.
 function pageLink(page: FaqPage, playerTag: string | null): { to: string; label: string; icon: ReactNode } {
   if (page === 'best-decks') return { to: '/best-decks', label: 'See the Best War Decks', icon: <TrophyIcon /> };
+  if (page === 'cards') return { to: '/cards', label: 'Explore Cards', icon: <CardsIcon /> };
+  if (page === 'clan') return { to: '/clan', label: 'Open the Clan War Planner', icon: <ShieldIcon /> };
   if (!playerTag) return { to: '/', label: 'Search your player tag', icon: <SearchIcon /> };
   if (page === 'generator') {
     return { to: `/${playerTag.replace(/#/g, '')}`, label: 'Open the War Deck Generator', icon: <ZapIcon /> };
@@ -52,8 +54,6 @@ export default function Faq() {
       ) : (
         <div
           style={{
-            ...styles.header,
-            borderBottomColor: theme.border,
             marginBottom: '30px',
             paddingBottom: '20px',
           }}
@@ -158,9 +158,6 @@ const styles = {
   container: {
     maxWidth: '760px',
     margin: '0 auto',
-  },
-  header: {
-    borderBottom: '1px solid',
   },
   list: {
     border: '1px solid',
