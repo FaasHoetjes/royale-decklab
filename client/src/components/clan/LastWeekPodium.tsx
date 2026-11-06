@@ -10,9 +10,9 @@ const STEPS = [
   { place: 3, height: 48, color: '#d97706' },
 ];
 
-const formatFame = (fame: number) => fame.toLocaleString('en-US');
+const formatMedals = (medals: number) => medals.toLocaleString('en-US');
 
-/** Last week's result with its three biggest fame earners on a podium: second, first, third. */
+/** Last week's result with its three biggest medal earners on a podium: second, first, third. */
 const LastWeekPodium = ({ war, isMobile }: { war: ClanWar; isMobile: boolean }) => {
   const theme = getTheme();
   const week = lastWeek(war);
@@ -28,7 +28,7 @@ const LastWeekPodium = ({ war, isMobile }: { war: ClanWar; isMobile: boolean }) 
       style={{ ...styles.panel, padding: isMobile ? '16px' : '18px 24px', borderColor: theme.border, backgroundColor: theme.bg.secondary }}
     >
       <div style={{ ...styles.eyebrow, color: theme.text.secondary }}>
-        Last week · {ordinal(week.rank)} place · {formatFame(week.fame)} fame
+        Last week · {ordinal(week.rank)} place · {formatMedals(week.medals)} medals
       </div>
       {podium.length > 0 && (
         <ol style={styles.podium}>
@@ -58,7 +58,7 @@ interface StepProps {
 const Step = ({ entry, step, delay }: StepProps) => {
   const theme = getTheme();
   return (
-    <li style={styles.place} aria-label={`${ordinal(step.place)}: ${entry.member.name}, ${formatFame(entry.fame)} fame`}>
+    <li style={styles.place} aria-label={`${ordinal(step.place)}: ${entry.member.name}, ${formatMedals(entry.fame)} medals`}>
       <Avatar name={entry.member.name} size={34} />
       <b style={{ ...styles.placeName, color: theme.text.primary }}>{entry.member.name}</b>
       <span style={{ ...styles.placeFame, color: theme.text.secondary }}>

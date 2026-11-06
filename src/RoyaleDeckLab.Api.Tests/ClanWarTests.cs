@@ -102,14 +102,14 @@ public sealed class ClanWarTests
         var clan = Clan(Member("#A", "Anna"), Member("#B", "Bob"));
         var log = new CrRiverRaceLog(
         [
-            Week(3, 2, 30_000, Played("#A", 0, 16), Played("#B", 0, 10)),
-            Week(2, 4, 25_000, Played("#A", 0, 12)),
+            Week(3, 2, 10_000, Played("#A", 0, 16, fame: 3_000), Played("#B", 0, 10, fame: 1_800)),
+            Week(2, 4, 6_400, Played("#A", 0, 12, fame: 2_250)),
         ]);
 
         var war = ClanWar.From(clan, Race("warDay", 3), log, Now);
 
         Assert.Equal(
-            [new PastWarWeek(137, 4, 2, 30_000, new DateTimeOffset(2026, 11, 2, 9, 39, 5, TimeSpan.Zero)), new PastWarWeek(137, 3, 4, 25_000, new DateTimeOffset(2026, 11, 2, 9, 39, 5, TimeSpan.Zero))],
+            [new PastWarWeek(137, 4, 2, 4_800, new DateTimeOffset(2026, 11, 2, 9, 39, 5, TimeSpan.Zero)), new PastWarWeek(137, 3, 4, 2_250, new DateTimeOffset(2026, 11, 2, 9, 39, 5, TimeSpan.Zero))],
             war.PastWeeks);
         Assert.Equal([16, 12], war.Members.Single(m => m.Tag == "#A").DecksUsedPastWeeks);
         Assert.Equal([10, null], war.Members.Single(m => m.Tag == "#B").DecksUsedPastWeeks);

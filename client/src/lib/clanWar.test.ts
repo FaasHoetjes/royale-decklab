@@ -39,8 +39,8 @@ const war = (overrides: Partial<ClanWar>): ClanWar => ({
   membersDoneToday: 0,
   members: [],
   pastWeeks: [
-    { seasonId: 137, week: 4, rank: 2, fame: 30_000, endedAt: null },
-    { seasonId: 137, week: 3, rank: 4, fame: 25_000, endedAt: null },
+    { seasonId: 137, week: 4, rank: 2, medals: 30_000, endedAt: null },
+    { seasonId: 137, week: 3, rank: 4, medals: 25_000, endedAt: null },
   ],
   race: [],
   dayEndsAt: null,

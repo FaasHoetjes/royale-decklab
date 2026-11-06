@@ -196,7 +196,7 @@ public sealed record ClanWar(
                 entry.SeasonId,
                 entry.SectionIndex + 1,
                 standing.Rank,
-                clan.Fame,
+                clan.Participants?.Sum(p => p.Fame) ?? 0,
                 ApiTime.Parse(entry.CreatedDate));
             weeks.Add(new WeekResult(week, ParticipantsByTag(clan)));
         }

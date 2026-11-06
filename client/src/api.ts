@@ -159,7 +159,8 @@ export interface PastWarWeek {
   /** 1-based week within the season. */
   week: number;
   rank: number;
-  fame: number;
+  /** What the members earned between them. */
+  medals: number;
   endedAt: string | null;
 }
 
