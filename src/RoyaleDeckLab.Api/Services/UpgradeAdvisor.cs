@@ -7,13 +7,14 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 {
     private const double MinDelta = 5e-4;
 
-    public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks)
+    public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         var cardMap = playerCards.ToDictionary(c => c.Id);
         // Upgrading your own card doesn't change who you're matched against, so simulations keep this fixed.
         var opponentLevel = LevelModel.OpponentLevel(playerCards);
         var fieldable = DeckAnalyzer.SortCandidates(analyzer.ScoreFieldableDecks(metaDecks, cardMap, opponentLevel));
-        var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false, assumeSorted: true);
+        var baseline = analyzer.SelectLineup(fieldable, cardMap, includeAlternatives: false, assumeSorted: true, ct: ct);
         var baselineKeys = LineupKeys(baseline);
 
         // An upgrade only moves scores, never which decks are fieldable or clash, so every simulation settles on the
@@ -43,6 +44,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 
         (double Delta, WarDeckResult Result) Simulate(PlayerItemLevel modified)
         {
+            ct.ThrowIfCancellationRequested();
             var simulatedMap = new Dictionary<int, PlayerItemLevel>(cardMap) { [modified.Id] = modified };
             var unchanged = new List<(DeckMeta deck, double score)>(pool.Count);
             var changed = new List<(DeckMeta deck, double score)>();
@@ -58,7 +60,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
                 }
             }
             var adjusted = MergeByRank(unchanged, DeckAnalyzer.SortCandidates(changed));
-            var result = analyzer.SelectLineup(adjusted, simulatedMap, includeAlternatives: false, assumeSorted: true);
+            var result = analyzer.SelectLineup(adjusted, simulatedMap, includeAlternatives: false, assumeSorted: true, ct: ct);
             return (result.TotalScore - baseline.TotalScore, result);
         }
 
@@ -139,6 +141,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
 
         foreach (var card in playerCards)
         {
+            ct.ThrowIfCancellationRequested();
             if (!metaCardIds.Contains(card.Id))
             {
                 continue;

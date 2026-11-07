@@ -138,6 +138,44 @@ can register at https://developer.clashroyale.com:
 - Railway and similar: egress IP is generally **not** static, so live rebuilds
   won't work, but the app still serves a seeded `meta.db`.
 
+## Public API caching in Cloudflare
+
+The app caches successful public card/catalog and best-deck responses for five
+minutes, separately by path, response encoding and meta version. Personalized
+player, clan and admin endpoints do not use this output cache. Upstream errors
+and startup responses are not stored in it.
+
+After deploying the code, select `royaledecklab.com` in Cloudflare, open
+**Caching > Cache Rules > Create rule**, name it **Public API JSON**, and select
+**Custom filter expression > Edit expression**. Paste:
+
+```text
+(http.host eq "royaledecklab.com" and http.request.method eq "GET" and http.request.uri.path in {"/api/cards" "/api/cards/stats" "/api/best-decks"})
+```
+
+Set **Cache eligibility** to **Eligible for cache**. For **Edge TTL**, select
+**Use cache-control header if present, bypass cache if not**. Leave **Browser TTL**
+respecting existing headers, then deploy the rule. The API sends `public,
+max-age=300`; do not override missing headers or error responses with a fixed TTL.
+Leave the default cache key. These three routes ignore query parameters.
+
+Request `https://royaledecklab.com/api/best-decks` twice with an ordinary GET
+(not a browser hard refresh). The second response should show
+`CF-Cache-Status: HIT` and an `Age` header. Check `/api/cards` and
+`/api/cards/stats` the same way. A first request can show `MISS` at each edge
+location. Meta refresh invalidates the origin cache immediately; edge copies
+can remain for up to five minutes. Purge these three URLs to make a refresh
+visible at the edge immediately.
+
+Generation and upgrade advice share a CPU scheduler (one to four workers based
+on available processors, 32 queued jobs, ten-second deadline). Identical work
+shares a task and results are retained for 60 seconds after completion, with
+512 entries per calculation cache. Collection changes, generator options and
+meta versions produce distinct keys. Saturation returns `503`, `no-store` and
+`Retry-After: 2`; the client retries once without showing the meta-reload notice.
+
+See [Cloudflare's Cache Rules guide](https://developers.cloudflare.com/cache/how-to/cache-rules/create-dashboard/).
+
 ## Health checks
 
 `GET /healthz` returns `200 {"status":"ok"}` and is exempt from rate limiting,

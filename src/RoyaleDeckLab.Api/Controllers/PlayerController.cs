@@ -14,7 +14,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 public sealed class PlayerController(
     PlayerProfileCache players,
     MetaCache cache,
-    DeckAnalyzer analyzer,
+    PlayerDeckCache deckCache,
     WarDecksTodayReader warDecksToday,
     StatsRecorder stats,
     ILogger<PlayerController> logger) : ControllerBase
@@ -102,14 +102,7 @@ public sealed class PlayerController(
                 return BadRequest(new { error = "Player cards data not found in API response" });
             }
 
-            var playerCards = player.Cards.Select(c => c.ToPlayerItemLevel()).ToList();
-            var cardMap = new Dictionary<int, PlayerItemLevel>(playerCards.Count);
-            foreach (var card in playerCards)
-            {
-                cardMap[card.Id] = card;
-            }
-
-            var warDecks = analyzer.FindBestWarDecks(cache.Meta, cardMap, options);
+            var warDecks = await deckCache.GetAsync(player, cache.Version, cache.Meta, options, ct);
             stats.NoteServed(tag);
 
             return Ok(new
@@ -129,7 +122,13 @@ public sealed class PlayerController(
         {
             return NotFound(new { error = "Player not found" });
         }
-        catch (Exception ex)
+        catch (CalculationBusyException)
+        {
+            Response.Headers.RetryAfter = "2";
+            Response.Headers.CacheControl = "no-store";
+            return StatusCode(503, new { error = "The server is busy. Please try again shortly.", code = "server_busy" });
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error fetching player data");
             return StatusCode(500, new { error = "Failed to fetch player data" });

@@ -23,7 +23,7 @@ public sealed class RequireMetaLoadedAttribute : Attribute, IResourceFilter
         var headers = context.HttpContext.Response.Headers;
         headers.CacheControl = "no-store";
         headers.RetryAfter = RetryAfterSeconds.ToString();
-        context.Result = new ObjectResult(new { error = "The meta is still loading, try again in a minute" })
+        context.Result = new ObjectResult(new { error = "The meta is still loading, try again in a minute", code = "meta_loading" })
         {
             StatusCode = StatusCodes.Status503ServiceUnavailable,
         };

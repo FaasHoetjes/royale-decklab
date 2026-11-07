@@ -66,6 +66,7 @@ builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PlayerProfileCache>();
 builder.Services.AddMemoryCache();
+builder.Services.AddPublicApiCaching();
 builder.Services.AddSingleton<ClanWarCache>();
 builder.Services.AddSingleton<ClanHistoryCache>();
 builder.Services.AddSingleton<ClanSearchCache>();
@@ -91,6 +92,8 @@ builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddHostedService<SeasonWatchService>();
 
 builder.Services.AddSingleton<DeckAnalyzer>();
+builder.Services.AddSingleton<CalculationScheduler>();
+builder.Services.AddSingleton<PlayerDeckCache>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
 builder.Services.AddSingleton<UpgradeAdviceCache>();
@@ -136,12 +139,13 @@ app.Use(async (context, next) =>
         context.Request.Method, RequestRoute.Of(context), context.Response.StatusCode, elapsed.TotalMilliseconds);
 });
 
-app.UseResponseCompression();
 if (app.Environment.IsDevelopment())
 {
     app.UseCors();
 }
 app.UseRateLimiter();
+app.UseOutputCache();
+app.UseResponseCompression();
 app.UseWebSockets(new WebSocketOptions
 {
     KeepAliveInterval = TimeSpan.FromSeconds(20),

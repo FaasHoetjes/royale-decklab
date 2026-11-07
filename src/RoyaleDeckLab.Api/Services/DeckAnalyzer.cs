@@ -188,9 +188,11 @@ public sealed class DeckAnalyzer
     public WarDeckResult FindBestWarDecks(
         IReadOnlyList<DeckMeta> metaDecks,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
-        LineupOptions? options = null)
+        LineupOptions? options = null,
+        CancellationToken ct = default)
     {
         options ??= LineupOptions.Default;
+        ct.ThrowIfCancellationRequested();
         var opponent = LevelModel.OpponentLevel(cardMap.Values);
         var locked = ScoreLockedDecks(metaDecks, cardMap, options.LockedDecks, opponent);
         var lockedCards = locked.SelectMany(l => l.deck.CardIds).ToHashSet();
@@ -201,7 +203,7 @@ public sealed class DeckAnalyzer
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
 
         return SelectLineup(candidates, cardMap, includeAlternatives: true,
-            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked);
+            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked, ct: ct);
     }
 
     private static bool IsAllowed(
@@ -338,7 +340,8 @@ public sealed class DeckAnalyzer
         bool assumeSorted = false,
         int deckCount = DecksPerLineup,
         IReadOnlySet<int>? requiredCards = null,
-        IReadOnlyList<(DeckMeta deck, double score)>? locked = null)
+        IReadOnlyList<(DeckMeta deck, double score)>? locked = null,
+        CancellationToken ct = default)
     {
         var sorted = assumeSorted ? fieldable : SortCandidates(fieldable);
         var required = requiredCards ?? new HashSet<int>();
@@ -355,7 +358,8 @@ public sealed class DeckAnalyzer
             }
             lastPoolCount = pool.Count;
             poolMinPlayers = gate;
-            lineup = LineupSearch.FindOptimalLineup(pool, deckCount, required);
+            ct.ThrowIfCancellationRequested();
+            lineup = LineupSearch.FindOptimalLineup(pool, deckCount, required, ct);
             if (lineup.Count >= deckCount)
             {
                 break;

@@ -42,7 +42,13 @@ public sealed class UpgradesController(
         {
             return NotFound(new { error = "Player not found" });
         }
-        catch (Exception ex)
+        catch (CalculationBusyException)
+        {
+            Response.Headers.RetryAfter = "2";
+            Response.Headers.CacheControl = "no-store";
+            return StatusCode(503, new { error = "The server is busy. Please try again shortly.", code = "server_busy" });
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error generating upgrade advice");
             return StatusCode(500, new { error = "Failed to generate upgrade advice" });

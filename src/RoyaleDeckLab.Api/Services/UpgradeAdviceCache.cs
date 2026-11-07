@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
@@ -6,85 +5,21 @@ using RoyaleDeckLab.Api.Models;
 namespace RoyaleDeckLab.Api.Services;
 
 public sealed class UpgradeAdviceCache(
-    PlayerProfileCache players,
-    MetaCache cache,
-    UpgradeAdvisor advisor,
-    TimeProvider clock)
+    PlayerProfileCache players, MetaCache cache, UpgradeAdvisor advisor, CalculationScheduler scheduler, TimeProvider clock)
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
-
-    private const int SweepThreshold = 256;
-
-    private readonly ConcurrentDictionary<string, Entry> _entries = new();
-    // Leave CPU capacity for ordinary requests, even when several different players ask for advice at once.
-    private readonly SemaphoreSlim _computeGate = new(Math.Clamp(Environment.ProcessorCount / 2, 1, 2));
-
-    private sealed record Entry(long Stamp, long MetaVersion, Lazy<Task<Result>> Compute);
+    private readonly CalculationCache<UpgradeAdvice> _results = new(clock);
 
     public sealed record Result(CrPlayer Player, UpgradeAdvice? Advice);
 
     public async Task<Result> GetAsync(string playerTag, CancellationToken ct = default)
     {
-        var key = playerTag.TrimStart('#').ToUpperInvariant();
-        if (_entries.Count > SweepThreshold)
-        {
-            SweepExpired();
-        }
-
-        while (true)
-        {
-            ct.ThrowIfCancellationRequested();
-            var version = cache.Version;
-            var entry = _entries.GetOrAdd(key, _ => new Entry(
-                clock.GetTimestamp(),
-                version,
-                new Lazy<Task<Result>>(() => ComputeAsync(playerTag))));
-
-            if (clock.GetElapsedTime(entry.Stamp) > Ttl || entry.MetaVersion != version)
-            {
-                _entries.TryRemove(KeyValuePair.Create(key, entry));
-                continue;
-            }
-
-            try
-            {
-                return await entry.Compute.Value.WaitAsync(ct);
-            }
-            catch when (!ct.IsCancellationRequested)
-            {
-                _entries.TryRemove(KeyValuePair.Create(key, entry));
-                throw;
-            }
-        }
-    }
-
-    private async Task<Result> ComputeAsync(string playerTag)
-    {
-        var player = await players.GetPlayerDataAsync(playerTag, CancellationToken.None);
-        if (player.Cards is null)
-        {
-            return new Result(player, null);
-        }
-        await _computeGate.WaitAsync();
-        try
-        {
-            var playerCards = player.Cards.Select(c => c.ToPlayerItemLevel()).ToList();
-            return new Result(player, advisor.Advise(playerCards, cache.Meta));
-        }
-        finally
-        {
-            _computeGate.Release();
-        }
-    }
-
-    private void SweepExpired()
-    {
-        foreach (var pair in _entries)
-        {
-            if (clock.GetElapsedTime(pair.Value.Stamp) > Ttl)
-            {
-                _entries.TryRemove(pair);
-            }
-        }
+        var player = await players.GetPlayerDataAsync(playerTag, ct);
+        if (player.Cards is null) return new Result(player, null);
+        var version = cache.Version;
+        var meta = cache.Meta;
+        var advice = await _results.GetAsync(PlayerCalculationKey.Create(player, version),
+            () => scheduler.RunAsync(token => advisor.Advise(
+                player.Cards.Select(c => c.ToPlayerItemLevel()).ToList(), meta, token)), ct);
+        return new Result(player, advice);
     }
 }

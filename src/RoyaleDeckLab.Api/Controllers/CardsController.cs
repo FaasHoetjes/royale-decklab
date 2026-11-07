@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
@@ -14,6 +15,7 @@ public sealed class CardsController(
     public const int DecksPerCard = 5;
 
     [HttpGet]
+    [OutputCache(PolicyName = "public-json")]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
@@ -30,11 +32,13 @@ public sealed class CardsController(
     }
 
     [HttpGet("stats")]
+    [OutputCache(PolicyName = "public-json")]
     [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public IActionResult Stats() => Ok(cache.CardStats);
 
     [HttpGet("{id:int}/decks")]
+    [OutputCache(PolicyName = "public-json")]
     [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> Decks(int id, CancellationToken ct)

@@ -138,7 +138,6 @@ export function usePrefetchAppData(tag: string | null) {
   const qc = useQueryClient();
   useEffect(() => {
     if (!tag) return;
-    qc.prefetchQuery(upgradeAdviceOptions(tag));
     qc.prefetchQuery(playerCollectionOptions(tag));
     qc.prefetchQuery(allCardsOptions());
     qc.prefetchQuery(bestDecksOptions());

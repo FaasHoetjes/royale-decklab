@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Services;
 
@@ -14,6 +15,7 @@ public sealed class BestDecksController(
     [HttpGet("api/best-decks")]
     [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    [OutputCache(PolicyName = "public-json")]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
         try

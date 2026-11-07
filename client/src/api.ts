@@ -8,7 +8,7 @@ export const fetchPlayerSummary = (playerTag: string, signal?: AbortSignal): Pro
 export class ApiError extends Error {
   status: number;
 
-  constructor(label: string, status: number) {
+  constructor(label: string, status: number, public code?: string, public retryAfterMs?: number) {
     super(`${label}: ${status}`);
     this.status = status;
   }
@@ -16,13 +16,20 @@ export class ApiError extends Error {
 
 /** The server answers 503 while it reloads the meta after a restart, which takes a few minutes. */
 export function isMetaLoading(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 503;
+  return error instanceof ApiError && error.status === 503 && error.code === 'meta_loading';
+}
+
+async function responseError(response: Response, label: string): Promise<ApiError> {
+  const body = await response.json().catch(() => null);
+  const seconds = Number(response.headers.get('Retry-After'));
+  return new ApiError(label, response.status, body?.code,
+    Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined);
 }
 
 async function getJson<T>(url: string, label: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { signal });
   if (!response.ok) {
-    throw new ApiError(label, response.status);
+    throw await responseError(response, label);
   }
   return response.json();
 }
@@ -312,7 +319,7 @@ export async function scoreBuilderDecks(
     signal,
   });
   if (!response.ok) {
-    throw new ApiError('Failed to score decks', response.status);
+    throw await responseError(response, 'Failed to score decks');
   }
   return response.json();
 }
@@ -413,7 +420,7 @@ export async function fetchAdminStats(token: string, filters: StatsFilters, sign
   const query = new URLSearchParams(Object.entries(filters).filter((entry): entry is [string, string] => !!entry[1])).toString();
   const response = await fetch(`/api/admin/stats${query ? `?${query}` : ''}`, { headers: { 'X-Admin-Token': token }, signal, cache: 'no-store' });
   if (!response.ok) {
-    throw new ApiError('Failed to fetch stats', response.status);
+    throw await responseError(response, 'Failed to fetch stats');
   }
   return response.json();
 }

@@ -11,7 +11,8 @@ internal static class LineupSearch
     internal static List<(DeckMeta deck, double score)> FindOptimalLineup(
         IReadOnlyList<(DeckMeta deck, double score)> pool,
         int target,
-        IReadOnlySet<int> requiredCards)
+        IReadOnlySet<int> requiredCards,
+        CancellationToken ct = default)
     {
         var n = pool.Count;
         if (n == 0 || target <= 0)
@@ -107,6 +108,7 @@ internal static class LineupSearch
                 {
                     return;
                 }
+                if ((nodes & 1023) == 0) ct.ThrowIfCancellationRequested();
                 if (hasRequired && !CanStillCover(required, used, reachable[i]))
                 {
                     return;
