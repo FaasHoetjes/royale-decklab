@@ -411,7 +411,7 @@ export const faqItems: FaqItem[] = [
           Treat the webhook URL like a password: whoever has it can post to your channel, and change
           or turn off its reminders here. To change or turn them off, paste the same URL again.
           Deleting the webhook in Discord stops them too, and we remove it the next time a reminder
-          is due. Anyone can post any clan’s reminders to their own channel, so a reminder for your
+          is sent. Anyone can post any clan’s reminders to their own channel, so a reminder for your
           clan isn’t necessarily set up by your clan.
         </p>
       </>
