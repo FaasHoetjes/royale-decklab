@@ -1,0 +1,107 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
+using RoyaleDeckLab.Api.Models;
+using RoyaleDeckLab.Api.Options;
+using RoyaleDeckLab.Api.Services.Reminders;
+
+namespace RoyaleDeckLab.Api.Tests;
+
+public sealed class ReminderStoreTests : IDisposable
+{
+    private readonly string _path = Path.Combine(Path.GetTempPath(), $"reminders-{Guid.NewGuid():N}.db");
+    private readonly WebhookTokenCipher _cipher = Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
+    private readonly ReminderStore _store;
+    private readonly ClanTag _clan;
+
+    public ReminderStoreTests()
+    {
+        _store = new ReminderStore(_path, _cipher);
+        Assert.True(ClanTag.TryParse("L9VRJ", out var clan));
+        _clan = clan;
+    }
+
+    public void Dispose()
+    {
+        SqliteConnection.ClearAllPools();
+        foreach (var file in new[] { _path, _path + "-wal", _path + "-shm" })
+        {
+            File.Delete(file);
+        }
+    }
+
+    public static WebhookTokenCipher Cipher(string key)
+        => new(Microsoft.Extensions.Options.Options.Create(new ReminderOptions { EncryptionKey = key }), NullLogger<WebhookTokenCipher>.Instance);
+
+    private DiscordReminder Reminder()
+    {
+        var webhook = new DiscordWebhook(DiscordWebhookTests.Id, DiscordWebhookTests.Token);
+        var settings = new ReminderSettings(3, ReminderMessageStyle.Full, ReminderPing.Here, true);
+        return DiscordReminder.Create(webhook, _clan, settings, new DateTimeOffset(2026, 11, 9, 9, 39, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void SavesAndReadsBack_TheWholeReminder()
+    {
+        var reminder = Reminder().RemindedFor(new DateTimeOffset(2026, 11, 9, 9, 39, 0, TimeSpan.Zero));
+
+        _store.Save(reminder);
+
+        var read = Assert.Single(_store.ForClan(_clan));
+        Assert.Equal(reminder.Settings, read.Settings);
+        Assert.Equal(reminder.ResetTimeOfDay, read.ResetTimeOfDay);
+        Assert.Equal(reminder.LastRemindedFor, read.LastRemindedFor);
+        Assert.Equal(DiscordWebhookTests.Token, read.Webhook.Token);
+    }
+
+    [Fact]
+    public void KeepsTheTokenOutOfTheFile()
+    {
+        _store.Save(Reminder());
+        SqliteConnection.ClearAllPools();
+
+        var bytes = File.ReadAllBytes(_path).Concat(File.Exists(_path + "-wal") ? File.ReadAllBytes(_path + "-wal") : []).ToArray();
+
+        Assert.DoesNotContain(DiscordWebhookTests.Token, Encoding.ASCII.GetString(bytes));
+    }
+
+    [Fact]
+    public void DeletesTheReminder()
+    {
+        _store.Save(Reminder());
+
+        _store.Delete(DiscordWebhookTests.Id);
+
+        Assert.Empty(_store.All());
+        Assert.Null(_store.Find(DiscordWebhookTests.Id));
+    }
+
+    [Fact]
+    public void CantReadTokens_WithAnotherKey()
+    {
+        _store.Save(Reminder());
+
+        var otherKey = new ReminderStore(_path, Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))));
+
+        Assert.ThrowsAny<CryptographicException>(() => otherKey.All());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("not base64!")]
+    [InlineData("c2hvcnQ=")]
+    public void IsOff_WithoutAValidKey(string key)
+    {
+        Assert.False(Cipher(key).IsAvailable);
+    }
+
+    [Fact]
+    public void TokenOnlyDecrypts_UnderItsOwnWebhook()
+    {
+        var sealedToken = _cipher.Encrypt(DiscordWebhookTests.Id, DiscordWebhookTests.Token);
+
+        Assert.Equal(DiscordWebhookTests.Token, _cipher.Decrypt(DiscordWebhookTests.Id, sealedToken));
+        Assert.ThrowsAny<CryptographicException>(() => _cipher.Decrypt("1301234567890123457", sealedToken));
+    }
+}

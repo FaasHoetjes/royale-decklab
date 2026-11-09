@@ -11,6 +11,7 @@ using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Options;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
+using RoyaleDeckLab.Api.Services.Reminders;
 using RoyaleDeckLab.Api.Services.Stats;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,18 +79,17 @@ builder.Services.AddHttpClient(CardArtCache.HttpClientName, http => http.MaxResp
     .AddStandardResilienceHandler();
 builder.Services.AddSingleton<CardArtCache>();
 builder.Services.AddSingleton<ShareImageService>();
-builder.Services.AddSingleton(sp =>
-{
-    var meta = sp.GetRequiredService<IOptions<MetaOptions>>().Value;
-    var metaDb = Path.GetFullPath(meta.DbPath, contentRoot);
-    return new StatsStore(Path.Combine(Path.GetDirectoryName(metaDb)!, "stats.db"));
-});
+var metaDbPath = builder.Configuration.GetSection(MetaOptions.SectionName).Get<MetaOptions>()?.DbPath ?? new MetaOptions().DbPath;
+var dataDirectory = Path.GetDirectoryName(Path.GetFullPath(metaDbPath, contentRoot))
+    ?? throw new InvalidOperationException("The meta database path has no directory");
+builder.Services.AddSingleton(_ => new StatsStore(Path.Combine(dataDirectory, "stats.db")));
 builder.Services.AddSingleton<StatsRecorder>();
 builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddHostedService<SeasonWatchService>();
+builder.Services.AddDiscordReminders(dataDirectory);
 
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<CalculationScheduler>();
