@@ -19,6 +19,8 @@ public sealed record ReminderProblemResponse(ReminderProblem Code);
 [Route("api/clans/{tag}/discord-reminders")]
 public sealed class DiscordRemindersController(DiscordReminderSetup setup) : ControllerBase
 {
+    private const int MaxBodyBytes = 4_096;
+
     [HttpGet]
     [EnableRateLimiting(RateLimitPolicies.Clan)]
     public ActionResult<ClanReminders> Get(string tag)
@@ -31,7 +33,8 @@ public sealed class DiscordRemindersController(DiscordReminderSetup setup) : Con
     }
 
     [HttpPut]
-    [EnableRateLimiting(RateLimitPolicies.Reminders)]
+    [EnableRateLimiting(RateLimitPolicies.ReminderSave)]
+    [RequestSizeLimit(MaxBodyBytes)]
     public async Task<ActionResult<SavedReminder>> Put(string tag, ReminderRequest request, CancellationToken ct)
     {
         if (!ClanTag.TryParse(tag, out var clan))
@@ -50,6 +53,7 @@ public sealed class DiscordRemindersController(DiscordReminderSetup setup) : Con
 
     [HttpPost("test")]
     [EnableRateLimiting(RateLimitPolicies.ReminderTest)]
+    [RequestSizeLimit(MaxBodyBytes)]
     public async Task<IActionResult> Test(string tag, ReminderRequest request, CancellationToken ct)
     {
         if (!ClanTag.TryParse(tag, out var clan))
@@ -63,6 +67,7 @@ public sealed class DiscordRemindersController(DiscordReminderSetup setup) : Con
 
     [HttpDelete]
     [EnableRateLimiting(RateLimitPolicies.Reminders)]
+    [RequestSizeLimit(MaxBodyBytes)]
     public IActionResult Delete(string tag, WebhookRequest request)
     {
         if (!ClanTag.TryParse(tag, out var clan))
@@ -87,7 +92,10 @@ public sealed class DiscordRemindersController(DiscordReminderSetup setup) : Con
         ReminderProblem.NoResetTime => StatusCodes.Status422UnprocessableEntity,
         ReminderProblem.WebhookNotFound => StatusCodes.Status422UnprocessableEntity,
         ReminderProblem.TooManyReminders => StatusCodes.Status409Conflict,
+        ReminderProblem.TooManyForServer => StatusCodes.Status409Conflict,
         ReminderProblem.DiscordFailed => StatusCodes.Status502BadGateway,
+        ReminderProblem.ClashRoyaleFailed => StatusCodes.Status502BadGateway,
+        ReminderProblem.Busy => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status500InternalServerError,
     };
 }

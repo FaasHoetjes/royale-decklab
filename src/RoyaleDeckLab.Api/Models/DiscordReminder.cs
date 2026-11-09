@@ -15,7 +15,7 @@ public sealed record DiscordReminder(
     public const int MaxFailuresPerDay = 3;
 
     /// <summary>A reset time that moved this little since the last post is still the same war day.</summary>
-    private static readonly TimeSpan SameDay = TimeSpan.FromHours(12);
+    public static readonly TimeSpan SameDay = TimeSpan.FromHours(12);
 
     public static DiscordReminder Create(DiscordWebhook webhook, ClanTag clan, ReminderSettings settings, DateTimeOffset dayEndsAt)
         => new(webhook, clan, settings, dayEndsAt.UtcDateTime.TimeOfDay, null, 0);

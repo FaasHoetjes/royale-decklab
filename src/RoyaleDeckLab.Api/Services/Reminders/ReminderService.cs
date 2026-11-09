@@ -53,43 +53,46 @@ public sealed class ReminderService(
 
         foreach (var clanReminders in dueByClan)
         {
-            var reminders = clanReminders.ToList();
-            ClanWar war;
             try
             {
-                war = await clanWars.GetAsync(reminders[0].Clan, ct);
+                await RemindClanAsync(clanReminders.ToList(), now, ct);
             }
-            catch (HttpRequestException ex)
+            // A clan that can't be looked up mustn't hold up the clans after it. It isn't counted as a failed post:
+            // a few minutes of CR API trouble shouldn't cost the clan its reminder, and the window ends at the reset.
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                logger.LogWarning("Couldn't look up clan {Clan} for its Discord reminder: {Status}", clanReminders.Key, ex.StatusCode);
-                foreach (var reminder in reminders)
-                {
-                    store.Save(reminder.AfterFailure(reminder.NextReset(now)));
-                }
-                continue;
+                logger.LogWarning(ex, "Discord reminders of clan {Clan} failed; trying again next minute", clanReminders.Key);
             }
+        }
+    }
 
-            foreach (var reminder in reminders)
-            {
-                await RemindAsync(reminder, war, now, ct);
-            }
+    private async Task RemindClanAsync(List<DiscordReminder> reminders, DateTimeOffset now, CancellationToken ct)
+    {
+        var war = await clanWars.GetAsync(reminders[0].Clan, ct);
+        foreach (var reminder in reminders)
+        {
+            await RemindAsync(reminder, war, now, ct);
         }
     }
 
     private async Task RemindAsync(DiscordReminder reminder, ClanWar war, DateTimeOffset now, CancellationToken ct)
     {
+        var webhookId = reminder.Webhook.Id;
         var reset = reminder.NextReset(now);
         if (war.DayEndsAt is { } dayEndsAt)
         {
-            reminder = reminder.WithResetAt(dayEndsAt);
+            store.UpdateResetTime(webhookId, dayEndsAt);
             reset = dayEndsAt;
         }
 
+        if (!store.TryClaim(webhookId, reset))
+        {
+            return;
+        }
         var isAllDone = war.DecksLeftToday == 0;
         var hasNothingToPost = !war.IsBattleDay || (isAllDone && !reminder.Settings.PostWhenAllDone);
         if (hasNothingToPost)
         {
-            store.Save(reminder.RemindedFor(reset));
             return;
         }
 
@@ -99,18 +102,30 @@ public sealed class ReminderService(
         switch (outcome)
         {
             case WebhookPostOutcome.Posted:
-                store.Save(reminder.RemindedFor(reset));
+                break;
+            case WebhookPostOutcome.NotPosted:
+                store.ReleaseClaim(reset, reminder.AfterFailure(reset));
+                logger.LogInformation("Discord didn't take the reminder of clan {Clan}; trying again next minute", reminder.Clan);
+                break;
+            case WebhookPostOutcome.MaybePosted:
+                logger.LogWarning("The Discord reminder of clan {Clan} may not have arrived; not retried, so it can't post twice", reminder.Clan);
                 break;
             case WebhookPostOutcome.WebhookGone:
-                store.Delete(reminder.Webhook.Id);
-                logger.LogInformation("Removed the Discord reminder of clan {Clan}: its webhook is gone", reminder.Clan);
-                break;
-            case WebhookPostOutcome.RateLimited:
-                break;
-            case WebhookPostOutcome.Failed:
-                store.Save(reminder.AfterFailure(reset));
-                logger.LogWarning("Posting the Discord reminder of clan {Clan} failed", reminder.Clan);
+                await RemoveIfGoneAsync(discord, reminder, reset, ct);
                 break;
         }
+    }
+
+    /// <summary>Asks Discord once more before deleting, so one odd answer can't silently remove a clan's reminder.</summary>
+    private async Task RemoveIfGoneAsync(DiscordWebhookClient discord, DiscordReminder reminder, DateTimeOffset reset, CancellationToken ct)
+    {
+        var lookup = await discord.GetAsync(reminder.Webhook, ct);
+        if (lookup is not WebhookLookup.Gone)
+        {
+            store.ReleaseClaim(reset, reminder.AfterFailure(reset));
+            return;
+        }
+        store.Delete(reminder.Webhook.Id);
+        logger.LogInformation("Removed the Discord reminder of clan {Clan}: its webhook is gone", reminder.Clan);
     }
 }

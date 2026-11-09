@@ -41,6 +41,16 @@ public sealed class DiscordWebhookTests
         Assert.False(DiscordWebhook.TryParse(url, out _));
     }
 
+    [Theory]
+    [InlineData("١٣٠١٢٣٤٥٦٧٨٩٠١٢٣٤٥٦", Token)]
+    [InlineData(Id + "\n", Token)]
+    [InlineData(Id, Token + "\n")]
+    [InlineData(Id, "kX9fAbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AbCdEfGhIjKlMnOpQrStUvWé")]
+    public void RefusesAnIdOrTokenDiscordWouldNeverIssue(string id, string token)
+    {
+        Assert.Throws<FormatException>(() => new DiscordWebhook(id, token));
+    }
+
     [Fact]
     public void NeverShowsTheToken_WhenPrinted()
     {

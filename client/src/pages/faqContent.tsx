@@ -401,11 +401,18 @@ export const faqItems: FaqItem[] = [
           URL. Before each war day ends, at the time you choose, the site posts who still has decks
           to play. You can send a test first, and optionally ping @here.
         </p>
+        <p style={pStyle}>
+          We store the webhook URL, with its secret part (the token) encrypted, and use it only to
+          post these reminders. Next to it we store your clan tag, the settings you chose and the id
+          of your Discord server, which aren’t encrypted. Anyone can see which reminder settings a
+          clan uses, but never the webhook or the channel it posts to.
+        </p>
         <p style={pLast}>
-          We store the webhook URL encrypted, together with your clan tag and the settings you chose,
-          and use it only to post these reminders. To change or turn them off, paste the same URL
-          again. Deleting the webhook in Discord stops them too, and we remove it the next time a
-          reminder is due.
+          Treat the webhook URL like a password: whoever has it can post to your channel, and change
+          or turn off its reminders here. To change or turn them off, paste the same URL again.
+          Deleting the webhook in Discord stops them too, and we remove it the next time a reminder
+          is due. Anyone can post any clan’s reminders to their own channel, so a reminder for your
+          clan isn’t necessarily set up by your clan.
         </p>
       </>
     ),

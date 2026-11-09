@@ -273,8 +273,11 @@ export type ReminderProblem =
   | 'noResetTime'
   | 'webhookNotFound'
   | 'tooManyReminders'
+  | 'tooManyForServer'
   | 'notRegistered'
-  | 'discordFailed';
+  | 'discordFailed'
+  | 'clashRoyaleFailed'
+  | 'busy';
 
 const clanRemindersUrl = (clanTag: string) => `/api/clans/${encodeURIComponent(clanTag)}/discord-reminders`;
 

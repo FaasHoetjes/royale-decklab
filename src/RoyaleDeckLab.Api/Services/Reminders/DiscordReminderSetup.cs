@@ -1,5 +1,7 @@
 using System.Net;
+using System.Threading.RateLimiting;
 using RoyaleDeckLab.Api.Clients;
+using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services.Reminders;
@@ -17,11 +19,20 @@ public enum ReminderProblem
 
     /// <summary>Discord doesn't know the webhook, or the token is wrong.</summary>
     WebhookNotFound,
+
+    /// <summary>The site holds as many reminders as it takes.</summary>
     TooManyReminders,
+
+    /// <summary>The webhook's Discord server already posts as many reminders as one server may.</summary>
+    TooManyForServer,
 
     /// <summary>This webhook doesn't post this clan's reminders.</summary>
     NotRegistered,
     DiscordFailed,
+    ClashRoyaleFailed,
+
+    /// <summary>The site is making as many requests to Discord as it allows itself, for everyone together.</summary>
+    Busy,
 }
 
 public sealed record ClanReminders(bool IsAvailable, IReadOnlyList<ReminderSettings> Reminders);
@@ -35,16 +46,31 @@ public abstract record ReminderSetupResult
 
 /// <summary>
 /// Turning a clan's Discord reminders on, testing and turning them off. There are no accounts: whoever has the
-/// webhook URL controls what's posted to it, so pasting the URL is what proves it's theirs.
+/// webhook URL controls what's posted to it, so pasting the URL is what proves it's theirs. Anyone may post any clan's
+/// reminders to their own channel, so the limits are per Discord server and for the whole site, never per clan.
 /// </summary>
 public sealed class DiscordReminderSetup(
     ReminderStore store,
     WebhookTokenCipher cipher,
     ClanWarCache clanWars,
-    IHttpClientFactory httpFactory)
+    IHttpClientFactory httpFactory,
+    ILogger<DiscordReminderSetup> logger)
 {
-    public const int MaxPerClan = 10;
+    public const int MaxPerServer = 10;
     public const int MaxReminders = 5_000;
+
+    /// <summary>
+    /// Discord blocks an IP that makes too many failing requests, and anyone can make setup call Discord with a made-up
+    /// webhook. This keeps everyone's setup calls together far below that limit.
+    /// </summary>
+    public const int DiscordCallsPerMinute = 60;
+
+    private readonly FixedWindowRateLimiter _discordBudget = new(new FixedWindowRateLimiterOptions
+    {
+        PermitLimit = DiscordCallsPerMinute,
+        Window = TimeSpan.FromMinutes(1),
+        QueueLimit = 0,
+    });
 
     public ClanReminders For(ClanTag clan)
     {
@@ -69,34 +95,37 @@ public sealed class DiscordReminderSetup(
             return new ReminderSetupResult.Refused(ReminderProblem.InvalidWebhook);
         }
 
-        var existing = store.Find(webhook.Id);
-        var isFull = existing is null && (store.ForClan(clan).Count >= MaxPerClan || store.Count() >= MaxReminders);
-        if (isFull)
+        var isNew = store.Find(webhook.Id) is null;
+        if (isNew && store.Count() >= MaxReminders)
         {
             return new ReminderSetupResult.Refused(ReminderProblem.TooManyReminders);
         }
 
-        var war = await WarOrNullAsync(clan, ct);
-        if (war is null)
+        var warLookup = await LookUpWarAsync(clan, ct);
+        if (warLookup is not WarLookup.Found { War: var war })
         {
-            return new ReminderSetupResult.Refused(ReminderProblem.ClanNotFound);
+            return new ReminderSetupResult.Refused(ProblemOf(warLookup));
         }
         if (war.DayEndsAt is not { } dayEndsAt)
         {
             return new ReminderSetupResult.Refused(ReminderProblem.NoResetTime);
         }
 
-        using var http = httpFactory.CreateClient(nameof(DiscordWebhookClient));
-        var info = await new DiscordWebhookClient(http).GetAsync(webhook, ct);
-        if (info is null)
+        var webhookCheck = await LookUpWebhookAsync(webhook, ct);
+        if (webhookCheck is not WebhookCheck.Found { Info: var info })
         {
-            return new ReminderSetupResult.Refused(ReminderProblem.WebhookNotFound);
+            return new ReminderSetupResult.Refused(ProblemOf(webhookCheck));
+        }
+        if (info.GuildId is not { } guildId)
+        {
+            return new ReminderSetupResult.Refused(ReminderProblem.InvalidWebhook);
+        }
+        if (isNew && store.CountForServer(guildId) >= MaxPerServer)
+        {
+            return new ReminderSetupResult.Refused(ReminderProblem.TooManyForServer);
         }
 
-        var reminder = existing is null
-            ? DiscordReminder.Create(webhook, clan, settings, dayEndsAt)
-            : (existing with { Webhook = webhook }).WithSettings(clan, settings).WithResetAt(dayEndsAt);
-        store.Save(reminder);
+        store.Save(DiscordReminder.Create(webhook, clan, settings, dayEndsAt), guildId);
         return new ReminderSetupResult.Saved(info.Name);
     }
 
@@ -112,12 +141,17 @@ public sealed class DiscordReminderSetup(
             return ReminderProblem.InvalidWebhook;
         }
 
-        var war = await WarOrNullAsync(clan, ct);
-        if (war is null)
+        var warLookup = await LookUpWarAsync(clan, ct);
+        if (warLookup is not WarLookup.Found { War: var war })
         {
-            return ReminderProblem.ClanNotFound;
+            return ProblemOf(warLookup);
         }
 
+        using var lease = _discordBudget.AttemptAcquire();
+        if (!lease.IsAcquired)
+        {
+            return ReminderProblem.Busy;
+        }
         using var http = httpFactory.CreateClient(nameof(DiscordWebhookClient));
         var outcome = await new DiscordWebhookClient(http).PostAsync(webhook, ReminderMessage.Test(war, settings), ct);
         return outcome switch
@@ -170,15 +204,62 @@ public sealed class DiscordReminderSetup(
         return null;
     }
 
-    private async Task<ClanWar?> WarOrNullAsync(ClanTag clan, CancellationToken ct)
+    private async Task<WarLookup> LookUpWarAsync(ClanTag clan, CancellationToken ct)
     {
         try
         {
-            return await clanWars.GetAsync(clan, ct);
+            return new WarLookup.Found(await clanWars.GetAsync(clan, ct));
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            return new WarLookup.Refused(ReminderProblem.ClanNotFound);
         }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Couldn't look up clan {Clan} to set up its Discord reminder", clan);
+            return new WarLookup.Refused(ReminderProblem.ClashRoyaleFailed);
+        }
+    }
+
+    private async Task<WebhookCheck> LookUpWebhookAsync(DiscordWebhook webhook, CancellationToken ct)
+    {
+        using var lease = _discordBudget.AttemptAcquire();
+        if (!lease.IsAcquired)
+        {
+            return new WebhookCheck.Refused(ReminderProblem.Busy);
+        }
+        using var http = httpFactory.CreateClient(nameof(DiscordWebhookClient));
+        return await new DiscordWebhookClient(http).GetAsync(webhook, ct) switch
+        {
+            WebhookLookup.Found found => new WebhookCheck.Found(found.Info),
+            WebhookLookup.Gone => new WebhookCheck.Refused(ReminderProblem.WebhookNotFound),
+            _ => new WebhookCheck.Refused(ReminderProblem.DiscordFailed),
+        };
+    }
+
+    private static ReminderProblem ProblemOf(WarLookup lookup) => lookup switch
+    {
+        WarLookup.Refused refused => refused.Problem,
+        _ => throw new InvalidOperationException("A found clan has no problem"),
+    };
+
+    private static ReminderProblem ProblemOf(WebhookCheck check) => check switch
+    {
+        WebhookCheck.Refused refused => refused.Problem,
+        _ => throw new InvalidOperationException("A found webhook has no problem"),
+    };
+
+    private abstract record WarLookup
+    {
+        public sealed record Found(ClanWar War) : WarLookup;
+
+        public sealed record Refused(ReminderProblem Problem) : WarLookup;
+    }
+
+    private abstract record WebhookCheck
+    {
+        public sealed record Found(DiscordWebhookInfo Info) : WebhookCheck;
+
+        public sealed record Refused(ReminderProblem Problem) : WebhookCheck;
     }
 }

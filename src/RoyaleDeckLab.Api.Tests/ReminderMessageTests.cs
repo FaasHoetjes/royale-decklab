@@ -77,6 +77,24 @@ public sealed class ReminderMessageTests
     }
 
     [Fact]
+    public void EscapesEveryPunctuationMark_SoNoLinkOrHeadingSurvives()
+    {
+        Assert.Equal(@"evil\.example\/x \# \!", ReminderMessage.Escape("evil.example/x # !"));
+    }
+
+    [Theory]
+    [InlineData("Bob\n# Headline", "Bob # Headline")]
+    [InlineData("  Bob \t\r\n  Cas  ", "Bob Cas")]
+    [InlineData("Bob‮evil‬", "Bobevil")]
+    [InlineData("B​o‏b⁦﻿", "Bob")]
+    [InlineData("\u0007Bob\u0000", "Bob")]
+    [InlineData("👨‍👩‍👧", "👨‍👩‍👧")]
+    public void Cleans_NamesOntoOneLineWithoutDirectionTricks(string name, string expected)
+    {
+        Assert.Equal(expected, ReminderMessage.Clean(name));
+    }
+
+    [Fact]
     public void PingsHere_OnlyWhenAskedTo()
     {
         var war = War(Member("Anna", 0));

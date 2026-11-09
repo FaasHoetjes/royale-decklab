@@ -29,14 +29,22 @@ const problemText: Record<ReminderProblem, string> = {
   clanNotFound: "This clan couldn't be found.",
   noResetTime: "This clan hasn't finished a war yet, so its reset time isn't known. Try again after its first war week.",
   webhookNotFound: "Discord doesn't know this webhook. It may have been deleted; make a new one and paste that URL.",
-  tooManyReminders: "There's no room for another reminder. Turn an old one off first.",
+  tooManyReminders: "The site can't take more reminders right now. Try again later.",
+  tooManyForServer: 'This Discord server already has the most reminders it can have. Turn one of them off first.',
   notRegistered: "This URL isn't set up for this clan, so there's nothing to turn off.",
-  discordFailed: "Discord didn't take the message. Try again in a minute.",
+  discordFailed: "Discord didn't answer. Try again in a minute.",
+  clashRoyaleFailed: "Clash Royale didn't answer, so the clan couldn't be checked. Try again in a minute.",
+  busy: 'Lots of clans are setting up reminders right now. Try again in a minute.',
 };
+
+const TWO_MINUTES_MS = 120_000;
 
 const errorText = (error: unknown): string => {
   if (!(error instanceof ApiError)) return "Couldn't reach the server. Check your connection and try again.";
-  if (error.status === 429) return 'Too many tries. Wait a minute and try again.';
+  if (error.status === 429) {
+    const isLongWait = (error.retryAfterMs ?? 0) > TWO_MINUTES_MS;
+    return isLongWait ? 'Too many changes from your connection today. Try again tomorrow.' : 'Too many tries. Wait a minute and try again.';
+  }
   const problem = error.code as ReminderProblem | undefined;
   return (problem && problemText[problem]) ?? 'Something went wrong. Try again in a moment.';
 };

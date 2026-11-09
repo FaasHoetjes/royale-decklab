@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ namespace RoyaleDeckLab.Api.Tests;
 public sealed class DiscordRemindersTests : IDisposable
 {
     private const string Url = "https://discord.com/api/webhooks/" + DiscordWebhookTests.Id + "/" + DiscordWebhookTests.Token;
+    private const string Guild = "1100000000000000001";
 
     private const string ClanJson = """
         {"tag":"#L9VRJ","name":"Example","memberList":[
@@ -34,21 +36,17 @@ public sealed class DiscordRemindersTests : IDisposable
     private readonly string _path = Path.Combine(Path.GetTempPath(), $"reminders-{Guid.NewGuid():N}.db");
     private readonly Stub _http = new();
     private readonly Clock _clock = new(Reset.AddHours(-1));
+    private readonly WebhookTokenCipher _cipher = ReminderStoreTests.Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
     private readonly ReminderStore _store;
     private readonly DiscordReminderSetup _setup;
     private readonly ReminderService _service;
-    private readonly ClanTag _clan;
+    private readonly ClanTag _clan = Clan("L9VRJ");
 
     public DiscordRemindersTests()
     {
-        var cipher = ReminderStoreTests.Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
-        _store = new ReminderStore(_path, cipher, NullLogger<ReminderStore>.Instance);
-        var factory = new StubFactory(_http);
-        var clanWars = new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock));
-        _setup = new DiscordReminderSetup(_store, cipher, clanWars, factory);
-        _service = new ReminderService(_store, cipher, clanWars, factory, _clock, NullLogger<ReminderService>.Instance);
-        Assert.True(ClanTag.TryParse("L9VRJ", out var clan));
-        _clan = clan;
+        _store = new ReminderStore(_path, _cipher, NullLogger<ReminderStore>.Instance);
+        _setup = Setup(_cipher);
+        _service = Service();
     }
 
     public void Dispose()
@@ -60,6 +58,27 @@ public sealed class DiscordRemindersTests : IDisposable
         }
     }
 
+    private static ClanTag Clan(string tag)
+    {
+        Assert.True(ClanTag.TryParse(tag, out var clan));
+        return clan;
+    }
+
+    private static string UrlOf(int i) => $"https://discord.com/api/webhooks/13012345678901234{i:00}/{DiscordWebhookTests.Token}";
+
+    /// <summary>Each caller gets its own one-minute cache, so a test can change the CR API's answers between calls.</summary>
+    private ClanWarCache ClanWars()
+    {
+        var factory = new StubFactory(_http);
+        return new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock));
+    }
+
+    private DiscordReminderSetup Setup(WebhookTokenCipher cipher)
+        => new(_store, cipher, ClanWars(), new StubFactory(_http), NullLogger<DiscordReminderSetup>.Instance);
+
+    private ReminderService Service()
+        => new(_store, _cipher, ClanWars(), new StubFactory(_http), _clock, NullLogger<ReminderService>.Instance);
+
     private sealed class Clock(DateTimeOffset now) : TimeProvider
     {
         public DateTimeOffset Now { get; set; } = now;
@@ -70,42 +89,74 @@ public sealed class DiscordRemindersTests : IDisposable
     {
         public string Period { get; set; } = "warDay";
         public int BobsDecksToday { get; set; }
+        public string BrokenClan { get; set; } = "none";
+        public HttpStatusCode ClashRoyaleStatus { get; set; } = HttpStatusCode.OK;
         public HttpStatusCode DiscordStatus { get; set; } = HttpStatusCode.NoContent;
+        public HttpStatusCode DiscordLookupStatus { get; set; } = HttpStatusCode.OK;
+        public string? GuildId { get; set; } = Guild;
         public List<string> DiscordPosts { get; } = [];
+
+        /// <summary>Runs once, while Discord is answering the next post.</summary>
+        public Func<Task>? WhilePosting { get; set; }
+
+        /// <summary>Runs once, while Discord is answering the next lookup.</summary>
+        public Func<Task>? WhileLookingUp { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var uri = request.RequestUri ?? throw new InvalidOperationException("No request URI");
             if (uri.Host == "discord.com")
             {
-                return await DiscordAsync(request, ct);
+                return request.Method == HttpMethod.Get ? await LookUpAsync() : await PostAsync(request, ct);
             }
+            if (ClashRoyaleStatus != HttpStatusCode.OK)
+            {
+                return Json(ClashRoyaleStatus, "{}");
+            }
+
+            var tag = Regex.Match(uri.AbsoluteUri, "%23([A-Za-z0-9]+)").Groups[1].Value.ToUpperInvariant();
             var path = uri.AbsolutePath;
             var body = path switch
             {
-                _ when path.EndsWith("/currentriverrace", StringComparison.Ordinal) => RaceJson(),
+                _ when path.EndsWith("/currentriverrace", StringComparison.Ordinal) => RaceJson(tag == BrokenClan ? "someNewPeriod" : Period),
                 _ when path.EndsWith("/riverracelog", StringComparison.Ordinal) => LogJson,
                 _ => ClanJson,
             };
-            return Json(HttpStatusCode.OK, body);
+            return Json(HttpStatusCode.OK, body.Replace("#L9VRJ", "#" + tag));
         }
 
-        private async Task<HttpResponseMessage> DiscordAsync(HttpRequestMessage request, CancellationToken ct)
+        private async Task<HttpResponseMessage> LookUpAsync()
         {
-            if (request.Method == HttpMethod.Get)
+            var whileLookingUp = WhileLookingUp;
+            WhileLookingUp = null;
+            if (whileLookingUp is not null)
             {
-                return DiscordStatus == HttpStatusCode.NotFound
-                    ? Json(HttpStatusCode.NotFound, "{}")
-                    : Json(HttpStatusCode.OK, """{"name":"War reminders"}""");
+                await whileLookingUp();
             }
+            if (DiscordLookupStatus != HttpStatusCode.OK)
+            {
+                return Json(DiscordLookupStatus, "{}");
+            }
+            var guild = GuildId is null ? "" : $",\"guild_id\":\"{GuildId}\"";
+            return Json(HttpStatusCode.OK, $$"""{"name":"War reminders"{{guild}}}""");
+        }
+
+        private async Task<HttpResponseMessage> PostAsync(HttpRequestMessage request, CancellationToken ct)
+        {
             DiscordPosts.Add(await (request.Content ?? throw new InvalidOperationException("No body")).ReadAsStringAsync(ct));
+            var whilePosting = WhilePosting;
+            WhilePosting = null;
+            if (whilePosting is not null)
+            {
+                await whilePosting();
+            }
             return new HttpResponseMessage(DiscordStatus);
         }
 
-        private string RaceJson() => $$"""
+        private string RaceJson(string period) => $$"""
             {"clan":{"tag":"#L9VRJ","participants":[{"tag":"#AAA","decksUsed":4,"decksUsedToday":4},{"tag":"#BBB","decksUsed":{{BobsDecksToday}},"decksUsedToday":{{BobsDecksToday}}}]},
              "clans":[{"tag":"#L9VRJ","name":"Example","fame":3000,"periodPoints":900}],
-             "periodIndex":{{(Period == "training" ? 0 : 4)}},"periodType":"{{Period}}"}
+             "periodIndex":{{(period == "training" ? 0 : 4)}},"periodType":"{{period}}"}
             """;
 
         private static HttpResponseMessage Json(HttpStatusCode status, string body)
@@ -178,7 +229,7 @@ public sealed class DiscordRemindersTests : IDisposable
     }
 
     [Fact]
-    public async Task TriesAgainNextMinute_WhenDiscordIsRateLimiting()
+    public async Task TriesAgainNextMinute_WhenDiscordRefusedThePost()
     {
         await _setup.SaveAsync(_clan, Url, TwoHours, default);
         _http.DiscordStatus = HttpStatusCode.TooManyRequests;
@@ -186,16 +237,68 @@ public sealed class DiscordRemindersTests : IDisposable
 
         _http.DiscordStatus = HttpStatusCode.NoContent;
         await _service.PostDueAsync(default);
+        await _service.PostDueAsync(default);
 
         Assert.Equal(2, _http.DiscordPosts.Count);
-        Assert.False(Assert.Single(_store.All()).IsDue(_clock.Now));
     }
 
     [Fact]
-    public async Task RemovesTheReminder_WhenDiscordDeletedTheWebhook()
+    public async Task GivesUpOnTheDay_WhenDiscordKeepsRefusing()
     {
         await _setup.SaveAsync(_clan, Url, TwoHours, default);
-        _http.DiscordStatus = HttpStatusCode.NotFound;
+        _http.DiscordStatus = HttpStatusCode.TooManyRequests;
+
+        for (var tick = 0; tick < DiscordReminder.MaxFailuresPerDay + 2; tick++)
+        {
+            await _service.PostDueAsync(default);
+        }
+
+        Assert.Equal(DiscordReminder.MaxFailuresPerDay, _http.DiscordPosts.Count);
+    }
+
+    [Fact]
+    public async Task PostsOnce_WhenTheAnswerIsLostAfterDiscordTookIt()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.DiscordStatus = HttpStatusCode.InternalServerError;
+        await _service.PostDueAsync(default);
+
+        _http.DiscordStatus = HttpStatusCode.NoContent;
+        await _service.PostDueAsync(default);
+
+        Assert.Single(_http.DiscordPosts);
+    }
+
+    [Fact]
+    public async Task PostsOnce_WhenTheSiteStopsMidPost()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        using var stopping = new CancellationTokenSource();
+        _http.WhilePosting = async () =>
+        {
+            await stopping.CancelAsync();
+            stopping.Token.ThrowIfCancellationRequested();
+        };
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _service.PostDueAsync(stopping.Token));
+
+        await Service().PostDueAsync(default);
+
+        Assert.Single(_http.DiscordPosts);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task TurningOffMidPost_StaysOff(HttpStatusCode discordAnswer)
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.DiscordStatus = discordAnswer;
+        _http.WhilePosting = () =>
+        {
+            Assert.Null(_setup.Delete(_clan, Url));
+            return Task.CompletedTask;
+        };
 
         await _service.PostDueAsync(default);
 
@@ -203,14 +306,127 @@ public sealed class DiscordRemindersTests : IDisposable
     }
 
     [Fact]
+    public async Task ChangingSettingsMidPost_DoesntPostAgain()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.WhileLookingUp = () => _service.PostDueAsync(default);
+
+        await _setup.SaveAsync(_clan, Url, TwoHours with { Style = ReminderMessageStyle.Full }, default);
+        await _service.PostDueAsync(default);
+
+        Assert.Single(_http.DiscordPosts);
+        Assert.Equal(ReminderMessageStyle.Full, Assert.Single(_store.All()).Settings.Style);
+    }
+
+    [Fact]
+    public async Task OneBrokenClan_DoesntHoldUpTheOthers()
+    {
+        await _setup.SaveAsync(Clan("PPPPP"), UrlOf(1), TwoHours, default);
+        await _setup.SaveAsync(_clan, UrlOf(2), TwoHours, default);
+        _http.BrokenClan = "PPPPP";
+
+        await Service().PostDueAsync(default);
+
+        Assert.Single(_http.DiscordPosts);
+    }
+
+    [Fact]
+    public async Task RemovesTheReminder_WhenDiscordDeletedTheWebhook()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.DiscordStatus = HttpStatusCode.NotFound;
+        _http.DiscordLookupStatus = HttpStatusCode.NotFound;
+
+        await _service.PostDueAsync(default);
+
+        Assert.Empty(_store.All());
+    }
+
+    [Fact]
+    public async Task KeepsTheReminder_WhenDiscordStillKnowsTheWebhook()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.DiscordStatus = HttpStatusCode.NotFound;
+        await _service.PostDueAsync(default);
+
+        _http.DiscordStatus = HttpStatusCode.NoContent;
+        await _service.PostDueAsync(default);
+
+        Assert.Single(_store.All());
+        Assert.Equal(2, _http.DiscordPosts.Count);
+    }
+
+    [Fact]
     public async Task RefusesAWebhookDiscordDoesntKnow()
     {
-        _http.DiscordStatus = HttpStatusCode.NotFound;
+        _http.DiscordLookupStatus = HttpStatusCode.NotFound;
 
         var result = await _setup.SaveAsync(_clan, Url, TwoHours, default);
 
         Assert.Equal(new ReminderSetupResult.Refused(ReminderProblem.WebhookNotFound), result);
         Assert.Empty(_store.All());
+    }
+
+    [Fact]
+    public async Task RefusesAWebhookWithoutADiscordServer()
+    {
+        _http.GuildId = null;
+
+        var result = await _setup.SaveAsync(_clan, Url, TwoHours, default);
+
+        Assert.Equal(new ReminderSetupResult.Refused(ReminderProblem.InvalidWebhook), result);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task SaysDiscordFailed_WhenTheLookupFails(HttpStatusCode discordAnswer)
+    {
+        _http.DiscordLookupStatus = discordAnswer;
+
+        var result = await _setup.SaveAsync(_clan, Url, TwoHours, default);
+
+        Assert.Equal(new ReminderSetupResult.Refused(ReminderProblem.DiscordFailed), result);
+    }
+
+    [Fact]
+    public async Task SaysClashRoyaleFailed_WhenTheClanCantBeLookedUp()
+    {
+        _http.ClashRoyaleStatus = HttpStatusCode.ServiceUnavailable;
+
+        var result = await _setup.SaveAsync(_clan, Url, TwoHours, default);
+
+        Assert.Equal(new ReminderSetupResult.Refused(ReminderProblem.ClashRoyaleFailed), result);
+    }
+
+    [Fact]
+    public async Task LimitsRemindersPerDiscordServer_NotPerClan()
+    {
+        for (var i = 0; i < DiscordReminderSetup.MaxPerServer; i++)
+        {
+            Assert.IsType<ReminderSetupResult.Saved>(await _setup.SaveAsync(_clan, UrlOf(i), TwoHours, default));
+        }
+
+        var full = await _setup.SaveAsync(_clan, UrlOf(50), TwoHours, default);
+        var changingOne = await _setup.SaveAsync(_clan, UrlOf(0), TwoHours with { HoursBeforeReset = 1 }, default);
+        _http.GuildId = "1100000000000000002";
+        var otherServer = await _setup.SaveAsync(_clan, UrlOf(51), TwoHours, default);
+
+        Assert.Equal(new ReminderSetupResult.Refused(ReminderProblem.TooManyForServer), full);
+        Assert.IsType<ReminderSetupResult.Saved>(changingOne);
+        Assert.IsType<ReminderSetupResult.Saved>(otherServer);
+        Assert.Equal(DiscordReminderSetup.MaxPerServer + 1, _store.ForClan(_clan).Count);
+    }
+
+    [Fact]
+    public async Task KeepsItsDiscordCallsWithinABudget()
+    {
+        for (var i = 0; i < DiscordReminderSetup.DiscordCallsPerMinute; i++)
+        {
+            Assert.Null(await _setup.TestAsync(_clan, Url, TwoHours, default));
+        }
+
+        Assert.Equal(ReminderProblem.Busy, await _setup.TestAsync(_clan, Url, TwoHours, default));
     }
 
     [Fact]
@@ -239,10 +455,7 @@ public sealed class DiscordRemindersTests : IDisposable
     [Fact]
     public async Task IsOff_WithoutAnEncryptionKey()
     {
-        var factory = new StubFactory(_http);
-        var clanWars = new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock));
-        var noKey = ReminderStoreTests.Cipher("");
-        var setup = new DiscordReminderSetup(_store, noKey, clanWars, factory);
+        var setup = Setup(ReminderStoreTests.Cipher(""));
 
         var result = await setup.SaveAsync(_clan, Url, TwoHours, default);
 

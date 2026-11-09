@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
@@ -31,7 +32,7 @@ public static class ReminderMessage
     {
         var hours = settings.HoursBeforeReset == 1 ? "1 hour" : $"{settings.HoursBeforeReset} hours";
         var embed = new DiscordEmbed(
-            $"War reminders for {Escape(war.Name)} will post here",
+            $"War reminders for {Clean(war.Name)} will post here",
             PlannerLink(war),
             $"Every war day, {hours} before the day ends: who still has decks to play.",
             OpenColor,
@@ -40,18 +41,52 @@ public static class ReminderMessage
         return Message(embed, ReminderPing.Nobody);
     }
 
+    /// <summary>
+    /// A player-chosen name made safe for markdown: every ASCII punctuation mark is escaped, so nothing in it can
+    /// format, link or mention.
+    /// </summary>
     public static string Escape(string text)
     {
-        var escaped = new StringBuilder(text.Length);
-        foreach (var c in text)
+        var clean = Clean(text);
+        var escaped = new StringBuilder(clean.Length * 2);
+        foreach (var c in clean)
         {
-            if (IsMarkdown(c))
+            if (IsAsciiPunctuation(c))
             {
                 escaped.Append('\\');
             }
             escaped.Append(c);
         }
         return escaped.ToString();
+    }
+
+    /// <summary>
+    /// Drops control and direction characters and folds whitespace into single spaces, so a name stays on one line
+    /// and can't reorder the text around it. Zero-width joiners stay, as emoji need them.
+    /// </summary>
+    public static string Clean(string text)
+    {
+        var clean = new StringBuilder(text.Length);
+        var lastWasSpace = true;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (Rune.IsWhiteSpace(rune))
+            {
+                if (!lastWasSpace)
+                {
+                    clean.Append(' ');
+                }
+                lastWasSpace = true;
+                continue;
+            }
+            if (IsInvisibleControl(rune))
+            {
+                continue;
+            }
+            clean.Append(rune.ToString());
+            lastWasSpace = false;
+        }
+        return clean.ToString().TrimEnd();
     }
 
     private static DiscordMessage Message(DiscordEmbed embed, ReminderPing ping)
@@ -187,5 +222,16 @@ public static class ReminderMessage
     private static string PlannerLink(ClanWar war)
         => $"{SpaPages.Origin}/clan/{war.Tag.TrimStart('#')}?utm_source=discord";
 
-    private static bool IsMarkdown(char c) => c is '\\' or '*' or '_' or '~' or '`' or '|' or '>' or '#' or '-' or '[' or ']' or '(' or ')' or '<' or '@' or ':';
+    private static bool IsAsciiPunctuation(char c) => c is >= '!' and <= '~' && !char.IsAsciiLetterOrDigit(c);
+
+    private static bool IsInvisibleControl(Rune rune)
+    {
+        if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.Control)
+        {
+            return true;
+        }
+        return rune.Value is 0x061C or 0x200B or 0x200E or 0x200F or 0xFEFF
+            or (>= 0x202A and <= 0x202E)
+            or (>= 0x2066 and <= 0x2069);
+    }
 }

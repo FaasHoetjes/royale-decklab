@@ -23,6 +23,7 @@ public static class ReminderRegistration
                 http.Timeout = DiscordTimeout;
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("RoyaleDeckLab (https://royaledecklab.com)");
             })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
             .RemoveAllLoggers();
 
         services.AddSingleton<DiscordReminderSetup>();

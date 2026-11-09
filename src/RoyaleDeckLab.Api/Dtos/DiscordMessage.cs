@@ -23,4 +23,4 @@ public sealed record DiscordEmbedFooter(string Text);
 public sealed record DiscordAllowedMentions(IReadOnlyList<string> Parse);
 
 /// <summary>What Discord says about a webhook when it's asked with the webhook's own token.</summary>
-public sealed record DiscordWebhookInfo(string? Name);
+public sealed record DiscordWebhookInfo(string? Name, string? GuildId);

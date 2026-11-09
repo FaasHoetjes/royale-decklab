@@ -30,6 +30,9 @@ meta.db-shm
 stats.db
 stats.db-wal
 stats.db-shm
+reminders.db
+reminders.db-wal
+reminders.db-shm
 card-art/
 
 [Bb]in/

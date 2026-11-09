@@ -7,12 +7,15 @@ namespace RoyaleDeckLab.Api.Services.Reminders;
 /// <summary>
 /// The clans' Discord reminders in their own SQLite file. Tokens are stored encrypted, and deleted rows are
 /// overwritten on disk, so a removed webhook can't be read back from the file.
+/// Setup writes a reminder's settings and the reminder job writes when it last posted, never the other way round,
+/// so neither can undo the other's write and the job can't bring back a reminder that was just turned off.
 /// </summary>
 public sealed class ReminderStore
 {
     private readonly string _connectionString;
     private readonly WebhookTokenCipher _cipher;
     private readonly ILogger<ReminderStore> _logger;
+    private int _hasWarnedUnreadable;
 
     public ReminderStore(string path, WebhookTokenCipher cipher, ILogger<ReminderStore> logger)
     {
@@ -27,6 +30,7 @@ public sealed class ReminderStore
                 webhook_id TEXT NOT NULL PRIMARY KEY,
                 clan_tag TEXT NOT NULL,
                 token BLOB NOT NULL,
+                guild_id TEXT NOT NULL,
                 hours_before_reset INTEGER NOT NULL,
                 style INTEGER NOT NULL,
                 ping INTEGER NOT NULL,
@@ -36,6 +40,7 @@ public sealed class ReminderStore
                 failures INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS discord_reminders_by_clan ON discord_reminders (clan_tag);
+            CREATE INDEX IF NOT EXISTS discord_reminders_by_guild ON discord_reminders (guild_id);
             """);
     }
 
@@ -48,45 +53,96 @@ public sealed class ReminderStore
         => Read("SELECT * FROM discord_reminders WHERE webhook_id = @id", c => c.Parameters.AddWithValue("@id", webhookId))
             .FirstOrDefault();
 
-    public int Count()
+    /// <summary>Only the reminders whose token still decrypts.</summary>
+    public int Count() => All().Count;
+
+    public int CountForServer(string guildId)
     {
         using var connection = Open();
-        using var command = Command(connection, "SELECT COUNT(*) FROM discord_reminders");
+        using var command = Command(connection, "SELECT COUNT(*) FROM discord_reminders WHERE guild_id = @guild");
+        command.Parameters.AddWithValue("@guild", guildId);
         return Convert.ToInt32(command.ExecuteScalar());
     }
 
-    public void Save(DiscordReminder reminder)
+    /// <summary>
+    /// Adds the reminder, or changes an existing one's settings. When it moves to another clan, it hasn't posted for
+    /// that clan yet; otherwise when it last posted is kept as it is.
+    /// </summary>
+    public void Save(DiscordReminder reminder, string guildId)
     {
         using var connection = Open();
         using var upsert = Command(connection,
             """
-            INSERT INTO discord_reminders (webhook_id, clan_tag, token, hours_before_reset, style, ping, post_when_all_done,
-                reset_minute, last_reminded_for_ms, failures)
-            VALUES (@id, @clan, @token, @hours, @style, @ping, @allDone, @resetMinute, @lastReminded, @failures)
+            INSERT INTO discord_reminders (webhook_id, clan_tag, token, guild_id, hours_before_reset, style, ping,
+                post_when_all_done, reset_minute, last_reminded_for_ms, failures)
+            VALUES (@id, @clan, @token, @guild, @hours, @style, @ping, @allDone, @resetMinute, NULL, 0)
             ON CONFLICT (webhook_id) DO UPDATE SET
+                last_reminded_for_ms = CASE WHEN clan_tag = excluded.clan_tag THEN last_reminded_for_ms END,
+                failures = CASE WHEN clan_tag = excluded.clan_tag THEN failures ELSE 0 END,
                 clan_tag = excluded.clan_tag,
                 token = excluded.token,
+                guild_id = excluded.guild_id,
                 hours_before_reset = excluded.hours_before_reset,
                 style = excluded.style,
                 ping = excluded.ping,
                 post_when_all_done = excluded.post_when_all_done,
-                reset_minute = excluded.reset_minute,
-                last_reminded_for_ms = excluded.last_reminded_for_ms,
-                failures = excluded.failures
+                reset_minute = excluded.reset_minute
             """);
         var webhook = reminder.Webhook;
-        var lastReminded = reminder.LastRemindedFor?.ToUnixTimeMilliseconds();
         upsert.Parameters.AddWithValue("@id", webhook.Id);
         upsert.Parameters.AddWithValue("@clan", reminder.Clan.Value);
         upsert.Parameters.AddWithValue("@token", _cipher.Encrypt(webhook.Id, webhook.Token));
+        upsert.Parameters.AddWithValue("@guild", guildId);
         upsert.Parameters.AddWithValue("@hours", reminder.Settings.HoursBeforeReset);
         upsert.Parameters.AddWithValue("@style", (int)reminder.Settings.Style);
         upsert.Parameters.AddWithValue("@ping", (int)reminder.Settings.Ping);
         upsert.Parameters.AddWithValue("@allDone", reminder.Settings.PostWhenAllDone);
-        upsert.Parameters.AddWithValue("@resetMinute", (int)reminder.ResetTimeOfDay.TotalMinutes);
-        upsert.Parameters.AddWithValue("@lastReminded", (object?)lastReminded ?? DBNull.Value);
-        upsert.Parameters.AddWithValue("@failures", reminder.Failures);
+        upsert.Parameters.AddWithValue("@resetMinute", ResetMinute(reminder.ResetTimeOfDay));
         upsert.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Marks the reminder as posted for this reset before it's sent. Only one caller wins, so a post can't go out twice,
+    /// even when the job restarts mid-post or runs twice.
+    /// </summary>
+    public bool TryClaim(string webhookId, DateTimeOffset reset)
+    {
+        using var connection = Open();
+        using var claim = Command(connection,
+            """
+            UPDATE discord_reminders SET last_reminded_for_ms = @reset, failures = 0
+            WHERE webhook_id = @id AND (last_reminded_for_ms IS NULL OR ABS(last_reminded_for_ms - @reset) >= @sameDay)
+            """);
+        claim.Parameters.AddWithValue("@id", webhookId);
+        claim.Parameters.AddWithValue("@reset", reset.ToUnixTimeMilliseconds());
+        claim.Parameters.AddWithValue("@sameDay", (long)DiscordReminder.SameDay.TotalMilliseconds);
+        return claim.ExecuteNonQuery() == 1;
+    }
+
+    /// <summary>Puts back the posting state after a claim whose post Discord definitely didn't make.</summary>
+    public void ReleaseClaim(DateTimeOffset reset, DiscordReminder afterFailure)
+    {
+        using var connection = Open();
+        using var release = Command(connection,
+            """
+            UPDATE discord_reminders SET last_reminded_for_ms = @last, failures = @failures
+            WHERE webhook_id = @id AND last_reminded_for_ms = @reset
+            """);
+        var last = afterFailure.LastRemindedFor?.ToUnixTimeMilliseconds();
+        release.Parameters.AddWithValue("@id", afterFailure.Webhook.Id);
+        release.Parameters.AddWithValue("@reset", reset.ToUnixTimeMilliseconds());
+        release.Parameters.AddWithValue("@last", (object?)last ?? DBNull.Value);
+        release.Parameters.AddWithValue("@failures", afterFailure.Failures);
+        release.ExecuteNonQuery();
+    }
+
+    public void UpdateResetTime(string webhookId, DateTimeOffset dayEndsAt)
+    {
+        using var connection = Open();
+        using var update = Command(connection, "UPDATE discord_reminders SET reset_minute = @resetMinute WHERE webhook_id = @id");
+        update.Parameters.AddWithValue("@id", webhookId);
+        update.Parameters.AddWithValue("@resetMinute", ResetMinute(dayEndsAt.UtcDateTime.TimeOfDay));
+        update.ExecuteNonQuery();
     }
 
     public void Delete(string webhookId)
@@ -116,7 +172,8 @@ public sealed class ReminderStore
             unreadable++;
         }
 
-        if (unreadable > 0)
+        var isFirstWarning = unreadable > 0 && Interlocked.Exchange(ref _hasWarnedUnreadable, 1) == 0;
+        if (isFirstWarning)
         {
             _logger.LogWarning("Skipped {Count} Discord reminders whose token doesn't decrypt; was the encryption key changed?", unreadable);
         }
@@ -160,6 +217,8 @@ public sealed class ReminderStore
             lastReminded,
             row.GetInt32(row.GetOrdinal("failures")));
     }
+
+    private static int ResetMinute(TimeSpan timeOfDay) => (int)timeOfDay.TotalMinutes;
 
     private SqliteConnection Open()
     {

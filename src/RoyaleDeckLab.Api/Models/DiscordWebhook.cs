@@ -68,12 +68,12 @@ public sealed partial class DiscordWebhook
 
     public override string ToString() => $"Discord webhook {Id}";
 
-    [GeneratedRegex(@"^/api(/v\d+)?/webhooks/(?<id>\d{17,20})/(?<token>[A-Za-z0-9_-]{60,100})/?$")]
+    [GeneratedRegex(@"^/api(/v[0-9]+)?/webhooks/(?<id>[0-9]{17,20})/(?<token>[A-Za-z0-9_-]{60,100})/?\z")]
     private static partial Regex PathPattern();
 
-    [GeneratedRegex(@"^\d{17,20}$")]
+    [GeneratedRegex(@"^[0-9]{17,20}\z")]
     private static partial Regex IdPattern();
 
-    [GeneratedRegex("^[A-Za-z0-9_-]{60,100}$")]
+    [GeneratedRegex(@"^[A-Za-z0-9_-]{60,100}\z")]
     private static partial Regex TokenPattern();
 }
