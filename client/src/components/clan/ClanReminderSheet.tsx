@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { ClanWar } from '../../api';
 import { copyText } from '../../lib/clipboard';
 import { clanChatReminder, REMINDER_STYLES, reminderStyleLabel, type ReminderStyle } from '../../lib/clanWar';
-import { CrossIcon } from '../generator/icons';
+import Sheet from '../Sheet';
 import { Segment } from '../generator/SegmentedChoice';
-import { useBottomSheet } from '../../hooks/useBottomSheet';
-import { sheetStyles } from './sheetStyles';
 
 const STYLE_KEY = 'clanReminderStyle';
 const COPIED_FOR_MS = 1800;
@@ -33,7 +31,6 @@ const canShare = () => typeof navigator.share === 'function';
 const ClanReminderSheet = ({ war, onClose }: { war: ClanWar; onClose: () => void }) => {
   const [style, setStyle] = useState(loadStyle);
   const [copied, setCopied] = useState(false);
-  const closeRef = useBottomSheet(onClose);
   const resetTimer = useRef<number | null>(null);
   const text = clanChatReminder(war, style);
 
@@ -62,53 +59,47 @@ const ClanReminderSheet = ({ war, onClose }: { war: ClanWar; onClose: () => void
     }
   };
 
+  const footer = (
+    <div className="sheet-actions">
+      <button
+        type="button"
+        onClick={copy}
+        aria-live="polite"
+        className="sheet-btn sheet-btn-primary"
+        style={copied ? styles.copied : undefined}
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+      {canShare() && (
+        <button type="button" onClick={share} className="sheet-btn">
+          Share…
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <>
-      <div className="gc-backdrop" style={styles.backdrop} onClick={onClose} aria-hidden="true" />
-      <div role="dialog" aria-modal="true" aria-labelledby="clan-reminder-title" className="gc-sheet" style={styles.sheet}>
-        <div aria-hidden="true" style={styles.handle} />
-        <div style={styles.header}>
-          <h2 id="clan-reminder-title" style={styles.title}>
-            Remind your clan
-          </h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close" className="mobile-touch-target" style={styles.close}>
-            <CrossIcon size={16} />
-          </button>
-        </div>
-
+    <Sheet title="Remind your clan" footer={footer} onClose={onClose}>
+      <div style={styles.choice}>
         <Segment label="Message" choices={REMINDER_STYLES} value={style} onPick={pick} text={(s) => reminderStyleLabel[s]} />
-
-        <p style={styles.preview}>{text}</p>
-
-        <div style={styles.actions}>
-          <button
-            type="button"
-            onClick={copy}
-            aria-live="polite"
-            style={{ ...styles.primary, backgroundColor: copied ? 'var(--up)' : 'var(--accent)' }}
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-          {canShare() && (
-            <button type="button" onClick={share} style={styles.secondary}>
-              Share…
-            </button>
-          )}
-        </div>
       </div>
-    </>
+      <p style={styles.preview}>{text}</p>
+    </Sheet>
   );
 };
 
 export default ClanReminderSheet;
 
 const styles = {
-  ...sheetStyles,
+  choice: {
+    marginTop: '6px',
+  },
+  copied: {
+    backgroundColor: 'var(--up)',
+  },
   preview: {
     margin: '14px 0 0',
     padding: '12px 14px',
-    maxHeight: '40vh',
-    overflowY: 'auto' as const,
     borderRadius: '12px',
     backgroundColor: 'var(--bg-tertiary)',
     fontSize: '14px',

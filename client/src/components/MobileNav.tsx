@@ -4,6 +4,7 @@ import { useApp } from '../AppContext';
 import { getTheme, type Theme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
+import Sheet from './Sheet';
 import PlayerMenu, { Avatar } from './PlayerMenu';
 import { toolItems, pageTitle, FAQ_ITEM } from './navItems';
 import { MailIcon, GitHubIcon } from './navIcons';
@@ -86,44 +87,26 @@ export default function MobileNav() {
 /** Your player and the switcher, plus help and contact links, in a sheet that slides up. */
 function MoreSheet({ theme, onClose }: { theme: Theme; onClose: () => void }) {
   const switcher = usePlayerSwitcher();
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
-
   const rowStyle = { ...styles.sheetRow, color: theme.text.primary };
 
   return (
-    <>
-      <div className="gc-backdrop" style={styles.backdrop} onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-label="Player and more" className="gc-sheet" style={styles.sheet}>
-        <div style={styles.handle} />
-        <div style={{ ...styles.sheetHeading, color: theme.text.tertiary }}>Player</div>
-        <PlayerMenu switcher={switcher} theme={theme} onDone={onClose} />
-        <div style={{ ...styles.divider, backgroundColor: theme.border }} />
-        <Link to={FAQ_ITEM.to} onClick={onClose} className="nav-link" style={rowStyle}>
-          <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true">{FAQ_ITEM.icon}</span>
-          FAQ
-        </Link>
-        <a href={CONTACT_EMAIL_URL} className="nav-link" style={rowStyle}>
-          <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true"><MailIcon /></span>
-          Contact
-        </a>
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="nav-link" style={rowStyle}>
-          <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true"><GitHubIcon /></span>
-          GitHub
-        </a>
-      </div>
-    </>
+    <Sheet ariaLabel="Player and more" onClose={onClose}>
+      <div style={{ ...styles.sheetHeading, color: theme.text.tertiary }}>Player</div>
+      <PlayerMenu switcher={switcher} theme={theme} onDone={onClose} />
+      <div style={{ ...styles.divider, backgroundColor: theme.border }} />
+      <Link to={FAQ_ITEM.to} onClick={onClose} className="nav-link" style={rowStyle}>
+        <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true">{FAQ_ITEM.icon}</span>
+        FAQ
+      </Link>
+      <a href={CONTACT_EMAIL_URL} className="nav-link" style={rowStyle}>
+        <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true"><MailIcon /></span>
+        Contact
+      </a>
+      <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="nav-link" style={rowStyle}>
+        <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true"><GitHubIcon /></span>
+        GitHub
+      </a>
+    </Sheet>
   );
 }
 
@@ -205,33 +188,6 @@ const styles = {
   tabLabel: {
     fontSize: '11.5px',
     whiteSpace: 'nowrap' as const,
-  },
-  backdrop: {
-    position: 'fixed' as const,
-    inset: 0,
-    zIndex: 1500,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  sheet: {
-    position: 'fixed' as const,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1501,
-    maxHeight: '85dvh',
-    overflowY: 'auto' as const,
-    boxSizing: 'border-box' as const,
-    padding: '10px 16px calc(16px + env(safe-area-inset-bottom))',
-    borderRadius: '22px 22px 0 0',
-    backgroundColor: 'var(--modal-bg)',
-    borderTop: '1px solid var(--border-strong)',
-  },
-  handle: {
-    width: '40px',
-    height: '4px',
-    borderRadius: '2px',
-    backgroundColor: 'var(--border-strong)',
-    margin: '0 auto 12px',
   },
   sheetHeading: {
     padding: '0 8px 6px',

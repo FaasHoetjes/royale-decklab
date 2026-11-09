@@ -10,8 +10,8 @@ const DECK_CHOICES = Array.from({ length: MAX_DECKS }, (_, i) => i + 1);
 const countKept = (levels: number[], min: number | null) => (min == null ? levels.length : levels.filter((l) => l >= min).length);
 
 function choiceColor(isSelected: boolean, isDimmed: boolean) {
-  if (isSelected) return 'var(--on-accent)';
-  return isDimmed ? 'var(--text-tertiary)' : 'var(--text-primary)';
+  if (isSelected) return 'var(--text-primary)';
+  return isDimmed ? 'var(--text-tertiary)' : 'var(--text-secondary)';
 }
 
 /** A row of choices with a highlight that slides to the pick. */
@@ -42,7 +42,8 @@ export function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim
           onClick={() => onPick(choice)}
           style={{
             ...styles.segmentButton,
-            fontSize: choices.length > 4 ? '14px' : '16px',
+            fontSize: choices.length > 4 ? '14px' : '15px',
+            fontWeight: i === index ? 650 : 500,
             color: choiceColor(i === index, dim?.(choice) === true),
           }}
         >
@@ -93,25 +94,23 @@ const styles = {
     position: 'relative' as const,
     display: 'grid' as const,
     padding: '3px',
-    borderRadius: '12px',
-    backgroundColor: 'var(--bg-tertiary)',
-    border: '1px solid var(--border)',
+    borderRadius: '11px',
+    backgroundColor: 'color-mix(in srgb, var(--text-primary) 6%, transparent)',
   },
   thumb: {
     position: 'absolute' as const,
     top: '3px',
     bottom: '3px',
     left: '3px',
-    borderRadius: '9px',
-    backgroundColor: 'var(--accent)',
+    borderRadius: '8px',
+    backgroundColor: 'var(--segment-thumb)',
+    boxShadow: 'var(--segment-thumb-shadow)',
   },
   segmentButton: {
     position: 'relative' as const,
-    height: '42px',
+    height: '38px',
     border: 0,
     background: 'none',
-    fontSize: '16px',
-    fontWeight: 600 as const,
     cursor: 'pointer',
     transition: 'color 0.2s ease',
   },

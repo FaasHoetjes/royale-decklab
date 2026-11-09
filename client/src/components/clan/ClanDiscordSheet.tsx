@@ -12,14 +12,12 @@ import {
 } from '../../api';
 import { queryKeys } from '../../queries';
 import { REMINDER_STYLES, reminderStyleLabel } from '../../lib/clanWar';
-import { useBottomSheet } from '../../hooks/useBottomSheet';
-import { CrossIcon } from '../generator/icons';
+import Sheet from '../Sheet';
+import Switch from '../Switch';
 import { Segment } from '../generator/SegmentedChoice';
-import { sheetStyles } from './sheetStyles';
+import DiscordPreview from './DiscordPreview';
 
 const HOUR_CHOICES = [1, 2, 3, 6];
-const PINGS: ReminderPing[] = ['nobody', 'here'];
-const pingLabel: Record<ReminderPing, string> = { nobody: 'Nobody', here: '@here' };
 const DEFAULT_SETTINGS: ReminderSettings = { hoursBeforeReset: 2, style: 'names', ping: 'nobody', postWhenAllDone: false };
 
 const problemText: Record<ReminderProblem, string> = {
@@ -52,6 +50,8 @@ const errorText = (error: unknown): string => {
 const postTime = (dayEndsAt: string, hours: number): string =>
   new Date(Date.parse(dayEndsAt) - hours * 3_600_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+const pingFor = (isOn: boolean): ReminderPing => (isOn ? 'here' : 'nobody');
+
 export const describeReminder = (settings: ReminderSettings): string => {
   const parts = [`${settings.hoursBeforeReset}h before reset`, reminderStyleLabel[settings.style]];
   if (settings.ping === 'here') parts.push('@here');
@@ -61,6 +61,24 @@ export const describeReminder = (settings: ReminderSettings): string => {
 type Busy = 'save' | 'test' | 'off';
 type Notice = { tone: 'ok' | 'error'; text: string };
 
+const StatusCard = ({ reminders, dayEndsAt }: { reminders: ReminderSettings[]; dayEndsAt: string | null }) => {
+  const when = (r: ReminderSettings) => (dayEndsAt ? `posts about ${postTime(dayEndsAt, r.hoursBeforeReset)}` : `${r.hoursBeforeReset}h before reset`);
+  const summary = (r: ReminderSettings) => [when(r), reminderStyleLabel[r.style], ...(r.ping === 'here' ? ['@here'] : [])].join(' · ');
+  const [only] = reminders;
+  const isSingle = reminders.length === 1 && only != null;
+
+  return (
+    <div style={styles.status}>
+      <strong style={styles.statusTitle}>
+        <span aria-hidden="true" style={styles.statusDot} />
+        {isSingle ? `On · ${summary(only)}` : `On in ${reminders.length} channels`}
+      </strong>
+      {!isSingle && reminders.map((reminder, i) => <span key={i} style={styles.statusLine}>{summary(reminder)}</span>)}
+      <span style={styles.statusLine}>Paste the webhook URL to change or turn it off.</span>
+    </div>
+  );
+};
+
 interface ClanDiscordSheetProps {
   war: ClanWar;
   reminders: ReminderSettings[];
@@ -69,14 +87,17 @@ interface ClanDiscordSheetProps {
 
 /** Turn on, change or turn off the Discord webhook that reminds the clan before each war day ends. */
 const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) => {
-  const closeRef = useBottomSheet(onClose);
   const queryClient = useQueryClient();
   const [url, setUrl] = useState('');
   const [settings, setSettings] = useState<ReminderSettings>(reminders[0] ?? DEFAULT_SETTINGS);
   const [busy, setBusy] = useState<Busy | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [showsSteps, setShowsSteps] = useState(false);
   const isOn = reminders.length > 0;
   const hasUrl = url.trim().length > 0;
+  const isLocked = !hasUrl || busy != null;
+  const saveLabel = isOn ? 'Save' : 'Turn on';
+  const postsAt = war.dayEndsAt ? postTime(war.dayEndsAt, settings.hoursBeforeReset) : null;
 
   const change = (next: Partial<ReminderSettings>) => {
     setSettings((current) => ({ ...current, ...next }));
@@ -115,210 +136,266 @@ const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) =>
     return 'Reminders are off for this webhook.';
   });
 
-  return (
+  const footer = (
     <>
-      <div className="gc-backdrop" style={styles.backdrop} onClick={onClose} aria-hidden="true" />
-      <div role="dialog" aria-modal="true" aria-labelledby="clan-discord-title" className="gc-sheet" style={styles.sheet}>
-        <div aria-hidden="true" style={styles.handle} />
-        <div style={styles.header}>
-          <h2 id="clan-discord-title" style={styles.title}>
-            Discord reminders
-          </h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close" className="mobile-touch-target" style={styles.close}>
-            <CrossIcon size={16} />
-          </button>
-        </div>
+      <p
+        role="status"
+        aria-live="polite"
+        style={{ ...styles.notice, marginBottom: notice ? '10px' : 0, color: notice?.tone === 'error' ? 'var(--down)' : 'var(--up)' }}
+      >
+        {notice?.text}
+      </p>
+      <div className="sheet-actions">
+        <button type="button" onClick={test} disabled={isLocked} className="sheet-btn">
+          {busy === 'test' ? 'Sending…' : 'Send a test'}
+        </button>
+        <button type="button" onClick={save} disabled={isLocked} className="sheet-btn sheet-btn-primary">
+          {busy === 'save' ? 'Saving…' : saveLabel}
+        </button>
+      </div>
+      {isOn && (
+        <button type="button" onClick={turnOff} disabled={isLocked} style={{ ...styles.turnOff, opacity: hasUrl ? 1 : 0.45 }}>
+          {busy === 'off' ? 'Turning off…' : 'Turn off reminders'}
+        </button>
+      )}
+    </>
+  );
 
-        {isOn && (
-          <div style={styles.status}>
-            <strong style={styles.statusTitle}>{reminders.length === 1 ? 'On for this clan' : `On in ${reminders.length} channels`}</strong>
-            {reminders.map((reminder, i) => (
-              <span key={i} style={styles.hint}>{describeReminder(reminder)}</span>
-            ))}
-          </div>
-        )}
+  return (
+    <Sheet
+      title="Discord reminders"
+      icon={<img src="/discord-symbol.svg" alt="" width={26} height={19} style={styles.logo} />}
+      footer={footer}
+      onClose={onClose}
+    >
+      {isOn && <StatusCard reminders={reminders} dayEndsAt={war.dayEndsAt} />}
 
-        <label htmlFor="clan-discord-url" style={styles.label}>
-          {isOn ? 'Webhook URL (paste it again to change or turn off)' : 'Webhook URL'}
-        </label>
-        <input
-          id="clan-discord-url"
-          type="url"
-          inputMode="url"
-          value={url}
-          onChange={(e) => {
-            setUrl(e.target.value);
-            setNotice(null);
-          }}
-          placeholder="https://discord.com/api/webhooks/…"
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          style={styles.input}
-        />
-        <details style={styles.help}>
-          <summary style={styles.helpSummary}>Where do I find this?</summary>
-          <ol style={styles.steps}>
-            <li>In Discord, open the channel's settings and go to Integrations.</li>
-            <li>Pick Webhooks, then New Webhook, then Copy Webhook URL.</li>
-          </ol>
-          <p style={styles.helpNote}>You need the Manage Webhooks permission in that server.</p>
-        </details>
+      <div style={styles.previewLabel}>
+        <span>Preview</span>
+        {postsAt && war.isBattleDay && <span style={styles.previewTime}>{`posts about ${postsAt}`}</span>}
+      </div>
+      <DiscordPreview war={war} settings={settings} postsAt={postsAt} />
 
-        <p style={styles.label}>When</p>
-        <Segment
-          label="When"
-          choices={HOUR_CHOICES}
-          value={settings.hoursBeforeReset}
-          onPick={(hours) => change({ hoursBeforeReset: hours })}
-          text={(hours) => `${hours}h`}
-          ariaLabel={(hours) => `${hours} ${hours === 1 ? 'hour' : 'hours'} before the war day ends`}
-        />
-        <p style={styles.hint}>
-          {`Posts ${settings.hoursBeforeReset}h before each war day ends`}
-          {war.dayEndsAt && `, about ${postTime(war.dayEndsAt, settings.hoursBeforeReset)} your time`}
-        </p>
-
-        <p style={styles.label}>Message</p>
-        <Segment label="Message" choices={REMINDER_STYLES} value={settings.style} onPick={(style) => change({ style })} text={(s) => reminderStyleLabel[s]} />
-
-        <p style={styles.label}>Ping</p>
-        <Segment label="Ping" choices={PINGS} value={settings.ping} onPick={(ping) => change({ ping })} text={(p) => pingLabel[p]} />
-
-        <label style={styles.toggle}>
+      <label htmlFor="clan-discord-url" style={styles.groupTitle}>
+        Discord channel
+      </label>
+      <div style={styles.group}>
+        <div style={styles.row}>
           <input
-            type="checkbox"
-            checked={settings.postWhenAllDone}
-            onChange={(e) => change({ postWhenAllDone: e.target.checked })}
-            style={styles.checkbox}
+            id="clan-discord-url"
+            type="url"
+            inputMode="url"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setNotice(null);
+            }}
+            placeholder="https://discord.com/api/webhooks/…"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            style={styles.input}
           />
-          Also post when everyone already played
-        </label>
-
-        <p role="status" aria-live="polite" style={{ ...styles.notice, color: notice?.tone === 'error' ? 'var(--down)' : 'var(--up)' }}>
-          {notice?.text}
-        </p>
-
-        <div style={styles.actions}>
-          <button type="button" onClick={test} disabled={!hasUrl || busy != null} style={{ ...styles.secondary, opacity: hasUrl ? 1 : 0.5 }}>
-            {busy === 'test' ? 'Sending…' : 'Send a test'}
-          </button>
           <button
             type="button"
-            onClick={save}
-            disabled={!hasUrl || busy != null}
-            style={{ ...styles.primary, backgroundColor: 'var(--accent)', opacity: hasUrl ? 1 : 0.5 }}
+            onClick={() => setShowsSteps((shows) => !shows)}
+            aria-expanded={showsSteps}
+            aria-controls="clan-discord-steps"
+            style={styles.helpToggle}
           >
-            {busy === 'save' ? 'Saving…' : isOn ? 'Save' : 'Turn on'}
+            {showsSteps ? 'Hide the steps' : 'How do I get this URL?'}
           </button>
+          {showsSteps && (
+            <div id="clan-discord-steps" style={styles.help}>
+              <ol style={styles.steps}>
+                <li>In Discord, open the channel's settings, then Integrations.</li>
+                <li>Pick Webhooks, then New Webhook, then Copy Webhook URL.</li>
+              </ol>
+              <span>You need the Manage Webhooks permission in that server.</span>
+            </div>
+          )}
         </div>
-        {isOn && (
-          <button type="button" onClick={turnOff} disabled={!hasUrl || busy != null} style={{ ...styles.turnOff, opacity: hasUrl ? 1 : 0.5 }}>
-            {busy === 'off' ? 'Turning off…' : 'Turn off'}
-          </button>
-        )}
-
-        <p style={styles.privacy}>
-          The URL is stored encrypted and only used to post these reminders. Deleting the webhook in Discord stops them too.
-        </p>
       </div>
-    </>
+
+      <h3 style={styles.groupTitle}>When and what</h3>
+      <div style={styles.group}>
+        <div style={styles.row}>
+          <div style={styles.rowLine}>
+            <span style={styles.rowLabel}>Before the day ends</span>
+            {postsAt && <span style={styles.rowSub}>{`about ${postsAt}`}</span>}
+          </div>
+          <Segment
+            label="Before the day ends"
+            choices={HOUR_CHOICES}
+            value={settings.hoursBeforeReset}
+            onPick={(hours) => change({ hoursBeforeReset: hours })}
+            text={(hours) => `${hours}h`}
+            ariaLabel={(hours) => `${hours} ${hours === 1 ? 'hour' : 'hours'} before the war day ends`}
+          />
+        </div>
+        <div style={{ ...styles.row, ...styles.rowDivider }}>
+          <span style={styles.rowLabel}>Message</span>
+          <Segment label="Message" choices={REMINDER_STYLES} value={settings.style} onPick={(style) => change({ style })} text={(s) => reminderStyleLabel[s]} />
+        </div>
+        <label style={{ ...styles.row, ...styles.rowDivider, ...styles.rowLine, ...styles.clickable }}>
+          <span style={styles.rowLabel}>Ping @here</span>
+          <Switch isOn={settings.ping === 'here'} onChange={(isOn) => change({ ping: pingFor(isOn) })} />
+        </label>
+        <label style={{ ...styles.row, ...styles.rowDivider, ...styles.rowLine, ...styles.clickable }}>
+          <span>
+            <span style={styles.rowLabel}>Also post when all done</span>
+            <span style={styles.rowSubBlock}>A short “every deck played” post</span>
+          </span>
+          <Switch isOn={settings.postWhenAllDone} onChange={(postWhenAllDone) => change({ postWhenAllDone })} />
+        </label>
+      </div>
+
+      <p style={styles.privacy}>
+        The webhook's secret part is stored encrypted and only used to post these reminders. Deleting the webhook in Discord stops them too.
+      </p>
+    </Sheet>
   );
 };
 
 export default ClanDiscordSheet;
 
 const styles = {
-  ...sheetStyles,
+  logo: {
+    flexShrink: 0,
+  },
   status: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
+    display: 'grid' as const,
     gap: '2px',
-    marginBottom: '14px',
+    marginTop: '6px',
     padding: '12px 14px',
-    borderRadius: '12px',
-    backgroundColor: 'var(--bg-tertiary)',
+    borderRadius: '14px',
+    backgroundColor: 'color-mix(in srgb, var(--up) 12%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--up) 30%, transparent)',
   },
   statusTitle: {
-    fontSize: '14px',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '8px',
+    fontSize: '15px',
   },
-  label: {
-    display: 'block' as const,
-    margin: '14px 0 6px',
-    fontSize: '12px',
+  statusDot: {
+    flexShrink: 0,
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--up)',
+  },
+  statusLine: {
+    fontSize: '13px',
+    color: 'var(--text-secondary)',
+  },
+  previewLabel: {
+    display: 'flex' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+    margin: '14px 4px 0',
+    fontSize: '13px',
     fontWeight: 600 as const,
+    color: 'var(--text-secondary)',
+  },
+  previewTime: {
+    fontWeight: 500 as const,
+  },
+  groupTitle: {
+    display: 'block' as const,
+    margin: '18px 4px 6px',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    color: 'var(--text-secondary)',
+  },
+  group: {
+    borderRadius: '14px',
+    backgroundColor: 'var(--bg-tertiary)',
+    overflow: 'hidden' as const,
+  },
+  row: {
+    display: 'grid' as const,
+    gap: '8px',
+    padding: '12px 14px',
+  },
+  rowDivider: {
+    borderTop: '1px solid var(--border)',
+  },
+  rowLine: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+  },
+  clickable: {
+    cursor: 'pointer',
+  },
+  rowLabel: {
+    fontSize: '15px',
+    fontWeight: 500 as const,
+  },
+  rowSub: {
+    fontSize: '12.5px',
+    color: 'var(--text-secondary)',
+  },
+  rowSubBlock: {
+    display: 'block' as const,
+    fontSize: '12.5px',
     color: 'var(--text-secondary)',
   },
   input: {
     width: '100%',
     boxSizing: 'border-box' as const,
-    padding: '11px 12px',
+    padding: '12px',
     border: '1px solid var(--control-border)',
     borderRadius: '10px',
     backgroundColor: 'var(--control-bg)',
     color: 'var(--text-primary)',
     fontSize: '16px',
   },
-  help: {
-    marginTop: '8px',
-    padding: '10px 12px',
-    borderRadius: '10px',
-    backgroundColor: 'var(--bg-tertiary)',
-    fontSize: '13px',
-    color: 'var(--text-secondary)',
-  },
-  helpSummary: {
-    cursor: 'pointer',
+  helpToggle: {
+    justifySelf: 'start' as const,
+    padding: 0,
+    border: 0,
+    background: 'none',
+    color: 'var(--accent)',
+    fontSize: '14px',
     fontWeight: 600 as const,
+    textAlign: 'left' as const,
+    cursor: 'pointer',
+  },
+  help: {
+    display: 'grid' as const,
+    gap: '6px',
+    fontSize: '13.5px',
+    color: 'var(--text-secondary)',
   },
   steps: {
-    margin: '8px 0 0',
-    paddingLeft: '18px',
-    lineHeight: 1.5,
-  },
-  helpNote: {
-    margin: '6px 0 0',
-  },
-  hint: {
-    margin: '6px 0 0',
-    fontSize: '12px',
-    color: 'var(--text-secondary)',
-  },
-  toggle: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '10px',
-    marginTop: '16px',
-    fontSize: '14px',
-    cursor: 'pointer',
-  },
-  checkbox: {
-    width: '18px',
-    height: '18px',
+    display: 'grid' as const,
+    gap: '3px',
     margin: 0,
-    accentColor: 'var(--accent)',
+    paddingLeft: '18px',
+  },
+  privacy: {
+    margin: '14px 4px 0',
+    fontSize: '12px',
+    lineHeight: 1.45,
+    color: 'var(--text-tertiary)',
   },
   notice: {
-    minHeight: '18px',
-    margin: '14px 0 0',
+    margin: 0,
     fontSize: '13px',
   },
   turnOff: {
     display: 'block' as const,
     width: '100%',
-    marginTop: '10px',
-    padding: '10px',
+    marginTop: '6px',
+    padding: '6px',
     border: 0,
     background: 'none',
     color: 'var(--down)',
     fontSize: '15px',
     fontWeight: 600 as const,
     cursor: 'pointer',
-  },
-  privacy: {
-    margin: '14px 0 0',
-    fontSize: '12px',
-    lineHeight: 1.45,
-    color: 'var(--text-tertiary)',
   },
 };
