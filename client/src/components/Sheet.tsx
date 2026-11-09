@@ -77,12 +77,13 @@ const Sheet = ({ title, ariaLabel, icon, footer, onClose, children }: SheetProps
     const sheet = sheetRef.current;
     const backdrop = backdropRef.current;
     if (!sheet || !backdrop) return;
-    if (isClosing && prefersReducedMotion()) {
+    const isStill = prefersReducedMotion();
+    if (isClosing && isStill) {
       onCloseRef.current();
       return;
     }
-    sheet.style.transition = `transform ${SLIDE_MS}ms ${EASING}`;
-    backdrop.style.transition = `opacity ${SLIDE_MS}ms ease`;
+    sheet.style.transition = isStill ? 'none' : `transform ${SLIDE_MS}ms ${EASING}`;
+    backdrop.style.transition = isStill ? 'none' : `opacity ${SLIDE_MS}ms ease`;
     if (!isClosing) {
       follow(0);
       backdrop.style.opacity = '';
