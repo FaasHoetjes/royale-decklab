@@ -391,6 +391,27 @@ export const faqItems: FaqItem[] = [
     link: 'clan',
   },
   {
+    id: 'clan-discord-reminders',
+    question: 'How do Discord reminders work, and what do you store?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          Use the “Discord reminders” row on your clan’s Planner page. In Discord, create a webhook
+          for the channel you want (channel settings, then Integrations, then Webhooks) and paste its
+          URL. Before each war day ends, at the time you choose, the site posts who still has decks
+          to play. You can send a test first, and optionally ping @here.
+        </p>
+        <p style={pLast}>
+          We store the webhook URL encrypted, together with your clan tag and the settings you chose,
+          and use it only to post these reminders. To change or turn them off, paste the same URL
+          again. Deleting the webhook in Discord stops them too, and we remove it the next time a
+          reminder is due.
+        </p>
+      </>
+    ),
+    link: 'clan',
+  },
+  {
     id: 'player-score',
     question: 'How is a deck’s player score calculated?',
     answer: (

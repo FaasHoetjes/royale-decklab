@@ -4,6 +4,8 @@ import { copyText } from '../../lib/clipboard';
 import { clanChatReminder, REMINDER_STYLES, reminderStyleLabel, type ReminderStyle } from '../../lib/clanWar';
 import { CrossIcon } from '../generator/icons';
 import { Segment } from '../generator/SegmentedChoice';
+import { useBottomSheet } from '../../hooks/useBottomSheet';
+import { sheetStyles } from './sheetStyles';
 
 const STYLE_KEY = 'clanReminderStyle';
 const COPIED_FOR_MS = 1800;
@@ -31,26 +33,12 @@ const canShare = () => typeof navigator.share === 'function';
 const ClanReminderSheet = ({ war, onClose }: { war: ClanWar; onClose: () => void }) => {
   const [style, setStyle] = useState(loadStyle);
   const [copied, setCopied] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useBottomSheet(onClose);
   const resetTimer = useRef<number | null>(null);
-  // The page refetches while the sheet is open; keep the effect from re-running.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   const text = clanChatReminder(war, style);
 
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKey);
-      if (resetTimer.current != null) window.clearTimeout(resetTimer.current);
-    };
+  useEffect(() => () => {
+    if (resetTimer.current != null) window.clearTimeout(resetTimer.current);
   }, []);
 
   const pick = (next: ReminderStyle) => {
@@ -115,55 +103,7 @@ const ClanReminderSheet = ({ war, onClose }: { war: ClanWar; onClose: () => void
 export default ClanReminderSheet;
 
 const styles = {
-  backdrop: {
-    position: 'fixed' as const,
-    inset: 0,
-    zIndex: 1500,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  sheet: {
-    position: 'fixed' as const,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1501,
-    maxWidth: '520px',
-    maxHeight: '90vh',
-    margin: '0 auto',
-    overflowY: 'auto' as const,
-    padding: '10px 16px calc(16px + env(safe-area-inset-bottom))',
-    borderRadius: '22px 22px 0 0',
-    backgroundColor: 'var(--modal-bg)',
-    borderTop: '1px solid var(--border-strong)',
-    color: 'var(--text-primary)',
-  },
-  handle: {
-    width: '40px',
-    height: '4px',
-    borderRadius: '2px',
-    backgroundColor: 'var(--border-strong)',
-    margin: '0 auto 8px',
-  },
-  header: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: '12px',
-  },
-  title: {
-    margin: 0,
-    fontSize: '18px',
-    fontWeight: 700 as const,
-  },
-  close: {
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    border: 0,
-    background: 'none',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-  },
+  ...sheetStyles,
   preview: {
     margin: '14px 0 0',
     padding: '12px 14px',
@@ -175,32 +115,5 @@ const styles = {
     lineHeight: 1.5,
     whiteSpace: 'pre-wrap' as const,
     overflowWrap: 'anywhere' as const,
-  },
-  actions: {
-    display: 'flex' as const,
-    gap: '10px',
-    marginTop: '16px',
-  },
-  primary: {
-    flex: 1,
-    height: '50px',
-    border: 0,
-    borderRadius: '14px',
-    color: 'var(--on-accent)',
-    fontSize: '16px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-    transition: 'background-color 0.2s ease',
-  },
-  secondary: {
-    flex: 1,
-    height: '50px',
-    border: '1px solid var(--border-strong)',
-    borderRadius: '14px',
-    backgroundColor: 'var(--bg-tertiary)',
-    color: 'var(--text-primary)',
-    fontSize: '16px',
-    fontWeight: 600 as const,
-    cursor: 'pointer',
   },
 };

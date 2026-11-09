@@ -17,7 +17,7 @@ public sealed class ReminderStoreTests : IDisposable
 
     public ReminderStoreTests()
     {
-        _store = new ReminderStore(_path, _cipher);
+        _store = new ReminderStore(_path, _cipher, NullLogger<ReminderStore>.Instance);
         Assert.True(ClanTag.TryParse("L9VRJ", out var clan));
         _clan = clan;
     }
@@ -78,13 +78,16 @@ public sealed class ReminderStoreTests : IDisposable
     }
 
     [Fact]
-    public void CantReadTokens_WithAnotherKey()
+    public void SkipsTokensItCantRead_UntilTheWebhookIsSavedAgain()
     {
         _store.Save(Reminder());
+        var otherKey = new ReminderStore(_path, Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))), NullLogger<ReminderStore>.Instance);
 
-        var otherKey = new ReminderStore(_path, Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))));
+        Assert.Empty(otherKey.All());
+        Assert.Null(otherKey.Find(DiscordWebhookTests.Id));
 
-        Assert.ThrowsAny<CryptographicException>(() => otherKey.All());
+        otherKey.Save(Reminder());
+        Assert.Equal(DiscordWebhookTests.Token, Assert.Single(otherKey.All()).Webhook.Token);
     }
 
     [Theory]

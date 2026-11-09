@@ -42,7 +42,7 @@ public sealed class DiscordRemindersTests : IDisposable
     public DiscordRemindersTests()
     {
         var cipher = ReminderStoreTests.Cipher(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
-        _store = new ReminderStore(_path, cipher);
+        _store = new ReminderStore(_path, cipher, NullLogger<ReminderStore>.Instance);
         var factory = new StubFactory(_http);
         var clanWars = new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock));
         _setup = new DiscordReminderSetup(_store, cipher, clanWars, factory);

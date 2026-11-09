@@ -12,7 +12,7 @@ public sealed record WebhookRequest(string WebhookUrl);
 
 public sealed record SavedReminder(string? WebhookName);
 
-public sealed record ReminderProblemResponse(ReminderProblem Problem);
+public sealed record ReminderProblemResponse(ReminderProblem Code);
 
 /// <summary>A clan's Discord war reminders. The webhook URL is a secret, so it only ever travels in a request body.</summary>
 [ApiController]

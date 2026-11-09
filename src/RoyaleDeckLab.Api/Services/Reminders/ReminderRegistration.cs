@@ -14,7 +14,8 @@ public static class ReminderRegistration
         services.AddSingleton<WebhookTokenCipher>();
         services.AddSingleton(sp => new ReminderStore(
             Path.Combine(dataDirectory, "reminders.db"),
-            sp.GetRequiredService<WebhookTokenCipher>()));
+            sp.GetRequiredService<WebhookTokenCipher>(),
+            sp.GetRequiredService<ILogger<ReminderStore>>()));
 
         // No resilience handler: a retried post could land twice, and the reminder job retries next minute anyway.
         services.AddHttpClient<DiscordWebhookClient>(http =>

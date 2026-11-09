@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
 using RoyaleDeckLab.Api.Models;
 
@@ -11,10 +12,12 @@ public sealed class ReminderStore
 {
     private readonly string _connectionString;
     private readonly WebhookTokenCipher _cipher;
+    private readonly ILogger<ReminderStore> _logger;
 
-    public ReminderStore(string path, WebhookTokenCipher cipher)
+    public ReminderStore(string path, WebhookTokenCipher cipher, ILogger<ReminderStore> logger)
     {
         _cipher = cipher;
+        _logger = logger;
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
         using var connection = Open();
         Execute(connection, "PRAGMA journal_mode=WAL;");
@@ -102,17 +105,38 @@ public sealed class ReminderStore
         bind(command);
         using var reader = command.ExecuteReader();
         var reminders = new List<DiscordReminder>();
+        var unreadable = 0;
         while (reader.Read())
         {
-            reminders.Add(ToReminder(reader));
+            if (TryReadReminder(reader) is { } reminder)
+            {
+                reminders.Add(reminder);
+                continue;
+            }
+            unreadable++;
+        }
+
+        if (unreadable > 0)
+        {
+            _logger.LogWarning("Skipped {Count} Discord reminders whose token doesn't decrypt; was the encryption key changed?", unreadable);
         }
         return reminders;
     }
 
-    private DiscordReminder ToReminder(SqliteDataReader row)
+    /// <summary>Null when the token doesn't decrypt. Saving that webhook again overwrites the row.</summary>
+    private DiscordReminder? TryReadReminder(SqliteDataReader row)
     {
         var webhookId = row.GetString(row.GetOrdinal("webhook_id"));
-        var token = _cipher.Decrypt(webhookId, (byte[])row["token"]);
+        string token;
+        try
+        {
+            token = _cipher.Decrypt(webhookId, (byte[])row["token"]);
+        }
+        catch (CryptographicException)
+        {
+            return null;
+        }
+
         if (!ClanTag.TryParse(row.GetString(row.GetOrdinal("clan_tag")), out var clan))
         {
             throw new FormatException("A stored Discord reminder has an invalid clan tag");

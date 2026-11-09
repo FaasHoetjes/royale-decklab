@@ -17,6 +17,7 @@ import {
   fetchCardDecks,
   fetchUpgradeAdvice,
   fetchClanWar,
+  fetchClanReminders,
   searchClans,
   fetchWarDecksToday,
   scoreBuilderDecks,
@@ -38,6 +39,7 @@ export const queryKeys = {
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
+  clanReminders: (clanTag: string) => ['clan', clanTag, 'discord-reminders'] as const,
   clanSearch: (name: string) => ['clan-search', name] as const,
   scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
     ['score-decks', cards, decks] as const,
@@ -200,6 +202,14 @@ export const useClanWar = (clanTag: string | null) =>
     staleTime: 60_000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
+  });
+
+export const useClanReminders = (clanTag: string) =>
+  useQuery({
+    queryKey: queryKeys.clanReminders(clanTag),
+    queryFn: ({ signal }) => fetchClanReminders(clanTag, signal),
+    staleTime: FIVE_MINUTES_MS,
+    retry: 1,
   });
 
 /** Keeps the last results up while the next name loads, so the list doesn't blink as someone types. */

@@ -17,6 +17,7 @@ import ClanMemberRow from '../components/clan/ClanMemberRow';
 import ClanMemberGroup from '../components/clan/ClanMemberGroup';
 import ClanTodayBar, { todayStatusColor } from '../components/clan/ClanTodayBar';
 import ClanReminderButton from '../components/clan/ClanReminderButton';
+import ClanDiscordRow from '../components/clan/ClanDiscordRow';
 import LoadError from '../components/LoadError';
 import { ClanWarSkeleton } from '../components/LoadingSkeletons';
 
@@ -119,6 +120,7 @@ const ClanWarView = ({ clanTag, isMobile, war }: { clanTag: string; isMobile: bo
       ) : (
         <ClanTrainingHeader war={war.data} isMobile={isMobile} />
       )}
+      <ClanDiscordRow war={war.data} />
       {hasToday && (
         <section
           aria-label="Today"

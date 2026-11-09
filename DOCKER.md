@@ -44,6 +44,7 @@ Secrets come from a server-side `.env` next to `compose.yaml` (gitignored):
 ```bash
 CLASH_ROYALE_API_KEY=<token bound to the server's IP>
 ADMIN_TOKEN=<openssl rand -hex 32>
+WEBHOOK_ENCRYPTION_KEY=<openssl rand -base64 32>
 ```
 
 Launch/update:
@@ -77,6 +78,7 @@ images, and smoke-tests `/healthz`. It needs two repo **Actions secrets**:
 | `TRUST_PROXY_HEADERS`    | Set to `true` when running behind a reverse proxy so `X-Forwarded-For` (one hop) supplies the client IP for per-IP rate limiting. A request whose proxy hop is one of Cloudflare's published ranges then takes the visitor from `CF-Connecting-IP` (Caddy doesn't trust Cloudflare, so it forwards Cloudflare's address). Leave unset if :3000 is reached directly. | unset |
 | `TRUSTED_PROXY_IPS`      | Optional, with `TRUST_PROXY_HEADERS=true`: comma-separated proxy IPs and/or CIDRs (e.g. `10.0.0.5,172.16.0.0/12`). Pins `X-Forwarded-For` trust to those addresses so a client that reaches :3000 directly can't spoof its IP past the rate limiter. When unset, any direct connection is treated as the proxy — then :3000 must only be reachable via the proxy (firewall/private network). | unset |
 | `ASPNETCORE_URLS`        | Bind address. Set to `http://0.0.0.0:3000` in-image. | `http://0.0.0.0:3000` |
+| `WEBHOOK_ENCRYPTION_KEY` | Base64 of 32 random bytes (`openssl rand -base64 32`) that encrypts the Discord webhook tokens in `reminders.db`, next to `meta.db`. Unset or invalid ⇒ Discord reminders are switched off and the row is hidden. Changing it makes stored webhooks unreadable, so keep it with your other secrets. | unset (reminders off) |
 | `Meta__DbPath`           | SQLite battle store path.                            | `/data/meta.db`    |
 
 Locally you can pass the token with `--env-file .env` instead of `-e`.
