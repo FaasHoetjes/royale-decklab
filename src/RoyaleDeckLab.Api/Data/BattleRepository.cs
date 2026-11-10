@@ -104,23 +104,6 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    public async Task ClearAsync(CancellationToken ct = default)
-    {
-        await WriteGate.WaitAsync(ct);
-        try
-        {
-            await db.Battles.ExecuteDeleteAsync(ct);
-            var s = State();
-            s.EpochStartMs = 0;
-            s.PreviousEpochStartMs = 0;
-            await db.SaveChangesAsync(ct);
-        }
-        finally
-        {
-            WriteGate.Release();
-        }
-    }
-
     public IEnumerable<BattleRecord> AllBattles()
     {
         foreach (var b in db.Battles.AsNoTracking())

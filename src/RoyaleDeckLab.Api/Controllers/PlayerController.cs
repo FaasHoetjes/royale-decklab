@@ -67,7 +67,7 @@ public sealed class PlayerController(
         {
             return NotFound(new { error = "Player not found" });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error fetching player collection");
             return StatusCode(500, new { error = "Failed to fetch player collection" });

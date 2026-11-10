@@ -43,7 +43,7 @@ public sealed class MetaBuilder(
             var tags = await client.GetTopWarClansAsync(_opt.MaxWarClans, ct);
             return tags.Take(_opt.MaxWarClans).ToList();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error fetching war clan rankings");
             return [];
@@ -136,7 +136,7 @@ public sealed class MetaBuilder(
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error processing a war battle log");
         }
@@ -208,7 +208,7 @@ public sealed class MetaBuilder(
     // owns. A 3 only appears in boat defense lists and means "owns both", which doesn't say which one was played.
     public static CardVersionKind FieldedVersion(CrBattleCard card)
     {
-        if (card.Rarity == "champion")
+        if (RarityExtensions.IsChampion(card.Rarity))
         {
             return CardVersionKind.Hero;
         }
@@ -224,15 +224,14 @@ public sealed class MetaBuilder(
     {
         var sampledPlayers = new HashSet<string>();
 
-        var byDeck = new Dictionary<string, DeckAgg>();
+        var byDeck = new Dictionary<int[], DeckAgg>(SameCards.Instance);
         foreach (var record in records)
         {
             sampledPlayers.Add(record.PlayerTag);
-            var deckKey = string.Join(',', record.CardIds);
-            if (!byDeck.TryGetValue(deckKey, out var agg))
+            if (!byDeck.TryGetValue(record.CardIds, out var agg))
             {
                 agg = new DeckAgg { CardIds = record.CardIds };
-                byDeck[deckKey] = agg;
+                byDeck[record.CardIds] = agg;
             }
 
             var isPreEpoch = epochStartMs > 0 && record.BattleTimeMs < epochStartMs;
@@ -242,12 +241,10 @@ public sealed class MetaBuilder(
             agg.WeightedWins += weight * record.Result.WinShare();
             agg.Players.Add(record.PlayerTag);
 
-            var comboKey = string.Join(',',
-                record.CardVersions.OrderBy(v => v.CardId).Select(v => $"{v.CardId}:{(int)v.Version}"));
-            if (!agg.Loadouts.TryGetValue(comboKey, out var loadout))
+            if (!agg.Loadouts.TryGetValue(record.CardVersions, out var loadout))
             {
                 loadout = new LoadoutAgg { Versions = record.CardVersions };
-                agg.Loadouts[comboKey] = loadout;
+                agg.Loadouts[record.CardVersions] = loadout;
             }
             loadout.Count++;
             if (string.CompareOrdinal(record.BattleTime, loadout.LatestTime) > 0)
@@ -284,6 +281,69 @@ public sealed class MetaBuilder(
         return decks;
     }
 
+    // Battles are keyed by their cards and versions themselves: a text key for each of them was most of what a
+    // rebuild allocated.
+    private sealed class SameCards : IEqualityComparer<int[]>
+    {
+        public static readonly SameCards Instance = new();
+
+        public bool Equals(int[]? a, int[]? b) => a is not null && b is not null && a.AsSpan().SequenceEqual(b);
+
+        public int GetHashCode(int[] cardIds)
+        {
+            var hash = new HashCode();
+            foreach (var id in cardIds)
+            {
+                hash.Add(id);
+            }
+            return hash.ToHashCode();
+        }
+    }
+
+    /// <summary>The same versions of the same cards, in whatever order the battle listed them.</summary>
+    private sealed class SameLoadout : IEqualityComparer<IReadOnlyList<CardVersion>>
+    {
+        public static readonly SameLoadout Instance = new();
+
+        public bool Equals(IReadOnlyList<CardVersion>? a, IReadOnlyList<CardVersion>? b)
+        {
+            if (a is null || b is null || a.Count != b.Count)
+            {
+                return false;
+            }
+            for (var i = 0; i < a.Count; i++)
+            {
+                if (!Holds(b, a[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public int GetHashCode(IReadOnlyList<CardVersion> versions)
+        {
+            var hash = 0;
+            for (var i = 0; i < versions.Count; i++)
+            {
+                hash += HashCode.Combine(versions[i].CardId, versions[i].Version);
+            }
+            return hash;
+        }
+
+        private static bool Holds(IReadOnlyList<CardVersion> versions, CardVersion wanted)
+        {
+            for (var i = 0; i < versions.Count; i++)
+            {
+                if (versions[i].CardId == wanted.CardId && versions[i].Version == wanted.Version)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     private sealed class DeckAgg
     {
         public int Games;
@@ -291,7 +351,7 @@ public sealed class MetaBuilder(
         public double WeightedWins;
         public HashSet<string> Players { get; } = [];
         public required int[] CardIds { get; init; }
-        public Dictionary<string, LoadoutAgg> Loadouts { get; } = [];
+        public Dictionary<IReadOnlyList<CardVersion>, LoadoutAgg> Loadouts { get; } = new(SameLoadout.Instance);
     }
 
     private sealed class LoadoutAgg

@@ -65,7 +65,7 @@ public static class DomainMath
     }
 
     /// <summary>I_x(a, b), the Beta(a, b) CDF, via the continued fraction (Numerical Recipes betai/betacf).</summary>
-    public static double RegularizedIncompleteBeta(double a, double b, double x)
+    private static double RegularizedIncompleteBeta(double a, double b, double x)
     {
         if (x <= 0) return 0;
         if (x >= 1) return 1;
@@ -140,18 +140,18 @@ public static class DomainMath
     /// <summary>Standard normal quantile (Acklam's rational approximation, ~1e-9); only seeds the Beta inversion.</summary>
     private static double NormalQuantile(double p)
     {
-        double[] a =
+        ReadOnlySpan<double> a =
         [
             -39.69683028665376, 220.9460984245205, -275.9285104469687,
             138.3577518672690, -30.66479806614716, 2.506628277459239,
         ];
-        double[] b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
-        double[] c =
+        ReadOnlySpan<double> b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+        ReadOnlySpan<double> c =
         [
             -0.007784894002430293, -0.3223964580411365, -2.400758277161838,
             -2.549732539343734, 4.374664141464968, 2.938163982698783,
         ];
-        double[] d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+        ReadOnlySpan<double> d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
 
         if (p < 0.02425)
         {

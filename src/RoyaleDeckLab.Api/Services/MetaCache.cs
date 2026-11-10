@@ -13,6 +13,7 @@ public sealed class MetaCache(
 {
     private readonly MetaOptions _opt = options.Value;
     private readonly object _buildLock = new();
+    private readonly SemaphoreSlim _aggregateGate = new(1, 1);
     private readonly object _indexLock = new();
 
     private volatile List<DeckMeta> _meta = [];
@@ -86,13 +87,34 @@ public sealed class MetaCache(
     }
 
     // Never prunes: without a fresh crawl, the stored battles, however old, are all there is to serve.
+    // One at a time: a patch boundary set during a rebuild aggregates after it, so the newest boundary always wins.
     private async Task<List<DeckMeta>> AggregateAsync(BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
+    {
+        await _aggregateGate.WaitAsync(ct);
+        try
+        {
+            return await AggregateOneAsync(store, builder, reason, ct);
+        }
+        finally
+        {
+            _aggregateGate.Release();
+        }
+    }
+
+    private async Task<List<DeckMeta>> AggregateOneAsync(BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
     {
         var epoch = Interlocked.Read(ref _epochStart);
         var tallier = epoch > 0
             ? new CardTallier([(store.GetPreviousEpochStart(), epoch), (epoch, long.MaxValue)])
             : new CardTallier([(0, long.MaxValue)]);
-        var decks = builder.AggregateBattles(Observe(store.AllBattles(), tallier.Add), epoch);
+        var battles = 0;
+        var decks = builder.AggregateBattles(
+            Observe(store.AllBattles(), battle =>
+            {
+                battles++;
+                tallier.Add(battle);
+            }),
+            epoch);
         var periods = tallier.Periods();
         _cardStats = epoch > 0
             ? CardPeriods.Compare(periods[1], await KeepPreviousPeriodAsync(store, periods[0], ct))
@@ -101,18 +123,19 @@ public sealed class MetaCache(
         _isLoaded = true;
         Interlocked.Increment(ref _version);
         Interlocked.Exchange(ref _lastCacheTime, store.GetLastBuild());
-        logger.LogInformation("Meta {Reason}: {Decks} decks from {Battles} battles", reason, decks.Count, store.Count());
+        logger.LogInformation("Meta {Reason}: {Decks} decks from {Battles} battles", reason, decks.Count, battles);
         return decks;
     }
 
-    public async Task<List<DeckMeta>> RebuildAsync(string reason, CancellationToken ct = default)
+    /// <summary>Null when it didn't run because a build was already running.</summary>
+    public async Task<List<DeckMeta>?> RebuildAsync(string reason, CancellationToken ct = default)
     {
         lock (_buildLock)
         {
             if (_isBuilding)
             {
                 logger.LogInformation("Meta rebuild ({Reason}) skipped: a build is already running", reason);
-                return _meta;
+                return null;
             }
             _isBuilding = true;
         }
@@ -141,6 +164,11 @@ public sealed class MetaCache(
             logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Pruned} pruned before {Cutoff}, {Kept} kept",
                 added, fresh.Count, pruned, IsoMs(cutoff), store.Count());
             return decks;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogInformation("Meta rebuild ({Reason}) cancelled, keeping existing cache", reason);
+            return _meta;
         }
         catch (Exception ex)
         {
@@ -185,7 +213,7 @@ public sealed class MetaCache(
         }
 
         var decks = await RebuildAsync("startup", ct);
-        if (decks.Count == 0)
+        if (decks is { Count: 0 })
         {
             logger.LogError("Could not build meta from the API. Player searches still work; " +
                 "decks won't have meta scores until data lands. Check CLASH_ROYALE_API_KEY is bound to this server's IP.");
@@ -199,7 +227,8 @@ public sealed class MetaCache(
         {
             await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, ct);
         }
-        return await AggregateFromStoreAsync("epoch update", ct);
+        // The boundary is saved by now, so a caller who gives up waiting mustn't leave it unapplied until the next rebuild.
+        return await AggregateFromStoreAsync("epoch update", CancellationToken.None);
     }
 
     // The last patch's battles age out of the 30-day window, so its tally is saved and outlives them. A new tally

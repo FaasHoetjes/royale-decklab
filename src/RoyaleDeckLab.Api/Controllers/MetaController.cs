@@ -36,11 +36,10 @@ public sealed class MetaController(MetaCache cache, BattleRepository store) : Co
     [EnableRateLimiting(RateLimitPolicies.Admin)]
     public async Task<IActionResult> Refresh()
     {
-        if (cache.IsBuilding)
+        if (await cache.RebuildAsync("manual") is not { } decks)
         {
             return StatusCode(409, new { status = "busy", message = "A meta rebuild is already in progress" });
         }
-        var decks = await cache.RebuildAsync("manual");
         return Ok(new { status = "refreshed", deckCount = decks.Count });
     }
 
