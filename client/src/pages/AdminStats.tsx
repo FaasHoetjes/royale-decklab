@@ -34,7 +34,9 @@ const toMap = (counts: StatsCount[]) => new Map(counts.map((c) => [c.key, c.user
 const timesOf = (durations: StatsDuration[]) =>
   new Map(durations.filter((d) => d.visitors >= MIN_TIMED_VISITORS).map((d) => [d.key, d.seconds]));
 
-const hourLabel = (key: string) => `${key}:00`;
+/** The hours come in UTC; this shows them on the viewer's clock. */
+const localHour = (day: string) => (key: string) =>
+  new Date(`${day}T${key}:00:00Z`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const dayLabel = (key: string) => key;
 
 export default function AdminStats() {
@@ -149,8 +151,8 @@ export default function AdminStats() {
 
       {chartPoints.length > 0 && (
         <section style={statsStyles.panel}>
-          <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>{isToday ? 'Today, per hour (UTC)' : 'Per day'}</h2>
-          <ActivityChart points={chartPoints} previous={isToday ? null : range.previousDaily} keyLabel={isToday ? hourLabel : dayLabel} />
+          <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>{isToday ? 'Today, per hour (your time)' : 'Per day'}</h2>
+          <ActivityChart points={chartPoints} previous={isToday ? null : range.previousDaily} keyLabel={isToday ? localHour(range.from) : dayLabel} />
         </section>
       )}
 
