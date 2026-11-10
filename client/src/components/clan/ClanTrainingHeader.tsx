@@ -58,7 +58,7 @@ const styles = {
   clock: {
     fontWeight: 700 as const,
     lineHeight: 1.1,
-    color: water.gold,
+    color: 'var(--water-clock)',
     fontVariantNumeric: 'tabular-nums' as const,
     textShadow: 'var(--water-shadow)',
   },
