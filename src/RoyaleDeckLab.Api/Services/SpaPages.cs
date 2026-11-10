@@ -144,7 +144,7 @@ public static partial class SpaPages
             var (_, title, _, description, _) = StaticPages(now).First(p => p.Path == CardsPath);
             return new(200, $"{title} · {SiteName}", description, $"{CardsPath}/{slug}", false);
         }
-        var card = cards.FirstOrDefault(c => CardSlug(c.Name) == slug);
+        var card = cards.FirstOrDefault(c => string.Equals(CardSlug(c.Name), slug, StringComparison.OrdinalIgnoreCase));
         if (card is null)
         {
             return NotFound;
@@ -157,7 +157,7 @@ public static partial class SpaPages
             200,
             $"Best {card.Name} War Decks & Win Rate · {SiteName}",
             $"The best {card.Name} decks for Clash Royale Clan War, ranked on real war battles: {numbers} since the last balance update.",
-            $"{CardsPath}/{slug}",
+            $"{CardsPath}/{CardSlug(card.Name)}",
             false)
         {
             Content = SpaContentKind.Card,
@@ -166,7 +166,7 @@ public static partial class SpaPages
         };
     }
 
-    private static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+    internal static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
 
     /// <summary>Matches cardSlug in client/src/lib/cardInfo.ts.</summary>
     public static string CardSlug(string name)

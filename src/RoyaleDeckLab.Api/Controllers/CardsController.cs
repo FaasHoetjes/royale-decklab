@@ -24,7 +24,7 @@ public sealed class CardsController(
             var cards = await catalog.GetAsync(ct);
             return Ok(new { cards });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error fetching card catalog");
             return StatusCode(500, new { error = "Failed to fetch card catalog" });
@@ -46,14 +46,13 @@ public sealed class CardsController(
         try
         {
             var cards = await catalog.GetAsync(ct);
-            var catalogById = cards.ToDictionary(c => c.Id);
-            if (!catalogById.ContainsKey(id))
+            if (!cards.Any(c => c.Id == id))
             {
                 return NotFound(new { error = "Unknown card" });
             }
-            return Ok(new { decks = decks.TopDecksWith(id, cache.Meta, catalogById, DecksPerCard) });
+            return Ok(new { decks = decks.TopDecksWithCached(id, cache.Version, cache.Meta, cards, DecksPerCard) });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error finding decks for card {CardId}", id);
             return StatusCode(500, new { error = "Failed to find decks for this card" });

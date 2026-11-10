@@ -75,9 +75,10 @@ export default function UpgradeAdvisor() {
     });
   }, [newDeckArt]);
 
-  const current = suggestions[Math.min(selected, suggestions.length - 1)];
+  const shown = Math.min(selected, suggestions.length - 1);
+  const current = suggestions[shown];
   const choose = (i: number) => {
-    if (i === selected) return;
+    if (i === shown) return;
     setSelected(i);
     setPick((p) => p + 1);
   };
@@ -144,8 +145,8 @@ export default function UpgradeAdvisor() {
           pick={pick}
           baselineScore={data.baselineScore}
           lineup={lineup}
-          unlockedName={unlockedNames[selected] ?? ''}
-          effect={effectOf(current, lineup, unlockedNames[selected] ?? '')}
+          unlockedName={unlockedNames[shown] ?? ''}
+          effect={effectOf(current, lineup, unlockedNames[shown] ?? '')}
           theme={theme}
           isMobile={isMobile}
         />
@@ -160,7 +161,7 @@ export default function UpgradeAdvisor() {
               rank={i + 1}
               suggestion={s}
               effect={effectOf(s, lineup, unlockedNames[i] ?? '')}
-              selected={i === selected}
+              selected={i === shown}
               onSelect={() => choose(i)}
               theme={theme}
               isMobile={isMobile}

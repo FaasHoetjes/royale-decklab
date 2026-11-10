@@ -21,7 +21,7 @@ export function homePath(activePlayerTag: string | null): string {
 }
 
 export const SITE_NAME = 'Royale DeckLab';
-export const SITE_DESCRIPTION = 'Generate your best four Clash Royale War Decks tuned to the cards you actually own.';
+const SITE_DESCRIPTION = 'Generate your best four Clash Royale War Decks tuned to the cards you actually own.';
 
 /** The tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
 export function toolItems(activePlayerTag: string | null): NavItem[] {

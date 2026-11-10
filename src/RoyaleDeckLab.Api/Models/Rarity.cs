@@ -19,4 +19,6 @@ public static class RarityExtensions
         "rare" => Rarity.Rare,
         _ => Rarity.Common,
     };
+
+    public static bool IsChampion(string? rarity) => ParseRarity(rarity) == Rarity.Champion;
 }

@@ -14,23 +14,63 @@ public sealed class BestDecksBuilder
     private const int DecksPerSet = 4;
 
     private readonly object _cacheLock = new();
-    private long _cachedVersion = -1;
-    private IReadOnlyList<BestDeckSet> _cachedSets = [];
+    private Cache? _cache;
+
+    /// <summary>What was built from one meta and one card catalog; either changing starts a new one.</summary>
+    private sealed class Cache(long metaVersion, IReadOnlyList<CatalogCard> cards)
+    {
+        public long MetaVersion => metaVersion;
+        public IReadOnlyList<CatalogCard> Cards => cards;
+        public IReadOnlyDictionary<int, CatalogCard> CatalogById { get; } = cards.ToDictionary(c => c.Id);
+        public IReadOnlyList<BestDeckSet>? Sets { get; set; }
+        public Dictionary<(int CardId, int Count), IReadOnlyList<BestDeckEntry>> TopDecks { get; } = [];
+    }
 
     public IReadOnlyList<BestDeckSet> BuildCached(
         long metaVersion,
         IReadOnlyList<DeckMeta> meta,
-        IReadOnlyDictionary<int, CatalogCard> catalog)
+        IReadOnlyList<CatalogCard> cards)
     {
         lock (_cacheLock)
         {
-            if (_cachedVersion != metaVersion)
-            {
-                _cachedSets = Build(meta, catalog);
-                _cachedVersion = metaVersion;
-            }
-            return _cachedSets;
+            var cache = CacheFor(metaVersion, cards);
+            return cache.Sets ??= Build(meta, cache.CatalogById);
         }
+    }
+
+    public IReadOnlyList<BestDeckEntry> TopDecksWithCached(
+        int cardId,
+        long metaVersion,
+        IReadOnlyList<DeckMeta> meta,
+        IReadOnlyList<CatalogCard> cards,
+        int count)
+    {
+        Cache cache;
+        lock (_cacheLock)
+        {
+            cache = CacheFor(metaVersion, cards);
+            if (cache.TopDecks.TryGetValue((cardId, count), out var cached))
+            {
+                return cached;
+            }
+        }
+
+        // Ranked outside the lock, so one card's lookup doesn't wait for another's or for the sets being built.
+        var decks = TopDecksWith(cardId, meta, cache.CatalogById, count);
+        lock (_cacheLock)
+        {
+            cache.TopDecks.TryAdd((cardId, count), decks);
+            return cache.TopDecks[(cardId, count)];
+        }
+    }
+
+    private Cache CacheFor(long metaVersion, IReadOnlyList<CatalogCard> cards)
+    {
+        if (_cache is { } current && current.MetaVersion == metaVersion && ReferenceEquals(current.Cards, cards))
+        {
+            return current;
+        }
+        return _cache = new Cache(metaVersion, cards);
     }
 
     public IReadOnlyList<BestDeckSet> Build(
@@ -179,7 +219,7 @@ public sealed class BestDecksBuilder
         var cardVersions = deck.CardIds.Select(cardId =>
         {
             catalog.TryGetValue(cardId, out var catalogCard);
-            var isChampion = string.Equals(catalogCard?.Rarity, "champion", StringComparison.OrdinalIgnoreCase);
+            var isChampion = RarityExtensions.IsChampion(catalogCard?.Rarity);
             var version = isChampion ? CardVersionKind.Hero : rawVersions.GetValueOrDefault(cardId, CardVersionKind.Normal);
             return new CardVersion(cardId, version);
         }).ToList();

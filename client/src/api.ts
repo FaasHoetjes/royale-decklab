@@ -1,4 +1,5 @@
 import type { CardVersionRef, CardIconUrls } from './lib/cardDisplay';
+import type { ReminderStyle } from './lib/clanWar';
 
 export type PlayerSummary = PlayerResponse['player'];
 
@@ -212,7 +213,6 @@ export interface ClanWar {
   membersDoneToday: number;
   members: ClanWarMember[];
   pastWeeks: PastWarWeek[];
-  /** Players who left the clan after using decks for it this week. */
   /** Every clan in the race, furthest boat first. */
   race: RaceClan[];
   /** Estimates from when past races ended; null without past races. */
@@ -248,6 +248,65 @@ export const searchClans = (name: string, signal?: AbortSignal): Promise<ClanSum
 
 export const fetchClanWar = (clanTag: string, signal?: AbortSignal): Promise<ClanWar> =>
   getJson(`/api/clans/${encodeURIComponent(clanTag)}/war`, 'Failed to fetch clan war', signal);
+
+export type ReminderPing = 'nobody' | 'here';
+
+export interface ReminderSettings {
+  hoursBeforeReset: number;
+  style: ReminderStyle;
+  ping: ReminderPing;
+  postWhenAllDone: boolean;
+}
+
+/** Only the settings come back; the webhook URL is a secret that never leaves the server. */
+export interface ClanReminders {
+  isAvailable: boolean;
+  reminders: ReminderSettings[];
+}
+
+export type ReminderProblem =
+  | 'unavailable'
+  | 'invalidWebhook'
+  | 'invalidSettings'
+  | 'clanNotFound'
+  | 'noResetTime'
+  | 'webhookNotFound'
+  | 'tooManyReminders'
+  | 'tooManyForServer'
+  | 'notRegistered'
+  | 'discordFailed'
+  | 'clashRoyaleFailed'
+  | 'busy';
+
+const clanRemindersUrl = (clanTag: string) => `/api/clans/${encodeURIComponent(clanTag)}/discord-reminders`;
+
+async function sendJson(method: string, url: string, body: unknown, label: string): Promise<Response> {
+  const response = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw await responseError(response, label);
+  }
+  return response;
+}
+
+export const fetchClanReminders = (clanTag: string, signal?: AbortSignal): Promise<ClanReminders> =>
+  getJson(clanRemindersUrl(clanTag), 'Failed to fetch Discord reminders', signal);
+
+/** Resolves to the name the webhook has in Discord. */
+export async function saveClanReminder(clanTag: string, webhookUrl: string, settings: ReminderSettings): Promise<string | null> {
+  const response = await sendJson('PUT', clanRemindersUrl(clanTag), { webhookUrl, settings }, 'Failed to save the Discord reminder');
+  const saved: { webhookName: string | null } = await response.json();
+  return saved.webhookName;
+}
+
+export const testClanReminder = (clanTag: string, webhookUrl: string, settings: ReminderSettings): Promise<unknown> =>
+  sendJson('POST', `${clanRemindersUrl(clanTag)}/test`, { webhookUrl, settings }, 'Failed to send a test reminder');
+
+export const deleteClanReminder = (clanTag: string, webhookUrl: string): Promise<unknown> =>
+  sendJson('DELETE', clanRemindersUrl(clanTag), { webhookUrl }, 'Failed to turn off the Discord reminder');
 
 export const fetchWarDecksToday = (playerTag: string, signal?: AbortSignal): Promise<WarDecksToday> =>
   getJson(`/api/player/${encodeURIComponent(playerTag)}/war-today`, "Failed to fetch today's war decks", signal);

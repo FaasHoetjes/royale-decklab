@@ -17,7 +17,7 @@ export default function ClanDailyStandings({ war }: { war: ClanWar }) {
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={clan.name}>{clan.name}</div>
             <div aria-hidden="true" style={{ height: '3px', background: water.line, marginTop: '5px', borderRadius: '3px' }}><div style={{ height: '100%', width: `${clan.medalsToday / maximum * 100}%`, background: ours ? 'var(--accent)' : water.muted, borderRadius: '3px' }} /></div>
           </div>
-          <span aria-label={`${clan.medalsToday.toLocaleString('en-US')} medals today`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><MedalIcon />{clan.medalsToday.toLocaleString('en-US')}</span>
+          <span role="img" aria-label={`${clan.medalsToday.toLocaleString('en-US')} medals today`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><MedalIcon />{clan.medalsToday.toLocaleString('en-US')}</span>
         </li>;
       })}
     </ol>

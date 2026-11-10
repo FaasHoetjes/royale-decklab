@@ -1,10 +1,8 @@
 import type { ReactNode } from 'react';
 import type { CardStat } from '../api';
 import { percent } from '../lib/cardStats';
+import { SPECIAL_COLOR } from '../lib/slotStyles';
 import type { Theme } from '../theme';
-
-const EVO_COLOR = '#b14bff';
-const HERO_COLOR = '#f5a623';
 
 export function StatTile({ theme, value, label, children }: { theme: Theme; value: string; label: string; children?: ReactNode }) {
   return (
@@ -18,8 +16,8 @@ export function StatTile({ theme, value, label, children }: { theme: Theme; valu
 
 export function PlaySplit({ theme, stat }: { theme: Theme; stat: CardStat }) {
   const parts = [
-    { label: 'Evo', share: stat.evoShare, color: EVO_COLOR },
-    { label: 'Hero', share: stat.heroShare, color: HERO_COLOR },
+    { label: 'Evo', share: stat.evoShare, color: SPECIAL_COLOR.evo },
+    { label: 'Hero', share: stat.heroShare, color: SPECIAL_COLOR.hero },
     { label: 'Normal', share: Math.max(0, 1 - stat.evoShare - stat.heroShare), color: 'var(--text-tertiary)' },
   ].filter((p) => p.share > 0);
   return (

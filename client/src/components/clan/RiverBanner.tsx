@@ -58,13 +58,13 @@ export const CountdownChip = ({ target, finalDay = false }: { target: string; fi
   const time = minutes >= 60 ? `${Math.ceil(minutes / 60)}h` : `${minutes}m`;
   const description = finalDay ? 'Time till war ends' : 'Time till next war day';
   return (
-    <span tabIndex={0} title={description} aria-label={`${description}: about ${time} left`} style={{ fontSize: '12px', color: water.muted }}>
+    <span tabIndex={0} role="img" title={description} aria-label={`${description}: about ${time} left`} style={{ fontSize: '12px', color: water.muted }}>
       <span aria-hidden="true">◷ </span>~<span style={styles.chipTime}>{time}</span> left
     </span>
   );
 };
 
-export const RaceBoat = ({ color, size, wake = false }: { color: string; size: number; wake?: boolean }) => (
+const RaceBoat = ({ color, size, wake = false }: { color: string; size: number; wake?: boolean }) => (
   <svg width={size} height={size * 0.72} viewBox="0 0 48 34" className="clan-bob" style={styles.boat} aria-hidden="true">
     {wake && <ellipse className="clan-wake" cx="6" cy="29" rx="10" ry="2" fill="rgba(255,255,255,0.35)" />}
     <line x1="24" y1="2" x2="24" y2="24" style={{ stroke: 'var(--water-mast)' }} strokeWidth="1.6" />
@@ -76,7 +76,7 @@ export const RaceBoat = ({ color, size, wake = false }: { color: string; size: n
   </svg>
 );
 
-export const boatColor = (war: ClanWar, clan: RaceClan, index: number) =>
+const boatColor = (war: ClanWar, clan: RaceClan, index: number) =>
   clan.tag === war.tag ? OUR_BOAT : (OTHER_BOATS[index % OTHER_BOATS.length] ?? OUR_BOAT);
 
 /** Starts every boat at the start line and lets them sail out once the page has painted. */

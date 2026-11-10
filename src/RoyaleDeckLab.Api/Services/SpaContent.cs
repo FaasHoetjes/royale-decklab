@@ -72,8 +72,8 @@ public static class SpaContent
             {
                 var stat = statById.GetValueOrDefault(card.Id);
                 html.Append("<tr><td>").Append(CardLink(card.Name)).Append("</td><td>")
-                    .Append(stat is null ? "–" : Percent(stat.WinRate)).Append("</td><td>")
-                    .Append(stat is null ? "–" : Percent(stat.PlayRate)).Append("</td></tr>");
+                    .Append(stat is null ? "–" : SpaPages.Percent(stat.WinRate)).Append("</td><td>")
+                    .Append(stat is null ? "–" : SpaPages.Percent(stat.PlayRate)).Append("</td></tr>");
             }
             html.Append("</tbody></table>");
         }
@@ -95,7 +95,7 @@ public static class SpaContent
         if (stat is not null)
         {
             var games = stat.Games.ToString("N0", CultureInfo.InvariantCulture);
-            html.Append(P($"{Percent(stat.WinRate)} win rate · {Percent(stat.PlayRate)} play rate · {games} games"));
+            html.Append(P($"{SpaPages.Percent(stat.WinRate)} win rate · {SpaPages.Percent(stat.PlayRate)} play rate · {games} games"));
         }
         else if (statsLoaded)
         {
@@ -127,7 +127,7 @@ public static class SpaContent
         var html = new StringBuilder("<ul>");
         foreach (var (deck, name) in decks)
         {
-            html.Append("<li>").Append(H3(name)).Append(P($"{Percent(deck.WinRate)} win rate")).Append("<ul>");
+            html.Append("<li>").Append(H3(name)).Append(P($"{SpaPages.Percent(deck.WinRate)} win rate")).Append("<ul>");
             foreach (var card in deck.Cards)
             {
                 html.Append("<li>").Append(CardLink(card.Name)).Append("</li>");
@@ -155,5 +155,4 @@ public static class SpaContent
     private static string H3(string text) => $"<h3>{Encode(text)}</h3>";
     private static string P(string text) => $"<p>{Encode(text)}</p>";
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
-    private static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
 }

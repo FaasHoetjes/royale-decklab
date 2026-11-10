@@ -73,8 +73,12 @@ export default function BestWarDecks() {
     try {
       const ownedIds = new Set<number>();
       if (activePlayerTag) {
-        const res = await fetchCollectionOnce(queryClient, activePlayerTag);
-        res.cards.forEach((c) => ownedIds.add(c.id));
+        try {
+          const res = await fetchCollectionOnce(queryClient, activePlayerTag);
+          res.cards.forEach((c) => ownedIds.add(c.id));
+        } catch {
+          // The set still opens in the builder, only without leaving out the cards the player doesn't own.
+        }
       }
       const filterByOwnership = !!activePlayerTag && ownedIds.size > 0;
 
@@ -105,7 +109,6 @@ export default function BestWarDecks() {
       saveDecks(newDecks);
       saveSlotVersions(slotVersions);
       navigate('/builder');
-    } catch {
     } finally {
       setCopyingSetIdx(null);
     }

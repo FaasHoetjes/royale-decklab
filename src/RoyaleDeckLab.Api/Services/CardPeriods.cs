@@ -11,7 +11,7 @@ public sealed class CardTallier((long From, long To)[] periods)
 
     public void Add(BattleRecord battle)
     {
-        var p = Array.FindIndex(periods, r => battle.BattleTimeMs >= r.From && battle.BattleTimeMs < r.To);
+        var p = PeriodOf(battle.BattleTimeMs);
         if (p < 0)
         {
             return;
@@ -43,6 +43,18 @@ public sealed class CardTallier((long From, long To)[] periods)
                 }
             }
         }
+    }
+
+    private int PeriodOf(long battleTimeMs)
+    {
+        for (var p = 0; p < periods.Length; p++)
+        {
+            if (battleTimeMs >= periods[p].From && battleTimeMs < periods[p].To)
+            {
+                return p;
+            }
+        }
+        return -1;
     }
 
     public CardPeriod[] Periods()

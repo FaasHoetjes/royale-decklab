@@ -10,6 +10,8 @@ export function slotKind(index: number): SlotKind | null {
 
 export const CARD_BACKDROP = 'var(--card-backdrop)';
 
+export const SPECIAL_COLOR = { evo: '#a03cf0', hero: '#f5a623' } as const;
+
 export const CARD_FRAME: CSSProperties = {
   background: CARD_BACKDROP,
   border: 'var(--card-frame-border)',

@@ -27,10 +27,11 @@ public static partial class SpaHosting
         // Uptime monitors probe with HEAD, which MapGet alone leaves to the SPA fallback and its 404.
         app.MapMethods("/healthz", ["GET", "HEAD"], () => Results.Ok(new { status = "ok" })).DisableRateLimiting();
 
-        app.MapGet("/.well-known/security.txt", () => Results.Text(
-            """
+        // Expires is required and has to stay in the future, so it moves along instead of lapsing on a fixed date.
+        app.MapGet("/.well-known/security.txt", (TimeProvider clock) => Results.Text(
+            $"""
             Contact: mailto:faashoetjes+royaledecklab@gmail.com
-            Expires: 2027-07-11T00:00:00Z
+            Expires: {clock.GetUtcNow().AddMonths(6):yyyy-MM-dd}T00:00:00Z
             Preferred-Languages: en, nl
             Canonical: https://royaledecklab.com/.well-known/security.txt
             """, "text/plain"));
@@ -127,17 +128,16 @@ public static partial class SpaHosting
             return null;
         }
         var cards = await CardsOrEmpty(catalog, requestAborted);
-        var catalogById = cards.ToDictionary(c => c.Id);
         var loaded = meta.IsLoaded && cards.Count > 0;
         return page.Content switch
         {
-            SpaContentKind.BestDecks => SpaContent.BestDecks(heading, loaded ? decks.BuildCached(meta.Version, meta.Meta, catalogById) : []),
+            SpaContentKind.BestDecks => SpaContent.BestDecks(heading, loaded ? decks.BuildCached(meta.Version, meta.Meta, cards) : []),
             SpaContentKind.Cards => SpaContent.Cards(heading, cards, meta.CardStats),
             _ => SpaContent.Card(
                 page.Card!,
                 meta.CardStats.Cards.FirstOrDefault(s => s.Id == page.Card!.Id),
                 meta.IsLoaded,
-                loaded ? decks.TopDecksWith(page.Card!.Id, meta.Meta, catalogById, CardsController.DecksPerCard) : []),
+                loaded ? decks.TopDecksWithCached(page.Card!.Id, meta.Version, meta.Meta, cards, CardsController.DecksPerCard) : []),
         };
     }
 

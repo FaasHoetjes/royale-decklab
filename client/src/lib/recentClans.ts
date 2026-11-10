@@ -8,8 +8,8 @@ export interface ClanRef {
 
 const STORAGE_KEY = 'recentClans';
 const MAX_STORED = 5;
-export const MAX_SHOWN = 3;
-export const MIN_NAME_LENGTH = 3;
+const MAX_SHOWN = 3;
+const MIN_NAME_LENGTH = 3;
 
 const isClanRef = (value: unknown): value is ClanRef => {
   const c = value as ClanRef | null;

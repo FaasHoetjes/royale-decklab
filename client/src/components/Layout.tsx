@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, type SyntheticEvent } from 'react';
-import { Outlet, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router-dom';
+import { Outlet, useLocation, useMatch, useNavigationType } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import Footer from './Footer';
@@ -18,8 +18,6 @@ import { preloadPage } from '../lib/pageLoaders';
 // Where each history entry was scrolled to, so going back returns there.
 const scrollPositions = new Map<string, number>();
 
-const STATIC_PATHS = new Set(['builder', 'faq', 'best-decks', 'upgrades', 'cards', 'clan']);
-
 function preloadLink({ target }: SyntheticEvent): void {
   const link = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null;
   if (!link || link.origin !== window.location.origin || link.hasAttribute('download')) return;
@@ -28,8 +26,7 @@ function preloadLink({ target }: SyntheticEvent): void {
 }
 
 export default function Layout() {
-  const { activePlayerTag, setActivePlayerTag } = useApp();
-  const navigate = useNavigate();
+  const { activePlayerTag } = useApp();
   const { pathname, key } = useLocation();
   const navigationType = useNavigationType();
   const lastPathname = useRef(pathname);
@@ -39,21 +36,6 @@ export default function Layout() {
   const playerMatch = useMatch('/:playerId');
   const isPlayerDeepLink =
     !!playerMatch?.params.playerId && isValidTag(playerMatch.params.playerId);
-
-  const badTag = playerMatch?.params.playerId;
-  const isMalformedTagLink = !!badTag && !STATIC_PATHS.has(badTag) && !isValidTag(badTag);
-  useEffect(() => {
-    if (isMalformedTagLink) {
-      setActivePlayerTag(null);
-      navigate('/', {
-        replace: true,
-        state: {
-          tagError: "That doesn't look like a valid player tag; check it on your in-game profile.",
-          badTag,
-        },
-      });
-    }
-  }, [isMalformedTagLink, badTag]);
 
   useEffect(() => {
     // Leaving a long page for a shorter one clamps the scroll, and that event can arrive after the

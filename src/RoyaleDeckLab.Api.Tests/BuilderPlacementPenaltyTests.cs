@@ -154,19 +154,4 @@ public sealed class BuilderPlacementPenaltyTests
 
         Assert.Equal(baseline.Score, placed.Score, 12);
     }
-
-    [Fact]
-    public void ListAndMapOverloads_AgreeWithSlots()
-    {
-        var cards = Build.Collection(Ids);
-        cards[0] = Build.Card(1, evo: 1);
-        var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));
-        var slots = Slots(2, 3, 4, 5, 6, 7, 8, 1);
-
-        var fromList = _analyzer.ScoreBuilderDeck(cards, Ids, meta, slots);
-        var fromMap = _analyzer.ScoreBuilderDeck(Build.CardMap(cards), Ids, meta, slots);
-
-        Assert.NotNull(fromList);
-        Assert.Equal(fromList, fromMap);
-    }
 }

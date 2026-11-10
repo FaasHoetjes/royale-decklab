@@ -21,7 +21,7 @@ interface ClanMemberRowProps {
   isYou: boolean;
 }
 
-export const reliabilityColor: Record<Reliability, string> = {
+const reliabilityColor: Record<Reliability, string> = {
   reliable: 'var(--up)',
   steady: 'var(--text-secondary)',
   slipping: 'var(--warn)',
@@ -52,8 +52,8 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
   const playerPath = `/${member.tag.replace('#', '')}`;
 
   const today = war.isBattleDay && (
-    <div style={styles.today} aria-label={`${member.decksUsedToday} of ${DECKS_PER_DAY} decks played today`}>
-      <div style={styles.pips} aria-hidden="true">
+    <div style={styles.today}>
+      <div style={styles.pips} role="img" aria-label={`${member.decksUsedToday} of ${DECKS_PER_DAY} decks played today`}>
         {Array.from({ length: DECKS_PER_DAY }, (_, i) => (
           <span
             key={i}
@@ -76,6 +76,7 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
   const reliabilityBadge = bars.length > 0 && war.period !== 'notRacing' && (
     <span
       tabIndex={0}
+      role="img"
       title={weeks}
       aria-label={`${reliabilityLabel[badge]}. ${weeks}`}
       style={{
@@ -106,7 +107,7 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
           {role && <span style={{ ...styles.role, color: theme.text.secondary, borderColor: theme.border }}>{role}</span>}
         </span>
         <span style={{ ...styles.meta, color: theme.text.secondary }}>
-          <span title={war.isBattleDay ? 'Medals this week' : 'Medals in the last race'} aria-label={`${medalsNote(war, member)} medals ${war.isBattleDay ? 'this week' : 'in the last race'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><MedalIcon />{medalsNote(war, member)}</span>
+          <span role="img" title={war.isBattleDay ? 'Medals this week' : 'Medals in the last race'} aria-label={`${medalsNote(war, member)} medals ${war.isBattleDay ? 'this week' : 'in the last race'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><MedalIcon />{medalsNote(war, member)}</span>
           <span>{progressNote(war, member) && `· ${progressNote(war, member)}`}</span>
         </span>
       </div>

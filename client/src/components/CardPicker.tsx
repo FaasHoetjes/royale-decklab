@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { memo, useCallback, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDialog } from '../hooks/useDialog';
 import { useShuffleAnimation } from '../hooks/useShuffleAnimation';
 import type { BuilderCard } from '../lib/builderCards';
 import { SORT_TYPES, matchesFilters, sortCards, ownedLevel, pickerIconUrl, type FilterKey, type SortType } from '../lib/pickerData';
@@ -65,14 +66,13 @@ export default function CardPicker({
   const isPhone = useIsMobile(768);
 
   const [query, setQuery] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, onClose);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Read through a ref so the cells' callback stays the same while the parent re-renders with a new onSelect.
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  const pick = useCallback((cardId: number) => onSelectRef.current(cardId), []);
 
   const sortType: SortType = SORT_TYPES[sortIndex]!;
 
@@ -85,55 +85,6 @@ export default function CardPicker({
       (c) => (!q || c.name.toLowerCase().includes(q)) && matchesFilters(c, filters)
     );
   }, [cards, sortType, descending, query, filters]);
-
-  const renderCard = (card: BuilderCard) => {
-    const isUsed = usedIds.has(card.id);
-    const isSelected = !!selectedIds?.has(card.id);
-    const championBlocked = !allowChampions && card.rarity === 'champion';
-    const selectable = card.owned && !isUsed && !championBlocked;
-    const level = ownedLevel(card);
-
-    return (
-      <button
-        key={card.id}
-        ref={shuffleRef(card.id)}
-        disabled={!selectable}
-        onClick={() => selectable && onSelect(card.id)}
-        title={
-          !card.owned
-            ? `${card.name} (not owned)`
-            : isUsed
-              ? `${card.name} (${usedLabel})`
-              : championBlocked
-                ? `${card.name} (no champion slot left in this deck)`
-                : card.name
-        }
-        aria-pressed={selectedIds ? isSelected : undefined}
-        style={{
-          ...styles.cardButton,
-          cursor: selectable ? 'pointer' : 'default',
-          opacity: selectable ? 1 : 0.3,
-          ...(isSelected ? { ...styles.selected, outlineColor: selectedColor ?? theme.accent } : {}),
-        }}
-      >
-        <div style={isSelected && dimSelected ? styles.dimmed : undefined}>
-          <CardTile
-            name={card.name}
-            iconUrl={pickerIconUrl(card, filters)}
-            elixirCost={card.elixirCost}
-            level={level >= 0 ? level : undefined}
-            nameColor={theme.text.primary}
-            lazyLoad
-          />
-        </div>
-        {isSelected && (
-          <span style={{ ...styles.selectedMark, backgroundColor: selectedColor ?? theme.accent, color: selectedMarkColor }} aria-hidden="true">
-            {selectedMark}
-          </span>
-        )}
-      </button>
-    );
-  };
 
   const closeButton = (
     <button
@@ -148,6 +99,8 @@ export default function CardPicker({
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       style={{ ...styles.overlay, padding: isMobile ? '10px' : '20px' }}
       onClick={onClose}
       role="dialog"
@@ -208,7 +161,28 @@ export default function CardPicker({
               gap: isPhone ? '8px' : '12px',
             }}
           >
-            {visibleCards.map(renderCard)}
+            {visibleCards.map((card) => {
+              const isSelected = !!selectedIds?.has(card.id);
+              return (
+                <CardCell
+                  key={card.id}
+                  card={card}
+                  filters={filters}
+                  isUsed={usedIds.has(card.id)}
+                  championBlocked={!allowChampions && card.rarity === 'champion'}
+                  isSelected={isSelected}
+                  pressed={selectedIds ? isSelected : undefined}
+                  dimSelected={dimSelected}
+                  usedLabel={usedLabel}
+                  highlight={selectedColor ?? theme.accent}
+                  textPrimary={theme.text.primary}
+                  mark={isSelected ? selectedMark : undefined}
+                  markColor={selectedMarkColor}
+                  shuffleRef={shuffleRef}
+                  onPick={pick}
+                />
+              );
+            })}
           </div>
         </div>
         {footer}
@@ -217,10 +191,74 @@ export default function CardPicker({
   );
 }
 
+interface CardCellProps {
+  card: BuilderCard;
+  filters: Set<FilterKey>;
+  isUsed: boolean;
+  championBlocked: boolean;
+  isSelected: boolean;
+  pressed: boolean | undefined;
+  dimSelected: boolean;
+  usedLabel: string;
+  highlight: string;
+  textPrimary: string;
+  mark: ReactNode;
+  markColor: string;
+  shuffleRef: (id: number) => (el: HTMLElement | null) => void;
+  onPick: (cardId: number) => void;
+}
+
+// Memoised so a keystroke or filter click only re-renders the cells whose props actually changed.
+const CardCell = memo(({ card, filters, isUsed, championBlocked, isSelected, pressed, dimSelected, usedLabel, highlight, textPrimary, mark, markColor, shuffleRef, onPick }: CardCellProps) => {
+  const selectable = card.owned && !isUsed && !championBlocked;
+  const level = ownedLevel(card);
+
+  return (
+    <button
+      ref={shuffleRef(card.id)}
+      disabled={!selectable}
+      onClick={() => selectable && onPick(card.id)}
+      title={
+        !card.owned
+          ? `${card.name} (not owned)`
+          : isUsed
+            ? `${card.name} (${usedLabel})`
+            : championBlocked
+              ? `${card.name} (no champion slot left in this deck)`
+              : card.name
+      }
+      aria-pressed={pressed}
+      style={{
+        ...styles.cardButton,
+        cursor: selectable ? 'pointer' : 'default',
+        opacity: selectable ? 1 : 0.3,
+        ...(isSelected ? { ...styles.selected, outlineColor: highlight } : {}),
+      }}
+    >
+      <div style={isSelected && dimSelected ? styles.dimmed : undefined}>
+        <CardTile
+          name={card.name}
+          iconUrl={pickerIconUrl(card, filters)}
+          elixirCost={card.elixirCost}
+          level={level >= 0 ? level : undefined}
+          nameColor={textPrimary}
+          lazyLoad
+        />
+      </div>
+      {isSelected && (
+        <span style={{ ...styles.selectedMark, backgroundColor: highlight, color: markColor }} aria-hidden="true">
+          {mark}
+        </span>
+      )}
+    </button>
+  );
+});
+
 const styles = {
   overlay: {
     position: 'fixed' as const,
     inset: 0,
+    outline: 'none',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     display: 'flex' as const,
     alignItems: 'center' as const,

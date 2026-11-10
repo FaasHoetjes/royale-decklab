@@ -19,12 +19,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
     document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
   }, [isDarkMode]);
 
-  const toggleDarkMode = () => setIsDarkMode((prev: boolean) => !prev);
+  // Only a choice made here is remembered; until then the theme keeps following the system setting.
+  const toggleDarkMode = () => {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    try {
+      localStorage.setItem('darkMode', JSON.stringify(next));
+    } catch {
+      // Storage is blocked: the theme still applies for this visit.
+    }
+  };
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode }}>

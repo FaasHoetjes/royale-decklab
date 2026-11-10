@@ -21,8 +21,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .eslintcache
 .cache
 *.tsbuildinfo
-meta-cache.json
-battle-store.json
 
 meta.db
 meta.db-wal
@@ -30,6 +28,9 @@ meta.db-shm
 stats.db
 stats.db-wal
 stats.db-shm
+reminders.db
+reminders.db-wal
+reminders.db-shm
 card-art/
 
 [Bb]in/

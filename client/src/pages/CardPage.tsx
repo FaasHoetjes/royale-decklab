@@ -42,7 +42,7 @@ function buildLink(cardId: number, activePlayerTag: string | null): string {
 export default function CardPage() {
   const { slug } = useParams();
   const catalog = useAllCards();
-  const card = catalog.data?.find((c) => cardSlug(c.name) === slug);
+  const card = catalog.data?.find((c) => cardSlug(c.name) === slug?.toLowerCase());
 
   if (catalog.isError) {
     return (

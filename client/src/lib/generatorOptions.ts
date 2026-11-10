@@ -64,9 +64,6 @@ export function toQuery(options: GeneratorOptions): string {
   return params.toString().replace(/%2C/g, ',');
 }
 
-/** The query a fresh search starts with: only the remembered number of decks and minimum level. */
-export const startingQuery = () => toQuery(parseOptions(new URLSearchParams()));
-
 export const hasActiveOptions = (o: GeneratorOptions) =>
   o.decks !== MAX_DECKS || o.minLevel != null || o.ban.length > 0 || o.require.length > 0 || o.lock.length > 0;
 

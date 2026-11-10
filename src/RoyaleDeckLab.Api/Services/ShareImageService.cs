@@ -40,11 +40,7 @@ public sealed class ShareImageService(
         {
             return null;
         }
-        var cardMap = new Dictionary<int, PlayerItemLevel>();
-        foreach (var card in player.Cards)
-        {
-            cardMap[card.Id] = card.ToPlayerItemLevel();
-        }
+        var cardMap = player.Cards.Select(c => c.ToPlayerItemLevel()).ToCardMap();
 
         var lineup = analyzer.ScoreLockedDecks(meta.GetMetaIndex(), cardMap, shared);
 

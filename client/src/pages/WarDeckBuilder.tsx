@@ -21,9 +21,7 @@ import CardCollection from '../components/CardCollection';
 import TrashIcon from '../components/TrashIcon';
 import { BuilderSkeleton } from '../components/LoadingSkeletons';
 import LoadError from '../components/LoadError';
-
-/** The app header's height on phones, which the deck tabs pin under. */
-const MOBILE_HEADER = 62;
+import { MOBILE_HEADER_HEIGHT as MOBILE_HEADER } from '../lib/layout';
 
 export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();

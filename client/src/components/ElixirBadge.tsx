@@ -40,14 +40,6 @@ function Drop() {
   );
 }
 
-export function ElixirDropIcon({ width = 15, height = 16 }: { width?: number; height?: number }) {
-  return (
-    <svg viewBox="0 0 28 30" style={{ width, height, overflow: 'visible', filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35))' }} aria-hidden="true">
-      <Drop />
-    </svg>
-  );
-}
-
 export default function ElixirBadge({ cost }: { cost: number }) {
   return (
     <svg viewBox="0 0 28 30" style={styles.badge} aria-label={`${cost} elixir`} role="img">

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-
-const HEADER_HEIGHT = 60;
+import { MOBILE_HEADER_HEIGHT } from '../lib/layout';
 
 /**
  * On phones, whether the build button in the card panel has scrolled up under the header while the end of the
@@ -18,11 +17,11 @@ export function usePastBuildButton(enabled: boolean) {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.target === button) setPastButton(!entry.isIntersecting && entry.boundingClientRect.top < HEADER_HEIGHT);
+          if (entry.target === button) setPastButton(!entry.isIntersecting && entry.boundingClientRect.top < MOBILE_HEADER_HEIGHT);
           else setAtEnd(entry.isIntersecting);
         }
       },
-      { rootMargin: `-${HEADER_HEIGHT}px 0px 0px 0px` }
+      { rootMargin: `-${MOBILE_HEADER_HEIGHT}px 0px 0px 0px` }
     );
     observer.observe(button);
     observer.observe(endRef.current);

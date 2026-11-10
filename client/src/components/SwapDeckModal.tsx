@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { DeckCardData } from '../api';
 import { versionOf, cardIconUrl, avgElixir, orderBySlots, alignToReference, slotVersionOf, inOrder, type CardVersion, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck } from '../lib/archetypes';
-import { CARD_BACKDROP } from '../lib/slotStyles';
+import { CARD_BACKDROP, SPECIAL_COLOR } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDialog } from '../hooks/useDialog';
 
 export interface SwapOption {
   master: number;
@@ -16,7 +17,6 @@ export interface SwapOption {
   metaCardVersions?: CardVersionRef[];
 }
 
-const SPECIAL_COLOR = { evo: '#a03cf0', hero: '#f5a623' } as const;
 const SPECIAL_LABEL = { evo: 'Evo', hero: 'Hero' } as const;
 
 /** The Evolution or Hero the meta deck runs on this card that the player hasn't unlocked. */
@@ -44,21 +44,8 @@ export default function SwapDeckModal({
 }: SwapDeckModalProps) {
   const isMobile = useIsMobile();
   const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, []);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, onClose);
 
   // The current deck first, then the rest by score; each is compared with the current deck.
   const current = options.find((o) => o.master === currentMaster);
@@ -80,6 +67,8 @@ export default function SwapDeckModal({
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       style={{ ...styles.overlay, padding: isMobile ? '14px 10px' : '40px 20px' }}
       onClick={onClose}
       role="dialog"
@@ -204,6 +193,7 @@ const styles = {
   overlay: {
     position: 'fixed' as const,
     inset: 0,
+    outline: 'none',
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
     display: 'flex' as const,
     alignItems: 'flex-start' as const,

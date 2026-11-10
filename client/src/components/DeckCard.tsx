@@ -1,4 +1,3 @@
-import React from 'react';
 import type { DeckCardData } from '../api';
 import { versionOf, cardIconUrl, displayLevel, orderBySlots, slotVersionOf, inOrder, type CardVersionRef } from '../lib/cardDisplay';
 import { classifyDeck, featuredCard } from '../lib/archetypes';
@@ -22,8 +21,6 @@ interface DeckCardProps {
   deckNumber: number;
   canSwap?: boolean;
   onSwap?: () => void;
-  scoreLabel?: string;
-  scoreTooltip?: React.ReactNode;
   priority?: boolean;
   /** Generator only: keep this deck while the others are re-picked around it. */
   locked?: boolean;
@@ -43,8 +40,6 @@ export default function DeckCard({
   deckNumber,
   canSwap,
   onSwap,
-  scoreLabel,
-  scoreTooltip,
   priority,
   locked,
   onToggleLock,
@@ -74,8 +69,6 @@ export default function DeckCard({
         archetypeName={archetype.name}
         deckNumber={deckNumber}
         cards={cards}
-        scoreLabel={scoreLabel}
-        scoreTooltip={scoreTooltip}
         playerScore={playerScore}
         metaWinRate={metaWinRate}
         uses={uses}

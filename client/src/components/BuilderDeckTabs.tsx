@@ -6,6 +6,7 @@ import { cardIconUrl } from '../lib/cardDisplay';
 import type { BuilderCard } from '../lib/builderCards';
 import { featuredCard } from '../lib/archetypes';
 import { deckCards, type Deck } from '../lib/builderDecks';
+import { useRovingGroup } from '../hooks/useRovingGroup';
 
 interface BuilderDeckTabsProps {
   decks: Deck[];
@@ -19,6 +20,7 @@ interface BuilderDeckTabsProps {
 }
 
 export default function BuilderDeckTabs({ decks, names, scores, active, onSelect, cardById, theme, isMobile }: BuilderDeckTabsProps) {
+  const { itemRef, onKeyDown } = useRovingGroup(decks.length, onSelect);
   return (
     <div
       role="tablist"
@@ -31,12 +33,15 @@ export default function BuilderDeckTabs({ decks, names, scores, active, onSelect
         return (
           <button
             key={i}
+            ref={itemRef(i)}
             type="button"
             role="tab"
             aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
             data-deck-tab={i}
             className="wdb-tab"
             onClick={() => onSelect(i)}
+            onKeyDown={(e) => onKeyDown(e, i)}
             title={names[i]}
             style={{
               ...styles.tab,
@@ -65,7 +70,7 @@ export default function BuilderDeckTabs({ decks, names, scores, active, onSelect
   );
 }
 
-export function ScoreText({ score, theme, style }: { score?: BuilderDeckScore; theme: Theme; style?: CSSProperties }) {
+function ScoreText({ score, theme, style }: { score?: BuilderDeckScore; theme: Theme; style?: CSSProperties }) {
   if (!score || score.score == null) {
     return <span style={{ ...styles.score, ...style, color: theme.text.tertiary }}>–</span>;
   }

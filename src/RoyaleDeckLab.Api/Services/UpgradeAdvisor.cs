@@ -10,7 +10,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
     public UpgradeAdvice Advise(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<DeckMeta> metaDecks, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        var cardMap = playerCards.ToDictionary(c => c.Id);
+        var cardMap = playerCards.ToCardMap();
         // Upgrading your own card doesn't change who you're matched against, so simulations keep this fixed.
         var opponentLevel = LevelModel.OpponentLevel(playerCards);
         var fieldable = DeckAnalyzer.SortCandidates(analyzer.ScoreFieldableDecks(metaDecks, cardMap, opponentLevel));
@@ -120,7 +120,7 @@ public sealed class UpgradeAdvisor(DeckAnalyzer analyzer)
             for (var to = card.Level + 2; to < card.MaxLevel; to++)
             {
                 var (d, r) = Simulate(card with { Level = to });
-                if (ChangesLineup(r))
+                if (ChangesLineup(r) && d > MinDelta)
                 {
                     (jumpLevel, jumpDelta, jumpResult) = (to, d, r);
                     break;

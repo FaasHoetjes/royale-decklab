@@ -5,9 +5,11 @@ import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { CardsIcon, GridIcon, SearchIcon, ShieldIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
 import Fold from '../components/Fold';
+import { MOBILE_HEADER_HEIGHT } from '../lib/layout';
 import { faqItems, type FaqPage } from './faqContent';
 
-const FAQ_ANCHOR_OFFSET_MOBILE = 64;
+// A few px of air between the header and the question an anchor link lands on.
+const FAQ_ANCHOR_OFFSET_MOBILE = MOBILE_HEADER_HEIGHT + 3;
 const FAQ_ANCHOR_OFFSET_DESKTOP = 16;
 
 // Pages behind a player tag send visitors without one to the tag search instead.

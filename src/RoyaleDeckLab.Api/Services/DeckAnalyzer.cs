@@ -22,12 +22,6 @@ public sealed class DeckAnalyzer
     public sealed record BuilderScore(double Score, double WinRate, double Fieldability, bool IsMeta, int Players);
 
     public double? ScoreDeckForPlayer(
-        IReadOnlyList<PlayerItemLevel> playerCards,
-        DeckMeta metaDeck,
-        IReadOnlyList<CardVersion>? cardVersions)
-        => ScoreDeckForPlayer(BuildCardMap(playerCards), metaDeck, cardVersions);
-
-    public double? ScoreDeckForPlayer(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions)
@@ -80,14 +74,10 @@ public sealed class DeckAnalyzer
             throw new InvalidOperationException("Sequence contains no elements");
         }
         var meanLevel = (double)totalLevel / metaDeck.CardIds.Length;
-        var levelLogit = LevelModel.PerLevel * (meanLevel - opponentLevel)
-            - LevelModel.WeakestCard * (meanLevel - minLevel);
+        var levelLogit = LevelModel.LevelLogit(meanLevel, minLevel, opponentLevel);
         var expectedWinRate = LevelModel.WinProbability(metaDeck.Confidence, levelLogit);
         return expectedWinRate * versionFit;
     }
-
-    public double? FieldabilityScore(IReadOnlyList<PlayerItemLevel> playerCards, IReadOnlyList<int> cardIds)
-        => FieldabilityScore(BuildCardMap(playerCards), cardIds);
 
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
     {
@@ -109,13 +99,6 @@ public sealed class DeckAnalyzer
         }
         return totalStatFraction / validCards;
     }
-
-    public BuilderScore? ScoreBuilderDeck(
-        IReadOnlyList<PlayerItemLevel> playerCards,
-        IReadOnlyList<int> cardIds,
-        DeckMeta? meta,
-        IReadOnlyList<int?>? slots = null)
-        => ScoreBuilderDeck(BuildCardMap(playerCards), cardIds, meta, slots);
 
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
@@ -398,15 +381,5 @@ public sealed class DeckAnalyzer
             Alternatives = alternatives,
             PoolMinPlayers = poolMinPlayers,
         };
-    }
-
-    private static Dictionary<int, PlayerItemLevel> BuildCardMap(IReadOnlyList<PlayerItemLevel> playerCards)
-    {
-        var map = new Dictionary<int, PlayerItemLevel>(playerCards.Count);
-        foreach (var card in playerCards)
-        {
-            map[card.Id] = card;
-        }
-        return map;
     }
 }

@@ -17,6 +17,7 @@ import {
   fetchCardDecks,
   fetchUpgradeAdvice,
   fetchClanWar,
+  fetchClanReminders,
   searchClans,
   fetchWarDecksToday,
   scoreBuilderDecks,
@@ -25,6 +26,7 @@ import {
 } from './api';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
+const WAR_START_RECHECK_MS = 60_000;
 
 export const queryKeys = {
   metaStatus: ['meta', 'status'] as const,
@@ -38,6 +40,7 @@ export const queryKeys = {
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
+  clanReminders: (clanTag: string) => ['clan', clanTag, 'discord-reminders'] as const,
   clanSearch: (name: string) => ['clan-search', name] as const,
   scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
     ['score-decks', cards, decks] as const,
@@ -119,7 +122,7 @@ export function usePlayerCollection(tag: string | null) {
   });
 }
 
-export function upgradeAdviceOptions(tag: string) {
+function upgradeAdviceOptions(tag: string) {
   return {
     queryKey: queryKeys.playerUpgrades(tag),
     queryFn: ({ signal }: { signal: AbortSignal }) => fetchUpgradeAdvice(tag, signal),
@@ -192,14 +195,38 @@ export function fetchCollectionOnce(qc: QueryClient, tag: string) {
 }
 
 /** Fetch on opening/returning or manual refresh; the server shares a clan snapshot for 60 seconds. */
-export const useClanWar = (clanTag: string | null) =>
-  useQuery({
+export const useClanWar = (clanTag: string | null) => {
+  const war = useQuery({
     queryKey: queryKeys.clanWar(clanTag ?? ''),
     queryFn: ({ signal }) => fetchClanWar(clanTag ?? '', signal),
     enabled: !!clanTag,
     staleTime: 60_000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
+  });
+  const { refetch, dataUpdatedAt, errorUpdatedAt } = war;
+  const warStartsAt = war.data && !war.data.isBattleDay ? war.data.warStartsAt : null;
+
+  // The start time is an estimate, so once it passes this checks again every minute until the war is on.
+  // A hidden tab stops checking; returning to it refetches and restarts the timer.
+  useEffect(() => {
+    if (!warStartsAt) return;
+    const untilStart = Date.parse(warStartsAt) - Date.now();
+    const timer = window.setTimeout(() => {
+      if (!document.hidden) void refetch();
+    }, untilStart > 0 ? untilStart : WAR_START_RECHECK_MS);
+    return () => window.clearTimeout(timer);
+  }, [warStartsAt, dataUpdatedAt, errorUpdatedAt, refetch]);
+
+  return war;
+};
+
+export const useClanReminders = (clanTag: string) =>
+  useQuery({
+    queryKey: queryKeys.clanReminders(clanTag),
+    queryFn: ({ signal }) => fetchClanReminders(clanTag, signal),
+    staleTime: FIVE_MINUTES_MS,
+    retry: 1,
   });
 
 /** Keeps the last results up while the next name loads, so the list doesn't blink as someone types. */

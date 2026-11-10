@@ -18,21 +18,21 @@ public sealed class DeckAnalyzerScoringTests
     public void Fieldability_IsOne_WhenEveryCardIsMaxed()
     {
         var cards = Build.Collection(1, 2, 3, 4, 5, 6, 7, 8);
-        Assert.Equal(1.0, _analyzer.FieldabilityScore(cards, [1, 2, 3, 4, 5, 6, 7, 8])!.Value, 10);
+        Assert.Equal(1.0, _analyzer.FieldabilityScore(Build.CardMap(cards), [1, 2, 3, 4, 5, 6, 7, 8])!.Value, 10);
     }
 
     [Fact]
     public void Fieldability_FollowsTheTenPercentPerLevelCurve()
     {
         var cards = new List<PlayerItemLevel> { Build.Card(1, level: 13, maxLevel: 14) };
-        Assert.Equal(Math.Pow(1.10, -1), _analyzer.FieldabilityScore(cards, [1])!.Value, 10);
+        Assert.Equal(Math.Pow(1.10, -1), _analyzer.FieldabilityScore(Build.CardMap(cards), [1])!.Value, 10);
     }
 
     [Fact]
     public void Fieldability_IsNull_WhenACardIsMissing()
     {
         var cards = Build.Collection(1, 2);
-        Assert.Null(_analyzer.FieldabilityScore(cards, [1, 2, 3]));
+        Assert.Null(_analyzer.FieldabilityScore(Build.CardMap(cards), [1, 2, 3]));
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public sealed class DeckAnalyzerScoringTests
     {
         var cards = Build.Collection(1, 2, 3, 4, 5, 6, 7);
         var deck = Build.Deck(Build.Eight(1));
-        Assert.Null(_analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions));
+        Assert.Null(_analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, deck.CardVersions));
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public sealed class DeckAnalyzerScoringTests
 
         // logit(confidence) + level edge, x versionFit(1); the number of players running it does not count.
         var expected = Expected(0.55, MaxedDeckEdge);
-        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, deck.CardVersions)!.Value, 10);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class DeckAnalyzerScoringTests
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
         var expected = Expected(0.55, MaxedDeckEdge) * 0.94;
-        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, versions)!.Value, 10);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class DeckAnalyzerScoringTests
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
         var expected = Expected(0.55, MaxedDeckEdge);
-        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, versions)!.Value, 10);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed class DeckAnalyzerScoringTests
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
         var expected = Expected(0.55, MaxedDeckEdge) * 0.94;
-        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, versions)!.Value, 10);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class DeckAnalyzerScoringTests
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
         var expected = Expected(0.55, MaxedDeckEdge);
-        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, versions)!.Value, 10);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, versions)!.Value, 10);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class DeckAnalyzerScoringTests
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20);
 
         var expected = Expected(0.55, -0.67 * (15.68 - 15));
-        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, 10);
+        Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, deck.CardVersions)!.Value, 10);
     }
 
     [Fact]
@@ -127,8 +127,8 @@ public sealed class DeckAnalyzerScoringTests
         var strongButUnderleveled = Build.Deck(Build.Eight(1), confidence: 0.60);
         var modestButNearMaxed = Build.Deck(Build.Eight(9), confidence: 0.51);
 
-        var strongScore = _analyzer.ScoreDeckForPlayer(cards, strongButUnderleveled, null)!.Value;
-        var modestScore = _analyzer.ScoreDeckForPlayer(cards, modestButNearMaxed, null)!.Value;
+        var strongScore = _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), strongButUnderleveled, null)!.Value;
+        var modestScore = _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), modestButNearMaxed, null)!.Value;
 
         Assert.True(modestScore > strongScore,
             $"Expected the near-maxed 51% deck ({modestScore:F4}) to outrank the 2.5-levels-down 60% deck ({strongScore:F4})");
@@ -145,8 +145,8 @@ public sealed class DeckAnalyzerScoringTests
         var oneBadCard = Build.Deck(Build.Eight(1), confidence: 0.55);
         var evenGap = Build.Deck(Build.Eight(9), confidence: 0.55);
 
-        var bad = _analyzer.ScoreDeckForPlayer(cards, oneBadCard, null)!.Value;
-        var even = _analyzer.ScoreDeckForPlayer(cards, evenGap, null)!.Value;
+        var bad = _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), oneBadCard, null)!.Value;
+        var even = _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), evenGap, null)!.Value;
 
         Assert.True(even > bad, $"Expected the even 1-level gap ({even:F4}) to outrank one card 5 down ({bad:F4})");
     }
@@ -161,8 +161,8 @@ public sealed class DeckAnalyzerScoringTests
         var popular = Build.Deck(Build.Eight(1), confidence: 0.55, players: 500);
 
         Assert.Equal(
-            _analyzer.ScoreDeckForPlayer(cards, popular, null)!.Value,
-            _analyzer.ScoreDeckForPlayer(cards, niche, null)!.Value, 10);
+            _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), popular, null)!.Value,
+            _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), niche, null)!.Value, 10);
     }
 
     [Fact]
@@ -171,13 +171,13 @@ public sealed class DeckAnalyzerScoringTests
         var cards = Build.Collection(Build.Eight(1));
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20);
 
-        var result = _analyzer.ScoreBuilderDeck(cards, Build.Eight(1), deck);
+        var result = _analyzer.ScoreBuilderDeck(Build.CardMap(cards), Build.Eight(1), deck);
 
         Assert.NotNull(result);
         Assert.True(result!.IsMeta);
         Assert.Equal(0.55, result.WinRate, 10);
         Assert.Equal(20, result.Players);
-        Assert.Equal(_analyzer.ScoreDeckForPlayer(cards, deck, deck.CardVersions)!.Value, result.Score, 10);
+        Assert.Equal(_analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, deck.CardVersions)!.Value, result.Score, 10);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public sealed class DeckAnalyzerScoringTests
     {
         var cards = Build.Collection(Build.Eight(1));
 
-        var result = _analyzer.ScoreBuilderDeck(cards, Build.Eight(1), meta: null);
+        var result = _analyzer.ScoreBuilderDeck(Build.CardMap(cards), Build.Eight(1), meta: null);
 
         Assert.NotNull(result);
         Assert.False(result!.IsMeta);
@@ -199,6 +199,6 @@ public sealed class DeckAnalyzerScoringTests
     public void BuilderDeck_IsNull_WhenACardIsMissing()
     {
         var cards = Build.Collection(1, 2, 3);
-        Assert.Null(_analyzer.ScoreBuilderDeck(cards, Build.Eight(1), meta: null));
+        Assert.Null(_analyzer.ScoreBuilderDeck(Build.CardMap(cards), Build.Eight(1), meta: null));
     }
 }

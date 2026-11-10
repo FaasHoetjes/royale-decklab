@@ -50,7 +50,8 @@ public sealed class PlayerProfileCache(IHttpClientFactory httpFactory, TimeProvi
     private async Task<CrPlayer> FetchAsync(string playerTag)
     {
         var client = new ClashRoyaleClient(httpFactory.CreateClient(nameof(ClashRoyaleClient)));
-        return await client.GetPlayerDataAsync(playerTag, CancellationToken.None);
+        var player = await client.GetPlayerDataAsync(playerTag, CancellationToken.None);
+        return player.WithDisplayNames();
     }
 
     private void SweepExpired()

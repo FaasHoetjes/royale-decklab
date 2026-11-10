@@ -50,16 +50,34 @@ const ClanFinder = ({ notice }: ClanFinderProps) => {
   const [showHelp, setShowHelp] = useState(false);
 
   const query = parseClanQuery(input);
-  const search = useClanSearch(useDebounced(query.name, SEARCH_DELAY_MS));
-  const results = query.name ? search.data : undefined;
-  const best = results?.[0];
+  const searchedName = useDebounced(query.name, SEARCH_DELAY_MS);
+  const search = useClanSearch(searchedName);
+  // While typing, the list still shows the clans found for the previous name. Those aren't a match for this one,
+  // so none of them is the best match and Enter doesn't open one.
+  const isForThisName = searchedName === query.name && !search.isPlaceholderData;
+  const found = query.name ? search.data : undefined;
+  const hasNothingToShowYet = !isForThisName && found?.length === 0;
+  const results = hasNothingToShowYet ? undefined : found;
+  const best = isForThisName ? results?.[0] : undefined;
   const isSearching = query.name !== null || query.tag !== null;
   const shortcuts = recentClansToShow(recent, ownClan?.tag ?? null);
 
+  // Enter pressed before the clans for this name are in: the best match opens once they are.
+  const [submittedName, setSubmittedName] = useState<string | null>(null);
+  const isWaitingToOpen = submittedName !== null && submittedName === query.name;
+  const bestTag = best?.tag;
+  useEffect(() => {
+    if (isWaitingToOpen && bestTag) navigate(clanPath(bestTag));
+  }, [isWaitingToOpen, bestTag]);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const target = best?.tag ?? query.tag;
-    if (target) navigate(clanPath(target));
+    const target = bestTag ?? query.tag;
+    if (target) {
+      navigate(clanPath(target));
+      return;
+    }
+    setSubmittedName(query.name);
   };
 
   return (
@@ -232,7 +250,7 @@ const ResultRow = ({ clan, isBest, isFirst }: { clan: ClanSummary; isBest: boole
         </span>
         <span style={{ ...styles.warChip, backgroundColor: theme.bg.tertiary }} title="War trophies">
           <TrophyIcon />
-          <span aria-label={`${formatNumber(clan.warTrophies)} war trophies`}>{formatNumber(clan.warTrophies)}</span>
+          <span role="img" aria-label={`${formatNumber(clan.warTrophies)} war trophies`}>{formatNumber(clan.warTrophies)}</span>
         </span>
       </Link>
     </li>
