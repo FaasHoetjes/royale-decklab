@@ -30,7 +30,9 @@ export function usePlayerSwitcher() {
     name: name ?? null,
     others: recent.filter((p) => p.tag !== activePlayerTag),
     switchTo: (tag: string) => {
-      const onGenerator = generatorPath != null && pathname.toUpperCase() === generatorPath.toUpperCase();
+      // The landing page doesn't follow the active player, so leave it for the new player's generator.
+      const onGenerator =
+        pathname === '/' || (generatorPath != null && pathname.toUpperCase() === generatorPath.toUpperCase());
       setActivePlayerTag(tag);
       if (onGenerator) navigate(`/${tag.replace('#', '')}`);
     },

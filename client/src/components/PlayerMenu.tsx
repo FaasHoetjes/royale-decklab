@@ -1,6 +1,6 @@
 import type { Theme } from '../theme';
 import { initialOf, type PlayerSwitcher } from '../hooks/usePlayerSwitcher';
-import { CheckIcon, PlusIcon, SmallCloseIcon } from './navIcons';
+import { CheckIcon, PlusIcon, SmallCloseIcon, SwitchIcon } from './navIcons';
 
 interface PlayerMenuProps {
   switcher: PlayerSwitcher;
@@ -15,27 +15,27 @@ export default function PlayerMenu({ switcher, theme, onDone }: PlayerMenuProps)
   return (
     <div role="group" aria-label="Switch player" style={styles.list}>
       {tag && (
-        <div style={{ ...styles.row, backgroundColor: 'var(--nav-active-bg)' }}>
+        <div title={tag} style={{ ...styles.row, color: theme.text.primary, backgroundColor: 'var(--nav-active-bg)' }}>
           <Avatar name={name} />
-          <PlayerText name={name} tag={tag} theme={theme} />
-          <span style={{ ...styles.end, color: theme.accent }} aria-label="Current player">
+          <span style={styles.name}>{name ?? tag}</span>
+          <span style={{ ...styles.check, color: theme.accent }} aria-label="Current player">
             <CheckIcon />
           </span>
         </div>
       )}
       {others.map((p) => (
-        <div key={p.tag} style={styles.otherRow}>
+        <div key={p.tag} className="nav-link" style={{ ...styles.row, ...styles.otherRow }}>
           <button
             type="button"
-            className="nav-link"
+            title={p.tag}
             onClick={() => {
               switchTo(p.tag);
               onDone();
             }}
-            style={{ ...styles.row, ...styles.rowButton, color: theme.text.primary }}
+            style={{ ...styles.plainButton, ...styles.pick, color: theme.text.secondary }}
           >
             <Avatar name={p.name} />
-            <PlayerText name={p.name} tag={p.tag} theme={theme} />
+            <span style={styles.name}>{p.name}</span>
           </button>
           <button
             type="button"
@@ -43,12 +43,13 @@ export default function PlayerMenu({ switcher, theme, onDone }: PlayerMenuProps)
             onClick={() => forget(p.tag)}
             title={`Remove ${p.name} from this list`}
             aria-label={`Remove ${p.name} from this list`}
-            style={{ ...styles.forget, color: theme.text.tertiary }}
+            style={{ ...styles.plainButton, ...styles.forget, color: theme.text.tertiary }}
           >
             <SmallCloseIcon />
           </button>
         </div>
       ))}
+      {(tag || others.length > 0) && <div style={{ ...styles.separator, backgroundColor: theme.border }} />}
       <button
         type="button"
         className="nav-link"
@@ -56,9 +57,9 @@ export default function PlayerMenu({ switcher, theme, onDone }: PlayerMenuProps)
           addPlayer();
           onDone();
         }}
-        style={{ ...styles.row, ...styles.rowButton, ...styles.add, color: theme.accent }}
+        style={{ ...styles.row, ...styles.plainButton, color: theme.text.secondary }}
       >
-        <span style={styles.addIcon}>
+        <span style={styles.iconSlot}>
           <PlusIcon />
         </span>
         Add another player
@@ -67,22 +68,19 @@ export default function PlayerMenu({ switcher, theme, onDone }: PlayerMenuProps)
   );
 }
 
-export function Avatar({ name, size = 30 }: { name: string | null; size?: number }) {
+/** A round initial, sized to sit in the nav's icon column; with no player it shows the switch arrows. */
+export function Avatar({ name, empty = false, size = 22 }: { name: string | null; empty?: boolean; size?: number }) {
+  const box = { width: `${size}px`, height: `${size}px` };
+  if (empty) {
+    return (
+      <span aria-hidden="true" style={{ ...styles.avatar, ...styles.emptyAvatar, ...box }}>
+        <SwitchIcon />
+      </span>
+    );
+  }
   return (
-    <span
-      aria-hidden="true"
-      style={{ ...styles.avatar, width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.45)}px` }}
-    >
+    <span aria-hidden="true" style={{ ...styles.avatar, ...styles.filledAvatar, ...box, fontSize: `${Math.round(size * 0.45)}px` }}>
       {initialOf(name)}
-    </span>
-  );
-}
-
-export function PlayerText({ name, tag, theme }: { name: string | null; tag: string; theme: Theme }) {
-  return (
-    <span style={styles.text}>
-      <span style={{ ...styles.name, color: theme.text.primary }}>{name ?? tag}</span>
-      {name && <span style={{ ...styles.tag, color: theme.text.tertiary }}>{tag}</span>}
     </span>
   );
 }
@@ -96,26 +94,43 @@ const styles = {
   row: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: '10px',
-    padding: '8px',
-    borderRadius: '8px',
+    gap: '11px',
+    width: '100%',
     minWidth: 0,
+    padding: '10px 10px 10px 14px',
+    borderRadius: '8px',
+    fontSize: '15px',
+    fontWeight: 600 as const,
   },
   otherRow: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
+    padding: '0 4px 0 0',
     gap: '2px',
   },
-  rowButton: {
-    flex: 1,
+  plainButton: {
     border: 'none',
     backgroundColor: 'transparent',
     fontFamily: 'inherit',
+    fontSize: 'inherit',
+    fontWeight: 'inherit' as const,
     textAlign: 'left' as const,
     cursor: 'pointer',
   },
-  end: {
-    marginLeft: 'auto',
+  pick: {
+    flex: 1,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '11px',
+    minWidth: 0,
+    padding: '10px 0 10px 14px',
+  },
+  name: {
+    flex: 1,
+    minWidth: 0,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  },
+  check: {
     display: 'inline-flex' as const,
     flexShrink: 0,
   },
@@ -123,24 +138,21 @@ const styles = {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    width: '30px',
-    height: '30px',
+    width: '28px',
+    height: '28px',
     flexShrink: 0,
-    border: 'none',
     borderRadius: '8px',
-    backgroundColor: 'transparent',
-    cursor: 'pointer',
   },
-  add: {
-    fontSize: '13.5px',
-    fontWeight: 600 as const,
+  separator: {
+    height: '1px',
+    margin: '4px 8px',
   },
-  addIcon: {
+  iconSlot: {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    width: '30px',
-    height: '30px',
+    width: '22px',
+    height: '22px',
     flexShrink: 0,
   },
   avatar: {
@@ -149,25 +161,15 @@ const styles = {
     justifyContent: 'center' as const,
     flexShrink: 0,
     borderRadius: '50%',
+    boxSizing: 'border-box' as const,
+  },
+  filledAvatar: {
     fontWeight: 800 as const,
     color: 'var(--accent)',
     backgroundColor: 'color-mix(in srgb, var(--accent) 16%, var(--bg-tertiary))',
   },
-  text: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    minWidth: 0,
-    lineHeight: 1.25,
-  },
-  name: {
-    fontSize: '14px',
-    fontWeight: 700 as const,
-    whiteSpace: 'nowrap' as const,
-    overflow: 'hidden' as const,
-    textOverflow: 'ellipsis' as const,
-  },
-  tag: {
-    fontSize: '11.5px',
-    fontVariantNumeric: 'tabular-nums' as const,
+  emptyAvatar: {
+    color: 'var(--text-tertiary)',
+    border: '1.5px dashed var(--border-strong)',
   },
 };

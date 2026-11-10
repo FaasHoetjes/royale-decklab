@@ -4,7 +4,7 @@ import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
-import PlayerMenu, { Avatar, PlayerText } from './PlayerMenu';
+import PlayerMenu, { Avatar } from './PlayerMenu';
 import { homePath, toolItems, FAQ_ITEM, type NavItem } from './navItems';
 import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
@@ -85,7 +85,7 @@ export default function Sidebar() {
           />
         </div>
 
-        {activePlayerTag && <PlayerCard />}
+        <PlayerCard />
       </div>
     </nav>
   );
@@ -117,7 +117,7 @@ function PlayerCard() {
     };
   }, [open]);
 
-  if (!switcher.tag) return null;
+  if (!switcher.tag && switcher.others.length === 0) return null;
 
   return (
     <div ref={wrapRef} style={{ ...styles.playerWrap, borderTopColor: theme.border }}>
@@ -140,13 +140,16 @@ function PlayerCard() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="player-menu"
-        aria-label={`Player ${switcher.name ?? switcher.tag}, switch player`}
-        style={{ ...styles.playerCard, ...styles.plainButton, backgroundColor: open ? 'var(--nav-active-bg)' : 'transparent' }}
+        aria-label={switcher.tag ? `Player ${switcher.name ?? switcher.tag}, switch player` : 'Switch player'}
+        style={{
+          ...styles.navLink,
+          ...styles.plainButton,
+          color: theme.text.primary,
+          backgroundColor: open ? 'var(--nav-active-bg)' : 'transparent',
+        }}
       >
-        <Avatar name={switcher.name} size={32} />
-        <span style={styles.playerText}>
-          <PlayerText name={switcher.name} tag={switcher.tag} theme={theme} />
-        </span>
+        <Avatar name={switcher.name} empty={!switcher.tag} />
+        <span style={styles.playerName}>{switcher.tag ? (switcher.name ?? switcher.tag) : 'Switch player'}</span>
         <span style={{ ...styles.switchIcon, color: theme.text.tertiary }} aria-hidden="true">
           <SwitchIcon />
         </span>
@@ -301,17 +304,12 @@ const styles = {
     paddingTop: '12px',
     borderTop: '1px solid',
   },
-  playerCard: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '10px',
-    padding: '8px',
-    borderRadius: '10px',
-  },
-  playerText: {
+  playerName: {
     flex: 1,
     minWidth: 0,
-    display: 'flex' as const,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
   },
   switchIcon: {
     display: 'inline-flex' as const,
