@@ -62,12 +62,13 @@ container and copy a prebuilt file to
 
 `.github/workflows/deploy.yml` deploys every push to `main`: it SSHes into the
 server, runs `git pull` + `docker compose up -d --build`, prunes dangling
-images, and smoke-tests `/healthz`. It needs two repo **Actions secrets**:
+images, and smoke-tests `/healthz`. It needs three repo **Actions secrets**:
 
 | Secret           | Value                                                        |
 |------------------|--------------------------------------------------------------|
 | `DEPLOY_HOST`    | The server's public IPv4                                     |
 | `DEPLOY_SSH_KEY` | Private half of a dedicated deploy keypair (no passphrase) whose public half is in the server's `authorized_keys` |
+| `DEPLOY_KNOWN_HOSTS` | The server's SSH host key line(s), as printed by `ssh-keyscan <host>`, so the runner only connects to that server |
 
 ### Configuration
 
@@ -75,7 +76,7 @@ images, and smoke-tests `/healthz`. It needs two repo **Actions secrets**:
 |--------------------------|-----------------------------------------------------|--------------------|
 | `CLASH_ROYALE_API_KEY`   | CR API token (see IP note below). **Never baked in.** | none (required for live meta) |
 | `ADMIN_TOKEN`            | Shared secret for the admin endpoints (`POST /api/meta/refresh`, `POST /api/meta/epoch`, `GET /api/admin/stats`), sent as the `X-Admin-Token` header. Unset ⇒ those endpoints reject every request with 401, the same as a wrong token. | none (admin endpoints reject every request) |
-| `TRUST_PROXY_HEADERS`    | Set to `true` when running behind a reverse proxy so `X-Forwarded-For` (one hop) supplies the client IP for per-IP rate limiting. A request whose proxy hop is one of Cloudflare's published ranges then takes the visitor from `CF-Connecting-IP` (Caddy doesn't trust Cloudflare, so it forwards Cloudflare's address). Leave unset if :3000 is reached directly. | unset |
+| `TRUST_PROXY_HEADERS`    | Set to `true` when running behind a reverse proxy so `X-Forwarded-For` (at most two hops) supplies the client IP for per-IP rate limiting. A request whose proxy hop is one of Cloudflare's published ranges then takes the visitor from `CF-Connecting-IP` (Caddy doesn't trust Cloudflare, so it forwards Cloudflare's address). Leave unset if :3000 is reached directly. | unset |
 | `TRUSTED_PROXY_IPS`      | Optional, with `TRUST_PROXY_HEADERS=true`: comma-separated proxy IPs and/or CIDRs (e.g. `10.0.0.5,172.16.0.0/12`). Pins `X-Forwarded-For` trust to those addresses so a client that reaches :3000 directly can't spoof its IP past the rate limiter. When unset, any direct connection is treated as the proxy — then :3000 must only be reachable via the proxy (firewall/private network). | unset |
 | `ASPNETCORE_URLS`        | Bind address. Set to `http://0.0.0.0:3000` in-image. | `http://0.0.0.0:3000` |
 | `WEBHOOK_ENCRYPTION_KEY` | Base64 of 32 random bytes (`openssl rand -base64 32`) that encrypts the Discord webhook tokens in `reminders.db`, next to `meta.db`. Unset or invalid ⇒ Discord reminders are switched off and the row is hidden. Changing it makes stored webhooks unreadable, so keep it with your other secrets. | unset (reminders off) |

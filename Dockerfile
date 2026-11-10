@@ -5,7 +5,7 @@ RUN bun install --frozen-lockfile
 COPY client/ ./
 RUN bun run build            # -> /client/dist, /client/dist-prerender
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS api
 WORKDIR /build
 COPY src/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj src/RoyaleDeckLab.Api/
 RUN dotnet restore src/RoyaleDeckLab.Api/RoyaleDeckLab.Api.csproj

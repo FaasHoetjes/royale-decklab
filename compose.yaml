@@ -13,7 +13,7 @@ services:
       - meta:/data
 
   caddy:
-    image: caddy:2
+    image: caddy:2.11.9
     restart: unless-stopped
     ports:
       - "80:80"
