@@ -71,6 +71,14 @@ public sealed class ReminderStore
     /// <summary>Only the reminders whose token still decrypts.</summary>
     public int Count() => All().Count;
 
+    /// <summary>Every stored reminder, counted without decrypting a single token.</summary>
+    public int RowCount()
+    {
+        using var connection = Open();
+        using var command = Command(connection, "SELECT COUNT(*) FROM discord_reminders");
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
     public int CountForServer(string guildId)
     {
         using var connection = Open();

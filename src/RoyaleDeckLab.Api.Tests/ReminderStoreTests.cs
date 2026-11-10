@@ -190,6 +190,7 @@ public sealed class ReminderStoreTests : IDisposable
 
         Assert.Empty(otherKey.All());
         Assert.Equal(0, otherKey.Count());
+        Assert.Equal(1, otherKey.RowCount());
         Assert.Null(otherKey.Find(DiscordWebhookTests.Id));
 
         otherKey.Save(Reminder(), Guild);

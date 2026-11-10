@@ -56,6 +56,7 @@ public static class StatsReport
         DateTimeOffset GeneratedAt,
         int RetentionDays,
         int InView,
+        int DiscordWebhooks,
         StatsFilter Filters,
         IReadOnlyList<RangeReport> Ranges,
         IReadOnlyList<MonthReport> Months);
@@ -63,7 +64,7 @@ public static class StatsReport
     private static readonly IReadOnlySet<string> TrendMetrics = new HashSet<string> { "users", "visitors", "daily_users", "daily_visitors", "time_median" };
 
     /// <param name="filter">Applies to the ranges; the months are always the whole site.</param>
-    public static Report Build(StatsStore store, DateTimeOffset now, StatsFilter? filter = null, int inView = 0)
+    public static Report Build(StatsStore store, DateTimeOffset now, StatsFilter? filter = null, int inView = 0, int discordWebhooks = 0)
     {
         filter ??= new StatsFilter();
         var today = DateOnly.FromDateTime(now.UtcDateTime);
@@ -74,7 +75,7 @@ public static class StatsReport
             Range(store, filter, "30d", today.AddDays(-29), today, hasPrevious: true),
             Range(store, filter, "90d", today.AddDays(-(StatsStore.RetentionDays - 1)), today, hasPrevious: false),
         };
-        return new Report(now, StatsStore.RetentionDays, inView, filter, ranges, Months(store, today));
+        return new Report(now, StatsStore.RetentionDays, inView, discordWebhooks, filter, ranges, Months(store, today));
     }
 
     private static RangeReport Range(StatsStore store, StatsFilter filter, string key, DateOnly from, DateOnly to, bool hasPrevious, int? hourlyUntil = null)

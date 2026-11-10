@@ -5,7 +5,7 @@ import { ActivityChart } from '../components/adminStats/ActivityChart';
 import { Breakdown } from '../components/adminStats/Breakdown';
 import { DeckExports } from '../components/adminStats/DeckExports';
 import { FilterBar } from '../components/adminStats/FilterBar';
-import { countryLabel, deviceLabel, sourceLabel, toolLabel } from '../components/adminStats/format';
+import { countryLabel, deviceLabel, number, sourceLabel, toolLabel } from '../components/adminStats/format';
 import { Gate, TokenForm } from '../components/adminStats/Gate';
 import { MonthsTable } from '../components/adminStats/MonthsTable';
 import { SharingFunnel } from '../components/adminStats/SharingFunnel';
@@ -189,6 +189,11 @@ export default function AdminStats() {
         <Breakdown title="Which tools are used" counts={range.tools} label={toolLabel} />
       </div>
 
+      <section style={{ ...statsStyles.panel, ...styles.webhooks }}>
+        <h2 style={{ ...statsStyles.heading, ...styles.webhooksHeading, color: theme.text.primary }}>Discord webhooks registered</h2>
+        <span style={{ ...styles.webhooksValue, color: theme.text.primary }}>{number(report.discordWebhooks)}</span>
+      </section>
+
       {report.months.length > 0 && <MonthsTable months={report.months} />}
 
       <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>
@@ -206,6 +211,20 @@ const styles = {
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: '16px',
+  },
+  webhooks: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+  },
+  webhooksHeading: {
+    margin: 0,
+  },
+  webhooksValue: {
+    fontSize: '24px',
+    fontWeight: 700 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
   },
   grid: {
     display: 'grid' as const,

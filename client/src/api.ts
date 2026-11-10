@@ -480,6 +480,8 @@ export interface StatsReport {
   retentionDays: number;
   /** Visitors with the site open in view when the report was made; the live connection keeps it current. */
   inView: number;
+  /** Every Discord webhook that posts reminders, all-time; the filters and ranges don't apply. */
+  discordWebhooks: number;
   filters: StatsFilters;
   ranges: StatsRange[];
   months: StatsMonth[];

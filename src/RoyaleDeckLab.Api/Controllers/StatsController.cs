@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
+using RoyaleDeckLab.Api.Services.Reminders;
 using RoyaleDeckLab.Api.Services.Stats;
 
 namespace RoyaleDeckLab.Api.Controllers;
@@ -46,13 +47,14 @@ public sealed class StatsController(StatsRecorder recorder, LivePresence presenc
     [HttpGet("api/admin/stats")]
     [RequireAdminToken]
     [EnableRateLimiting(RateLimitPolicies.AdminStats)]
-    public IActionResult Report([FromQuery] string? source, [FromQuery] string? country, [FromQuery] string? device)
+    public IActionResult Report(
+        [FromQuery] string? source, [FromQuery] string? country, [FromQuery] string? device, [FromServices] ReminderStore reminders)
     {
         Response.Headers.CacheControl = "no-store";
         var filter = new StatsFilter(
             source is not null && StatsClassify.Sources.Contains(source) ? source : null,
             StatsClassify.Country(country),
             device is "phone" or "desktop" ? device : null);
-        return Ok(StatsReport.Build(store, clock.GetUtcNow(), filter, presence.InView));
+        return Ok(StatsReport.Build(store, clock.GetUtcNow(), filter, presence.InView, reminders.RowCount()));
     }
 }
