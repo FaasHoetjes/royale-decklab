@@ -1,6 +1,6 @@
 import React, { lazy } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppProvider } from './AppContext'
 import { ThemeProvider } from './ThemeContext'
@@ -9,6 +9,7 @@ import NotFound from './pages/NotFound'
 import Landing from './pages/Landing'
 import { retryDelay, shouldRetry } from './lib/retry'
 import { pageLoaders } from './lib/pageLoaders'
+import { isValidTag } from './lib/playerTag'
 import './index.css'
 
 // Route chunks load on navigation or a focused, hovered, or touched destination.
@@ -21,6 +22,13 @@ const Cards = lazy(pageLoaders.cards)
 const CardPage = lazy(pageLoaders.cardPage)
 const ClanWarPlanner = lazy(pageLoaders.clan)
 const AdminStats = lazy(() => import('./pages/AdminStats'))
+
+// Any single-segment path lands here, so one that isn't a player tag is an unknown page.
+const PlayerPage = () => {
+  const { playerId } = useParams()
+  const isPlayer = !!playerId && isValidTag(playerId)
+  return isPlayer ? <WarDeckGenerator /> : <NotFound />
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,7 +60,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/clan" element={<ClanWarPlanner />} />
               <Route path="/clan/:clanTag" element={<ClanWarPlanner />} />
               <Route path="/admin/stats" element={<AdminStats />} />
-              <Route path="/:playerId" element={<WarDeckGenerator />} />
+              <Route path="/:playerId" element={<PlayerPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

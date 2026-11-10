@@ -13,8 +13,16 @@ export const cardPath = (name: string) => `/cards/${cardSlug(name)}`;
 
 export type CardType = 'Troop' | 'Building' | 'Spell';
 
+/** Cards the game treats as troops although their ids sit in the building or spell range. */
+export const TROOP_OVERRIDES = new Set<number>([
+  27000010, // Furnace
+  28000016, // Heal Spirit
+  28000025, // Spirit Empress
+]);
+
 /** The CR API numbers troops 26xxxxxx, buildings 27xxxxxx and spells 28xxxxxx. */
 export function cardType(id: number): CardType {
+  if (TROOP_OVERRIDES.has(id)) return 'Troop';
   const group = Math.floor(id / 1_000_000);
   if (group === 27) return 'Building';
   if (group === 28) return 'Spell';

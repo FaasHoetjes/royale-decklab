@@ -1,5 +1,6 @@
 import type { BuilderCard } from './builderCards';
 import { displayLevel, localArtUrl } from './cardDisplay';
+import { TROOP_OVERRIDES } from './cardInfo';
 
 export const SORT_TYPES = ['Name', 'Level', 'Elixir', 'Rarity'] as const;
 export type SortType = (typeof SORT_TYPES)[number];
@@ -58,12 +59,6 @@ export function loadPickerPrefs(): PickerPrefs {
 export function savePickerPrefs(prefs: PickerPrefs): void {
   sessionStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }
-
-const TROOP_OVERRIDES = new Set<number>([
-  27000010, // Furnace
-  28000016, // Heal Spirit
-  28000025, // Spirit Empress
-]);
 
 // Card type derives from the official id ranges: 26xxxxxx troop, 27xxxxxx building, 28xxxxxx spell.
 function cardType(card: BuilderCard): 'troop' | 'building' | 'spell' | 'other' {

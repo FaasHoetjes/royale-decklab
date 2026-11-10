@@ -9,15 +9,23 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [activePlayerTag, setActivePlayerTagState] = useState<string | null>(() => {
-    return localStorage.getItem('activePlayerTag');
+    try {
+      return localStorage.getItem('activePlayerTag');
+    } catch {
+      return null;
+    }
   });
 
   const setActivePlayerTag = (tag: string | null) => {
     setActivePlayerTagState(tag);
-    if (tag) {
-      localStorage.setItem('activePlayerTag', tag);
-    } else {
-      localStorage.removeItem('activePlayerTag');
+    try {
+      if (tag) {
+        localStorage.setItem('activePlayerTag', tag);
+      } else {
+        localStorage.removeItem('activePlayerTag');
+      }
+    } catch {
+      // Storage is blocked: the player still applies for this visit.
     }
   };
 

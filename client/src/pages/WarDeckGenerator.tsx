@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import PlayerSearch from '../components/PlayerSearch';
 import WarDeckResult from '../components/WarDeckResult';
 import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } from '../queries';
 import { toBuilderCards } from '../lib/builderCards';
@@ -10,6 +9,7 @@ import { track } from '../lib/stats';
 import { routeFlag } from '../lib/routeState';
 import { useApp } from '../AppContext';
 import LoadError from '../components/LoadError';
+import { homePath } from '../components/navItems';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
 import PlayedToday from '../components/warDeck/PlayedToday';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -75,12 +75,6 @@ export default function WarDeckGenerator() {
     [catalog.data, collection.data]
   );
 
-  useEffect(() => {
-    if (!playerId && activePlayerTag) {
-      navigate(`/${activePlayerTag.replace(/#/g, '')}`, { replace: true });
-    }
-  }, [playerId, activePlayerTag]);
-
   // Once a tag's decks load successfully, make that player active app-wide (used by the Builder + Best
   // Decks); someone else's shared lineup leaves the reader's own player alone.
   useEffect(() => {
@@ -120,11 +114,7 @@ export default function WarDeckGenerator() {
     return [...decks].sort((a, b) => rank(a.cardIds) - rank(b.cardIds));
   }, [playerData, shared]);
 
-  const getMyDecks = () => navigate(activePlayerTag ? `/${activePlayerTag.replace(/#/g, '')}` : '/');
-
-  const handleSearch = (playerTag: string) => {
-    navigate(`/${playerTag.replace(/#/g, '')}`);
-  };
+  const getMyDecks = () => navigate(homePath(activePlayerTag));
 
   const handleNewSearch = () => {
     if (!fromClan) setActivePlayerTag(null);
@@ -167,10 +157,8 @@ export default function WarDeckGenerator() {
         )
       }
     />
-  ) : tag || activePlayerTag ? (
-    <WarDecksSkeleton isMobile={isMobile} />
   ) : (
-    <PlayerSearch onSearch={handleSearch} isLoading={warDecks.isFetching} />
+    <WarDecksSkeleton isMobile={isMobile} />
   );
 }
 

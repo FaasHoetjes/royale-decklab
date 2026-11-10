@@ -34,18 +34,11 @@
   --control-text: #1a1a1a;
   --control-border: #d0d0d0;
 
-  --stat-label: #6b7280;
   --panel-border: #e8ecf5;
   --panel-shadow: 0 6px 20px rgba(13, 27, 62, 0.06);
-  --inset-bg: #edeef2;
-  --row-bg: #f8f9ff;
-  --row-border: #eceef6;
   --chip-bg: #f0f3ff;
-  --chip-text: #3a6ea5;
   --chip-border: #dbe4f5;
-  --raised-bg: #f6f7f9;
   --icon-btn-bg: #ffffff;
-  --selected-bg: #eaf3ff;
   --modal-bg: #ffffff;
   --nav-active-bg: #edeef2;
   --empty-slot-border: #c2c6ce;
@@ -65,14 +58,12 @@
   --hero-fade: linear-gradient(90deg, #f6f7f9 30%, rgba(246, 247, 249, 0.35) 75%, rgba(246, 247, 249, 0));
   --hero-text: #000000;
   --hero-muted: #5b6474;
-  --hero-divider: rgba(13, 27, 62, 0.14);
   --hero-text-shadow: none;
   --hero-card-shadow: drop-shadow(0 8px 16px rgba(13, 27, 62, 0.28));
   --skeleton-base: #d5d9e0;
   --skeleton-highlight: #eef0f4;
 
   --card-name-font-size: 10px;
-  --metric-label-font-size: 10px;
   --tooltip-font-size: 11px;
   --version-toggle-font-size: 9px;
 
@@ -124,18 +115,11 @@
   --control-bg: #161618;
   --control-text: #f4f4f5;
   --control-border: #2a2a2e;
-  --stat-label: #8a8a93;
   --panel-border: #2a2a2e;
   --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --inset-bg: #101012;
-  --row-bg: #1a1a1e;
-  --row-border: #2a2a2e;
   --chip-bg: #26262a;
-  --chip-text: #c4c4cc;
   --chip-border: #34343a;
-  --raised-bg: #26262a;
   --icon-btn-bg: #0c0c0d;
-  --selected-bg: #26262a;
   --modal-bg: #161618;
   --nav-active-bg: #26262a;
   --empty-slot-border: rgba(0, 0, 0, 0.4);
@@ -152,7 +136,6 @@
   --hero-fade: linear-gradient(90deg, #161618 26%, rgba(22, 22, 24, 0.4) 70%, rgba(22, 22, 24, 0.05));
   --hero-text: #ffffff;
   --hero-muted: rgba(255, 255, 255, 0.72);
-  --hero-divider: rgba(255, 255, 255, 0.16);
   --hero-text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   --hero-card-shadow: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
   --skeleton-base: #28282d;
@@ -244,7 +227,6 @@ input:disabled {
 @media (max-width: 768px) {
   :root {
     --card-name-font-size: 11px;
-    --metric-label-font-size: 11px;
     --tooltip-font-size: 12px;
     --version-toggle-font-size: 10px;
   }
@@ -269,7 +251,7 @@ input:disabled {
 }
 
 @media (hover: hover) {
-  button:hover {
+  button:where(:not(:disabled)):hover {
     opacity: 0.9;
   }
   .picker-filter-option:hover {
@@ -703,9 +685,6 @@ input:disabled {
 .clan-you {
   animation: clan-you-glow 1.8s ease-out 0.5s 2;
 }
-.clan-live-dot {
-  animation: clan-live 1.6s ease-in-out infinite;
-}
 
 .clan-waves {
   animation: clan-drift 14s linear infinite;
@@ -754,10 +733,6 @@ input:disabled {
   to { box-shadow: 0 0 0 14px transparent; }
 }
 
-@keyframes clan-live {
-  50% { opacity: 0.35; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .clan-refreshing,
   .nav-glide,
@@ -781,7 +756,6 @@ input:disabled {
   .wdb-bar,
   .clan-bar-segment,
   .clan-you,
-  .clan-live-dot,
   .clan-waves,
   .clan-bob,
   .clan-wake,

@@ -16,6 +16,8 @@ describe('cardType', () => {
     expect(cardType(26000011)).toBe('Troop');
     expect(cardType(27000008)).toBe('Building');
     expect(cardType(28000000)).toBe('Spell');
+    expect(cardType(27000010)).toBe('Troop');
+    expect(cardType(28000016)).toBe('Troop');
   });
 });
 

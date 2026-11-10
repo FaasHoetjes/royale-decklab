@@ -119,7 +119,7 @@ export default function WarDeckResult({
       if (pos !== slotPos) deckAt(master).cardIds.forEach((id) => otherCards.add(id));
     });
 
-    const base = [slotPos, ...alternatives.map((_, k) => decks.length + k)];
+    const base = [slots[slotPos]!, ...alternatives.map((_, k) => decks.length + k)];
     const valid = base.filter(
       (master) => !deckAt(master).cardIds.some((id) => otherCards.has(id))
     );
