@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
 interface OpenDialog {
-  ref: RefObject<HTMLElement>;
+  ref: RefObject<HTMLElement | null>;
   opener: Element | null;
 }
 
@@ -47,7 +47,7 @@ function openerOfDialogAround(el: Element | null): Element | null {
  * Makes an element behave as a modal dialog: focus moves in on open, Tab stays inside, Escape closes, the page
  * behind doesn't scroll, and focus returns to whatever opened it. The dialog element needs tabIndex={-1}.
  */
-export function useDialog(ref: RefObject<HTMLElement>, onClose: () => void) {
+export function useDialog(ref: RefObject<HTMLElement | null>, onClose: () => void) {
   // Read during render: under StrictMode the effect runs twice, and the second run would see the dialog itself.
   const [opener] = useState(() => document.activeElement);
   const [fallbackOpener] = useState(() => openerOfDialogAround(opener));
