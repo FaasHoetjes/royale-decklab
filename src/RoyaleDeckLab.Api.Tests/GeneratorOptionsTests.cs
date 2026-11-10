@@ -118,7 +118,7 @@ public sealed class GeneratorOptionsTests
 
         var result = Run(FiveDecks, new LineupOptions { LockedDecks = [handBuilt] }, cards);
 
-        var expected = _analyzer.ScoreBuilderDeck(cards, handBuilt, meta: null)!.Score;
+        var expected = _analyzer.ScoreBuilderDeck(Build.CardMap(cards), handBuilt, meta: null)!.Score;
         Assert.Equal(handBuilt, result.Decks[0].CardIds);
         Assert.Equal(expected, result.Decks[0].PlayerScore, 12);
         Assert.Equal(4, result.Decks.Count);

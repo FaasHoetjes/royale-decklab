@@ -29,10 +29,10 @@ public static class LevelModel
     }
 
     public static double LevelLogit(IReadOnlyCollection<int> displayLevels, double opponentLevel)
-    {
-        var mean = displayLevels.Average();
-        return PerLevel * (mean - opponentLevel) - WeakestCard * (mean - displayLevels.Min());
-    }
+        => LevelLogit(displayLevels.Average(), displayLevels.Min(), opponentLevel);
+
+    public static double LevelLogit(double meanLevel, int weakestLevel, double opponentLevel)
+        => PerLevel * (meanLevel - opponentLevel) - WeakestCard * (meanLevel - weakestLevel);
 
     public static double WinProbability(double baseWinRate, double levelLogit)
     {

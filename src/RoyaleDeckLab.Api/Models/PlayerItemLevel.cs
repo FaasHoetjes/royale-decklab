@@ -27,4 +27,15 @@ public static class PlayerItemLevelMapping
         Rarity = RarityExtensions.ParseRarity(c.Rarity),
         IconUrls = c.IconUrls,
     };
+
+    /// <summary>By card id. Should the CR API repeat a card, the last one wins instead of failing the request.</summary>
+    public static Dictionary<int, PlayerItemLevel> ToCardMap(this IEnumerable<PlayerItemLevel> cards)
+    {
+        var map = new Dictionary<int, PlayerItemLevel>();
+        foreach (var card in cards)
+        {
+            map[card.Id] = card;
+        }
+        return map;
+    }
 }

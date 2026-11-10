@@ -11,5 +11,5 @@ public sealed class PlayerDeckCache(DeckAnalyzer analyzer, CalculationScheduler 
         LineupOptions options, CancellationToken ct = default)
         => _results.GetAsync(PlayerCalculationKey.Create(player, version, options),
             () => scheduler.RunAsync(token => analyzer.FindBestWarDecks(meta,
-                player.Cards!.Select(c => c.ToPlayerItemLevel()).ToDictionary(c => c.Id), options, token)), ct);
+                player.Cards!.Select(c => c.ToPlayerItemLevel()).ToCardMap(), options, token)), ct);
 }
