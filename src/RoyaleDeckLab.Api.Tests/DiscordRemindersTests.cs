@@ -442,14 +442,15 @@ public sealed class DiscordRemindersTests : IDisposable
     }
 
     [Fact]
-    public async Task ShowsTheClansSettings_ButNoWebhook()
+    public async Task ShowsTheSettings_OnlyToTheWebhooksOwnUrl()
     {
         await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        var wrongToken = Url.Replace(DiscordWebhookTests.Token, DiscordWebhookTests.Token.Replace('k', 'q'));
 
-        var reminders = _setup.For(_clan);
-
-        Assert.True(reminders.IsAvailable);
-        Assert.Equal([TwoHours], reminders.Reminders);
+        Assert.Equal(new ReminderLookup.Found(TwoHours), _setup.Find(_clan, Url));
+        Assert.Equal(new ReminderLookup.Refused(ReminderProblem.NotRegistered), _setup.Find(_clan, wrongToken));
+        Assert.Equal(new ReminderLookup.Refused(ReminderProblem.NotRegistered), _setup.Find(Clan("Y8RQJ"), Url));
+        Assert.Equal(new ReminderLookup.Refused(ReminderProblem.InvalidWebhook), _setup.Find(_clan, "https://example.com/hook"));
     }
 
     [Fact]
@@ -460,7 +461,7 @@ public sealed class DiscordRemindersTests : IDisposable
         var result = await setup.SaveAsync(_clan, Url, TwoHours, default);
 
         Assert.Equal(new ReminderSetupResult.Refused(ReminderProblem.Unavailable), result);
-        Assert.False(setup.For(_clan).IsAvailable);
+        Assert.False(setup.IsAvailable);
     }
 
     [Fact]

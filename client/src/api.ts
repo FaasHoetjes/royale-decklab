@@ -258,10 +258,9 @@ export interface ReminderSettings {
   postWhenAllDone: boolean;
 }
 
-/** Only the settings come back; the webhook URL is a secret that never leaves the server. */
-export interface ClanReminders {
+/** Whether reminders can be set up at all. A clan's own reminders are only shown to whoever pastes their webhook URL. */
+export interface ReminderAvailability {
   isAvailable: boolean;
-  reminders: ReminderSettings[];
 }
 
 export type ReminderProblem =
@@ -280,11 +279,12 @@ export type ReminderProblem =
 
 const clanRemindersUrl = (clanTag: string) => `/api/clans/${encodeURIComponent(clanTag)}/discord-reminders`;
 
-async function sendJson(method: string, url: string, body: unknown, label: string): Promise<Response> {
+async function sendJson(method: string, url: string, body: unknown, label: string, signal?: AbortSignal): Promise<Response> {
   const response = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal,
   });
   if (!response.ok) {
     throw await responseError(response, label);
@@ -292,8 +292,19 @@ async function sendJson(method: string, url: string, body: unknown, label: strin
   return response;
 }
 
-export const fetchClanReminders = (clanTag: string, signal?: AbortSignal): Promise<ClanReminders> =>
+export const fetchClanReminders = (clanTag: string, signal?: AbortSignal): Promise<ReminderAvailability> =>
   getJson(clanRemindersUrl(clanTag), 'Failed to fetch Discord reminders', signal);
+
+/** The settings this webhook posts for the clan, or null when it doesn't post for it. */
+export async function lookUpClanReminder(clanTag: string, webhookUrl: string, signal?: AbortSignal): Promise<ReminderSettings | null> {
+  try {
+    const response = await sendJson('POST', `${clanRemindersUrl(clanTag)}/lookup`, { webhookUrl }, 'Failed to look up the Discord reminder', signal);
+    return await response.json();
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'notRegistered') return null;
+    throw error;
+  }
+}
 
 /** Resolves to the name the webhook has in Discord. */
 export async function saveClanReminder(clanTag: string, webhookUrl: string, settings: ReminderSettings): Promise<string | null> {

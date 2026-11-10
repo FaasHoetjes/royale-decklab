@@ -35,7 +35,12 @@ public enum ReminderProblem
     Busy,
 }
 
-public sealed record ClanReminders(bool IsAvailable, IReadOnlyList<ReminderSettings> Reminders);
+public abstract record ReminderLookup
+{
+    public sealed record Found(ReminderSettings Settings) : ReminderLookup;
+
+    public sealed record Refused(ReminderProblem Problem) : ReminderLookup;
+}
 
 public abstract record ReminderSetupResult
 {
@@ -72,17 +77,19 @@ public sealed class DiscordReminderSetup(
         QueueLimit = 0,
     });
 
-    public ClanReminders For(ClanTag clan)
-    {
-        if (!cipher.IsAvailable)
+    public bool IsAvailable => cipher.IsAvailable;
+
+    /// <summary>
+    /// The settings this webhook posts for this clan. Only the URL's owner can see them, so a clan's page never shows
+    /// that it has reminders, nor how they're set.
+    /// </summary>
+    public ReminderLookup Find(ClanTag clan, string webhookUrl)
+        => OwnReminder(clan, webhookUrl) switch
         {
-            return new ClanReminders(false, []);
-        }
-        var settings = store.ForClan(clan)
-            .Select(r => r.Settings)
-            .ToList();
-        return new ClanReminders(true, settings);
-    }
+            OwnLookup.Found found => new ReminderLookup.Found(found.Reminder.Settings),
+            OwnLookup.Refused refused => new ReminderLookup.Refused(refused.Problem),
+            _ => throw new InvalidOperationException("Unknown reminder lookup"),
+        };
 
     public async Task<ReminderSetupResult> SaveAsync(ClanTag clan, string webhookUrl, ReminderSettings settings, CancellationToken ct)
     {
@@ -166,26 +173,34 @@ public sealed class DiscordReminderSetup(
     /// <summary>Removes the reminder, if this webhook posts it for this clan. Null when it was removed.</summary>
     public ReminderProblem? Delete(ClanTag clan, string webhookUrl)
     {
+        switch (OwnReminder(clan, webhookUrl))
+        {
+            case OwnLookup.Found found:
+                store.Delete(found.Reminder.Webhook.Id);
+                return null;
+            case OwnLookup.Refused refused:
+                return refused.Problem;
+            default:
+                throw new InvalidOperationException("Unknown reminder lookup");
+        }
+    }
+
+    private OwnLookup OwnReminder(ClanTag clan, string webhookUrl)
+    {
         if (!cipher.IsAvailable)
         {
-            return ReminderProblem.Unavailable;
+            return new OwnLookup.Refused(ReminderProblem.Unavailable);
         }
         if (!DiscordWebhook.TryParse(webhookUrl, out var webhook))
         {
-            return ReminderProblem.InvalidWebhook;
+            return new OwnLookup.Refused(ReminderProblem.InvalidWebhook);
         }
 
         var existing = store.Find(webhook.Id);
         var isThisClansWebhook = existing is not null
             && existing.Clan == clan
             && existing.Webhook.HasSameToken(webhook);
-        if (!isThisClansWebhook)
-        {
-            return ReminderProblem.NotRegistered;
-        }
-
-        store.Delete(webhook.Id);
-        return null;
+        return isThisClansWebhook ? new OwnLookup.Found(existing!) : new OwnLookup.Refused(ReminderProblem.NotRegistered);
     }
 
     private ReminderProblem? Check(string webhookUrl, ReminderSettings settings)
@@ -255,6 +270,13 @@ public sealed class DiscordReminderSetup(
         public sealed record Found(ClanWar War) : WarLookup;
 
         public sealed record Refused(ReminderProblem Problem) : WarLookup;
+    }
+
+    private abstract record OwnLookup
+    {
+        public sealed record Found(DiscordReminder Reminder) : OwnLookup;
+
+        public sealed record Refused(ReminderProblem Problem) : OwnLookup;
     }
 
     private abstract record WebhookCheck

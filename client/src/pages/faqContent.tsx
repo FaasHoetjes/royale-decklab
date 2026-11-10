@@ -397,22 +397,42 @@ export const faqItems: FaqItem[] = [
       <>
         <p style={pStyle}>
           Use the “Discord reminders” row on your clan’s Planner page. In Discord, create a webhook
-          for the channel you want (channel settings, then Integrations, then Webhooks) and paste its
+          for the channel you want (Server Settings, then Integrations, then Webhooks) and paste its
           URL. Before each war day ends, at the time you choose, the site posts who still has decks
           to play. You can send a test first, and optionally ping @here.
         </p>
         <p style={pStyle}>
           We store the webhook URL, with its secret part (the token) encrypted, and use it only to
           post these reminders. Next to it we store your clan tag, the settings you chose and the id
-          of your Discord server, which aren’t encrypted. Anyone can see which reminder settings a
-          clan uses, but never the webhook or the channel it posts to.
+          of your Discord server, which aren’t encrypted. Only someone who pastes the webhook URL
+          sees its settings, and nobody can see the webhook or the channel it posts to.
         </p>
         <p style={pLast}>
           Treat the webhook URL like a password: whoever has it can post to your channel, and change
-          or turn off its reminders here. To change or turn them off, paste the same URL again.
-          Deleting the webhook in Discord stops them too, and we remove it the next time a reminder
-          is sent. Anyone can post any clan’s reminders to their own channel, so a reminder for your
-          clan isn’t necessarily set up by your clan.
+          or turn off its reminders here. Anyone can post any clan’s reminders to their own
+          channel, so a reminder for your clan isn’t necessarily set up by your clan.
+        </p>
+      </>
+    ),
+    link: 'clan',
+  },
+  {
+    id: 'clan-discord-change',
+    question: 'How do I change or turn off a Discord reminder?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          Open the “Discord reminders” row on your clan’s Planner page and paste the same webhook
+          URL. Its saved settings load, with a green “On for this channel” card. Change what you
+          want and press “Save”, or press “Turn off reminders” to stop them.
+        </p>
+        <p style={pStyle}>
+          Lost the URL? In Discord, open Server Settings, then Integrations, then Webhooks, pick the
+          webhook and press “Copy Webhook URL”.
+        </p>
+        <p style={pLast}>
+          You can also delete the webhook in Discord. The reminders stop right away, and we remove
+          it from our side the next time a reminder would have been sent.
         </p>
       </>
     ),

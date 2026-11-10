@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import {
   ApiError,
   deleteClanReminder,
+  lookUpClanReminder,
   saveClanReminder,
   testClanReminder,
   type ClanWar,
@@ -10,7 +10,6 @@ import {
   type ReminderProblem,
   type ReminderSettings,
 } from '../../api';
-import { queryKeys } from '../../queries';
 import { REMINDER_STYLES, reminderStyleLabel } from '../../lib/clanWar';
 import Sheet from '../Sheet';
 import Switch from '../Switch';
@@ -18,11 +17,13 @@ import { Segment } from '../generator/SegmentedChoice';
 import DiscordPreview from './DiscordPreview';
 
 const HOUR_CHOICES = [1, 2, 3, 6];
+const LOOKUP_DELAY_MS = 400;
+const WEBHOOK_URL = /^https:\/\/([a-z]+\.)?discord(app)?\.com\/api(\/v\d+)?\/webhooks\/\d{17,20}\/[\w-]{60,100}\/?$/;
 const DEFAULT_SETTINGS: ReminderSettings = { hoursBeforeReset: 2, style: 'names', ping: 'nobody', postWhenAllDone: false };
 
 const problemText: Record<ReminderProblem, string> = {
   unavailable: 'Discord reminders are switched off on this server right now.',
-  invalidWebhook: "That isn't a Discord webhook URL. Copy it from the channel's Integrations settings.",
+  invalidWebhook: "That isn't a Discord webhook URL. Copy it from Server Settings, then Integrations.",
   invalidSettings: "These settings didn't save. Reload the page and try again.",
   clanNotFound: "This clan couldn't be found.",
   noResetTime: "This clan hasn't finished a war yet, so its reset time isn't known. Try again after its first war week.",
@@ -52,49 +53,81 @@ const postTime = (dayEndsAt: string, hours: number): string =>
 
 const pingFor = (isOn: boolean): ReminderPing => (isOn ? 'here' : 'nobody');
 
-export const describeReminder = (settings: ReminderSettings): string => {
-  const parts = [`${settings.hoursBeforeReset}h before reset`, reminderStyleLabel[settings.style]];
-  if (settings.ping === 'here') parts.push('@here');
-  return parts.join(' · ');
-};
-
 type Busy = 'save' | 'test' | 'off';
 type Notice = { tone: 'ok' | 'error'; text: string };
 
-const StatusCard = ({ reminders, dayEndsAt }: { reminders: ReminderSettings[]; dayEndsAt: string | null }) => {
-  const when = (r: ReminderSettings) => (dayEndsAt ? `posts about ${postTime(dayEndsAt, r.hoursBeforeReset)}` : `${r.hoursBeforeReset}h before reset`);
-  const summary = (r: ReminderSettings) => [when(r), reminderStyleLabel[r.style], ...(r.ping === 'here' ? ['@here'] : [])].join(' · ');
-  const [only] = reminders;
-  const isSingle = reminders.length === 1 && only != null;
+/** What a webhook URL posts for this clan: its settings, or null when it posts nothing. */
+interface Saved {
+  url: string;
+  settings: ReminderSettings | null;
+}
+
+const StatusCard = ({ settings, dayEndsAt }: { settings: ReminderSettings; dayEndsAt: string | null }) => {
+  const when = dayEndsAt ? `posts about ${postTime(dayEndsAt, settings.hoursBeforeReset)}` : `${settings.hoursBeforeReset}h before reset`;
+  const summary = [when, reminderStyleLabel[settings.style], ...(settings.ping === 'here' ? ['@here'] : [])].join(' · ');
 
   return (
     <div style={styles.status}>
       <strong style={styles.statusTitle}>
         <span aria-hidden="true" style={styles.statusDot} />
-        {isSingle ? `On · ${summary(only)}` : `On in ${reminders.length} channels`}
+        On for this channel
       </strong>
-      {!isSingle && reminders.map((reminder, i) => <span key={i} style={styles.statusLine}>{summary(reminder)}</span>)}
-      <span style={styles.statusLine}>Paste the webhook URL to change or turn it off.</span>
+      <span style={styles.statusLine}>{summary}</span>
     </div>
   );
 };
 
+/**
+ * Looks up what a pasted webhook URL already posts for the clan and hands its settings over once per URL. Only the
+ * URL's owner sees them, so other visitors get the same empty form whether the clan has reminders or not.
+ */
+const useSavedReminder = (clanTag: string, url: string, onFound: (settings: ReminderSettings) => void) => {
+  const [saved, setSaved] = useState<Saved | null>(null);
+  const wasPasted = useRef(false);
+
+  useEffect(() => {
+    // A typed URL already looks complete for several keystrokes before its token ends; a pasted one is whole.
+    const delay = wasPasted.current ? 0 : LOOKUP_DELAY_MS;
+    wasPasted.current = false;
+    if (!WEBHOOK_URL.test(url)) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      lookUpClanReminder(clanTag, url, controller.signal)
+        .then((settings) => {
+          setSaved({ url, settings });
+          if (settings) onFound(settings);
+        })
+        .catch(() => {});
+    }, delay);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [clanTag, url, onFound]);
+
+  const onPaste = () => {
+    wasPasted.current = true;
+  };
+
+  return { settings: saved?.url === url ? saved.settings : null, setSaved, onPaste };
+};
+
 interface ClanDiscordSheetProps {
   war: ClanWar;
-  reminders: ReminderSettings[];
   onClose: () => void;
 }
 
 /** Turn on, change or turn off the Discord webhook that reminds the clan before each war day ends. */
-const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) => {
-  const queryClient = useQueryClient();
+const ClanDiscordSheet = ({ war, onClose }: ClanDiscordSheetProps) => {
   const [url, setUrl] = useState('');
-  const [settings, setSettings] = useState<ReminderSettings>(reminders[0] ?? DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<ReminderSettings>(DEFAULT_SETTINGS);
   const [busy, setBusy] = useState<Busy | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [showsSteps, setShowsSteps] = useState(false);
-  const isOn = reminders.length > 0;
-  const hasUrl = url.trim().length > 0;
+  const webhookUrl = url.trim();
+  const saved = useSavedReminder(war.tag, webhookUrl, setSettings);
+  const isOn = saved.settings != null;
+  const hasUrl = webhookUrl.length > 0;
   const isLocked = !hasUrl || busy != null;
   const saveLabel = isOn ? 'Save' : 'Turn on';
   const postsAt = war.dayEndsAt ? postTime(war.dayEndsAt, settings.hoursBeforeReset) : null;
@@ -116,22 +149,22 @@ const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) =>
     }
   };
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.clanReminders(war.tag) });
-
   const save = () => run('save', async () => {
-    const webhookName = await saveClanReminder(war.tag, url.trim(), settings);
-    await refresh();
+    const wasOn = isOn;
+    const webhookName = await saveClanReminder(war.tag, webhookUrl, settings);
+    saved.setSaved({ url: webhookUrl, settings });
+    if (wasOn) return 'Settings saved for this channel.';
     return webhookName ? `Reminders are on. They post as “${webhookName}”.` : 'Reminders are on.';
   });
 
   const test = () => run('test', async () => {
-    await testClanReminder(war.tag, url.trim(), settings);
+    await testClanReminder(war.tag, webhookUrl, settings);
     return 'Test sent. Check your Discord channel.';
   });
 
   const turnOff = () => run('off', async () => {
-    await deleteClanReminder(war.tag, url.trim());
-    await refresh();
+    await deleteClanReminder(war.tag, webhookUrl);
+    saved.setSaved(null);
     setUrl('');
     return 'Reminders are off for this webhook.';
   });
@@ -168,14 +201,6 @@ const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) =>
       footer={footer}
       onClose={onClose}
     >
-      {isOn && <StatusCard reminders={reminders} dayEndsAt={war.dayEndsAt} />}
-
-      <div style={styles.previewLabel}>
-        <span>Preview</span>
-        {postsAt && war.isBattleDay && <span style={styles.previewTime}>{`posts about ${postsAt}`}</span>}
-      </div>
-      <DiscordPreview war={war} settings={settings} postsAt={postsAt} />
-
       <label htmlFor="clan-discord-url" style={styles.groupTitle}>
         Discord channel
       </label>
@@ -186,6 +211,7 @@ const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) =>
             type="url"
             inputMode="url"
             value={url}
+            onPaste={saved.onPaste}
             onChange={(e) => {
               setUrl(e.target.value);
               setNotice(null);
@@ -208,14 +234,15 @@ const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) =>
           {showsSteps && (
             <div id="clan-discord-steps" style={styles.help}>
               <ol style={styles.steps}>
-                <li>In Discord, open the channel's settings, then Integrations.</li>
-                <li>Pick Webhooks, then New Webhook, then Copy Webhook URL.</li>
+                <li>In Discord, open Server Settings, then Integrations.</li>
+                <li>Pick Webhooks, then Create Webhook, choose the channel, then Copy Webhook URL.</li>
               </ol>
               <span>You need the Manage Webhooks permission in that server.</span>
             </div>
           )}
         </div>
       </div>
+      {saved.settings && <StatusCard settings={saved.settings} dayEndsAt={war.dayEndsAt} />}
 
       <h3 style={styles.groupTitle}>When and what</h3>
       <div style={styles.group}>
@@ -243,12 +270,14 @@ const ClanDiscordSheet = ({ war, reminders, onClose }: ClanDiscordSheetProps) =>
         </label>
         <label style={{ ...styles.row, ...styles.rowDivider, ...styles.rowLine, ...styles.clickable }}>
           <span>
-            <span style={styles.rowLabel}>Also post when all done</span>
-            <span style={styles.rowSubBlock}>A short “every deck played” post</span>
+            <span style={styles.rowLabel}>Celebrate if everyone's done</span>
+            <span style={styles.rowSubBlock}>Posts this instead of the reminder</span>
           </span>
           <Switch isOn={settings.postWhenAllDone} onChange={(postWhenAllDone) => change({ postWhenAllDone })} />
         </label>
       </div>
+
+      <DiscordPreview war={war} settings={settings} postsAt={postsAt} />
 
       <p style={styles.privacy}>
         The webhook's secret part is stored encrypted and only used to post these reminders. Deleting the webhook in Discord stops them too.
@@ -266,7 +295,7 @@ const styles = {
   status: {
     display: 'grid' as const,
     gap: '2px',
-    marginTop: '6px',
+    marginTop: '10px',
     padding: '12px 14px',
     borderRadius: '14px',
     backgroundColor: 'color-mix(in srgb, var(--up) 12%, transparent)',
@@ -288,18 +317,6 @@ const styles = {
   statusLine: {
     fontSize: '13px',
     color: 'var(--text-secondary)',
-  },
-  previewLabel: {
-    display: 'flex' as const,
-    justifyContent: 'space-between' as const,
-    gap: '12px',
-    margin: '14px 4px 0',
-    fontSize: '13px',
-    fontWeight: 600 as const,
-    color: 'var(--text-secondary)',
-  },
-  previewTime: {
-    fontWeight: 500 as const,
   },
   groupTitle: {
     display: 'block' as const,

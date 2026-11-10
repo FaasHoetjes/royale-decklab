@@ -8,7 +8,7 @@ public static class RateLimitPolicies
     /// <summary>Searching clans by name, a few requests per name typed.</summary>
     public const string ClanSearch = "clan-search";
 
-    /// <summary>Turning a clan's Discord reminders off.</summary>
+    /// <summary>Looking up or turning off the reminder one webhook posts for a clan.</summary>
     public const string Reminders = "reminders";
 
     /// <summary>

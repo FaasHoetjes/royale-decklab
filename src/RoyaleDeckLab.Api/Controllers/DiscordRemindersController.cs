@@ -14,6 +14,8 @@ public sealed record SavedReminder(string? WebhookName);
 
 public sealed record ReminderProblemResponse(ReminderProblem Code);
 
+public sealed record ReminderAvailability(bool IsAvailable);
+
 /// <summary>A clan's Discord war reminders. The webhook URL is a secret, so it only ever travels in a request body.</summary>
 [ApiController]
 [Route("api/clans/{tag}/discord-reminders")]
@@ -23,13 +25,31 @@ public sealed class DiscordRemindersController(DiscordReminderSetup setup) : Con
 
     [HttpGet]
     [EnableRateLimiting(RateLimitPolicies.Clan)]
-    public ActionResult<ClanReminders> Get(string tag)
+    public ActionResult<ReminderAvailability> Get(string tag)
+    {
+        if (!ClanTag.TryParse(tag, out _))
+        {
+            return BadRequest();
+        }
+        return new ReminderAvailability(setup.IsAvailable);
+    }
+
+    [HttpPost("lookup")]
+    [EnableRateLimiting(RateLimitPolicies.Reminders)]
+    [RequestSizeLimit(MaxBodyBytes)]
+    public ActionResult<ReminderSettings> Lookup(string tag, WebhookRequest request)
     {
         if (!ClanTag.TryParse(tag, out var clan))
         {
             return BadRequest();
         }
-        return setup.For(clan);
+
+        return setup.Find(clan, request.WebhookUrl) switch
+        {
+            ReminderLookup.Found found => found.Settings,
+            ReminderLookup.Refused refused => Problem(refused.Problem),
+            _ => throw new InvalidOperationException("Unknown lookup result"),
+        };
     }
 
     [HttpPut]

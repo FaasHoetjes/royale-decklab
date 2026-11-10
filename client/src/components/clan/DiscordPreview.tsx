@@ -2,6 +2,7 @@ import type { ClanWar, ClanWarMember, ReminderSettings } from '../../api';
 import { dayLabel, DECKS_PER_DAY } from '../../lib/clanWar';
 
 const NAMES_SHOWN = 5;
+const EXAMPLE_DECKS_USED = [0, 4, 2, 4, 4, 0, 4, 3, 4, 4];
 const OPEN_COLOR = '#e8b24a';
 const DONE_COLOR = '#22c55e';
 
@@ -76,59 +77,114 @@ const allDoneEmbed = (war: ClanWar): Embed => ({
   hasPlannerLink: false,
 });
 
+/** The clan's own members on a made-up war day, a few with decks left, so every message style has names to show. */
+const exampleWar = (war: ClanWar): ClanWar => {
+  const members = war.members.map((member, i) => {
+    const used = EXAMPLE_DECKS_USED[i % EXAMPLE_DECKS_USED.length] ?? DECKS_PER_DAY;
+    return { ...member, decksUsedToday: used, decksLeftToday: DECKS_PER_DAY - used };
+  });
+  return {
+    ...war,
+    period: 'warDay',
+    day: 1,
+    isBattleDay: true,
+    members,
+    decksLeftToday: members.reduce((sum, m) => sum + m.decksLeftToday, 0),
+    membersDoneToday: members.filter((m) => m.decksLeftToday === 0).length,
+  };
+};
+
 interface DiscordPreviewProps {
   war: ClanWar;
   settings: ReminderSettings;
   postsAt: string | null;
 }
 
-/** Today's reminder as it would look in a Discord channel, so the settings can be judged by what they post. */
+/**
+ * The reminder as it would look in a Discord channel, so the settings can be judged by what they post. Today's war
+ * when today would post; otherwise an example war day with the clan's members.
+ */
 const DiscordPreview = ({ war, settings, postsAt }: DiscordPreviewProps) => {
-  if (!war.isBattleDay) {
-    return <p style={styles.empty}>Reminders post on war days, so there's nothing to show today.</p>;
-  }
-  const isAllDone = war.decksLeftToday === 0;
-  if (isAllDone && !settings.postWhenAllDone) {
-    return <p style={styles.empty}>Everyone has played today, so nothing would post. Turn on “Also post when all done” to post anyway.</p>;
-  }
-  const embed = isAllDone ? allDoneEmbed(war) : openEmbed(war, settings);
+  const isAllDoneToday = war.isBattleDay && war.decksLeftToday === 0;
+  const isToday = war.isBattleDay && (!isAllDoneToday || settings.postWhenAllDone);
+  const shown = isToday ? war : exampleWar(war);
+  const showsAllDone = isAllDoneToday && isToday;
+  const embed = showsAllDone ? allDoneEmbed(war) : openEmbed(shown, settings);
+  const label = isToday ? (postsAt ? `Today · posts about ${postsAt}` : 'Today') : 'Example war day';
 
   return (
-    <div style={styles.message} aria-label="Preview of the Discord post">
-      <span aria-hidden="true" style={styles.avatar}>DL</span>
-      <div style={styles.main}>
-        <div style={styles.author}>
-          Royale DeckLab
-          <span style={styles.app}>APP</span>
-          {postsAt && <span style={styles.time}>{`Today at ${postsAt}`}</span>}
-        </div>
-        {settings.ping === 'here' && <span style={styles.mention}>@here</span>}
-        <div style={{ ...styles.embed, borderLeft: `4px solid ${embed.color}` }}>
-          <div style={styles.embedTitle}>{embed.title}</div>
-          <div>{embed.description}</div>
-          {embed.fields.map((field) => (
-            <div key={field.name}>
-              <div style={styles.fieldName}>{field.name}</div>
-              <div style={styles.fieldValue}>{field.value}</div>
-            </div>
-          ))}
-          {embed.hasPlannerLink && <div style={styles.link}>Everyone's status and best decks</div>}
-          <div style={styles.footer}>royaledecklab.com</div>
-        </div>
+    <>
+      <div style={styles.label}>
+        <span>Preview</span>
+        <span style={styles.labelSide}>{label}</span>
       </div>
-    </div>
+      <Message embed={embed} settings={settings} postsAt={postsAt} ariaLabel="Preview of the Discord post" />
+      {settings.postWhenAllDone && !showsAllDone && (
+        <>
+          <div style={styles.label}>
+            <span>If everyone's done by then</span>
+          </div>
+          <Message embed={allDoneEmbed(shown)} settings={settings} postsAt={postsAt} ariaLabel="Preview of the post when everyone's done" />
+        </>
+      )}
+      {isAllDoneToday && !isToday && (
+        <p style={styles.note}>Everyone has played today, so nothing posts today. Turn on “Celebrate if everyone's done” to post anyway.</p>
+      )}
+    </>
   );
 };
 
 export default DiscordPreview;
 
+interface MessageProps {
+  embed: Embed;
+  settings: ReminderSettings;
+  postsAt: string | null;
+  ariaLabel: string;
+}
+
+const Message = ({ embed, settings, postsAt, ariaLabel }: MessageProps) => (
+  <div style={styles.message} aria-label={ariaLabel}>
+    <span aria-hidden="true" style={styles.avatar}>DL</span>
+    <div style={styles.main}>
+      <div style={styles.author}>
+        Royale DeckLab
+        <span style={styles.app}>APP</span>
+        {postsAt && <span style={styles.time}>{`Today at ${postsAt}`}</span>}
+      </div>
+      {settings.ping === 'here' && <span style={styles.mention}>@here</span>}
+      <div style={{ ...styles.embed, borderLeft: `4px solid ${embed.color}` }}>
+        <div style={styles.embedTitle}>{embed.title}</div>
+        <div>{embed.description}</div>
+        {embed.fields.map((field) => (
+          <div key={field.name}>
+            <div style={styles.fieldName}>{field.name}</div>
+            <div style={styles.fieldValue}>{field.value}</div>
+          </div>
+        ))}
+        {embed.hasPlannerLink && <div style={styles.link}>Everyone's status and best decks</div>}
+        <div style={styles.footer}>royaledecklab.com</div>
+      </div>
+    </div>
+  </div>
+);
+
 const styles = {
-  empty: {
-    margin: '6px 0 0',
-    padding: '12px 14px',
-    borderRadius: '14px',
-    backgroundColor: 'var(--bg-tertiary)',
-    fontSize: '13.5px',
+  label: {
+    display: 'flex' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+    margin: '18px 4px 0',
+    fontSize: '13px',
+    fontWeight: 600 as const,
+    color: 'var(--text-secondary)',
+  },
+  labelSide: {
+    fontWeight: 500 as const,
+  },
+  note: {
+    margin: '8px 4px 0',
+    fontSize: '12.5px',
     lineHeight: 1.45,
     color: 'var(--text-secondary)',
   },
