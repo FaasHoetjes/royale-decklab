@@ -4,6 +4,13 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services.Reminders;
 
+public enum ReminderSaveOutcome
+{
+    Saved,
+    TooManyReminders,
+    TooManyForServer,
+}
+
 /// <summary>
 /// The clans' Discord reminders in their own SQLite file. Tokens are stored encrypted, and deleted rows are
 /// overwritten on disk, so a removed webhook can't be read back from the file.
@@ -15,6 +22,7 @@ public sealed class ReminderStore
     private readonly string _connectionString;
     private readonly WebhookTokenCipher _cipher;
     private readonly ILogger<ReminderStore> _logger;
+    private readonly object _saveGate = new();
     private int _hasWarnedUnreadable;
 
     public ReminderStore(string path, WebhookTokenCipher cipher, ILogger<ReminderStore> logger)
@@ -46,6 +54,13 @@ public sealed class ReminderStore
 
     public IReadOnlyList<DiscordReminder> All() => Read("SELECT * FROM discord_reminders", _ => { });
 
+    /// <summary>Decrypts only the tokens of the reminders that are due, as the job asks every minute.</summary>
+    public IReadOnlyList<DiscordReminder> Due(DateTimeOffset now)
+        => Read(
+            "SELECT * FROM discord_reminders",
+            _ => { },
+            row => DiscordReminder.IsDue(ResetTimeOfDay(row), row.GetInt32(row.GetOrdinal("hours_before_reset")), LastRemindedFor(row), now));
+
     public IReadOnlyList<DiscordReminder> ForClan(ClanTag clan)
         => Read("SELECT * FROM discord_reminders WHERE clan_tag = @clan", c => c.Parameters.AddWithValue("@clan", clan.Value));
 
@@ -62,6 +77,28 @@ public sealed class ReminderStore
         using var command = Command(connection, "SELECT COUNT(*) FROM discord_reminders WHERE guild_id = @guild");
         command.Parameters.AddWithValue("@guild", guildId);
         return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// Saves the reminder unless it's a new one that would go over a limit. Checking and saving happen together, so
+    /// setups arriving at the same moment can't each pass the check and end up over the limit.
+    /// </summary>
+    public ReminderSaveOutcome SaveWithinLimits(DiscordReminder reminder, string guildId, int maxReminders, int maxPerServer)
+    {
+        lock (_saveGate)
+        {
+            var isNew = Find(reminder.Webhook.Id) is null;
+            if (isNew && Count() >= maxReminders)
+            {
+                return ReminderSaveOutcome.TooManyReminders;
+            }
+            if (isNew && CountForServer(guildId) >= maxPerServer)
+            {
+                return ReminderSaveOutcome.TooManyForServer;
+            }
+            Save(reminder, guildId);
+            return ReminderSaveOutcome.Saved;
+        }
     }
 
     /// <summary>
@@ -139,7 +176,8 @@ public sealed class ReminderStore
     public void UpdateResetTime(string webhookId, DateTimeOffset dayEndsAt)
     {
         using var connection = Open();
-        using var update = Command(connection, "UPDATE discord_reminders SET reset_minute = @resetMinute WHERE webhook_id = @id");
+        using var update = Command(connection,
+            "UPDATE discord_reminders SET reset_minute = @resetMinute WHERE webhook_id = @id AND reset_minute <> @resetMinute");
         update.Parameters.AddWithValue("@id", webhookId);
         update.Parameters.AddWithValue("@resetMinute", ResetMinute(dayEndsAt.UtcDateTime.TimeOfDay));
         update.ExecuteNonQuery();
@@ -154,7 +192,7 @@ public sealed class ReminderStore
         Execute(connection, "PRAGMA wal_checkpoint(TRUNCATE);");
     }
 
-    private List<DiscordReminder> Read(string sql, Action<SqliteCommand> bind)
+    private List<DiscordReminder> Read(string sql, Action<SqliteCommand> bind, Func<SqliteDataReader, bool>? isWanted = null)
     {
         using var connection = Open();
         using var command = Command(connection, sql);
@@ -164,6 +202,11 @@ public sealed class ReminderStore
         var unreadable = 0;
         while (reader.Read())
         {
+            var isSkipped = isWanted is not null && !isWanted(reader);
+            if (isSkipped)
+            {
+                continue;
+            }
             if (TryReadReminder(reader) is { } reminder)
             {
                 reminders.Add(reminder);
@@ -204,18 +247,22 @@ public sealed class ReminderStore
             (ReminderMessageStyle)row.GetInt32(row.GetOrdinal("style")),
             (ReminderPing)row.GetInt32(row.GetOrdinal("ping")),
             row.GetBoolean(row.GetOrdinal("post_when_all_done")));
-        var lastRemindedOrdinal = row.GetOrdinal("last_reminded_for_ms");
-        DateTimeOffset? lastReminded = row.IsDBNull(lastRemindedOrdinal)
-            ? null
-            : DateTimeOffset.FromUnixTimeMilliseconds(row.GetInt64(lastRemindedOrdinal));
 
         return new DiscordReminder(
             new DiscordWebhook(webhookId, token),
             clan,
             settings,
-            TimeSpan.FromMinutes(row.GetInt32(row.GetOrdinal("reset_minute"))),
-            lastReminded,
+            ResetTimeOfDay(row),
+            LastRemindedFor(row),
             row.GetInt32(row.GetOrdinal("failures")));
+    }
+
+    private static TimeSpan ResetTimeOfDay(SqliteDataReader row) => TimeSpan.FromMinutes(row.GetInt32(row.GetOrdinal("reset_minute")));
+
+    private static DateTimeOffset? LastRemindedFor(SqliteDataReader row)
+    {
+        var ordinal = row.GetOrdinal("last_reminded_for_ms");
+        return row.IsDBNull(ordinal) ? null : DateTimeOffset.FromUnixTimeMilliseconds(row.GetInt64(ordinal));
     }
 
     private static int ResetMinute(TimeSpan timeOfDay) => (int)timeOfDay.TotalMinutes;

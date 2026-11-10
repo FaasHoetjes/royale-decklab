@@ -78,9 +78,7 @@ public sealed record ClanWar(
         {
             return null;
         }
-        var today = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        var reset = today + lastEnd.UtcDateTime.TimeOfDay;
-        return reset > now ? reset : reset.AddDays(1);
+        return WarDay.NextReset(lastEnd.UtcDateTime.TimeOfDay, now);
     }
 
     private static List<RaceClan> RaceOf(CrRiverRace race)

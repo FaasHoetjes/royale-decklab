@@ -145,6 +145,35 @@ public sealed class ReminderStoreTests : IDisposable
     }
 
     [Fact]
+    public void ANewReminder_IsRefusedOnceALimitIsReached()
+    {
+        Assert.Equal(ReminderSaveOutcome.TooManyReminders, _store.SaveWithinLimits(Reminder(), Guild, maxReminders: 0, maxPerServer: 5));
+        Assert.Equal(ReminderSaveOutcome.TooManyForServer, _store.SaveWithinLimits(Reminder(), Guild, maxReminders: 5, maxPerServer: 0));
+        Assert.Empty(_store.All());
+    }
+
+    [Fact]
+    public void AnExistingReminder_CanStillChangeAtTheLimit()
+    {
+        _store.Save(Reminder(), Guild);
+        var changed = Reminder(new ReminderSettings(1, ReminderMessageStyle.Short, ReminderPing.Nobody, false));
+
+        var outcome = _store.SaveWithinLimits(changed, Guild, maxReminders: 1, maxPerServer: 1);
+
+        Assert.Equal(ReminderSaveOutcome.Saved, outcome);
+        Assert.Equal(changed.Settings, Stored().Settings);
+    }
+
+    [Fact]
+    public void Due_GivesOnlyTheRemindersInTheirWindow()
+    {
+        _store.Save(Reminder(), Guild);
+
+        Assert.Empty(_store.Due(Reset.AddHours(-4)));
+        Assert.Equal(DiscordWebhookTests.Token, Assert.Single(_store.Due(Reset.AddHours(-2))).Webhook.Token);
+    }
+
+    [Fact]
     public void CountsRemindersPerDiscordServer()
     {
         _store.Save(Reminder(), Guild);

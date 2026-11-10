@@ -47,8 +47,7 @@ public sealed class ReminderService(
     public async Task PostDueAsync(CancellationToken ct)
     {
         var now = clock.GetUtcNow();
-        var dueByClan = store.All()
-            .Where(r => r.IsDue(now))
+        var dueByClan = store.Due(now)
             .GroupBy(r => r.Clan.Value);
 
         foreach (var clanReminders in dueByClan)

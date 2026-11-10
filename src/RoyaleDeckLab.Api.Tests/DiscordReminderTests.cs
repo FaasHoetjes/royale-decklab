@@ -30,7 +30,7 @@ public sealed class DiscordReminderTests
     {
         var reminded = TwoHoursBefore().RemindedFor(Reset);
 
-        var moved = reminded.WithResetAt(Reset.AddMinutes(3));
+        var moved = reminded with { ResetTimeOfDay = Reset.AddMinutes(3).UtcDateTime.TimeOfDay };
 
         Assert.False(moved.IsDue(Reset.AddMinutes(-30)));
         Assert.True(moved.IsDue(Reset.AddDays(1).AddHours(-1)));

@@ -120,13 +120,14 @@ public sealed class DiscordReminderSetup(
         {
             return new ReminderSetupResult.Refused(ReminderProblem.InvalidWebhook);
         }
-        if (isNew && store.CountForServer(guildId) >= MaxPerServer)
-        {
-            return new ReminderSetupResult.Refused(ReminderProblem.TooManyForServer);
-        }
 
-        store.Save(DiscordReminder.Create(webhook, clan, settings, dayEndsAt), guildId);
-        return new ReminderSetupResult.Saved(info.Name);
+        var reminder = DiscordReminder.Create(webhook, clan, settings, dayEndsAt);
+        return store.SaveWithinLimits(reminder, guildId, MaxReminders, MaxPerServer) switch
+        {
+            ReminderSaveOutcome.TooManyReminders => new ReminderSetupResult.Refused(ReminderProblem.TooManyReminders),
+            ReminderSaveOutcome.TooManyForServer => new ReminderSetupResult.Refused(ReminderProblem.TooManyForServer),
+            _ => new ReminderSetupResult.Saved(info.Name),
+        };
     }
 
     /// <summary>Posts a message saying where the reminders will appear. Null when it was posted.</summary>

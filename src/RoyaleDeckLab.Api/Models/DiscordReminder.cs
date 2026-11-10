@@ -20,18 +20,16 @@ public sealed record DiscordReminder(
     public static DiscordReminder Create(DiscordWebhook webhook, ClanTag clan, ReminderSettings settings, DateTimeOffset dayEndsAt)
         => new(webhook, clan, settings, dayEndsAt.UtcDateTime.TimeOfDay, null, 0);
 
-    public DateTimeOffset NextReset(DateTimeOffset now)
-    {
-        var today = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        var reset = today + ResetTimeOfDay;
-        return reset > now ? reset : reset.AddDays(1);
-    }
+    public DateTimeOffset NextReset(DateTimeOffset now) => WarDay.NextReset(ResetTimeOfDay, now);
 
-    public bool IsDue(DateTimeOffset now)
+    public bool IsDue(DateTimeOffset now) => IsDue(ResetTimeOfDay, Settings.HoursBeforeReset, LastRemindedFor, now);
+
+    /// <summary>Takes only what decides it, so the store can tell before it decrypts a reminder's token.</summary>
+    public static bool IsDue(TimeSpan resetTimeOfDay, int hoursBeforeReset, DateTimeOffset? lastRemindedFor, DateTimeOffset now)
     {
-        var reset = NextReset(now);
-        var remindAt = reset - TimeSpan.FromHours(Settings.HoursBeforeReset);
-        return now >= remindAt && !HasRemindedFor(reset);
+        var reset = WarDay.NextReset(resetTimeOfDay, now);
+        var remindAt = reset - TimeSpan.FromHours(hoursBeforeReset);
+        return now >= remindAt && !HasRemindedFor(lastRemindedFor, reset);
     }
 
     public DiscordReminder RemindedFor(DateTimeOffset reset) => this with { LastRemindedFor = reset, Failures = 0 };
@@ -47,10 +45,6 @@ public sealed record DiscordReminder(
         return this with { Failures = failures };
     }
 
-    public DiscordReminder WithResetAt(DateTimeOffset dayEndsAt) => this with { ResetTimeOfDay = dayEndsAt.UtcDateTime.TimeOfDay };
-
-    public DiscordReminder WithSettings(ClanTag clan, ReminderSettings settings) => this with { Clan = clan, Settings = settings };
-
-    private bool HasRemindedFor(DateTimeOffset reset)
-        => LastRemindedFor is { } last && (reset - last).Duration() < SameDay;
+    private static bool HasRemindedFor(DateTimeOffset? lastRemindedFor, DateTimeOffset reset)
+        => lastRemindedFor is { } last && (reset - last).Duration() < SameDay;
 }
