@@ -13,7 +13,7 @@ interface PickedCardsProps {
 
 export default function PickedCards({ picks, cardById, cardName, label, dim, onRemove }: PickedCardsProps) {
   return (
-    <div style={styles.picks} aria-label={`${label}d cards`}>
+    <div style={styles.picks} role="group" aria-label={`${label}d cards`}>
       {picks.map((id) => (
         <span key={id} style={styles.pick}>
           <CardAvatar card={cardById.get(id)} dim={dim} small />

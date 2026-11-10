@@ -66,7 +66,7 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
   }, [bringsDeck]);
 
   return (
-    <section ref={sectionRef} aria-live="polite" style={{ ...styles.panel, top: isMobile ? '62px' : '16px' }}>
+    <section ref={sectionRef} style={{ ...styles.panel, top: isMobile ? '62px' : '16px' }}>
       <div
         ref={boxRef}
         style={{
@@ -94,7 +94,7 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
             <span key={pick} className="ua-float" style={{ ...styles.float, color: theme.text.primary }} aria-hidden="true">
               +{s.scoreDelta.toFixed(3)}
             </span>
-            <div style={{ ...styles.score, fontSize: isMobile ? '28px' : '36px', color: theme.text.primary }}><Tweened value={s.newTotalScore} from={baselineScore} /></div>
+            <div aria-hidden="true" style={{ ...styles.score, fontSize: isMobile ? '28px' : '36px', color: theme.text.primary }}><Tweened value={s.newTotalScore} from={baselineScore} /></div>
             <div style={{ ...styles.scoreLabel, color: theme.text.tertiary }}>
               {isMobile ? 'up from ' : 'new lineup score, up from '}
               <span style={styles.digits}>{baselineScore.toFixed(3)}</span>
@@ -118,6 +118,9 @@ export default function UpgradePreview({ suggestion: s, pick, baselineScore, lin
           </div>
         )}
       </div>
+      <p className="visually-hidden" aria-live="polite">
+        {s.name} · {upgradeStep(s)}: new lineup score {s.newTotalScore.toFixed(3)}, up from {baselineScore.toFixed(3)}
+      </p>
     </section>
   );
 }

@@ -1,7 +1,13 @@
 import { CARD_SORTS, type CardSort } from '../lib/cardStats';
+import { useRovingGroup } from '../hooks/useRovingGroup';
 
 export function SortSegment({ value, onPick, isMobile }: { value: CardSort; onPick: (sort: CardSort) => void; isMobile: boolean }) {
   const index = CARD_SORTS.indexOf(value);
+  const tabStop = Math.max(0, index);
+  const { itemRef, onKeyDown } = useRovingGroup(CARD_SORTS.length, (i) => {
+    const sort = CARD_SORTS[i];
+    if (sort !== undefined) onPick(sort);
+  });
   return (
     <div
       role="radiogroup"
@@ -16,10 +22,13 @@ export function SortSegment({ value, onPick, isMobile }: { value: CardSort; onPi
       {CARD_SORTS.map((sort, i) => (
         <button
           key={sort}
+          ref={itemRef(i)}
           type="button"
           role="radio"
           aria-checked={i === index}
+          tabIndex={i === tabStop ? 0 : -1}
           onClick={() => onPick(sort)}
+          onKeyDown={(e) => onKeyDown(e, i)}
           style={{ ...styles.segmentButton, color: i === index ? 'var(--on-accent)' : 'var(--text-primary)' }}
         >
           {sort}

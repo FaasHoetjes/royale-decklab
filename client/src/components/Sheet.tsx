@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { useDialog } from '../hooks/useDialog';
 import { prefersReducedMotion } from '../lib/motion';
 import { CrossIcon } from './generator/icons';
 
@@ -41,29 +42,16 @@ const Sheet = ({ title, ariaLabel, icon, footer, onClose, children }: SheetProps
   const drag = useRef<Drag | null>(null);
   const closeTimer = useRef<number | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  // Read while rendering, before the sheet takes focus; an effect would see the sheet itself on a second run.
-  const [opener] = useState(() => document.activeElement);
-  // The page behind refetches while the sheet is open; keep the effect from re-running.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  useDialog(sheetRef, onClose);
 
-  useEffect(() => {
-    sheetRef.current?.focus({ preventScroll: true });
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKey);
+  useEffect(
+    () => () => {
       if (closeTimer.current != null) window.clearTimeout(closeTimer.current);
-      // Closing can open something else that takes focus, like the card picker; only hand back focus that was lost.
-      const isFocusLost = document.activeElement == null || document.activeElement === document.body;
-      if (isFocusLost && opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
-    };
-  }, [opener]);
+    },
+    []
+  );
 
   const follow = (offset: number) => {
     const sheet = sheetRef.current;

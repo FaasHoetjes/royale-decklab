@@ -1,4 +1,5 @@
 import { LOWEST_LEVEL_CHOICE, MAX_DECKS, MAX_LEVEL } from '../../lib/generatorOptions';
+import { useRovingGroup } from '../../hooks/useRovingGroup';
 
 const LEVEL_CHOICES: (number | null)[] = [
   null,
@@ -25,6 +26,10 @@ export function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim
   dim?: (choice: T) => boolean;
 }) {
   const index = Math.max(0, choices.indexOf(value));
+  const { itemRef, onKeyDown } = useRovingGroup(choices.length, (i) => {
+    const choice = choices[i];
+    if (choice !== undefined) onPick(choice);
+  });
   return (
     <div role="radiogroup" aria-label={label} style={{ ...styles.segment, gridTemplateColumns: `repeat(${choices.length}, minmax(0, 1fr))` }}>
       <span
@@ -35,11 +40,14 @@ export function Segment<T>({ label, choices, value, onPick, text, ariaLabel, dim
       {choices.map((choice, i) => (
         <button
           key={text(choice)}
+          ref={itemRef(i)}
           type="button"
           role="radio"
           aria-checked={i === index}
+          tabIndex={i === index ? 0 : -1}
           aria-label={ariaLabel?.(choice)}
           onClick={() => onPick(choice)}
+          onKeyDown={(e) => onKeyDown(e, i)}
           style={{
             ...styles.segmentButton,
             fontSize: choices.length > 4 ? '14px' : '15px',
