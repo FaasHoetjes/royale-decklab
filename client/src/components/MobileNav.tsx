@@ -44,37 +44,36 @@ export default function MobileNav() {
         </div>
       </header>
 
-      <nav
-        aria-label="Main menu"
-        style={{
-          ...styles.tabBar,
-          gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
-          backgroundColor: theme.bg.secondary,
-          borderTopColor: theme.border,
-        }}
-      >
+      <nav aria-label="Main menu" style={{ ...styles.tabBar, backgroundColor: theme.bg.secondary, borderTopColor: theme.border }}>
         {tabs.map((tab) => (
           <NavLink
             key={tab.label}
             to={tab.to}
             end={tab.end}
+            aria-label={tab.tab}
             className="tab-link"
             onClick={() => setTapped(tab.to)}
-            style={({ isActive }) => ({ ...styles.tab, color: lit(tab.to, isActive) ? theme.text.primary : theme.text.secondary })}
+            style={({ isActive }) => ({
+              ...styles.tab,
+              ...(lit(tab.to, isActive) && styles.tabLit),
+              color: lit(tab.to, isActive) ? theme.text.primary : theme.text.secondary,
+            })}
           >
-            {({ isActive }) => (
-              <>
-                <span style={styles.tabIconBox}>
-                  {lit(tab.to, isActive) && <span className="tab-pill" style={styles.tabPill} />}
-                  <span style={{ ...styles.tabIcon, color: lit(tab.to, isActive) ? theme.accent : undefined }} aria-hidden="true">
+            {({ isActive }) =>
+              lit(tab.to, isActive) ? (
+                <>
+                  <span className="tab-pill" style={styles.tabPill} />
+                  <span style={{ ...styles.tabIcon, color: theme.accent }} aria-hidden="true">
                     {tab.icon}
                   </span>
+                  <span style={styles.tabLabel}>{tab.tab}</span>
+                </>
+              ) : (
+                <span style={styles.tabIcon} aria-hidden="true">
+                  {tab.icon}
                 </span>
-                <span style={{ ...styles.tabLabel, fontWeight: lit(tab.to, isActive) ? 700 : 600 }}>
-                  {tab.tab}
-                </span>
-              </>
-            )}
+              )
+            }
           </NavLink>
         ))}
       </nav>
@@ -154,31 +153,33 @@ const styles = {
     right: 0,
     bottom: 0,
     zIndex: 900,
-    display: 'grid' as const,
-    padding: '6px 4px calc(6px + env(safe-area-inset-bottom))',
+    display: 'flex' as const,
+    gap: '2px',
+    padding: '8px 8px calc(8px + env(safe-area-inset-bottom))',
     borderTop: '1px solid',
   },
   tab: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-    gap: '3px',
-    padding: '2px 0',
-    textDecoration: 'none',
-    WebkitTapHighlightColor: 'transparent',
-  },
-  tabIconBox: {
     position: 'relative' as const,
+    flex: '1 1 0',
+    minWidth: 0,
+    height: '44px',
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    width: '56px',
-    height: '30px',
+    gap: '6px',
+    borderRadius: '22px',
+    textDecoration: 'none',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  tabLit: {
+    flexGrow: 2.6,
+    minWidth: 'max-content',
+    padding: '0 12px',
   },
   tabPill: {
     position: 'absolute' as const,
     inset: 0,
-    borderRadius: '15px',
+    borderRadius: '22px',
     backgroundColor: 'color-mix(in srgb, var(--accent) 16%, transparent)',
   },
   tabIcon: {
@@ -186,7 +187,9 @@ const styles = {
     display: 'flex' as const,
   },
   tabLabel: {
-    fontSize: '11.5px',
+    position: 'relative' as const,
+    fontSize: '12.5px',
+    fontWeight: 700 as const,
     whiteSpace: 'nowrap' as const,
   },
   sheetHeading: {
