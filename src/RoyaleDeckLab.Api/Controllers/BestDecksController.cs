@@ -21,12 +21,10 @@ public sealed class BestDecksController(
         try
         {
             var cards = await catalog.GetAsync(ct);
-            var catalogById = cards.ToDictionary(c => c.Id);
-
-            var sets = builder.BuildCached(cache.Version, cache.Meta, catalogById);
+            var sets = builder.BuildCached(cache.Version, cache.Meta, cards);
             return Ok(new { sets });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error generating best decks");
             return StatusCode(500, new { error = "Failed to generate best decks" });

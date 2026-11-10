@@ -111,6 +111,22 @@ public sealed class BestDecksBuilderTests
     }
 
     [Fact]
+    public void CachedResults_FollowTheCardCatalog()
+    {
+        var meta = new List<DeckMeta> { Build.Deck(Build.Eight(1)) };
+        var cards = Build.Eight(1).Select(id => Build.CatalogEntry(id)).ToList();
+        var renamed = cards.Select(c => c with { Name = "Renamed" }).ToList();
+
+        var before = _builder.TopDecksWithCached(1, metaVersion: 1, meta, cards, count: 5);
+        var again = _builder.TopDecksWithCached(1, metaVersion: 1, meta, cards, count: 5);
+        var after = _builder.TopDecksWithCached(1, metaVersion: 1, meta, renamed, count: 5);
+
+        Assert.Same(before, again);
+        Assert.Equal("Card1", before[0].Cards[0].Name);
+        Assert.Equal("Renamed", after[0].Cards[0].Name);
+    }
+
+    [Fact]
     public void TopDecksWith_stops_at_the_requested_count()
     {
         var meta = Enumerable.Range(0, 8)
