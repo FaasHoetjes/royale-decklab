@@ -62,9 +62,9 @@ describe('clan war', () => {
   test('past week bars read oldest first, keeping weeks outside the clan empty', () => {
     const bars = pastWeekBars(war({}), member([16, null]));
 
-    expect(bars.map((b) => [b.label, b.decks])).toEqual([
-      ['Week 3', null],
-      ['Week 4', 16],
+    expect(bars.map((b) => [b.label, b.decks, b.medals])).toEqual([
+      ['2 weeks ago', null, null],
+      ['Last week', 16, 3200],
     ]);
   });
 

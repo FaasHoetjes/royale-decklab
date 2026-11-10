@@ -26,9 +26,12 @@ export const lastWeek = (war: ClanWar): PastWarWeek | null => war.pastWeeks[0] ?
 
 export interface WeekBar {
   key: string;
+  /** Counted back from now, so the order never jumbles where one season ends and the next begins. */
   label: string;
+  shortLabel: string;
   /** Null when the member wasn't in the clan that week. */
   decks: number | null;
+  medals: number | null;
 }
 
 /** The API lists past weeks newest first; bars read left to right, oldest first. */
@@ -36,8 +39,10 @@ export const pastWeekBars = (war: ClanWar, member: ClanWarMember): WeekBar[] =>
   war.pastWeeks
     .map((week, i) => ({
       key: `${week.seasonId}-${week.week}`,
-      label: `Week ${week.week}`,
+      label: i === 0 ? 'Last week' : `${i + 1} weeks ago`,
+      shortLabel: i === 0 ? 'Last' : `${i + 1}w ago`,
       decks: member.decksUsedPastWeeks[i] ?? null,
+      medals: member.decksUsedPastWeeks[i] == null ? null : (member.famePastWeeks[i] ?? 0),
     }))
     .reverse();
 
@@ -73,6 +78,15 @@ export const reliabilityLabel: Record<Reliability, string> = {
 };
 
 const SLIPPING_BELOW = 12;
+
+export const reliabilityMeaning: Record<Reliability, string> = {
+  reliable: `Played all ${DECKS_PER_WEEK} decks every week`,
+  steady: 'Plays most of their decks',
+  slipping: `Played under ${SLIPPING_BELOW} decks last week`,
+  ghost: 'No decks in the last two weeks',
+  new: 'Not two weeks in the clan yet',
+};
+
 
 /** One word for how a member did in the past weeks, judged only on the weeks they were in the clan. */
 export const reliability = (member: ClanWarMember): Reliability => {

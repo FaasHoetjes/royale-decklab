@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { ClanWar, ClanWarMember } from '../../api';
 import { getTheme } from '../../theme';
 import { ZapIcon } from '../navIcons';
+import HoverCard from './HoverCard';
 import MedalIcon from './MedalIcon';
 import {
   DECKS_PER_DAY,
@@ -10,8 +11,10 @@ import {
   pastWeekBars,
   reliability,
   reliabilityLabel,
+  reliabilityMeaning,
   roleLabel,
   type Reliability,
+  type WeekBar,
 } from '../../lib/clanWar';
 
 interface ClanMemberRowProps {
@@ -74,20 +77,23 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
   const weeks = bars.map((bar) => `${bar.label}: ${bar.decks == null ? 'not in the clan' : `${bar.decks}/${DECKS_PER_WEEK}`}`).join(', ');
   const badge = reliability(member);
   const reliabilityBadge = bars.length > 0 && war.period !== 'notRacing' && (
-    <span
-      tabIndex={0}
-      role="img"
-      title={weeks}
-      aria-label={`${reliabilityLabel[badge]}. ${weeks}`}
-      style={{
-        ...styles.badge,
-        color: reliabilityColor[badge],
-        backgroundColor: `color-mix(in srgb, ${reliabilityColor[badge]} 14%, transparent)`,
-      }}
+    <HoverCard
+      label={`${reliabilityLabel[badge]}. ${weeks}`}
+      card={<WeeksCard title={reliabilityLabel[badge]} note={reliabilityMeaning[badge]} color={reliabilityColor[badge]} bars={bars} />}
     >
-      {reliabilityLabel[badge]}
-    </span>
+      <span
+        style={{
+          ...styles.badge,
+          color: reliabilityColor[badge],
+          backgroundColor: `color-mix(in srgb, ${reliabilityColor[badge]} 14%, transparent)`,
+        }}
+      >
+        {reliabilityLabel[badge]}
+      </span>
+    </HoverCard>
   );
+  const medals = medalsNote(war, member);
+  const medalsWhen = war.isBattleDay ? 'this week' : 'in the last race';
 
   return (
     <li
@@ -107,7 +113,9 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
           {role && <span style={{ ...styles.role, color: theme.text.secondary, borderColor: theme.border }}>{role}</span>}
         </span>
         <span style={{ ...styles.meta, color: theme.text.secondary }}>
-          <span role="img" title={war.isBattleDay ? 'Medals this week' : 'Medals in the last race'} aria-label={`${medalsNote(war, member)} medals ${war.isBattleDay ? 'this week' : 'in the last race'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><MedalIcon />{medalsNote(war, member)}</span>
+          <HoverCard label={`${medals} medals ${medalsWhen}`} card={<MedalsCard title={`${medals} ${medalsWhen}`} bars={bars} />}>
+            <span style={styles.medals}><MedalIcon />{medals}</span>
+          </HoverCard>
           <span>{progressNote(war, member) && `· ${progressNote(war, member)}`}</span>
         </span>
       </div>
@@ -127,6 +135,70 @@ const ClanMemberRow = ({ member, war, isMobile, isYou }: ClanMemberRowProps) => 
 };
 
 export default ClanMemberRow;
+
+interface WeeksCardProps {
+  title: string;
+  note: string;
+  color: string;
+  bars: WeekBar[];
+}
+
+/** The badge's verdict with the decks behind it, one bar per past week. */
+const WeeksCard = ({ title, note, color, bars }: WeeksCardProps) => (
+  <>
+    <span style={styles.cardHead}>
+      <span aria-hidden="true" style={{ ...styles.cardDot, backgroundColor: color }} />
+      <b>{title}</b>
+    </span>
+    <span style={styles.centeredNote}>{note}</span>
+    <span style={styles.weeks}>
+      {bars.map((bar) => (
+        <span key={bar.key} style={styles.week}>
+          <span style={styles.weekValue}>{bar.decks ?? '–'}</span>
+          <span style={styles.weekTrack}>
+            <span
+              style={{
+                ...styles.weekFill,
+                height: `${((bar.decks ?? 0) / DECKS_PER_WEEK) * 100}%`,
+                backgroundColor: bar.decks === DECKS_PER_WEEK ? 'var(--up)' : color,
+              }}
+            />
+          </span>
+          <span style={styles.weekLabel}>{bar.shortLabel}</span>
+        </span>
+      ))}
+    </span>
+    <span style={styles.centeredNote}>
+      Decks out of {DECKS_PER_WEEK} per week{bars.some((bar) => bar.decks == null) && ' · – not in the clan'}
+    </span>
+  </>
+);
+
+/** The medals the member earned in each past week, against their best week. */
+const MedalsCard = ({ title, bars }: { title: string; bars: WeekBar[] }) => {
+  const best = Math.max(0, ...bars.map((bar) => bar.medals ?? 0));
+  return (
+    <>
+      <span style={styles.cardHead}>
+        <MedalIcon />
+        <b>{title}</b>
+      </span>
+      {bars.length > 0 && (
+        <span style={styles.medalWeeks}>
+          {bars.map((bar) => (
+            <span key={bar.key} style={styles.medalWeek}>
+              <span style={styles.cardNote}>{bar.shortLabel}</span>
+              <span style={styles.medalTrack}>
+                <span style={{ ...styles.medalFill, width: best > 0 ? `${((bar.medals ?? 0) / best) * 100}%` : 0 }} />
+              </span>
+              <b style={styles.medalValue}>{bar.medals == null ? '–' : bar.medals.toLocaleString('en-US')}</b>
+            </span>
+          ))}
+        </span>
+      )}
+    </>
+  );
+};
 
 const styles = {
   row: {
@@ -179,6 +251,91 @@ const styles = {
     alignItems: 'center' as const,
     flexWrap: 'wrap' as const,
     gap: '5px',
+  },
+  medals: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+  },
+  cardHead: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '7px',
+    fontSize: '13.5px',
+  },
+  cardDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+  },
+  cardNote: {
+    color: 'var(--text-secondary)',
+  },
+  centeredNote: {
+    color: 'var(--text-secondary)',
+    textAlign: 'center' as const,
+  },
+  weeks: {
+    display: 'flex' as const,
+    justifyContent: 'center' as const,
+    gap: '10px',
+    marginTop: '2px',
+  },
+  week: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    alignItems: 'center' as const,
+    gap: '4px',
+    minWidth: '22px',
+  },
+  weekValue: {
+    fontWeight: 700 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  weekTrack: {
+    position: 'relative' as const,
+    width: '10px',
+    height: '44px',
+    borderRadius: '5px',
+    overflow: 'hidden' as const,
+    backgroundColor: 'var(--bg-tertiary)',
+  },
+  weekFill: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: '5px',
+  },
+  weekLabel: {
+    fontSize: '11px',
+    color: 'var(--text-tertiary)',
+  },
+  medalWeeks: {
+    display: 'grid' as const,
+    gap: '5px',
+  },
+  medalWeek: {
+    display: 'grid' as const,
+    gridTemplateColumns: '52px 90px auto',
+    alignItems: 'center' as const,
+    gap: '8px',
+  },
+  medalTrack: {
+    height: '6px',
+    borderRadius: '3px',
+    overflow: 'hidden' as const,
+    backgroundColor: 'var(--bg-tertiary)',
+  },
+  medalFill: {
+    display: 'block' as const,
+    height: '100%',
+    borderRadius: '3px',
+    backgroundColor: '#e8b24a',
+  },
+  medalValue: {
+    textAlign: 'right' as const,
+    fontVariantNumeric: 'tabular-nums' as const,
   },
   badge: {
     flexShrink: 0,
