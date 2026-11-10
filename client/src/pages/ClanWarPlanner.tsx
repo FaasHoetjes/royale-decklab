@@ -178,8 +178,8 @@ const MemberList = ({ war, filter, youTag, isMobile }: MemberListProps) => {
     );
   }
 
-  const lastRace = war.period === 'notRacing' ? 'Last race' : 'Last week';
-  const heading: ReactNode = war.pastWeeks.length > 0 ? `${lastRace}, most medals first` : 'Members';
+  const lastRace = war.period === 'notRacing' ? "last race's" : "last week's";
+  const heading: ReactNode = war.pastWeeks.length > 0 ? `Clanmates, by ${lastRace} medals` : 'Members';
   return (
     <>
       <h3 style={{ ...styles.listTitle, color: theme.text.secondary }}>{heading}</h3>

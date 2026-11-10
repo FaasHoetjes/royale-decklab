@@ -41,19 +41,6 @@ export const pastWeekBars = (war: ClanWar, member: ClanWarMember): WeekBar[] =>
     }))
     .reverse();
 
-export interface LastWeekTurnout {
-  playedAll: number;
-  missedSome: number;
-}
-
-/** How the current members did last week; members who weren't in the clan yet don't count. */
-export const lastWeekTurnout = (war: ClanWar): LastWeekTurnout | null => {
-  if (!lastWeek(war)) return null;
-  const decks = war.members.map((m) => m.decksUsedPastWeeks[0]).filter((d): d is number => d != null);
-  const playedAll = decks.filter((d) => d >= DECKS_PER_WEEK).length;
-  return { playedAll, missedSome: decks.length - playedAll };
-};
-
 export type TodayStatus = 'notStarted' | 'started' | 'done';
 
 export const TODAY_STATUSES: TodayStatus[] = ['notStarted', 'started', 'done'];

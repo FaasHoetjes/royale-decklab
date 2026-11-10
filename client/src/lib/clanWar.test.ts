@@ -10,7 +10,6 @@ import {
   dayLabel,
   decksAvailableThisWeek,
   groupByToday,
-  lastWeekTurnout,
   pastWeekBars,
   reliability,
   roleLabel,
@@ -67,16 +66,6 @@ describe('clan war', () => {
       ['Week 3', null],
       ['Week 4', 16],
     ]);
-  });
-
-  test("last week's turnout leaves out members who weren't in the clan yet", () => {
-    const turnout = lastWeekTurnout(war({ members: [member([16, 16]), member([9, 16]), member([null, null])] }));
-
-    expect(turnout).toEqual({ playedAll: 1, missedSome: 1 });
-  });
-
-  test('a clan without war history has no turnout', () => {
-    expect(lastWeekTurnout(war({ pastWeeks: [] }))).toBeNull();
   });
 
   test('plain members get no role badge', () => {

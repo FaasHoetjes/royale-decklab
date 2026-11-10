@@ -11,18 +11,16 @@ interface ClanTrainingHeaderProps {
 
 /** The training-day header: every boat waits at the start line while the clock runs down to the war. */
 const ClanTrainingHeader = ({ war, isMobile }: ClanTrainingHeaderProps) => (
-  <>
-    <RiverWater isMobile={isMobile}>
-      <BannerTop war={war} eyebrow={dayLabel(war)} isMobile={isMobile} />
-      <div style={styles.stage}>
-        {war.race.length > 0 && <RaceLanes war={war} atStartLine showFinish={false} />}
-        <div style={styles.countdown}>
-          {war.warStartsAt ? <WarCountdown target={war.warStartsAt} isMobile={isMobile} /> : <span style={styles.lead}>War starts Thursday</span>}
-        </div>
+  <RiverWater isMobile={isMobile}>
+    <BannerTop war={war} eyebrow={dayLabel(war)} isMobile={isMobile} />
+    <div style={styles.stage}>
+      {war.race.length > 0 && <RaceLanes war={war} atStartLine showFinish={false} />}
+      <div style={styles.countdown}>
+        {war.warStartsAt ? <WarCountdown target={war.warStartsAt} isMobile={isMobile} /> : <span style={styles.lead}>War starts Thursday</span>}
       </div>
-    </RiverWater>
+    </div>
     <LastWeekPodium war={war} isMobile={isMobile} />
-  </>
+  </RiverWater>
 );
 
 export default ClanTrainingHeader;

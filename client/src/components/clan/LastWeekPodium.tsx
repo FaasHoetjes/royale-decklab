@@ -1,47 +1,27 @@
 import type { ClanWar } from '../../api';
-import { getTheme } from '../../theme';
-import { DECKS_PER_WEEK, lastWeek, lastWeekPodium, lastWeekTurnout, ordinal, type PodiumPlace } from '../../lib/clanWar';
-import { Avatar } from '../PlayerMenu';
+import { DECKS_PER_WEEK, lastWeek, lastWeekPodium, ordinal, type PodiumPlace } from '../../lib/clanWar';
 import SlotNumber from '../SlotNumber';
+import MedalIcon from './MedalIcon';
+import { water } from './RiverBanner';
 
-const STEPS = [
-  { place: 2, height: 62, color: '#d4d4d8' },
-  { place: 1, height: 86, color: '#fbbf24' },
-  { place: 3, height: 48, color: '#d97706' },
-];
+const MEDAL_COLORS = ['#fbbf24', '#d4d4d8', '#d97706'];
 
-const formatMedals = (medals: number) => medals.toLocaleString('en-US');
-
-/** Last week's result with its three biggest medal earners on a podium: second, first, third. */
+/** The strip along the bottom of the training-day river: last week's result and its three biggest medal earners. */
 const LastWeekPodium = ({ war, isMobile }: { war: ClanWar; isMobile: boolean }) => {
-  const theme = getTheme();
   const week = lastWeek(war);
-  const turnout = lastWeekTurnout(war);
   const podium = lastWeekPodium(war);
   if (!week) return null;
 
-  const byPlace = new Map(podium.map((entry, i) => [i + 1, entry]));
-
   return (
-    <section
-      aria-label="Last week"
-      style={{ ...styles.panel, padding: isMobile ? '16px' : '18px 24px', borderColor: theme.border, backgroundColor: theme.bg.secondary }}
-    >
-      <div style={{ ...styles.eyebrow, color: theme.text.secondary }}>
-        Last week · {ordinal(week.rank)} place · {formatMedals(week.medals)} medals
+    <section aria-label="Last week" style={styles.strip}>
+      <div style={styles.head}>
+        Last week · <b style={styles.strong}>{ordinal(week.rank)}</b> place · <MedalIcon />
+        <b style={styles.strong}>{week.medals.toLocaleString('en-US')}</b>
       </div>
       {podium.length > 0 && (
-        <ol style={styles.podium}>
-          {STEPS.map((step, i) => {
-            const entry = byPlace.get(step.place);
-            return entry ? <Step key={step.place} entry={entry} step={step} delay={i * 120} /> : <li key={step.place} />;
-          })}
+        <ol style={{ ...styles.chips, gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))' }}>
+          {podium.map((entry, i) => <Chip key={entry.member.tag} entry={entry} place={i + 1} isMobile={isMobile} />)}
         </ol>
-      )}
-      {turnout && (
-        <p style={{ ...styles.turnout, color: theme.text.secondary }}>
-          {turnout.playedAll} played all {DECKS_PER_WEEK} · {turnout.missedSome} missed decks
-        </p>
       )}
     </section>
   );
@@ -49,91 +29,118 @@ const LastWeekPodium = ({ war, isMobile }: { war: ClanWar; isMobile: boolean }) 
 
 export default LastWeekPodium;
 
-interface StepProps {
-  entry: PodiumPlace;
-  step: (typeof STEPS)[number];
-  delay: number;
-}
-
-const Step = ({ entry, step, delay }: StepProps) => {
-  const theme = getTheme();
+const Chip = ({ entry, place, isMobile }: { entry: PodiumPlace; place: number; isMobile: boolean }) => {
+  const decks = entry.member.decksUsedPastWeeks[0] ?? 0;
   return (
-    <li style={styles.place} aria-label={`${ordinal(step.place)}: ${entry.member.name}, ${formatMedals(entry.fame)} medals`}>
-      <Avatar name={entry.member.name} size={34} />
-      <b style={{ ...styles.placeName, color: theme.text.primary }}>{entry.member.name}</b>
-      <span style={{ ...styles.placeFame, color: theme.text.secondary }}>
-        <SlotNumber value={entry.fame} />
+    <li
+      aria-label={`${ordinal(place)}: ${entry.member.name}, ${entry.fame.toLocaleString('en-US')} medals, ${decks} of ${DECKS_PER_WEEK} decks`}
+      style={{
+        ...styles.chip,
+        ...(isMobile ? styles.chipRow : styles.chipStacked),
+        ...(place === 1 ? styles.first : {}),
+      }}
+    >
+      <span aria-hidden="true" style={{ ...styles.medal, backgroundColor: MEDAL_COLORS[place - 1], ...(isMobile ? styles.medalSmall : styles.medalTall) }}>
+        {place}
       </span>
-      <div
-        className="clan-podium-step"
-        style={{
-          ...styles.step,
-          height: `${step.height}px`,
-          animationDelay: `${delay}ms`,
-          background: `linear-gradient(${step.color}, color-mix(in srgb, ${step.color} 30%, transparent))`,
-        }}
-      >
-        <span style={styles.stepNumber}>{step.place}</span>
-      </div>
+      <b style={styles.name}>{entry.member.name}</b>
+      <span aria-hidden="true" style={{ ...styles.meta, ...(isMobile ? styles.metaRow : {}) }}>
+        <MedalIcon />
+        <b style={styles.fame}>
+          <SlotNumber value={entry.fame} />
+        </b>
+        <span>· {decks}/{DECKS_PER_WEEK} decks</span>
+      </span>
     </li>
   );
 };
 
 const styles = {
-  panel: {
-    border: '1px solid',
-    borderRadius: '14px',
-    marginBottom: '22px',
-    backgroundImage: 'radial-gradient(circle at 50% 0, rgba(251, 191, 36, 0.12), transparent 60%)',
+  strip: {
+    marginTop: '10px',
+    paddingTop: '12px',
+    borderTop: '1px solid var(--water-chip-border)',
   },
-  eyebrow: {
-    textAlign: 'center' as const,
-    fontSize: '13px',
-    fontWeight: 500 as const,
+  head: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    flexWrap: 'wrap' as const,
+    gap: '0 5px',
+    fontSize: '12.5px',
+    color: water.muted,
   },
-  podium: {
+  strong: {
+    color: water.text,
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  chips: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    alignItems: 'end' as const,
     gap: '8px',
-    maxWidth: '420px',
-    margin: '16px auto 0',
+    margin: '10px 0 0',
     padding: 0,
     listStyle: 'none',
   },
-  place: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
+  chip: {
+    display: 'grid' as const,
     alignItems: 'center' as const,
-    gap: '5px',
+    gap: '2px 10px',
     minWidth: 0,
+    borderRadius: '12px',
+    backgroundColor: 'var(--water-chip-bg)',
+    border: '1px solid var(--water-chip-border)',
   },
-  placeName: {
-    maxWidth: '100%',
+  chipStacked: {
+    gridTemplateColumns: 'auto minmax(0, 1fr)',
+    padding: '9px 11px',
+  },
+  chipRow: {
+    gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+    padding: '7px 10px',
+  },
+  first: {
+    borderColor: 'color-mix(in srgb, #fbbf24 55%, transparent)',
+    boxShadow: '0 0 18px rgba(251, 191, 36, 0.18)',
+  },
+  medal: {
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    borderRadius: '50%',
+    fontWeight: 800 as const,
+    color: '#1a1407',
+  },
+  medalTall: {
+    gridRow: 'span 2',
+    width: '28px',
+    height: '28px',
     fontSize: '13px',
+  },
+  medalSmall: {
+    width: '24px',
+    height: '24px',
+    fontSize: '12px',
+  },
+  name: {
+    minWidth: 0,
+    fontSize: '13.5px',
+    color: water.text,
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden' as const,
     textOverflow: 'ellipsis' as const,
   },
-  placeFame: {
-    fontSize: '13px',
-    fontWeight: 600 as const,
+  meta: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '4px',
+    minWidth: 0,
+    fontSize: '12px',
+    color: water.muted,
     fontVariantNumeric: 'tabular-nums' as const,
+    whiteSpace: 'nowrap' as const,
   },
-  step: {
-    width: '100%',
-    borderRadius: '10px 10px 0 0',
-    display: 'grid' as const,
-    placeItems: 'center' as const,
+  metaRow: {
+    justifyContent: 'flex-end' as const,
   },
-  stepNumber: {
-    fontSize: '22px',
-    fontWeight: 700 as const,
-    color: '#1a1407',
-  },
-  turnout: {
-    margin: '12px 0 0',
-    textAlign: 'center' as const,
-    fontSize: '13px',
+  fame: {
+    color: water.gold,
   },
 };

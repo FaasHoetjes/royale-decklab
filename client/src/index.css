@@ -723,10 +723,6 @@ input:disabled {
 .clan-sail {
   transition: transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.clan-podium-step {
-  transform-origin: bottom;
-  animation: clan-rise 0.6s cubic-bezier(0.3, 0.7, 0.2, 1) both;
-}
 
 @keyframes clan-drift {
   to { transform: translateX(-50%); }
@@ -740,11 +736,6 @@ input:disabled {
 @keyframes clan-wake {
   from { opacity: 0.6; transform: scaleX(0.4); }
   to { opacity: 0; transform: scaleX(1); }
-}
-
-@keyframes clan-rise {
-  from { transform: scaleY(0); }
-  to { transform: none; }
 }
 
 @keyframes clan-bar-in {
@@ -784,7 +775,6 @@ input:disabled {
   .clan-bob,
   .clan-wake,
   .clan-sail,
-  .clan-podium-step,
   .card-link {
     animation: none;
     transition: none;
