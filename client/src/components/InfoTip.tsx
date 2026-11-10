@@ -117,7 +117,7 @@ export default function InfoTip({
   );
 }
 
-export function InfoMark() {
+function InfoMark() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
       <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1" />

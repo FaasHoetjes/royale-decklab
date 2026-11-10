@@ -64,7 +64,7 @@ export const todayStatusLabel: Record<TodayStatus, string> = {
   done: 'Done',
 };
 
-export const todayStatus = (member: ClanWarMember): TodayStatus => {
+const todayStatus = (member: ClanWarMember): TodayStatus => {
   if (member.decksLeftToday === 0) return 'done';
   return member.decksUsedToday > 0 ? 'started' : 'notStarted';
 };
@@ -76,8 +76,6 @@ export const groupByToday = (members: ClanWarMember[]): Record<TodayStatus, Clan
 };
 
 export type Reliability = 'reliable' | 'steady' | 'slipping' | 'ghost' | 'new';
-
-export const RELIABILITIES: Reliability[] = ['reliable', 'steady', 'slipping', 'ghost', 'new'];
 
 export const reliabilityLabel: Record<Reliability, string> = {
   reliable: 'Reliable',

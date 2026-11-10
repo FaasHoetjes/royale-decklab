@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import type { DeckCardData } from '../../api';
 import { avgElixir } from '../../lib/cardDisplay';
 import InfoTip from '../InfoTip';
@@ -9,8 +8,6 @@ interface DeckCardBannerProps {
   archetypeName: string;
   deckNumber: number;
   cards: DeckCardData[];
-  scoreLabel?: string;
-  scoreTooltip?: ReactNode;
   playerScore: number;
   metaWinRate: number;
   uses: number;
@@ -28,8 +25,6 @@ export default function DeckCardBanner({
   archetypeName,
   deckNumber,
   cards,
-  scoreLabel,
-  scoreTooltip,
   playerScore,
   metaWinRate,
   uses,
@@ -57,16 +52,12 @@ export default function DeckCardBanner({
       <div style={{ ...styles.stats, gap: isMobile ? '16px' : '22px', paddingRight: isMobile ? '84px' : '130px' }}>
         <div style={styles.lead}>
           <span style={styles.statLabel}>
-            {scoreLabel ?? 'Score'}
+            Score
             {!isMobile && (
               <InfoTip ariaLabel="How the score is derived" color={theme.bannerMuted} placement="bottom">
-                {scoreTooltip ?? (
-                  <>
-                    <strong>How well this meta deck fits your collection.</strong>
-                    <br />
-                    Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
-                  </>
-                )}
+                <strong>How well this meta deck fits your collection.</strong>
+                <br />
+                Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
               </InfoTip>
             )}
           </span>
