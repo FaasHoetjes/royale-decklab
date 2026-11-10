@@ -24,6 +24,7 @@ public sealed class SpaPagesTests
     [InlineData("/FAQ/", "/faq")]
     [InlineData("/cards", "/cards")]
     [InlineData("/cards/mega-knight", "/cards/mega-knight")]
+    [InlineData("/cards/Mega-Knight", "/cards/mega-knight")]
     [InlineData("/clan", "/clan")]
     public void KnownPages_AreIndexedUnderTheirOwnPath(string path, string canonical)
     {

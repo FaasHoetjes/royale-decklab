@@ -19,7 +19,7 @@ public sealed class ClanController(ClanWarCache clanWars, ClanSearchCache clanSe
         var query = name?.Trim() ?? "";
         if (query.Length < ClanSummary.MinNameLength || query.Length > MaxNameLength)
         {
-            return BadRequest();
+            return BadRequest(new { error = "Invalid clan name" });
         }
 
         try
@@ -28,7 +28,7 @@ public sealed class ClanController(ClanWarCache clanWars, ClanSearchCache clanSe
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
         {
-            return BadRequest();
+            return BadRequest(new { error = "Invalid clan name" });
         }
     }
 
@@ -38,7 +38,7 @@ public sealed class ClanController(ClanWarCache clanWars, ClanSearchCache clanSe
     {
         if (!ClanTag.TryParse(tag, out var clanTag))
         {
-            return BadRequest();
+            return BadRequest(new { error = "Invalid clan tag" });
         }
 
         try
@@ -47,7 +47,7 @@ public sealed class ClanController(ClanWarCache clanWars, ClanSearchCache clanSe
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            return NotFound();
+            return NotFound(new { error = "Clan not found" });
         }
     }
 }

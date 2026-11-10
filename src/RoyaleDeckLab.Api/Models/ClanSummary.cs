@@ -26,7 +26,7 @@ public sealed record ClanSummary(
         .Where(c => !string.IsNullOrEmpty(c.Tag))
         .Select(c => new ClanSummary(
             c.Tag!,
-            c.Name ?? c.Tag!,
+            DisplayName.Clean(c.Name, c.Tag!),
             c.BadgeId,
             c.Members,
             c.ClanWarTrophies,
