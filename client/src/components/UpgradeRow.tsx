@@ -1,5 +1,6 @@
 import CardTile from './CardTile';
 import { cardIconUrl, displayLevel } from '../lib/cardDisplay';
+import { SPECIAL_COLOR } from '../lib/slotStyles';
 import type { UpgradeSuggestion } from '../api';
 import type { Theme } from '../theme';
 
@@ -15,8 +16,8 @@ interface UpgradeRowProps {
 }
 
 const UNLOCK_LABEL = {
-  evo: { text: 'Unlock Evolution', color: '#a03cf0' },
-  hero: { text: 'Unlock Hero', color: '#f5a623' },
+  evo: { text: 'Unlock Evolution', color: SPECIAL_COLOR.evo },
+  hero: { text: 'Unlock Hero', color: SPECIAL_COLOR.hero },
 } as const;
 
 export function upgradeSlotIndex(s: UpgradeSuggestion): number | undefined {

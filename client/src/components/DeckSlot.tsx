@@ -2,7 +2,7 @@ import type { DragEvent, MouseEvent, PointerEvent } from 'react';
 import type { Theme } from '../theme';
 import { availableVersions, type BuilderCard } from '../lib/builderCards';
 import { cardIconUrl, displayLevel } from '../lib/cardDisplay';
-import { slotKind, slotBorderStyle } from '../lib/slotStyles';
+import { slotKind, slotBorderStyle, SPECIAL_COLOR } from '../lib/slotStyles';
 import type { SpecialVersion } from '../lib/deckBoard';
 import CardTile from './CardTile';
 
@@ -124,7 +124,7 @@ export default function DeckSlot({
               }}
               style={{
                 ...styles.versionToggle,
-                backgroundColor: activeVersion === 'hero' ? '#f5a623' : '#a03cf0',
+                backgroundColor: activeVersion === 'hero' ? SPECIAL_COLOR.hero : SPECIAL_COLOR.evo,
               }}
               title={`Showing ${activeVersion === 'hero' ? 'Hero' : 'Evolution'}. Click to switch. The Clash Royale API can't tell Evolution-only from Hero ownership apart, so both are offered; pick the one you actually own.`}
             >

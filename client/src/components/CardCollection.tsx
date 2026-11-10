@@ -5,7 +5,7 @@ import { SORT_TYPES, matchesFilters, ownedLevel, pickerIconUrl, sortCards, type 
 import CardTile from './CardTile';
 import PickerControls from './PickerControls';
 import { useShuffleAnimation } from '../hooks/useShuffleAnimation';
-import { useFold } from '../hooks/useFold';
+import { useSlideFold } from '../hooks/useSlideFold';
 
 interface CardCollectionProps {
   cards: BuilderCard[];
@@ -29,7 +29,7 @@ interface CardCollectionProps {
   isMobile: boolean;
 }
 
-/** The player's cards, always open under the deck: click one to drop it into the deck. */
+/** The player's cards under the deck, which can be folded away once the deck is full: click one to drop it into the deck. */
 export default function CardCollection({
   cards,
   usedIn,
@@ -49,7 +49,7 @@ export default function CardCollection({
   isMobile,
 }: CardCollectionProps) {
   const [query, setQuery] = useState('');
-  const foldRef = useFold<HTMLDivElement>(open);
+  const foldRef = useSlideFold<HTMLDivElement>(open);
   const sortType = SORT_TYPES[sortIndex] ?? SORT_TYPES[0];
 
   const shuffleRef = useShuffleAnimation(`${sortType}-${descending}-${[...filters].join()}`);
