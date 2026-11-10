@@ -485,8 +485,9 @@ export const faqItems: FaqItem[] = [
           war weekends.
         </p>
         <p style={pStyle}>
-          Clan War Planner results are cached for up to 60 seconds. Opening the Planner, returning
-          to its browser tab, or pressing “Refresh” requests the latest available results.
+          Clan War Planner results are cached for up to 60 seconds. Opening the Planner or returning
+          to its browser tab requests the latest available results, and on battle days so does
+          pressing “Refresh”.
         </p>
         <p style={pLast}>
           Card statistics show the current patch. Until its first war battles are available, the
