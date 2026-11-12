@@ -374,6 +374,7 @@ export default function WarDeckBuilder() {
             deckFull={deckFull}
             open={cardsOpen}
             onToggle={() => setBrowsing(!cardsOpen)}
+            maxed={maxed}
             theme={theme}
             isMobile={isMobile}
           />

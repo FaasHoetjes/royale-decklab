@@ -1,3 +1,5 @@
+import LockIcon from '../components/LockIcon';
+
 export type FaqPage = 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'clan';
 
 export interface FaqItem {
@@ -251,6 +253,11 @@ export const faqItems: FaqItem[] = [
           Generator, using their proven performance and your card collection. Other decks receive a
           heavily reduced score to reflect the lack of recorded results.
         </p>
+        <p style={pStyle}>
+          Without a player tag, the Builder uses a maxed collection: every card at level 16 with
+          every Evolution and Hero. With a player tag, you can switch between your own cards and the
+          maxed collection.
+        </p>
         <p style={pLast}>
           Your total score is the sum of your four deck scores. Each card can only be used once
           across the four decks, and the usual Evolution and Hero slot restrictions apply.
@@ -269,9 +276,22 @@ export const faqItems: FaqItem[] = [
           <div>
             <p style={symbolTitle}>Known deck</p>
             <p style={pLast}>
-              Your deck exactly matches a deck used by top Clan War players. It is scored in the
+              Your deck exactly matches a deck used by top Clan War players. Its Evolutions and
+              Heroes also have to be in the slots that deck plays them in. It is scored in the
               same way as a generated recommendation, using the deck’s recorded performance, your
               card levels, and your unlocked Evolution and Hero versions.
+            </p>
+          </div>
+        </div>
+        <div style={{ ...symbolRow, borderTop: '1px solid var(--border)' }}>
+          <span style={{ ...scoreSample, color: 'var(--text-secondary)' }}>~ 0.515</span>
+          <div>
+            <p style={symbolTitle}>Known cards, different setup</p>
+            <p style={pLast}>
+              Your deck has the cards of a known deck, but not with its Evolutions and Heroes in
+              place. It is still scored from that deck’s recorded results. Each Evolution or Hero
+              slot left without one costs about 6%, while putting a different Evolution or Hero there
+              costs nothing, because battles show it wins about as often.
             </p>
           </div>
         </div>
@@ -288,9 +308,22 @@ export const faqItems: FaqItem[] = [
             </p>
           </div>
         </div>
+        <div style={{ ...symbolRow, borderTop: '1px solid var(--border)' }}>
+          <span style={{ ...scoreSample, color: 'var(--text-secondary)' }}>
+            <LockIcon size={14} />
+          </span>
+          <div>
+            <p style={symbolTitle}>Not scored</p>
+            <p style={pLast}>
+              Your deck has a card you don’t own, so there is no score for it. Switch to the maxed
+              collection to see how it would do.
+            </p>
+          </div>
+        </div>
         <p style={{ ...pLast, marginTop: '12px' }}>
           This is why changing even one card in a meta deck can cause a sharp drop in its score: it
-          no longer matches a known deck, so the Builder switches to the cautious estimate.
+          no longer matches a known deck, so the Builder switches to the cautious estimate. Moving
+          cards between slots keeps the match.
         </p>
       </>
     ),
