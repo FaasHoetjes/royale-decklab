@@ -349,7 +349,7 @@ export default function WarDeckBuilder() {
               <p style={{ ...styles.panelText, color: theme.text.secondary }}>
                 The builder uses your card collection. Search your player tag first.
               </p>
-              <Link to="/" style={{ ...styles.panelButton, backgroundColor: theme.text.primary, color: theme.bg.primary }}>
+              <Link to="/" state={{ returnTo: '/builder' }} style={{ ...styles.panelButton, backgroundColor: theme.text.primary, color: theme.bg.primary }}>
                 Search your player tag
               </Link>
             </div>

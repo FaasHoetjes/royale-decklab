@@ -223,7 +223,7 @@ function NeedsTag({ isMobile }: { isMobile: boolean }) {
         <p style={{ ...styles.panelText, color: theme.text.secondary }}>
           Upgrade advice uses your card collection. Search your player tag first.
         </p>
-        <Link to="/" style={{ ...styles.panelButton, ...styles.needsTagButton, backgroundColor: theme.accent, color: theme.onAccent }}>
+        <Link to="/" state={{ returnTo: '/upgrades' }} style={{ ...styles.panelButton, ...styles.needsTagButton, backgroundColor: theme.accent, color: theme.onAccent }}>
           <SearchIcon />
           Search your player tag
         </Link>
