@@ -89,6 +89,8 @@ export interface OwnedCard {
 export interface BuilderDeckScore {
   score: number | null;
   isMeta: boolean;
+  /** The cards of a meta deck, whatever their Evo/Hero setup; isMeta also needs the meta's setup. */
+  metaCards: boolean;
   winRate?: number;
   fieldability?: number;
   players?: number;
@@ -380,12 +382,13 @@ export function fetchCardDecks(cardId: number, signal?: AbortSignal): Promise<{ 
 export async function scoreBuilderDecks(
   cards: ScoreDeckCard[],
   decks: (number | null)[][],
+  maxed: boolean,
   signal?: AbortSignal
 ): Promise<ScoreDecksResponse> {
   const response = await fetch('/api/score-decks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cards, decks }),
+    body: JSON.stringify({ cards, decks, maxed }),
     signal,
   });
   if (!response.ok) {

@@ -31,6 +31,19 @@ export function availableVersions(card: BuilderCard, kind: SlotKind | null): Spe
   return [];
 }
 
+/** Every card at max level with every Evolution and Hero unlocked, for building without a player's own cards. */
+export function maxedCollection(catalog: CatalogCard[]): OwnedCard[] {
+  return catalog.map((c) => ({
+    id: c.id,
+    name: c.name,
+    level: c.maxLevel,
+    maxLevel: c.maxLevel,
+    evolutionLevel: c.maxEvolutionLevel ?? 0,
+    elixirCost: c.elixirCost,
+    iconUrls: c.iconUrls,
+  }));
+}
+
 /** The full catalog, marked with what the player owns (level, unlocked Evo/Hero). */
 export function toBuilderCards(catalog: CatalogCard[], owned: OwnedCard[]): BuilderCard[] {
   const ownedById = new Map(owned.map((c) => [c.id, c]));

@@ -14,7 +14,7 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
     private const int MaxRequestBytes = 64 * 1024;
 
     private static readonly BuilderDeckScore Unscored =
-        new(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
+        new(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null, MetaCards: false);
 
     [HttpPost("api/score-decks")]
     [RequireMetaLoaded]
@@ -50,8 +50,10 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
         }
 
         var index = cache.GetMetaIndex();
+        // A maxed collection meets maxed opponents, so its scores match the level-even meta scores on Best Decks.
+        double? opponentLevel = request.Maxed ? LevelModel.MaxDisplayLevel : null;
 
-        var scored = decks.Select(deck => ScoreDeck(deck ?? [], cardMap, index)).ToList();
+        var scored = decks.Select(deck => ScoreDeck(deck ?? [], cardMap, index, opponentLevel)).ToList();
 
         var total = scored.Sum(d => d.Score ?? 0);
         return Ok(new { decks = scored, total });
@@ -60,7 +62,8 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
     private BuilderDeckScore ScoreDeck(
         List<int?> slots,
         Dictionary<int, PlayerItemLevel> cardMap,
-        IReadOnlyDictionary<string, DeckMeta> index)
+        IReadOnlyDictionary<string, DeckMeta> index,
+        double? opponentLevel)
     {
         var cardIds = slots.OfType<int>().ToList();
         if (cardIds.Count == 0)
@@ -70,12 +73,12 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
 
         var isFullDeck = cardIds.Count == LineupOptions.CardsPerDeck;
         var meta = isFullDeck && index.TryGetValue(MetaCache.DeckKey(cardIds), out var m) ? m : null;
-        var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta, slots);
+        var result = analyzer.ScoreBuilderDeck(cardMap, cardIds, meta, slots, opponentLevel);
         if (result is null)
         {
             return Unscored;
         }
 
-        return new BuilderDeckScore(result.Score, result.IsMeta, result.WinRate, result.Fieldability, result.Players);
+        return new BuilderDeckScore(result.Score, result.IsMeta, result.WinRate, result.Fieldability, result.Players, result.MetaCards);
     }
 }

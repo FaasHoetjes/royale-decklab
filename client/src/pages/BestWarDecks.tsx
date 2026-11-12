@@ -1,9 +1,7 @@
 import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useNavigationType } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { useBestDecks, fetchCollectionOnce } from '../queries';
+import { useBestDecks } from '../queries';
 import type { BestDeckSet } from '../api';
 import { versionOf, orderBySlots } from '../lib/cardDisplay';
 import { distinctDeckNames } from '../lib/archetypes';
@@ -40,13 +38,10 @@ function loadFolded(): ReadonlySet<string> {
 }
 
 export default function BestWarDecks() {
-  const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data, isLoading, isError, isFetching, refetch } = useBestDecks();
-  const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
   const [foldedSets, setFoldedSets] = useState(loadFolded);
   // Back and forward restore the scroll position as the page mounts, so those need every set there at once.
   const navigationType = useNavigationType();
@@ -75,53 +70,32 @@ export default function BestWarDecks() {
     return new Map(keys.map((key, i) => [key, names[i]]));
   }, [data]);
 
-  // Cards the active player doesn't own are left as empty slots; the builder
-  // re-scores the board itself once mounted.
-  const copySetToBuilder = useCallback(async (set: BestDeckSet, setIdx: number) => {
-    setCopyingSetIdx(setIdx);
-    try {
-      const ownedIds = new Set<number>();
-      if (activePlayerTag) {
-        try {
-          const res = await fetchCollectionOnce(queryClient, activePlayerTag);
-          res.cards.forEach((c) => ownedIds.add(c.id));
-        } catch {
-          // The set still opens in the builder, only without leaving out the cards the player doesn't own.
-        }
+  // The whole set goes over, also cards the player doesn't own: the builder marks those and scores the board itself.
+  const copySetToBuilder = useCallback((set: BestDeckSet) => {
+    const orderedFor = (deckIdx: number) => {
+      const deck = set.decks[deckIdx];
+      return deck ? orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id)) : [];
+    };
+
+    const newDecks: DeckState = Array.from({ length: DECK_COUNT }, (_, deckIdx) => {
+      const ordered = orderedFor(deckIdx);
+      return Array.from({ length: SLOTS_PER_DECK }, (__, slotIdx) => ordered[slotIdx]?.id ?? null);
+    });
+
+    // Preserve which special art the "both" slot (index 2) shows per deck.
+    const slotVersions: SlotVersionMap = {};
+    set.decks.forEach((deck, deckIdx) => {
+      const spill = orderedFor(deckIdx)[2];
+      const version = spill ? versionOf(deck.cardVersions, spill.id) : 'normal';
+      if (version === 'evo' || version === 'hero') {
+        slotVersions[slotKey(deckIdx, 2)] = version;
       }
-      const filterByOwnership = !!activePlayerTag && ownedIds.size > 0;
+    });
 
-      const orderedFor = (deckIdx: number) => {
-        const deck = set.decks[deckIdx];
-        return deck ? orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id)) : [];
-      };
-
-      const newDecks: DeckState = Array.from({ length: DECK_COUNT }, (_, deckIdx) => {
-        const ordered = orderedFor(deckIdx);
-        return Array.from({ length: SLOTS_PER_DECK }, (__, slotIdx) => {
-          const card = ordered[slotIdx];
-          if (!card || (filterByOwnership && !ownedIds.has(card.id))) return null;
-          return card.id;
-        });
-      });
-
-      // Preserve which special art the "both" slot (index 2) shows per deck.
-      const slotVersions: SlotVersionMap = {};
-      set.decks.forEach((deck, deckIdx) => {
-        const spill = orderedFor(deckIdx)[2];
-        const version = spill ? versionOf(deck.cardVersions, spill.id) : 'normal';
-        if (version === 'evo' || version === 'hero') {
-          slotVersions[slotKey(deckIdx, 2)] = version;
-        }
-      });
-
-      saveDecks(newDecks);
-      saveSlotVersions(slotVersions);
-      navigate('/builder');
-    } finally {
-      setCopyingSetIdx(null);
-    }
-  }, [activePlayerTag, queryClient, navigate]);
+    saveDecks(newDecks);
+    saveSlotVersions(slotVersions);
+    navigate('/builder');
+  }, [navigate]);
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '4px 0' : '20px 0' }}>
@@ -155,8 +129,6 @@ export default function BestWarDecks() {
                 expanded={!foldedSets.has(key)}
                 deckNames={deckNames}
                 isMobile={isMobile}
-                copying={copyingSetIdx === setIdx}
-                copyBusy={copyingSetIdx !== null}
                 onToggle={toggleSet}
                 onCopy={copySetToBuilder}
               />

@@ -88,7 +88,7 @@ export default function DeckSlot({
       }}
       title={
         card
-          ? `${card.name}${level != null ? ` · Level ${level}/16` : ''} (drag to swap · click to remove)`
+          ? `${card.name}${level != null ? ` · Level ${level}/16` : ''}${card.owned ? '' : " · you don't own it"} (drag to swap · click to remove)`
           : isTarget
             ? 'The next card you pick goes here'
             : 'Click to fill this slot next'
@@ -103,6 +103,7 @@ export default function DeckSlot({
           level={level}
           nameColor={theme.text.primary}
           artStyle={dropOutline}
+          locked={!card.owned}
         >
           {canToggle && (
             <span

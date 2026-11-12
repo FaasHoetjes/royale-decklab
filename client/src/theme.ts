@@ -15,6 +15,7 @@ export const getTheme = () => ({
   accent: 'var(--accent)',
   accentBright: 'var(--accent-bright)',
   onAccent: 'var(--on-accent)',
+  warn: 'var(--warn)',
   control: {
     bg: 'var(--control-bg)',
     text: 'var(--control-text)',

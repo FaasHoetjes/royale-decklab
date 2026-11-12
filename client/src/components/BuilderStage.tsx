@@ -8,7 +8,7 @@ import type { BuilderCard } from '../lib/builderCards';
 import { avgElixir } from '../lib/cardDisplay';
 import { SLOTS_PER_DECK, slotKey } from '../lib/deckBoard';
 import { buildDeckLink } from '../lib/deckLink';
-import { cycleCost, deckCards, elixirCurve } from '../lib/builderDecks';
+import { cycleCost, deckCards, elixirCurve, unownedNote } from '../lib/builderDecks';
 import DeckSlot from './DeckSlot';
 import DeckLinkAction from './DeckLinkAction';
 import TrashIcon from './TrashIcon';
@@ -96,7 +96,7 @@ const BuilderStage = forwardRef<HTMLDivElement, BuilderStageProps>(function Buil
         <div>
           <StageScore key={deckIndex} score={score} theme={theme} isMobile={isMobile} />
           <div style={{ ...styles.kind, color: theme.text.secondary }}>
-            <ScoreKind score={score} filled={cards.length} theme={theme} />
+            <ScoreKind score={score} filled={cards.length} unowned={cards.filter((card) => !card.owned)} theme={theme} />
           </div>
         </div>
 
@@ -182,8 +182,9 @@ function StageScore({ score, theme, isMobile }: { score?: BuilderDeckScore; them
   );
 }
 
-function ScoreKind({ score, filled, theme }: { score?: BuilderDeckScore; filled: number; theme: Theme }) {
+function ScoreKind({ score, filled, unowned, theme }: { score?: BuilderDeckScore; filled: number; unowned: BuilderCard[]; theme: Theme }) {
   if (filled === 0) return <>Empty. Pick cards below to fill it.</>;
+  if (unowned.length > 0) return <span style={{ color: theme.warn }}>{unownedNote(unowned)}</span>;
   const estimate = <span style={{ color: theme.text.tertiary }}>~ estimate</span>;
   if (filled < SLOTS_PER_DECK) return <>{estimate} · {filled} of 8 cards</>;
   if (!score || score.score == null) return <>{filled} of 8 cards</>;
@@ -195,6 +196,7 @@ function ScoreKind({ score, filled, theme }: { score?: BuilderDeckScore; filled:
       </>
     );
   }
+  if (score.metaCards) return <>{estimate}, meta cards in a different Evo/Hero setup</>;
   return <>{estimate}, not a known meta deck</>;
 }
 

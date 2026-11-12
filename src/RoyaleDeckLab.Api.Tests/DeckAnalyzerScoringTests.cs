@@ -196,6 +196,27 @@ public sealed class DeckAnalyzerScoringTests
     }
 
     [Fact]
+    public void BuilderDeck_AgainstMaxedOpponents_ScoresTheMetaScore()
+    {
+        var cards = Build.Collection(Build.Eight(1));
+        var deck = Build.Deck(Build.Eight(1), confidence: 0.587, players: 20);
+
+        var result = _analyzer.ScoreBuilderDeck(Build.CardMap(cards), Build.Eight(1), deck, opponentLevel: LevelModel.MaxDisplayLevel);
+
+        Assert.Equal(0.587, result!.Score, 10);
+    }
+
+    [Fact]
+    public void BuilderDeck_WithoutMeta_AgainstMaxedOpponents_HasNoLevelEdge()
+    {
+        var cards = Build.Collection(Build.Eight(1));
+
+        var result = _analyzer.ScoreBuilderDeck(Build.CardMap(cards), Build.Eight(1), meta: null, opponentLevel: LevelModel.MaxDisplayLevel);
+
+        Assert.Equal(0.5 / 9, result!.Score, 10);
+    }
+
+    [Fact]
     public void BuilderDeck_IsNull_WhenACardIsMissing()
     {
         var cards = Build.Collection(1, 2, 3);

@@ -25,6 +25,7 @@ interface CardCollectionProps {
   deckFull: boolean;
   open: boolean;
   onToggle: () => void;
+  maxed: boolean;
   theme: Theme;
   isMobile: boolean;
 }
@@ -45,6 +46,7 @@ export default function CardCollection({
   deckFull,
   open,
   onToggle,
+  maxed,
   theme,
   isMobile,
 }: CardCollectionProps) {
@@ -70,7 +72,7 @@ export default function CardCollection({
   return (
     <section style={{ ...styles.section, borderTopColor: theme.border, paddingTop: isMobile ? '18px' : '24px' }}>
       <div style={styles.head}>
-        <h3 style={{ ...styles.title, color: theme.text.primary }}>Your cards</h3>
+        <h3 style={{ ...styles.title, color: theme.text.primary }}>{maxed ? 'All cards' : 'Your cards'}</h3>
         {deckFull ? (
           <button
             type="button"
@@ -92,7 +94,7 @@ export default function CardCollection({
           </button>
         ) : (
           <span aria-live="polite" style={{ ...styles.count, color: notice ? theme.text.primary : theme.text.tertiary, fontWeight: notice ? 600 : 400 }}>
-            {notice ?? `${owned.length} owned`}
+            {notice ?? `${owned.length} ${maxed ? 'cards' : 'owned'}`}
           </span>
         )}
       </div>

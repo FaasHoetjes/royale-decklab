@@ -42,8 +42,8 @@ export const queryKeys = {
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
   clanReminders: (clanTag: string) => ['clan', clanTag, 'discord-reminders'] as const,
   clanSearch: (name: string) => ['clan-search', name] as const,
-  scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][]) =>
-    ['score-decks', cards, decks] as const,
+  scoreDecks: (cards: ScoreDeckCard[], decks: (number | null)[][], maxed: boolean) =>
+    ['score-decks', cards, decks, maxed] as const,
 };
 
 export function playerCollectionOptions(tag: string) {
@@ -179,19 +179,17 @@ export function useCardDecks(cardId: number | undefined) {
 export function useDeckScores(
   cards: ScoreDeckCard[],
   decks: (number | null)[][],
+  maxed: boolean,
   enabled: boolean
 ) {
   return useQuery({
-    queryKey: queryKeys.scoreDecks(cards, decks),
-    queryFn: ({ signal }) => scoreBuilderDecks(cards, decks, signal),
+    queryKey: queryKeys.scoreDecks(cards, decks, maxed),
+    queryFn: ({ signal }) => scoreBuilderDecks(cards, decks, maxed, signal),
     enabled,
     staleTime: Infinity,
-    placeholderData: keepPreviousData,
+    // Keep the last scores while a deck changes, but not across a mode switch: those scores belong to other cards.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[3] === maxed ? previous : undefined),
   });
-}
-
-export function fetchCollectionOnce(qc: QueryClient, tag: string) {
-  return qc.fetchQuery(playerCollectionOptions(tag));
 }
 
 /** Fetch on opening/returning or manual refresh; the server shares a clan snapshot for 60 seconds. */

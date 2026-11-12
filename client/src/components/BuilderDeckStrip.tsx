@@ -4,6 +4,7 @@ import { availableVersions, type BuilderCard } from '../lib/builderCards';
 import { cardIconUrl, displayLevel } from '../lib/cardDisplay';
 import { slotKind, slotBorderStyle } from '../lib/slotStyles';
 import { slotKey } from '../lib/deckBoard';
+import { unownedCards } from '../lib/builderDecks';
 import CardTile from './CardTile';
 
 interface BuilderDeckStripProps {
@@ -21,13 +22,14 @@ interface BuilderDeckStripProps {
 export default function BuilderDeckStrip({ deckIndex, name, board, cardById, target, onSlotClick, onSelectDeck, theme }: BuilderDeckStripProps) {
   const deck = board.decks[deckIndex] ?? [];
   const filled = deck.filter((id) => id != null).length;
+  const unowned = unownedCards(deck, cardById).length > 0;
 
   return (
     <div>
       <div style={styles.head}>
         <span style={styles.title}>
           <span style={{ ...styles.name, color: theme.text.primary }}>{name}</span>
-          <span style={{ ...styles.count, color: theme.text.secondary }}>{filled} of 8 cards</span>
+          <span style={{ ...styles.count, color: unowned ? theme.warn : theme.text.secondary }}>{unowned ? 'Not scored' : `${filled} of 8 cards`}</span>
         </span>
         <span style={styles.chips}>
           {board.decks.map((_, i) => {
@@ -99,6 +101,7 @@ export default function BuilderDeckStrip({ deckIndex, name, board, cardById, tar
                 slotIndex={slotIndex}
                 showName={false}
                 artStyle={styles.art}
+                locked={!card.owned}
               >
                 {level != null && <span style={styles.level}>{level}</span>}
               </CardTile>
