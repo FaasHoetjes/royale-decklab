@@ -13,7 +13,6 @@ public sealed class CardArtRefreshService(
     {
         try
         {
-            await art.LoadVersionsFromDiskAsync(stoppingToken);
             while (!stoppingToken.IsCancellationRequested)
             {
                 var succeeded = await TryRefreshAllAsync(stoppingToken);

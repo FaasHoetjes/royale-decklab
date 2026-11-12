@@ -161,5 +161,6 @@ app.MapControllers();
 app.MapLiveEndpoints();
 app.MapSpaFallback();
 
+await app.Services.GetRequiredService<CardArtCache>().LoadVersionsFromDiskAsync();
 app.Logger.LogInformation("Royale DeckLab API running on http://localhost:3000");
 app.Run();

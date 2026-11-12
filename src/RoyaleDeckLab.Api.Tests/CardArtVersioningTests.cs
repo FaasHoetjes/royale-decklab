@@ -110,10 +110,24 @@ public sealed class CardArtVersioningTests : IDisposable
         var before = _art.PublishedUrl(ArtUrl);
 
         var restarted = CacheOnTheSameDisk();
-        await restarted.LoadVersionsFromDiskAsync(CancellationToken.None);
+        await restarted.LoadVersionsFromDiskAsync();
 
         Assert.Equal(before, restarted.PublishedUrl(ArtUrl));
         Assert.Equal(0, _cdn.NotModifiedAnswers);
+    }
+
+    [Fact]
+    public async Task UnreadableArtOnDisk_IsSkippedAtStartup()
+    {
+        var path = await _art.GetAsync(Kind, Hash) ?? throw new InvalidOperationException("Art was not downloaded");
+        var restarted = CacheOnTheSameDisk();
+
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            await restarted.LoadVersionsFromDiskAsync();
+        }
+
+        Assert.Equal(ArtUrl, restarted.PublishedUrl(ArtUrl));
     }
 
     [Fact]

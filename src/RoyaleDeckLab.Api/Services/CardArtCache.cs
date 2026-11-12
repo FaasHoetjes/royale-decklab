@@ -112,8 +112,8 @@ public sealed partial class CardArtCache
         await DownloadOnceAsync(kind, hash, ct);
     }
 
-    /// <summary>Publishes the art already on disk before any check against the CDN has run.</summary>
-    public async Task LoadVersionsFromDiskAsync(CancellationToken ct)
+    /// <summary>Publishes the art already on disk, so responses carry versioned URLs from the first request.</summary>
+    public async Task LoadVersionsFromDiskAsync()
     {
         if (!Directory.Exists(_dir))
         {
@@ -121,14 +121,20 @@ public sealed partial class CardArtCache
         }
         foreach (var path in Directory.EnumerateFiles(_dir, "*.webp", SearchOption.AllDirectories))
         {
-            ct.ThrowIfCancellationRequested();
             var kind = Path.GetFileName(Path.GetDirectoryName(path)) ?? "";
             var hash = Path.GetFileNameWithoutExtension(path);
             if (!IsWellFormed(kind, hash))
             {
                 continue;
             }
-            await RememberVersionFromDiskAsync(kind, hash, path);
+            try
+            {
+                await RememberVersionFromDiskAsync(kind, hash, path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(ex, "Could not read card art {Kind}/{Hash}; the next refresh downloads it again", kind, hash);
+            }
         }
     }
 
@@ -141,14 +147,21 @@ public sealed partial class CardArtCache
     private async Task<string?> DownloadOnceAsync(string kind, string hash, CancellationToken ct)
     {
         var key = Key(kind, hash);
-        var download = _inFlight.GetOrAdd(key, _ => new Lazy<Task<string?>>(() => DownloadAsync(kind, hash)));
+        var download = _inFlight.GetOrAdd(key, _ => new Lazy<Task<string?>>(() => DownloadThenReleaseAsync(key, kind, hash)));
+        return await download.Value.WaitAsync(ct);
+    }
+
+    // Released by the download itself, not by a waiter: a waiter that gives up early would otherwise let a
+    // second download of the same art run alongside, and the two could leave old art next to a new ETag.
+    private async Task<string?> DownloadThenReleaseAsync(string key, string kind, string hash)
+    {
         try
         {
-            return await download.Value.WaitAsync(ct);
+            return await DownloadAsync(kind, hash);
         }
         finally
         {
-            _inFlight.TryRemove(KeyValuePair.Create(key, download));
+            _inFlight.TryRemove(key, out _);
         }
     }
 
