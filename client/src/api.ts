@@ -380,12 +380,13 @@ export function fetchCardDecks(cardId: number, signal?: AbortSignal): Promise<{ 
 export async function scoreBuilderDecks(
   cards: ScoreDeckCard[],
   decks: (number | null)[][],
+  maxed: boolean,
   signal?: AbortSignal
 ): Promise<ScoreDecksResponse> {
   const response = await fetch('/api/score-decks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cards, decks }),
+    body: JSON.stringify({ cards, decks, maxed }),
     signal,
   });
   if (!response.ok) {

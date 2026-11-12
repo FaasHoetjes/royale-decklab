@@ -167,6 +167,7 @@ export default function WarDeckBuilder() {
   const scoreQuery = useDeckScores(
     scoreCards,
     board.decks,
+    maxed,
     scoreCards.length > 0 && board.decks.some((deck) => deck.some((id) => id != null))
   );
 

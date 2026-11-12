@@ -100,12 +100,15 @@ public sealed class DeckAnalyzer
         return totalStatFraction / validCards;
     }
 
+    /// <param name="opponentLevel">Defaults to the opponents the player's own levels predict.</param>
     public BuilderScore? ScoreBuilderDeck(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         IReadOnlyList<int> cardIds,
         DeckMeta? meta,
-        IReadOnlyList<int?>? slots = null)
+        IReadOnlyList<int?>? slots = null,
+        double? opponentLevel = null)
     {
+        var opponent = opponentLevel ?? LevelModel.OpponentLevel(cardMap.Values);
         var fieldability = FieldabilityScore(cardMap, cardIds);
         if (fieldability is null)
         {
@@ -114,7 +117,7 @@ public sealed class DeckAnalyzer
 
         if (meta is not null)
         {
-            var score = ScoreDeckForPlayer(cardMap, meta, meta.CardVersions);
+            var score = ScoreDeckForPlayer(cardMap, meta, meta.CardVersions, opponent);
             if (score is null)
             {
                 return null;
@@ -129,7 +132,7 @@ public sealed class DeckAnalyzer
         }
 
         var levels = cardIds.Select(id => LevelModel.DisplayLevel(cardMap[id])).ToList();
-        var levelLogit = LevelModel.LevelLogit(levels, LevelModel.OpponentLevel(cardMap.Values));
+        var levelLogit = LevelModel.LevelLogit(levels, opponent);
         var neutral = LevelModel.WinProbability(NeutralWinRate, levelLogit) * UnprovenDeckDampener;
         return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0);
     }
