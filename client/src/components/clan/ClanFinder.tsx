@@ -1,8 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../AppContext';
 import type { ClanSummary } from '../../api';
 import { getTheme } from '../../theme';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { FOLD_DURATION, FOLD_EASING, prefersReducedMotion } from '../../lib/motion';
 import { useClanSearch, usePlayerSummary } from '../../queries';
 import { normalizeTag } from '../../lib/playerTag';
 import { loadRecentClans, parseClanQuery, recentClansToShow, type ClanRef } from '../../lib/recentClans';
@@ -48,6 +50,26 @@ const ClanFinder = ({ notice }: ClanFinderProps) => {
   const [input, setInput] = useState('');
   const [focused, setFocused] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const isMobile = useIsMobile();
+  const [atTop, setAtTop] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const glideFrom = useRef<number | null>(null);
+
+  // Centered, the clans found would end up under a phone's keyboard or below the fold, so a search moves it up.
+  const moveToTop = (toTop: boolean) => {
+    if (toTop === atTop) return;
+    glideFrom.current = pageRef.current?.getBoundingClientRect().top ?? null;
+    setAtTop(toTop);
+  };
+
+  useLayoutEffect(() => {
+    const page = pageRef.current;
+    const from = glideFrom.current;
+    glideFrom.current = null;
+    if (!page || from === null || prefersReducedMotion()) return;
+    const distance = from - page.getBoundingClientRect().top;
+    page.animate({ transform: [`translateY(${distance}px)`, 'none'] }, { duration: FOLD_DURATION, easing: FOLD_EASING });
+  }, [atTop]);
 
   const query = parseClanQuery(input);
   const searchedName = useDebounced(query.name, SEARCH_DELAY_MS);
@@ -81,91 +103,109 @@ const ClanFinder = ({ notice }: ClanFinderProps) => {
   };
 
   return (
-    <div style={styles.page}>
-      {ownClan && (
-        <Link to={clanPath(ownClan.tag)} style={{ ...styles.backLink, color: theme.text.secondary }}>
-          <BackIcon />
-          <ClanShield badgeId={ownClan.badgeId} size={18} />
-          <span>
-            Back to <b style={{ color: theme.text.primary, fontWeight: 600 }}>{ownClan.name}</b>
-          </span>
-        </Link>
-      )}
+    <div
+      style={{
+        ...styles.stage,
+        minHeight: isMobile ? 'calc(100dvh - 320px)' : 'calc(100dvh - 240px)',
+        justifyContent: atTop ? 'flex-start' : 'center',
+      }}
+    >
+      <div ref={pageRef} style={styles.page}>
+        {ownClan && (
+          <Link to={clanPath(ownClan.tag)} style={{ ...styles.backLink, color: theme.text.secondary }}>
+            <BackIcon />
+            <ClanShield badgeId={ownClan.badgeId} size={18} />
+            <span>
+              Back to <b style={{ color: theme.text.primary, fontWeight: 600 }}>{ownClan.name}</b>
+            </span>
+          </Link>
+        )}
 
-      <div style={styles.hero}>
-        {best ? <ClanShield badgeId={best.badgeId} size={52} /> : <EmptyShield size={52} mark />}
-        <h2 style={{ ...styles.title, color: theme.text.primary }}>Find your clan</h2>
-        <p style={notice ? { ...styles.tagline, ...styles.notice, color: theme.text.primary } : { ...styles.tagline, color: theme.text.secondary }}>
-          {notice ?? 'Search by name, or paste a clan tag.'}
-        </p>
-      </div>
-
-      <form role="search" onSubmit={submit}>
-        <div
-          style={{
-            ...styles.field,
-            backgroundColor: theme.bg.secondary,
-            borderColor: focused ? theme.accent : theme.border,
-            boxShadow: focused ? '0 0 0 3px var(--accent-a20)' : 'none',
-            color: theme.text.secondary,
-          }}
-        >
-          <SearchIcon />
-          <input
-            type="search"
-            placeholder="Clan name or #tag"
-            aria-label="Clan name or tag"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            spellCheck={false}
-            autoComplete="off"
-            enterKeyHint="search"
-            style={{ ...styles.input, color: theme.text.primary }}
-          />
+        <div style={styles.hero}>
+          {best ? <ClanShield badgeId={best.badgeId} size={52} /> : <EmptyShield size={52} mark />}
+          <h2 style={{ ...styles.title, color: theme.text.primary }}>Find your clan</h2>
+          <p style={notice ? { ...styles.tagline, ...styles.notice, color: theme.text.primary } : { ...styles.tagline, color: theme.text.secondary }}>
+            {notice ?? 'Search by name, or paste a clan tag.'}
+          </p>
         </div>
-      </form>
 
-      {isSearching ? (
-        <Results query={query} results={results} best={best} failed={search.isError && !search.data} />
-      ) : (
-        <>
-          <button
-            type="button"
-            className="mobile-touch-target"
-            onClick={() => setShowHelp((show) => !show)}
-            aria-expanded={showHelp}
-            aria-controls="clan-tag-help"
-            style={{ ...styles.helpButton, color: theme.accent }}
+        <form role="search" onSubmit={submit}>
+          <div
+            style={{
+              ...styles.field,
+              backgroundColor: theme.bg.secondary,
+              borderColor: focused ? theme.accent : theme.border,
+              boxShadow: focused ? '0 0 0 3px var(--accent-a20)' : 'none',
+              color: theme.text.secondary,
+            }}
           >
-            Where's my clan tag?
-          </button>
-          {showHelp && (
-            <p id="clan-tag-help" style={{ ...styles.helpText, color: theme.text.secondary }}>
-              In Clash Royale, open the Clan tab and tap your clan's name at the top. The clan tag sits under the name
-              and starts with #. Tap it to copy, then paste it here, with or without the #.
-            </p>
-          )}
-          {shortcuts.length > 0 && (
-            <section aria-label="Recent clans" style={styles.recent}>
-              <h3 style={{ ...styles.label, color: theme.text.secondary }}>Recent</h3>
-              <div style={styles.chips}>
-                {shortcuts.map((clan) => (
-                  <Link
-                    key={clan.tag}
-                    to={clanPath(clan.tag)}
-                    style={{ ...styles.chip, color: theme.text.primary, borderColor: theme.border, backgroundColor: theme.bg.secondary }}
-                  >
-                    <ClanShield badgeId={clan.badgeId} size={18} />
-                    <span style={styles.chipName}>{clan.name}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      )}
+            <SearchIcon />
+            <input
+              type="search"
+              placeholder="Clan name or #tag"
+              aria-label="Clan name or tag"
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                if (e.target.value) moveToTop(true);
+              }}
+              onFocus={() => {
+                setFocused(true);
+                // The keyboard is coming up anyway; moving now makes it one motion instead of a second one mid-word.
+                if (isMobile) moveToTop(true);
+              }}
+              onBlur={() => {
+                setFocused(false);
+                if (!input) moveToTop(false);
+              }}
+              spellCheck={false}
+              autoComplete="off"
+              enterKeyHint="search"
+              style={{ ...styles.input, color: theme.text.primary }}
+            />
+          </div>
+        </form>
+
+        {isSearching ? (
+          <Results query={query} results={results} best={best} failed={search.isError && !search.data} />
+        ) : (
+          <>
+            <button
+              type="button"
+              className="mobile-touch-target"
+              onClick={() => setShowHelp((show) => !show)}
+              aria-expanded={showHelp}
+              aria-controls="clan-tag-help"
+              style={{ ...styles.helpButton, color: theme.accent }}
+            >
+              Where's my clan tag?
+            </button>
+            {showHelp && (
+              <p id="clan-tag-help" style={{ ...styles.helpText, color: theme.text.secondary }}>
+                In Clash Royale, open the Clan tab and tap your clan's name at the top. The clan tag sits under the name
+                and starts with #. Tap it to copy, then paste it here, with or without the #.
+              </p>
+            )}
+            {shortcuts.length > 0 && (
+              <section aria-label="Recent clans" style={styles.recent}>
+                <h3 style={{ ...styles.label, color: theme.text.secondary }}>Recent</h3>
+                <div style={styles.chips}>
+                  {shortcuts.map((clan) => (
+                    <Link
+                      key={clan.tag}
+                      to={clanPath(clan.tag)}
+                      style={{ ...styles.chip, color: theme.text.primary, borderColor: theme.border, backgroundColor: theme.bg.secondary }}
+                    >
+                      <ClanShield badgeId={clan.badgeId} size={18} />
+                      <span style={styles.chipName}>{clan.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -301,9 +341,14 @@ const TrophyIcon = () => (
 );
 
 const styles = {
+  stage: {
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+  },
   page: {
     display: 'flex' as const,
     flexDirection: 'column' as const,
+    width: '100%',
     maxWidth: '480px',
     margin: '0 auto',
   },
