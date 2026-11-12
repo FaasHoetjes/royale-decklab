@@ -160,7 +160,9 @@ const styles = {
   },
   tab: {
     position: 'relative' as const,
-    flex: '1 1 0',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
     minWidth: 0,
     height: '44px',
     display: 'flex' as const,
