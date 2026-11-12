@@ -66,7 +66,7 @@ export default function Cards() {
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Cards</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
           <IntroSummary stats={stats} isMobile={isMobile} />
-          {isMobile ? ' Tap a card for its detailed stats.' : <span style={{ display: 'block' }}>Click a card for its detailed stats.</span>}
+          {isMobile ? ' Tap' : ' Click'} a card for its detailed stats.
         </p>
       </div>
 
