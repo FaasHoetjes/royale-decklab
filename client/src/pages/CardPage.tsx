@@ -209,9 +209,6 @@ function CardDetails({ card }: { card: CatalogCard }) {
                 {lockIcon}
                 Build my best war decks with {card.name}
               </Link>
-              <p style={{ ...styles.buildCaption, color: theme.text.secondary }}>
-                Your 4 best war decks from your own cards, with {card.name} in one of them.
-              </p>
             </div>
           )}
         </div>
@@ -413,12 +410,6 @@ const styles = {
     padding: '13px 16px',
     fontSize: '15px',
     whiteSpace: 'normal' as const,
-    textAlign: 'center' as const,
-  },
-  buildCaption: {
-    margin: '8px 0 0',
-    fontSize: '13px',
-    lineHeight: 1.45,
     textAlign: 'center' as const,
   },
   buildFloat: {
