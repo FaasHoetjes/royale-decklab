@@ -35,7 +35,7 @@ public sealed class SpaContentTests
     {
         var html = SpaContent.Card(MegaKnight, MegaKnightStat, true, [Entry(Inferno, 0.55), Entry(BombTower, 0.53)]);
 
-        Assert.Contains("<h1>Mega Knight</h1>", html);
+        Assert.Contains("<h1>Mega Knight Decks</h1>", html);
         Assert.Contains("<p>7 elixir &#183; Legendary</p>", html);
         Assert.Contains("<p>52.3% win rate &#183; 8.1% play rate &#183; 1,500 games</p>", html);
         Assert.Contains("<h2>Best war decks with Mega Knight</h2>", html);
@@ -56,7 +56,7 @@ public sealed class SpaContentTests
     public void CardPage_BeforeTheMetaLoads_ClaimsNothing()
     {
         var html = SpaContent.Card(MiniPekka, null, false, []);
-        Assert.Contains("<h1>Mini P.E.K.K.A</h1>", html);
+        Assert.Contains("<h1>Mini P.E.K.K.A Decks</h1>", html);
         Assert.DoesNotContain("Nobody", html);
         Assert.DoesNotContain("No war deck", html);
     }

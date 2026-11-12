@@ -82,7 +82,7 @@ public static class SpaContent
 
     public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks)
     {
-        var html = new StringBuilder("<p><a href=\"/cards\">All cards</a></p>").Append(H1(card.Name));
+        var html = new StringBuilder("<p><a href=\"/cards\">All cards</a></p>").Append(H1($"{card.Name} Decks"));
         var facts = new[]
         {
             card.ElixirCost is { } cost ? $"{cost} elixir" : null,

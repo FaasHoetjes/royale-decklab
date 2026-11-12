@@ -165,7 +165,7 @@ public static partial class SpaPages
             false)
         {
             Content = SpaContentKind.Card,
-            Heading = card.Name,
+            Heading = $"{card.Name} Decks",
             Card = card,
             StructuredData = Breadcrumb([(SiteName, "/"), ("Cards", CardsPath), (card.Name, $"{CardsPath}/{CardSlug(card.Name)}")]),
         };

@@ -156,7 +156,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
           <div style={styles.headTop}>
             {art}
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ ...styles.name, fontSize: '24px', color: theme.text.primary }}>{card.name}</h1>
+              <h1 style={{ ...styles.name, fontSize: '26px', color: theme.text.primary }}>{card.name} Decks</h1>
               <div style={{ ...styles.facts, marginTop: '6px', color: theme.text.secondary }}>{facts.join(' · ')}</div>
             </div>
           </div>
@@ -166,7 +166,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
         <div style={styles.headBody}>
           {!isMobile && (
             <>
-              <h1 style={{ ...styles.name, color: theme.text.primary }}>{card.name}</h1>
+              <h1 style={{ ...styles.name, color: theme.text.primary }}>{card.name} Decks</h1>
               <div style={{ ...styles.facts, color: theme.text.secondary }}>{facts.join(' · ')}</div>
             </>
           )}
@@ -302,7 +302,8 @@ const styles = {
   },
   name: {
     margin: 0,
-    fontSize: '30px',
+    fontFamily: "'Baloo 2', system-ui, -apple-system, sans-serif",
+    fontSize: '33px',
     fontWeight: 800 as const,
     lineHeight: 1.1,
   },
