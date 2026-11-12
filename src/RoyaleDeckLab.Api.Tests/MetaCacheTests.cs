@@ -149,6 +149,36 @@ public sealed class MetaCacheTests : IDisposable
         Assert.Equal(3, StoredBattles(sp).Count);
     }
 
+    [Fact]
+    public async Task A_manual_refresh_whose_crawl_fails_says_so_and_keeps_the_meta()
+    {
+        using var sp = Services(crawlFails: true);
+        await SeedOldBattlesAsync(sp, lastBuildMs: Now);
+        var cache = sp.GetRequiredService<MetaCache>();
+        await cache.InitializeAsync();
+
+        using var scope = sp.CreateScope();
+        var controller = new MetaController(cache, scope.ServiceProvider.GetRequiredService<BattleRepository>());
+        var result = Assert.IsType<ObjectResult>(await controller.Refresh());
+
+        Assert.Equal(StatusCodes.Status502BadGateway, result.StatusCode);
+        Assert.Contains(cache.Meta, d => d.CardIds.SequenceEqual(OldDeck));
+    }
+
+    [Fact]
+    public async Task A_manual_refresh_whose_crawl_succeeds_says_refreshed()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: Now);
+        var cache = sp.GetRequiredService<MetaCache>();
+        await cache.InitializeAsync();
+
+        using var scope = sp.CreateScope();
+        var controller = new MetaController(cache, scope.ServiceProvider.GetRequiredService<BattleRepository>());
+
+        Assert.IsType<OkObjectResult>(await controller.Refresh());
+    }
+
     private static ResourceExecutingContext RunMetaFilter(ServiceProvider sp)
     {
         var http = new DefaultHttpContext { RequestServices = sp };

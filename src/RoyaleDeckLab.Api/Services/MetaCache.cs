@@ -127,15 +127,14 @@ public sealed class MetaCache(
         return decks;
     }
 
-    /// <summary>Null when it didn't run because a build was already running.</summary>
-    public async Task<List<DeckMeta>?> RebuildAsync(string reason, CancellationToken ct = default)
+    public async Task<MetaRebuild> RebuildAsync(string reason, CancellationToken ct = default)
     {
         lock (_buildLock)
         {
             if (_isBuilding)
             {
                 logger.LogInformation("Meta rebuild ({Reason}) skipped: a build is already running", reason);
-                return null;
+                return new MetaRebuild(MetaRebuildOutcome.Busy, _meta);
             }
             _isBuilding = true;
         }
@@ -152,7 +151,7 @@ public sealed class MetaCache(
             if (fresh.Count == 0)
             {
                 logger.LogWarning("Meta rebuild ({Reason}): fetched 0 battles, keeping existing cache", reason);
-                return _meta;
+                return new MetaRebuild(MetaRebuildOutcome.NothingFetched, _meta);
             }
 
             var added = await store.MergeBattlesAsync(fresh, ct);
@@ -163,17 +162,17 @@ public sealed class MetaCache(
             var decks = await AggregateAsync(store, builder, $"rebuild ({reason})", ct);
             logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Pruned} pruned before {Cutoff}, {Kept} kept",
                 added, fresh.Count, pruned, IsoMs(cutoff), store.Count());
-            return decks;
+            return new MetaRebuild(MetaRebuildOutcome.Rebuilt, decks);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             logger.LogInformation("Meta rebuild ({Reason}) cancelled, keeping existing cache", reason);
-            return _meta;
+            return new MetaRebuild(MetaRebuildOutcome.Cancelled, _meta);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Meta rebuild ({Reason}) failed, keeping existing cache", reason);
-            return _meta;
+            return new MetaRebuild(MetaRebuildOutcome.Failed, _meta);
         }
         finally
         {
@@ -212,8 +211,8 @@ public sealed class MetaCache(
             logger.LogInformation("Meta store empty, building from scratch...");
         }
 
-        var decks = await RebuildAsync("startup", ct);
-        if (decks is { Count: 0 })
+        var rebuild = await RebuildAsync("startup", ct);
+        if (rebuild is { Outcome: not (MetaRebuildOutcome.Busy or MetaRebuildOutcome.Cancelled), Decks.Count: 0 })
         {
             logger.LogError("Could not build meta from the API. Player searches still work; " +
                 "decks won't have meta scores until data lands. Check CLASH_ROYALE_API_KEY is bound to this server's IP.");
