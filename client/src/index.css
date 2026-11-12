@@ -298,7 +298,7 @@ input:disabled {
   .wdb-card:hover:not(:disabled) {
     transform: translateY(-3px);
   }
-  .card-link:hover {
+  .card-link:hover:not([aria-current='page']) {
     transform: translateY(-3px);
   }
   .wdb-tab:hover {
