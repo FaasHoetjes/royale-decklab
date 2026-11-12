@@ -78,6 +78,9 @@ builder.Services.AddSingleton<CardCatalog>();
 builder.Services.AddHttpClient(CardArtCache.HttpClientName, http => http.MaxResponseContentBufferSize = 4 * 1024 * 1024)
     .AddStandardResilienceHandler();
 builder.Services.AddSingleton<CardArtCache>();
+builder.Services.AddHostedService<CardArtRefreshService>();
+builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>()
+    .Configure<CardArtCache>((o, art) => o.JsonSerializerOptions.Converters.Add(new PublishedCardIconUrlsConverter(art)));
 builder.Services.AddSingleton<ShareImageService>();
 var metaDbPath = builder.Configuration.GetSection(MetaOptions.SectionName).Get<MetaOptions>()?.DbPath ?? new MetaOptions().DbPath;
 var dataDirectory = Path.GetDirectoryName(Path.GetFullPath(metaDbPath, contentRoot))
