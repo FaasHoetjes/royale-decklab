@@ -9,8 +9,11 @@ namespace RoyaleDeckLab.Api.Controllers;
 [DisableRateLimiting]
 public sealed class CardArtController(CardArtCache art, ILogger<CardArtController> logger) : ControllerBase
 {
+    private const string VersionedCaching = "public, max-age=31536000, immutable";
+    private const string UnversionedCaching = "public, max-age=3600";
+
     [HttpGet("img/{kind}/{hash}.webp")]
-    public async Task<IActionResult> Get(string kind, string hash, CancellationToken ct)
+    public async Task<IActionResult> Get(string kind, string hash, [FromQuery(Name = "v")] string? version, CancellationToken ct)
     {
         try
         {
@@ -19,7 +22,8 @@ public sealed class CardArtController(CardArtCache art, ILogger<CardArtControlle
             {
                 return NotFound();
             }
-            Response.Headers.CacheControl = $"public, max-age={(int)CardArtCache.MaxAge.TotalSeconds}";
+            var isCurrentVersion = art.IsCurrentVersion(kind, hash, version);
+            Response.Headers.CacheControl = isCurrentVersion ? VersionedCaching : UnversionedCaching;
             return PhysicalFile(path, "image/webp");
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
