@@ -27,6 +27,7 @@ public sealed class BestDecksController(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error generating best decks");
+            Response.Headers.CacheControl = "no-store";
             return StatusCode(500, new { error = "Failed to generate best decks" });
         }
     }
