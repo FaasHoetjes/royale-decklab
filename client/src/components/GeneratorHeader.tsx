@@ -39,13 +39,13 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
   const cardWidth = isMobile ? (toggle ? 48 : 52) : 80;
   const step = isMobile ? (toggle ? 26 : 30) : 48;
   const middle = (art.length - 1) / 2;
+  const eyebrowOnly = !title && eyebrow != null;
 
   return (
     <section
       style={{
         ...styles.banner,
-        padding: isMobile ? '16px 16px' : '20px 28px',
-        ...(isMobile && !title ? { paddingTop: eyebrow == null ? '16px' : '40px' } : {}),
+        padding: isMobile ? `${eyebrowOnly ? '40px' : '16px'} 16px 16px` : '20px 28px',
         marginBottom: isMobile ? '16px' : '24px',
         ...style,
       }}

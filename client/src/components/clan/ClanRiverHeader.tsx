@@ -94,6 +94,7 @@ const styles = {
   tab: {
     font: 'inherit',
     fontSize: '12px',
+    fontWeight: 'inherit',
     padding: '5px 12px',
     border: 0,
     borderRadius: '999px',

@@ -105,13 +105,12 @@ export default function Layout() {
         tabIndex={-1}
         style={{
           ...styles.content,
-          padding: isMobile ? '12px' : '20px',
+          padding: isMobile ? '12px 12px calc(76px + env(safe-area-inset-bottom))' : '20px',
           ...(isMobile
             ? {
                 maxWidth: '560px',
                 margin: '0 auto',
                 width: '100%',
-                paddingBottom: 'calc(76px + env(safe-area-inset-bottom))',
               }
             : {}),
         }}

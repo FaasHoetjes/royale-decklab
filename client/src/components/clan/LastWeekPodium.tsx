@@ -87,7 +87,8 @@ const styles = {
     minWidth: 0,
     borderRadius: '12px',
     backgroundColor: 'var(--water-chip-bg)',
-    border: '1px solid var(--water-chip-border)',
+    border: '1px solid',
+    borderColor: 'var(--water-chip-border)',
   },
   chipStacked: {
     gridTemplateColumns: 'auto minmax(0, 1fr)',

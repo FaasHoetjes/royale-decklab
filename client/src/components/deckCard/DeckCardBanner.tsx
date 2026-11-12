@@ -142,7 +142,6 @@ const styles = {
     display: 'flex' as const,
     alignItems: 'flex-end' as const,
     flexWrap: 'wrap' as const,
-    rowGap: '8px',
     marginTop: '6px',
   },
   lead: {
