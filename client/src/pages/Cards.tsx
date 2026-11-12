@@ -224,7 +224,6 @@ const styles = {
   subtitle: {
     fontSize: '15px',
     margin: '8px 0 0',
-    maxWidth: '760px',
   },
   controls: {
     display: 'flex' as const,
