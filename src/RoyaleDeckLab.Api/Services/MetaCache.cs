@@ -45,7 +45,10 @@ public sealed class MetaCache(
         }
     }
 
-    /// <summary>False after a restart until the stored battles are aggregated, or startup finds there are none.</summary>
+    /// <summary>
+    /// False after a restart until the stored battles are aggregated. With no stored battles it stays false until the
+    /// first crawl ends, however it ends, so a new install answers 503 on the meta endpoints for that crawl.
+    /// </summary>
     public bool IsLoaded => _isLoaded;
 
     public static string DeckKey(IEnumerable<int> cardIds) => string.Join(',', cardIds.OrderBy(x => x));
@@ -127,15 +130,14 @@ public sealed class MetaCache(
         return decks;
     }
 
-    /// <summary>Null when it didn't run because a build was already running.</summary>
-    public async Task<List<DeckMeta>?> RebuildAsync(string reason, CancellationToken ct = default)
+    public async Task<MetaRebuild> RebuildAsync(string reason, CancellationToken ct = default)
     {
         lock (_buildLock)
         {
             if (_isBuilding)
             {
                 logger.LogInformation("Meta rebuild ({Reason}) skipped: a build is already running", reason);
-                return null;
+                return new MetaRebuild(MetaRebuildOutcome.Busy, _meta);
             }
             _isBuilding = true;
         }
@@ -152,7 +154,7 @@ public sealed class MetaCache(
             if (fresh.Count == 0)
             {
                 logger.LogWarning("Meta rebuild ({Reason}): fetched 0 battles, keeping existing cache", reason);
-                return _meta;
+                return new MetaRebuild(MetaRebuildOutcome.NothingFetched, _meta);
             }
 
             var added = await store.MergeBattlesAsync(fresh, ct);
@@ -163,17 +165,17 @@ public sealed class MetaCache(
             var decks = await AggregateAsync(store, builder, $"rebuild ({reason})", ct);
             logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Pruned} pruned before {Cutoff}, {Kept} kept",
                 added, fresh.Count, pruned, IsoMs(cutoff), store.Count());
-            return decks;
+            return new MetaRebuild(MetaRebuildOutcome.Rebuilt, decks);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             logger.LogInformation("Meta rebuild ({Reason}) cancelled, keeping existing cache", reason);
-            return _meta;
+            return new MetaRebuild(MetaRebuildOutcome.Cancelled, _meta);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Meta rebuild ({Reason}) failed, keeping existing cache", reason);
-            return _meta;
+            return new MetaRebuild(MetaRebuildOutcome.Failed, _meta);
         }
         finally
         {
@@ -212,21 +214,32 @@ public sealed class MetaCache(
             logger.LogInformation("Meta store empty, building from scratch...");
         }
 
-        var decks = await RebuildAsync("startup", ct);
-        if (decks is { Count: 0 })
+        var rebuild = await RebuildAsync("startup", ct);
+        if (rebuild is { Outcome: not (MetaRebuildOutcome.Busy or MetaRebuildOutcome.Cancelled), Decks.Count: 0 })
         {
             logger.LogError("Could not build meta from the API. Player searches still work; " +
                 "decks won't have meta scores until data lands. Check CLASH_ROYALE_API_KEY is bound to this server's IP.");
         }
     }
 
-    public async Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
+    public Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
+        => MoveEpochAsync(ms, seasonId: null, ct);
+
+    /// <summary>
+    /// Moves the patch boundary to a new season's start. The season is saved together with the boundary: saved only
+    /// after the battles are tallied again, a restart in between would find the same season new once more, and its
+    /// second boundary would make the last patch a few minutes long.
+    /// </summary>
+    public Task<List<DeckMeta>> StartSeasonAsync(int seasonId, long ms, CancellationToken ct = default)
+        => MoveEpochAsync(ms, seasonId, ct);
+
+    private async Task<List<DeckMeta>> MoveEpochAsync(long ms, int? seasonId, CancellationToken ct)
     {
-        Interlocked.Exchange(ref _epochStart, ms);
         using (var scope = scopeFactory.CreateScope())
         {
-            await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, ct);
+            await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, seasonId, ct);
         }
+        Interlocked.Exchange(ref _epochStart, ms);
         // The boundary is saved by now, so a caller who gives up waiting mustn't leave it unapplied until the next rebuild.
         return await AggregateFromStoreAsync("epoch update", CancellationToken.None);
     }

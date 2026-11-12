@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RoyaleDeckLab.Api.Tests;
 
@@ -50,7 +51,7 @@ public sealed class ClanCacheConcurrencyTests
             return ct => cache.SearchAsync("dutch", ct);
         }
         Assert.True(ClanTag.TryParse("L9VRJ", out var tag));
-        var wars = new ClanWarCache(factory, memory, TimeProvider.System, new ClanHistoryCache(factory, TimeProvider.System));
+        var wars = new ClanWarCache(factory, memory, TimeProvider.System, new ClanHistoryCache(factory, TimeProvider.System), NullLogger<ClanWarCache>.Instance);
         return ct => wars.GetAsync(tag, ct);
     }
 

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using RoyaleDeckLab.Api.Dtos;
 
 namespace RoyaleDeckLab.Api.Models;
@@ -30,13 +31,17 @@ public sealed record ClanWar(
 
     public int MembersDoneToday => IsBattleDay ? Members.Count(m => m.DecksLeftToday == 0) : 0;
 
+    /// <summary>The CR API sent a period type this code doesn't know, so Period is read from the day of the week.</summary>
+    [JsonIgnore]
+    public bool IsPeriodGuessed { get; init; }
+
     /// <param name="race">Null when the clan isn't in a river race this week.</param>
     public static ClanWar From(ClanResponse clan, CrRiverRace? race, CrRiverRaceLog log, DateTimeOffset now)
     {
         var tag = clan.Tag ?? throw new FormatException("The clan response has no tag");
-        var period = race is null ? WarPeriod.NotRacing : ParsePeriod(race.PeriodType);
-        var isBattleDay = period is WarPeriod.WarDay or WarPeriod.Colosseum;
         var dayOfWeek = (race?.PeriodIndex ?? 0) % DaysPerWeek;
+        var period = PeriodOf(race, dayOfWeek);
+        var isBattleDay = period is WarPeriod.WarDay or WarPeriod.Colosseum;
         var day = race is null ? 0 : isBattleDay ? dayOfWeek - TrainingDays + 1 : dayOfWeek + 1;
 
         var thisWeek = ParticipantsByTag(race?.Clan);
@@ -65,7 +70,10 @@ public sealed record ClanWar(
             pastWeeks.Select(w => w.Week).ToList(),
             race is null ? [] : RaceOf(race),
             dayEndsAt,
-            warStartsAt);
+            warStartsAt)
+        {
+            IsPeriodGuessed = race is not null && KnownPeriod(race.PeriodType) is null,
+        };
     }
 
     /// <summary>
@@ -97,12 +105,29 @@ public sealed record ClanWar(
             .ToList();
     }
 
-    private static WarPeriod ParsePeriod(string? periodType) => periodType switch
+    /// <summary>
+    /// A period type the CR API added after this code is read from the day of the week, so one new type doesn't take
+    /// down the planner and every clan's reminders.
+    /// </summary>
+    private static WarPeriod PeriodOf(CrRiverRace? race, int dayOfWeek)
+    {
+        if (race is null)
+        {
+            return WarPeriod.NotRacing;
+        }
+        if (KnownPeriod(race.PeriodType) is { } known)
+        {
+            return known;
+        }
+        return dayOfWeek >= TrainingDays ? WarPeriod.WarDay : WarPeriod.Training;
+    }
+
+    private static WarPeriod? KnownPeriod(string? periodType) => periodType switch
     {
         "training" => WarPeriod.Training,
         "warDay" => WarPeriod.WarDay,
         "colosseum" => WarPeriod.Colosseum,
-        _ => throw new FormatException($"Unknown river race period type '{periodType}'"),
+        _ => null,
     };
 
     private static ClanRole ParseRole(string? role) => role switch

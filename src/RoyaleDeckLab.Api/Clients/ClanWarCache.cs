@@ -6,11 +6,17 @@ namespace RoyaleDeckLab.Api.Clients;
 /// <summary>
 /// One clan snapshot serves all visitors for a minute; race history has its own longer cache.
 /// </summary>
-public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache memory, TimeProvider clock, ClanHistoryCache history)
+public sealed class ClanWarCache(
+    IHttpClientFactory httpFactory,
+    IMemoryCache memory,
+    TimeProvider clock,
+    ClanHistoryCache history,
+    ILogger<ClanWarCache> logger)
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
 
     private readonly object _gate = new();
+    private int _hasWarnedUnknownPeriod;
 
     public async Task<ClanWar> GetAsync(ClanTag clanTag, CancellationToken ct = default)
     {
@@ -51,6 +57,12 @@ public sealed class ClanWarCache(IHttpClientFactory httpFactory, IMemoryCache me
         var log = history.GetAsync(clanTag, race);
         await Task.WhenAll(clan, race, log);
 
-        return ClanWar.From(await clan, await race, await log, clock.GetUtcNow());
+        var war = ClanWar.From(await clan, await race, await log, clock.GetUtcNow());
+        var isFirstWarning = war.IsPeriodGuessed && Interlocked.Exchange(ref _hasWarnedUnknownPeriod, 1) == 0;
+        if (isFirstWarning)
+        {
+            logger.LogWarning("Unknown river race period type {PeriodType}; reading it from the day of the week", (await race)?.PeriodType);
+        }
+        return war;
     }
 }

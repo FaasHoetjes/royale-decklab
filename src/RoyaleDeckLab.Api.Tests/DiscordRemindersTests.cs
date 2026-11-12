@@ -25,6 +25,8 @@ public sealed class DiscordRemindersTests : IDisposable
           {"tag":"#BBB","name":"Bob","role":"member","lastSeen":"20261105T230420.000Z"}]}
         """;
 
+    private const string LastRaceEnded = "20261102T093900.000Z";
+
     private const string LogJson = """
         {"items":[{"seasonId":137,"sectionIndex":3,"createdDate":"20261102T093900.000Z","standings":[
           {"rank":2,"clan":{"tag":"#L9VRJ","fame":30000,"participants":[{"tag":"#AAA","fame":3000,"decksUsed":16}]}}]}]}
@@ -70,7 +72,7 @@ public sealed class DiscordRemindersTests : IDisposable
     private ClanWarCache ClanWars()
     {
         var factory = new StubFactory(_http);
-        return new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock));
+        return new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock), NullLogger<ClanWarCache>.Instance);
     }
 
     private DiscordReminderSetup Setup(WebhookTokenCipher cipher)
@@ -90,6 +92,7 @@ public sealed class DiscordRemindersTests : IDisposable
         public string Period { get; set; } = "warDay";
         public int BobsDecksToday { get; set; }
         public string BrokenClan { get; set; } = "none";
+        public string LastRaceEndedAt { get; set; } = LastRaceEnded;
         public HttpStatusCode ClashRoyaleStatus { get; set; } = HttpStatusCode.OK;
         public HttpStatusCode DiscordStatus { get; set; } = HttpStatusCode.NoContent;
         public HttpStatusCode DiscordLookupStatus { get; set; } = HttpStatusCode.OK;
@@ -109,17 +112,17 @@ public sealed class DiscordRemindersTests : IDisposable
             {
                 return request.Method == HttpMethod.Get ? await LookUpAsync() : await PostAsync(request, ct);
             }
-            if (ClashRoyaleStatus != HttpStatusCode.OK)
+            var tag = Regex.Match(uri.AbsoluteUri, "%23([A-Za-z0-9]+)").Groups[1].Value.ToUpperInvariant();
+            if (ClashRoyaleStatus != HttpStatusCode.OK || tag == BrokenClan)
             {
-                return Json(ClashRoyaleStatus, "{}");
+                return Json(tag == BrokenClan ? HttpStatusCode.InternalServerError : ClashRoyaleStatus, "{}");
             }
 
-            var tag = Regex.Match(uri.AbsoluteUri, "%23([A-Za-z0-9]+)").Groups[1].Value.ToUpperInvariant();
             var path = uri.AbsolutePath;
             var body = path switch
             {
-                _ when path.EndsWith("/currentriverrace", StringComparison.Ordinal) => RaceJson(tag == BrokenClan ? "someNewPeriod" : Period),
-                _ when path.EndsWith("/riverracelog", StringComparison.Ordinal) => LogJson,
+                _ when path.EndsWith("/currentriverrace", StringComparison.Ordinal) => RaceJson(Period),
+                _ when path.EndsWith("/riverracelog", StringComparison.Ordinal) => LogJson.Replace(LastRaceEnded, LastRaceEndedAt),
                 _ => ClanJson,
             };
             return Json(HttpStatusCode.OK, body.Replace("#L9VRJ", "#" + tag));
@@ -196,10 +199,35 @@ public sealed class DiscordRemindersTests : IDisposable
     }
 
     [Fact]
+    public async Task WaitsForTomorrowsReset_WhenTheClansResetMovedEarlierAndPassed()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.LastRaceEndedAt = "20261102T060900.000Z";
+
+        await _service.PostDueAsync(default);
+        Assert.Empty(_http.DiscordPosts);
+
+        _clock.Now = new DateTimeOffset(2026, 11, 10, 5, 9, 0, TimeSpan.Zero);
+        await Service().PostDueAsync(default);
+        Assert.Single(_http.DiscordPosts);
+    }
+
+    [Fact]
     public async Task PostsNothing_OnTrainingDays()
     {
         _http.Period = "training";
         await _setup.SaveAsync(_clan, Url, TwoHours, default);
+
+        await _service.PostDueAsync(default);
+
+        Assert.Empty(_http.DiscordPosts);
+    }
+
+    [Fact]
+    public async Task PostsNothing_OnAPeriodItDoesntKnow()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.Period = "someNewPeriod";
 
         await _service.PostDueAsync(default);
 

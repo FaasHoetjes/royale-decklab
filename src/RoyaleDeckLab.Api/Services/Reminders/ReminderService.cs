@@ -84,12 +84,21 @@ public sealed class ReminderService(
             reset = dayEndsAt;
         }
 
+        // The reminder was due by its stored reset time; if the clan's real reset moved earlier and already passed,
+        // the next one is a day away, and claiming it now would post a day early and skip tomorrow's reminder.
+        var isTooEarly = now < reset - TimeSpan.FromHours(reminder.Settings.HoursBeforeReset);
+        if (isTooEarly)
+        {
+            return;
+        }
         if (!store.TryClaim(webhookId, reset))
         {
             return;
         }
         var isAllDone = war.DecksLeftToday == 0;
-        var hasNothingToPost = !war.IsBattleDay || (isAllDone && !reminder.Settings.PostWhenAllDone);
+        // A guessed battle day might be a phase without war battles; pinging a whole server about it is worse than
+        // missing one reminder.
+        var hasNothingToPost = !war.IsBattleDay || war.IsPeriodGuessed || (isAllDone && !reminder.Settings.PostWhenAllDone);
         if (hasNothingToPost)
         {
             return;

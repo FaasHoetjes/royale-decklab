@@ -27,6 +27,7 @@ public sealed class CardsController(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error fetching card catalog");
+            Response.Headers.CacheControl = "no-store";
             return StatusCode(500, new { error = "Failed to fetch card catalog" });
         }
     }
@@ -55,6 +56,7 @@ public sealed class CardsController(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error finding decks for card {CardId}", id);
+            Response.Headers.CacheControl = "no-store";
             return StatusCode(500, new { error = "Failed to find decks for this card" });
         }
     }

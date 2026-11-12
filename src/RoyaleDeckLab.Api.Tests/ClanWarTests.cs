@@ -63,12 +63,26 @@ public sealed class ClanWarTests
     [InlineData("colosseum", 25, WarPeriod.Colosseum, 2)]
     [InlineData("training", 0, WarPeriod.Training, 1)]
     [InlineData("training", 9, WarPeriod.Training, 3)]
+    [InlineData("someNewPeriod", 1, WarPeriod.Training, 2)]
+    [InlineData("someNewPeriod", 5, WarPeriod.WarDay, 3)]
     public void ThePeriodIndex_GivesTheDayWithinTheWeek(string periodType, int periodIndex, WarPeriod period, int day)
     {
         var war = ClanWar.From(Clan(), Race(periodType, periodIndex), NoHistory, Now);
 
         Assert.Equal(period, war.Period);
         Assert.Equal(day, war.Day);
+    }
+
+    [Fact]
+    public void AnUnknownPeriodOnABattleDay_StillCountsTheDecksLeft()
+    {
+        var clan = Clan(Member("#A", "Anna"));
+
+        var war = ClanWar.From(clan, Race("someNewPeriod", 4, Played("#A", 1, 5)), NoHistory, Now);
+
+        Assert.True(war.IsBattleDay);
+        Assert.True(war.IsPeriodGuessed);
+        Assert.Equal(3, war.DecksLeftToday);
     }
 
     [Fact]
@@ -226,11 +240,5 @@ public sealed class ClanWarTests
         Assert.Null(war.WarStartsAt);
         Assert.Equal(0, war.DecksLeftToday);
         Assert.Equal(["#B", "#A"], war.Members.Select(m => m.Tag));
-    }
-
-    [Fact]
-    public void AnUnknownPeriodType_FailsInsteadOfGuessing()
-    {
-        Assert.Throws<FormatException>(() => ClanWar.From(Clan(), Race("somethingNew", 3), NoHistory, Now));
     }
 }

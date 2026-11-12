@@ -127,13 +127,20 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public long GetPreviousEpochStart() => State().PreviousEpochStartMs;
 
-    /// <summary>Moves the patch boundary; the old one becomes the start of the previous patch, unless the boundary moved back.</summary>
-    public async Task SetEpochStartAsync(long ms, CancellationToken ct = default)
+    /// <summary>
+    /// Moves the patch boundary; the old one becomes the start of the previous patch, unless the boundary moved back.
+    /// A <paramref name="knownSeasonId"/> is saved in the same write.
+    /// </summary>
+    public async Task SetEpochStartAsync(long ms, int? knownSeasonId = null, CancellationToken ct = default)
     {
         await WriteGate.WaitAsync(ct);
         try
         {
             var s = State();
+            if (knownSeasonId is { } seasonId)
+            {
+                s.KnownSeasonId = seasonId;
+            }
             if (ms > s.EpochStartMs)
             {
                 s.PreviousEpochStartMs = s.EpochStartMs;

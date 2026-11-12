@@ -36,11 +36,15 @@ public sealed class MetaController(MetaCache cache, BattleRepository store) : Co
     [EnableRateLimiting(RateLimitPolicies.Admin)]
     public async Task<IActionResult> Refresh()
     {
-        if (await cache.RebuildAsync("manual") is not { } decks)
+        var rebuild = await cache.RebuildAsync("manual");
+        return rebuild.Outcome switch
         {
-            return StatusCode(409, new { status = "busy", message = "A meta rebuild is already in progress" });
-        }
-        return Ok(new { status = "refreshed", deckCount = decks.Count });
+            MetaRebuildOutcome.Rebuilt => Ok(new { status = "refreshed", deckCount = rebuild.Decks.Count }),
+            MetaRebuildOutcome.Busy => StatusCode(409, new { status = "busy", message = "A meta rebuild is already in progress" }),
+            MetaRebuildOutcome.NothingFetched => StatusCode(502,
+                new { status = "nothing-fetched", message = "The crawl fetched no battles; the existing meta is kept. Check the CR API key." }),
+            _ => StatusCode(502, new { status = "failed", message = "The rebuild failed; the existing meta is kept. See the server log." }),
+        };
     }
 
     // Set the patch boundary after a balance update.
