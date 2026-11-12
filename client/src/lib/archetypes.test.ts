@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { classifyDeck, distinctDeckNames, featuredCard } from './archetypes';
+import { classifyDeck, distinctDeckNames, featuredCard, splitDeckName } from './archetypes';
 import serverFixture from '../../../src/RoyaleDeckLab.Api.Tests/Fixtures/deck-names.json';
 
 const COST: Record<string, number> = {
@@ -81,6 +81,12 @@ describe('distinctDeckNames', () => {
 
   test('adds the priciest card only one of the twins runs', () => {
     expect(distinctDeckNames([inferno, bombTower, hog])).toEqual(['Log Bait · Inferno Tower', 'Log Bait · Bomb Tower', 'Hog EQ']);
+  });
+
+  test('splits back into archetype and telling card', () => {
+    const [twin, , single] = distinctDeckNames([inferno, bombTower, hog]);
+    expect(splitDeckName(twin!)).toEqual({ archetype: 'Log Bait', tell: 'Inferno Tower' });
+    expect(splitDeckName(single!)).toEqual({ archetype: 'Hog EQ', tell: undefined });
   });
 });
 

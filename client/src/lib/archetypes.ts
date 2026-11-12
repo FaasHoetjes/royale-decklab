@@ -156,6 +156,8 @@ export function featuredCard<T extends { name: string; elixirCost?: number }>(ca
 
 type NamedCard = { name: string; elixirCost?: number };
 
+const TELL_SEPARATOR = ' · ';
+
 /**
  * Archetype names for decks shown side by side, made unique: a deck that shares its name with another
  * gets its most telling card added ("Log Bait · Inferno Tower"), the priciest card the others don't run.
@@ -171,6 +173,12 @@ export function distinctDeckNames(decks: NamedCard[][]): string[] {
     const tell = [...(own.length ? own : candidates.filter((c) => twins.some((t) => !runs(t, c))))].sort(
       (a, b) => (b.elixirCost ?? 0) - (a.elixirCost ?? 0)
     )[0];
-    return tell ? `${name} · ${tell.name}` : name;
+    return tell ? `${name}${TELL_SEPARATOR}${tell.name}` : name;
   });
+}
+
+/** Splits a name from distinctDeckNames back into its archetype and telling card. */
+export function splitDeckName(name: string): { archetype: string; tell?: string } {
+  const [archetype = name, tell] = name.split(TELL_SEPARATOR);
+  return { archetype, tell };
 }

@@ -2,6 +2,7 @@ import type { BestDeckEntry } from '../api';
 import type { Theme } from '../theme';
 import { versionOf, cardIconUrl, avgElixir, orderBySlots } from '../lib/cardDisplay';
 import { buildDeckLink } from '../lib/deckLink';
+import { splitDeckName } from '../lib/archetypes';
 import CardTile from './CardTile';
 import CardLink from './CardLink';
 import InfoTip from './InfoTip';
@@ -19,8 +20,12 @@ export default function BestDeckRow({ deck, name, theme, isMobile, lazyLoad }: B
   const cards = orderBySlots(deck.cards, (id) => versionOf(deck.cardVersions, id));
   const deckLink = buildDeckLink(cards.map((c) => c.id));
 
+  const { archetype, tell } = splitDeckName(name);
   const title = (
-    <h3 style={{ ...styles.name, minWidth: 0, color: theme.text.primary }}>{name}</h3>
+    <h3 style={{ ...styles.name, minWidth: 0, color: theme.text.primary }}>
+      {archetype}
+      {tell && <span style={{ ...styles.tell, color: theme.text.secondary }}>{tell}</span>}
+    </h3>
   );
 
   const stats = (
@@ -128,6 +133,13 @@ const styles = {
     fontWeight: 700 as const,
     lineHeight: 1.2,
     overflowWrap: 'anywhere' as const,
+  },
+  tell: {
+    display: 'block' as const,
+    marginTop: '3px',
+    fontSize: '13px',
+    fontWeight: 500 as const,
+    lineHeight: 1.3,
   },
   stats: {
     display: 'flex' as const,
