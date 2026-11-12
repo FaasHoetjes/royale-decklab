@@ -11,7 +11,7 @@ import { cardSlug, cardType, mostPlayedVersion, specialVersions } from '../lib/c
 import { cardRanks, isLowSample, percent } from '../lib/cardStats';
 import { distinctDeckNames } from '../lib/archetypes';
 import { parseOptions, toQuery } from '../lib/generatorOptions';
-import { homePath, SITE_NAME } from '../components/navItems';
+import { homePath } from '../components/navItems';
 import CardTile from '../components/CardTile';
 import BestDeckRow from '../components/BestDeckRow';
 import WinRateChange from '../components/WinRateChange';
@@ -80,7 +80,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
   const deckNames = useMemo(() => distinctDeckNames((decksQuery.data?.decks ?? []).map((d) => d.cards)), [decksQuery.data]);
 
   useEffect(() => {
-    document.title = `Best ${card.name} War Decks & Win Rate · ${SITE_NAME}`;
+    document.title = `Best ${card.name} Decks for Clash Royale War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`;
     const numbers = stat
       ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} play rate and its change`
       : 'its win rate, play rate and change';

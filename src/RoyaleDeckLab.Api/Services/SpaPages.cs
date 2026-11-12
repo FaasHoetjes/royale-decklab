@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
@@ -16,6 +17,9 @@ public sealed record SpaPage(int StatusCode, string Title, string Description, s
     public SpaContentKind Content { get; init; }
     public string? Heading { get; init; }
     public CatalogCard? Card { get; init; }
+
+    /// <summary>schema.org JSON-LD for the head, such as the breadcrumb Google shows above a card page's result.</summary>
+    public string? StructuredData { get; init; }
 
     /// <summary>The page's content as HTML for #root, once it's been written.</summary>
     public string? Body { get; init; }
@@ -40,9 +44,9 @@ public static partial class SpaPages
     /// <summary>Heading is the page's h1 as the app shows it.</summary>
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
-        ("/best-decks", $"Best Clash Royale War Decks ({now.ToString("MMMM yyyy", CultureInfo.InvariantCulture)})", "Best War Deck Sets", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.", SpaContentKind.BestDecks),
+        ("/best-decks", $"Best Clash Royale War Decks ({MonthYear(now)})", "Best War Deck Sets", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.", SpaContentKind.BestDecks),
         (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
-        ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta.", SpaContentKind.Builder),
+        ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.", SpaContentKind.Builder),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
         (ClanPath, "Clash Royale Clan War Planner", "Clan War Planner", "See who in your Clash Royale clan still has war decks to play today, and give every member their best four war decks.", SpaContentKind.Clan),
         ("/faq", "Clash Royale War Deck FAQ", "FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.", SpaContentKind.Faq),
@@ -155,7 +159,7 @@ public static partial class SpaPages
             : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} play rate and its change";
         return new(
             200,
-            $"Best {card.Name} War Decks & Win Rate · {SiteName}",
+            CardTitle(card.Name, now),
             $"The best {card.Name} decks for Clash Royale Clan War, ranked on real war battles: {numbers} since the last balance update.",
             $"{CardsPath}/{CardSlug(card.Name)}",
             false)
@@ -163,8 +167,30 @@ public static partial class SpaPages
             Content = SpaContentKind.Card,
             Heading = card.Name,
             Card = card,
+            StructuredData = Breadcrumb([(SiteName, "/"), ("Cards", CardsPath), (card.Name, $"{CardsPath}/{CardSlug(card.Name)}")]),
         };
     }
+
+    // Worded the way people search ("royal giant deck"), without the site name so the card fits before Google cuts it off.
+    private static string CardTitle(string cardName, DateTimeOffset now)
+        => $"Best {cardName} Decks for Clash Royale War ({MonthYear(now)})";
+
+    private static string MonthYear(DateTimeOffset now) => now.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+
+    // The serializer escapes < and >, so a name can't close the script tag.
+    private static string Breadcrumb(IReadOnlyList<(string Name, string Path)> trail)
+        => JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "BreadcrumbList",
+            ["itemListElement"] = trail.Select((step, i) => new Dictionary<string, object>
+            {
+                ["@type"] = "ListItem",
+                ["position"] = i + 1,
+                ["name"] = step.Name,
+                ["item"] = Origin + step.Path,
+            }),
+        });
 
     internal static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
 
@@ -193,6 +219,10 @@ public static partial class SpaPages
                 .Replace("property=\"og:image:width\" content=\"2400\"", $"property=\"og:image:width\" content=\"{ShareImageRenderer.Width}\"")
                 .Replace("property=\"og:image:height\" content=\"1260\"", $"property=\"og:image:height\" content=\"{ShareImageRenderer.Height}\"")
                 .Replace("property=\"og:image:alt\" content=\"Royale DeckLab\"", $"property=\"og:image:alt\" content=\"{title}\"");
+        }
+        if (page.StructuredData is { } structuredData)
+        {
+            html = html.Replace("</head>", $"  <script type=\"application/ld+json\">{structuredData}</script>\n  </head>");
         }
         if (page.Body is { } body)
         {

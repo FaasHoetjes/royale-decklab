@@ -124,11 +124,24 @@ public sealed class SpaPagesTests
     public void CardPage_NamesTheCardAndItsNumbers()
     {
         var page = Resolve("/cards/mega-knight");
-        Assert.Equal("Best Mega Knight War Decks & Win Rate · Royale DeckLab", page.Title);
+        Assert.Equal("Best Mega Knight Decks for Clash Royale War (November 2026)", page.Title);
         Assert.Equal(
             "The best Mega Knight decks for Clash Royale Clan War, ranked on real war battles: 52.3% win rate, 8.1% play rate and its change since the last balance update.",
             page.Description);
     }
+
+    [Fact]
+    public void CardPage_HeadCarriesItsBreadcrumb()
+    {
+        var html = SpaPages.Render("<head>\n  </head><body></body>", Resolve("/cards/mini-pekka"));
+        Assert.Contains("<script type=\"application/ld+json\">", html);
+        Assert.Contains("\"@type\":\"BreadcrumbList\"", html);
+        Assert.Contains("\"name\":\"Mini P.E.K.K.A\",\"item\":\"https://royaledecklab.com/cards/mini-pekka\"", html);
+    }
+
+    [Fact]
+    public void OtherPages_HaveNoStructuredData()
+        => Assert.Null(Resolve("/best-decks").StructuredData);
 
     [Fact]
     public void BestDecks_NamesTheCurrentMonth()
@@ -146,8 +159,9 @@ public sealed class SpaPagesTests
     {
         var html = SpaPages.Render(File.ReadAllText(IndexHtmlPath()), Resolve("/cards/mega-knight"));
 
-        Assert.Contains("<title>Best Mega Knight War Decks &amp; Win Rate &#183; Royale DeckLab</title>", html);
-        Assert.Equal(2, Count(html, "content=\"Best Mega Knight War Decks &amp; Win Rate &#183; Royale DeckLab\""));
+        Assert.Contains("<title>Best Mega Knight Decks for Clash Royale War (November 2026)</title>", html);
+        Assert.Equal(2, Count(html, "content=\"Best Mega Knight Decks for Clash Royale War (November 2026)\""));
+        Assert.Contains("<script type=\"application/ld+json\">", html);
         Assert.Equal(3, Count(html, "content=\"The best Mega Knight decks for Clash Royale Clan War, ranked on real war battles: 52.3% win rate"));
         Assert.Contains("<meta property=\"og:url\" content=\"https://royaledecklab.com/cards/mega-knight\" />", html);
         Assert.Contains("<link rel=\"canonical\" href=\"https://royaledecklab.com/cards/mega-knight\" />", html);

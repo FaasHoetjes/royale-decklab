@@ -57,7 +57,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       label: 'War Deck Builder',
       tab: 'Builder',
       title: 'Clash Royale War Deck Builder',
-      description: 'Build four Clash Royale war decks with no shared cards and see how each one scores in the current war meta.',
+      description: 'Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.',
       end: false,
       icon: <GridIcon />,
     },
