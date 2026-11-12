@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RoyaleDeckLab.Api.Tests;
 
@@ -67,7 +68,7 @@ public sealed class ClanWarCacheTests
     public ClanWarCacheTests()
     {
         var factory = new StubFactory(_api);
-        _cache = new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), TimeProvider.System, new ClanHistoryCache(factory, TimeProvider.System));
+        _cache = new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), TimeProvider.System, new ClanHistoryCache(factory, TimeProvider.System), NullLogger<ClanWarCache>.Instance);
         Assert.True(ClanTag.TryParse("l9vrj", out var tag));
         _tag = tag;
     }
@@ -117,7 +118,7 @@ public sealed class ClanWarCacheTests
         using var memory = new MemoryCache(new MemoryCacheOptions());
         var factory = new StubFactory(_api);
         var history = new ClanHistoryCache(factory, TimeProvider.System);
-        var cache = new ClanWarCache(factory, memory, TimeProvider.System, history);
+        var cache = new ClanWarCache(factory, memory, TimeProvider.System, history, NullLogger<ClanWarCache>.Instance);
         await cache.GetAsync(_tag);
         Assert.Equal(3, _api.Calls);
         memory.Remove((nameof(ClanWarCache), _tag.Value));

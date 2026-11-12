@@ -96,7 +96,9 @@ public sealed class ReminderService(
             return;
         }
         var isAllDone = war.DecksLeftToday == 0;
-        var hasNothingToPost = !war.IsBattleDay || (isAllDone && !reminder.Settings.PostWhenAllDone);
+        // A guessed battle day might be a phase without war battles; pinging a whole server about it is worse than
+        // missing one reminder.
+        var hasNothingToPost = !war.IsBattleDay || war.IsPeriodGuessed || (isAllDone && !reminder.Settings.PostWhenAllDone);
         if (hasNothingToPost)
         {
             return;

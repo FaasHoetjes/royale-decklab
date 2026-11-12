@@ -72,7 +72,7 @@ public sealed class DiscordRemindersTests : IDisposable
     private ClanWarCache ClanWars()
     {
         var factory = new StubFactory(_http);
-        return new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock));
+        return new ClanWarCache(factory, new MemoryCache(new MemoryCacheOptions()), _clock, new ClanHistoryCache(factory, _clock), NullLogger<ClanWarCache>.Instance);
     }
 
     private DiscordReminderSetup Setup(WebhookTokenCipher cipher)
@@ -112,16 +112,16 @@ public sealed class DiscordRemindersTests : IDisposable
             {
                 return request.Method == HttpMethod.Get ? await LookUpAsync() : await PostAsync(request, ct);
             }
-            if (ClashRoyaleStatus != HttpStatusCode.OK)
+            var tag = Regex.Match(uri.AbsoluteUri, "%23([A-Za-z0-9]+)").Groups[1].Value.ToUpperInvariant();
+            if (ClashRoyaleStatus != HttpStatusCode.OK || tag == BrokenClan)
             {
-                return Json(ClashRoyaleStatus, "{}");
+                return Json(tag == BrokenClan ? HttpStatusCode.InternalServerError : ClashRoyaleStatus, "{}");
             }
 
-            var tag = Regex.Match(uri.AbsoluteUri, "%23([A-Za-z0-9]+)").Groups[1].Value.ToUpperInvariant();
             var path = uri.AbsolutePath;
             var body = path switch
             {
-                _ when path.EndsWith("/currentriverrace", StringComparison.Ordinal) => RaceJson(tag == BrokenClan ? "someNewPeriod" : Period),
+                _ when path.EndsWith("/currentriverrace", StringComparison.Ordinal) => RaceJson(Period),
                 _ when path.EndsWith("/riverracelog", StringComparison.Ordinal) => LogJson.Replace(LastRaceEnded, LastRaceEndedAt),
                 _ => ClanJson,
             };
@@ -217,6 +217,17 @@ public sealed class DiscordRemindersTests : IDisposable
     {
         _http.Period = "training";
         await _setup.SaveAsync(_clan, Url, TwoHours, default);
+
+        await _service.PostDueAsync(default);
+
+        Assert.Empty(_http.DiscordPosts);
+    }
+
+    [Fact]
+    public async Task PostsNothing_OnAPeriodItDoesntKnow()
+    {
+        await _setup.SaveAsync(_clan, Url, TwoHours, default);
+        _http.Period = "someNewPeriod";
 
         await _service.PostDueAsync(default);
 
