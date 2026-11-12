@@ -7,6 +7,7 @@ export interface ClanRef {
 }
 
 const STORAGE_KEY = 'recentClans';
+const PICKING_KEY = 'pickingClan';
 const MAX_STORED = 5;
 const MAX_SHOWN = 3;
 const MIN_NAME_LENGTH = 3;
@@ -25,15 +26,31 @@ export function loadRecentClans(): ClanRef[] {
   }
 }
 
-/** Moves the clan to the front of the list, newest first. */
+/** Moves the clan to the front of the list, newest first, and ends picking another. */
 export function rememberClan(clan: ClanRef): ClanRef[] {
   const clans = [clan, ...loadRecentClans().filter((c) => c.tag !== clan.tag)].slice(0, MAX_STORED);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clans));
+    localStorage.removeItem(PICKING_KEY);
   } catch {
     // Storage can be full or blocked; the list just won't survive a reload.
   }
   return clans;
+}
+
+/** After "Other clan", the planner keeps showing the finder until a clan is opened, even after leaving it. */
+export function startPickingClan(): void {
+  try {
+    localStorage.setItem(PICKING_KEY, '1');
+  } catch {}
+}
+
+export function isPickingClan(): boolean {
+  try {
+    return localStorage.getItem(PICKING_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /** The clans worth a shortcut: not the one the back link already leads to. */

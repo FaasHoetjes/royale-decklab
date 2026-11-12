@@ -821,3 +821,8 @@ input:disabled {
   white-space: nowrap;
   border: 0;
 }
+
+.layout-page:has(> .fills-page) {
+  display: flex;
+  flex-direction: column;
+}

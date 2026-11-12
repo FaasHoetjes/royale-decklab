@@ -13,11 +13,3 @@ export function periodNote(stats: CardStatsResponse): string {
   }
   return `How every card does in Clan War, from ${battlesIn(stats)} ${sincePhrase(stats)}.`;
 }
-
-/** Which battles the numbers come from, for the info tip in the page intro. */
-export function sourceNote(stats: CardStatsResponse): string {
-  if (stats.isLastPatch && stats.until) {
-    return `From ${battlesIn(stats)} last patch (${patchSpan(stats.since, stats.until)}). The new season's war battles aren't in yet.`;
-  }
-  return `From ${battlesIn(stats)} ${sincePhrase(stats)}.`;
-}

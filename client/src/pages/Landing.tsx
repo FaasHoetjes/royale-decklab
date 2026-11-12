@@ -24,7 +24,9 @@ export default function Landing() {
   const [error, setError] = useState('');
 
   const location = useLocation();
-  const linkState = (location.state ?? null) as { tagError?: string; badTag?: string } | null;
+  const linkState = (location.state ?? null) as { tagError?: string; badTag?: string; returnTo?: string } | null;
+  // Pages that need a tag send people here with returnTo, to land back on them once it's in.
+  const returnTo = linkState?.returnTo?.startsWith('/') && !linkState.returnTo.startsWith('//') ? linkState.returnTo : null;
   // A card page's build button sends generator options along (?require=…), to apply once the tag is in.
   const carriedQuery = toQuery(parseOptions(new URLSearchParams(location.search)));
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function Landing() {
     try {
       await queryClient.fetchQuery(playerWarDecksOptions(tag, carriedQuery));
       setActivePlayerTag(tag);
-      navigate(`/${code}${location.search}`);
+      navigate(returnTo ?? `/${code}${location.search}`);
     } catch {
       setError('Couldn\'t load that player. Check your tag or try again.');
     } finally {

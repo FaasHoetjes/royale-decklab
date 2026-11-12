@@ -117,7 +117,7 @@ export default function Layout() {
       >
         <ElixirGradientDefs />
         {/* Grows to fill the screen, so the footer stays at the bottom even on short pages. */}
-        <div style={styles.page}>
+        <div className="layout-page" style={styles.page}>
           <MetaLoadingNotice />
           <Suspense fallback={<p role="status" style={{ padding: '20px 0', color: theme.text.secondary }}>Loading page…</p>}>
             <Outlet />

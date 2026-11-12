@@ -13,8 +13,7 @@ import CardLink from '../components/CardLink';
 import WinRateChange from '../components/WinRateChange';
 import FilterPopover from '../components/FilterPopover';
 import LoadError from '../components/LoadError';
-import InfoTip from '../components/InfoTip';
-import { periodNote, sourceNote } from '../lib/statsPeriod';
+import { periodNote } from '../lib/statsPeriod';
 import { SortSegment } from './CardSortSegment';
 
 const EAGER_TILE_COUNT = 25;
@@ -66,8 +65,8 @@ export default function Cards() {
       <div style={{ marginBottom: isMobile ? '18px' : '26px' }}>
         <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>Cards</h1>
         <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
-          <IntroSummary stats={stats} isMobile={isMobile} theme={theme} />
-          <span style={{ display: 'block' }}>{isMobile ? 'Tap' : 'Click'} a card for its detailed stats.</span>
+          <IntroSummary stats={stats} isMobile={isMobile} />
+          {isMobile ? ' Tap' : ' Click'} a card for its detailed stats.
         </p>
       </div>
 
@@ -185,19 +184,9 @@ function gamesPeriodOf(stats: CardStatsResponse): string {
   return stats.since ? 'this patch' : 'in the last 30 days';
 }
 
-function IntroSummary({ stats, isMobile, theme }: { stats: CardStatsResponse | undefined; isMobile: boolean; theme: Theme }) {
-  if (!stats) return <>How every card does in Clan War.</>;
-  if (!isMobile) return <>{periodNote(stats)}</>;
-  return (
-    <>
-      {stats.isLastPatch ? 'How every card did in Clan War last patch.' : 'How every card does in Clan War.'}
-      <span style={styles.sourceTip}>
-        <InfoTip ariaLabel="Which battles these numbers come from" color={theme.text.secondary} width={250} placement="bottom">
-          {sourceNote(stats)}
-        </InfoTip>
-      </span>
-    </>
-  );
+function IntroSummary({ stats, isMobile }: { stats: CardStatsResponse | undefined; isMobile: boolean }) {
+  if (stats && !isMobile) return <>{periodNote(stats)}</>;
+  return <>{stats?.isLastPatch ? 'How every card did in Clan War last patch.' : 'How every card does in Clan War.'}</>;
 }
 
 function TileStats({ theme, stat }: { theme: Theme; stat: CardStat }) {
@@ -235,12 +224,6 @@ const styles = {
   subtitle: {
     fontSize: '15px',
     margin: '8px 0 0',
-    maxWidth: '760px',
-  },
-  sourceTip: {
-    display: 'inline-flex' as const,
-    verticalAlign: '-2px',
-    marginLeft: '6px',
   },
   controls: {
     display: 'flex' as const,
