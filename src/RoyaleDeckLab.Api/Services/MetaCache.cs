@@ -220,13 +220,24 @@ public sealed class MetaCache(
         }
     }
 
-    public async Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
+    public Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
+        => MoveEpochAsync(ms, seasonId: null, ct);
+
+    /// <summary>
+    /// Moves the patch boundary to a new season's start. The season is saved together with the boundary: saved only
+    /// after the battles are tallied again, a restart in between would find the same season new once more, and its
+    /// second boundary would make the last patch a few minutes long.
+    /// </summary>
+    public Task<List<DeckMeta>> StartSeasonAsync(int seasonId, long ms, CancellationToken ct = default)
+        => MoveEpochAsync(ms, seasonId, ct);
+
+    private async Task<List<DeckMeta>> MoveEpochAsync(long ms, int? seasonId, CancellationToken ct)
     {
-        Interlocked.Exchange(ref _epochStart, ms);
         using (var scope = scopeFactory.CreateScope())
         {
-            await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, ct);
+            await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, seasonId, ct);
         }
+        Interlocked.Exchange(ref _epochStart, ms);
         // The boundary is saved by now, so a caller who gives up waiting mustn't leave it unapplied until the next rebuild.
         return await AggregateFromStoreAsync("epoch update", CancellationToken.None);
     }

@@ -67,8 +67,7 @@ public sealed class SeasonWatchService(
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        await cache.SetEpochAsync(now, ct);
-        await store.SetKnownSeasonIdAsync(latest, ct);
+        await cache.StartSeasonAsync(latest, now, ct);
         logger.LogInformation("New season detected ({Old} -> {New}); patch boundary set to {Epoch}",
             known, latest, MetaCache.IsoMs(now));
     }

@@ -118,6 +118,34 @@ public sealed class CardPeriodStorageTests : IDisposable
     }
 
     [Fact]
+    public async Task A_new_season_is_saved_together_with_its_patch_boundary()
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp, 3, 2, 1);
+
+        await cache.StartSeasonAsync(150, Now);
+
+        Assert.Equal(150, Store(sp, s => s.GetKnownSeasonId()));
+        Assert.Equal(Now, Store(sp, s => s.GetEpochStart()));
+        Assert.Equal(Now, cache.EpochStart);
+    }
+
+    [Fact]
+    public async Task A_patch_boundary_that_couldnt_be_saved_isnt_applied()
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp, 3, 2, 1);
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.StartSeasonAsync(150, Now, cancelled.Token));
+
+        Assert.Equal(0, cache.EpochStart);
+        Assert.Equal(0, Store(sp, s => s.GetEpochStart()));
+        Assert.Equal(0, Store(sp, s => s.GetKnownSeasonId()));
+    }
+
+    [Fact]
     public async Task A_saved_patch_is_only_replaced_by_a_tally_with_more_battles()
     {
         using var sp = Services();
