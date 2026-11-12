@@ -15,6 +15,16 @@ function hasChampionAt(deck: Deck, slot: number, cardById: Map<number, BuilderCa
   return id != null && cardById.get(id)?.rarity === 'champion';
 }
 
+/** Cards in the deck the player doesn't own, which keep it from being scored. */
+export function unownedCards(deck: Deck, cardById: Map<number, BuilderCard>): BuilderCard[] {
+  return deckCards(deck, cardById).filter((card) => !card.owned);
+}
+
+export function unownedNote(unowned: BuilderCard[]): string {
+  const [only] = unowned;
+  return unowned.length === 1 && only ? `Not scored: you don't own ${only.name}` : `Not scored: ${unowned.length} cards you don't own`;
+}
+
 export function deckCards(deck: Deck, cardById: Map<number, BuilderCard>): BuilderCard[] {
   return deck.flatMap((id) => {
     const card = id != null ? cardById.get(id) : undefined;

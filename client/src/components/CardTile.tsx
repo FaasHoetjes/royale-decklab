@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { slotKind, slotBorderStyle, CARD_FRAME } from '../lib/slotStyles';
 import ElixirBadge from './ElixirBadge';
+import LockIcon from './LockIcon';
 
 interface CardTileProps {
   name: string;
@@ -18,6 +19,8 @@ interface CardTileProps {
   lazyLoad?: boolean;
   fetchPriority?: 'high' | 'low' | 'auto';
   artStyle?: CSSProperties;
+  /** Greys the art out with a lock, for a card the player doesn't own. */
+  locked?: boolean;
   children?: ReactNode;
 }
 
@@ -34,6 +37,7 @@ export default function CardTile({
   lazyLoad,
   fetchPriority,
   artStyle,
+  locked = false,
   children,
 }: CardTileProps) {
   const kind = slotIndex != null ? slotKind(slotIndex) : null;
@@ -58,7 +62,7 @@ export default function CardTile({
             loading={lazyLoad ? 'lazy' : undefined}
             decoding={lazyLoad ? 'async' : undefined}
             fetchPriority={fetchPriority}
-            style={styles.image}
+            style={locked ? { ...styles.image, ...styles.lockedImage } : styles.image}
             onError={() => setBroken(true)}
           />
         ) : (
@@ -68,6 +72,11 @@ export default function CardTile({
         )}
         {elixirCost != null && <ElixirBadge cost={elixirCost} />}
         {level != null && <div style={styles.level}>Level {level}</div>}
+        {locked && (
+          <span style={styles.lock} title="You don't own this card">
+            <LockIcon size="62%" />
+          </span>
+        )}
         {children}
       </div>
       {showName && <div style={{ ...styles.name, color: nameColor, ...(nameSize && { fontSize: nameSize }), ...(nameLines > 1 && wrappedName(nameLines)) }}>{name}</div>}
@@ -120,6 +129,22 @@ const styles = {
     width: '100%',
     height: '100%',
     objectFit: 'cover' as const,
+  },
+  lockedImage: {
+    filter: 'grayscale(1)',
+    opacity: 0.45,
+  },
+  lock: {
+    position: 'absolute' as const,
+    top: '5cqw',
+    right: '5cqw',
+    width: '30cqw',
+    height: '30cqw',
+    borderRadius: '50%',
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    color: '#ffffff',
   },
   level: {
     position: 'absolute' as const,

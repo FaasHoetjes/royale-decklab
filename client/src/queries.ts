@@ -190,10 +190,6 @@ export function useDeckScores(
   });
 }
 
-export function fetchCollectionOnce(qc: QueryClient, tag: string) {
-  return qc.fetchQuery(playerCollectionOptions(tag));
-}
-
 /** Fetch on opening/returning or manual refresh; the server shares a clan snapshot for 60 seconds. */
 export const useClanWar = (clanTag: string | null) => {
   const war = useQuery({

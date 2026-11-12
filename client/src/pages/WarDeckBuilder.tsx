@@ -6,7 +6,7 @@ import { useAllCards, usePlayerCollection, useDeckScores } from '../queries';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDeckBoard } from '../hooks/useDeckBoard';
 import Tweened from '../components/Tweened';
-import { toBuilderCards, type BuilderCard } from '../lib/builderCards';
+import { maxedCollection, toBuilderCards, type BuilderCard } from '../lib/builderCards';
 import { builderDeckNames, championFits, nextSlot, placeInDeck } from '../lib/builderDecks';
 import { MAX_DISPLAY_LEVEL } from '../lib/cardDisplay';
 import { flyCard, replayAnimation } from '../lib/flyCard';
@@ -23,15 +23,39 @@ import { BuilderSkeleton } from '../components/LoadingSkeletons';
 import LoadError from '../components/LoadError';
 import { MOBILE_HEADER_HEIGHT as MOBILE_HEADER } from '../lib/layout';
 
+const MAXED_KEY = 'wdb_maxed';
+
+function loadPreferMaxed() {
+  try {
+    return sessionStorage.getItem(MAXED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function WarDeckBuilder() {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
 
+  // Without a player tag there are no cards of your own, so the builder scores against a maxed collection.
+  const [preferMaxed, setPreferMaxed] = useState(loadPreferMaxed);
+  const maxed = !activePlayerTag || preferMaxed;
+  const choosePreferMaxed = (on: boolean) => {
+    setPreferMaxed(on);
+    try {
+      if (on) sessionStorage.setItem(MAXED_KEY, '1');
+      else sessionStorage.removeItem(MAXED_KEY);
+    } catch {}
+  };
+
   const cardsQuery = useAllCards();
-  const catalog = cardsQuery.data ?? [];
-  const collectionQuery = usePlayerCollection(activePlayerTag);
-  const owned = collectionQuery.data ?? [];
+  const catalog = useMemo(() => cardsQuery.data ?? [], [cardsQuery.data]);
+  const collectionQuery = usePlayerCollection(maxed ? null : activePlayerTag);
+  const owned = useMemo(
+    () => (maxed ? maxedCollection(catalog) : collectionQuery.data ?? []),
+    [maxed, catalog, collectionQuery.data]
+  );
 
   const loading = cardsQuery.isLoading || collectionQuery.isLoading;
   const loadFailed = cardsQuery.isError || collectionQuery.isError;
@@ -241,7 +265,16 @@ export default function WarDeckBuilder() {
         <div style={{ minWidth: 0 }}>
           <h1 className={isMobile ? 'visually-hidden' : undefined} style={{ color: theme.text.primary, margin: 0, fontSize: '1.5em' }}>War Deck Builder</h1>
           <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined, color: theme.text.secondary }}>
-            Build four war decks and see how they score with your cards.
+            Build four war decks and see how they score with {maxed ? 'every card maxed' : 'your cards'}.{' '}
+            {activePlayerTag ? (
+              <button type="button" onClick={() => choosePreferMaxed(!maxed)} style={{ ...styles.modeLink, color: theme.accent }}>
+                {maxed ? 'Use your cards' : 'Try all maxed'}
+              </button>
+            ) : (
+              <Link to="/" state={{ returnTo: '/builder' }} onClick={() => choosePreferMaxed(false)} style={{ ...styles.modeLink, color: theme.accent }}>
+                Use your cards
+              </Link>
+            )}
           </p>
         </div>
         <div style={styles.headerRight}>
@@ -325,35 +358,24 @@ export default function WarDeckBuilder() {
             theme={theme}
             isMobile={isMobile}
           />
-          {activePlayerTag ? (
-            <CardCollection
-              cards={builderCards}
-              usedIn={usedIn}
-              championFits={championFits(activeDeck, cardById)}
-              onPick={pickCard}
-              filters={filters}
-              setFilters={setFilters}
-              sortIndex={sortIndex}
-              setSortIndex={setSortIndex}
-              descending={descending}
-              setDescending={setDescending}
-              notice={notice}
-              deckFull={deckFull}
-              open={cardsOpen}
-              onToggle={() => setBrowsing(!cardsOpen)}
-              theme={theme}
-              isMobile={isMobile}
-            />
-          ) : (
-            <div style={{ ...styles.panel, borderColor: theme.border, backgroundColor: theme.bg.secondary }}>
-              <p style={{ ...styles.panelText, color: theme.text.secondary }}>
-                The builder uses your card collection. Search your player tag first.
-              </p>
-              <Link to="/" state={{ returnTo: '/builder' }} style={{ ...styles.panelButton, backgroundColor: theme.text.primary, color: theme.bg.primary }}>
-                Search your player tag
-              </Link>
-            </div>
-          )}
+          <CardCollection
+            cards={builderCards}
+            usedIn={usedIn}
+            championFits={championFits(activeDeck, cardById)}
+            onPick={pickCard}
+            filters={filters}
+            setFilters={setFilters}
+            sortIndex={sortIndex}
+            setSortIndex={setSortIndex}
+            descending={descending}
+            setDescending={setDescending}
+            notice={notice}
+            deckFull={deckFull}
+            open={cardsOpen}
+            onToggle={() => setBrowsing(!cardsOpen)}
+            theme={theme}
+            isMobile={isMobile}
+          />
         </>
       )}
     </div>
@@ -446,24 +468,14 @@ const styles = {
     whiteSpace: 'nowrap' as const,
     cursor: 'pointer' as const,
   },
-  panel: {
-    border: '1px solid',
-    borderRadius: '12px',
-    padding: '28px 24px',
-    textAlign: 'center' as const,
-  },
-  panelText: {
-    fontSize: '15px',
-    lineHeight: 1.6,
-    margin: '0 0 4px',
-  },
-  panelButton: {
-    display: 'inline-block' as const,
-    marginTop: '14px',
-    padding: '10px 22px',
-    borderRadius: '8px',
-    textDecoration: 'none',
-    fontSize: '14px',
+  modeLink: {
+    padding: 0,
+    border: 0,
+    background: 'none',
+    font: 'inherit',
     fontWeight: 600 as const,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap' as const,
+    cursor: 'pointer' as const,
   },
 };

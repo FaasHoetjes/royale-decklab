@@ -13,14 +13,12 @@ interface SetSectionProps {
   expanded: boolean;
   deckNames: Map<string, string | undefined>;
   isMobile: boolean;
-  copying: boolean;
-  copyBusy: boolean;
   onToggle: (key: string) => void;
-  onCopy: (set: BestDeckSet, setIdx: number) => void;
+  onCopy: (set: BestDeckSet) => void;
 }
 
 // Memoized so folding one set re-renders that set, not all ten.
-export const SetSection = memo(function SetSection({ set, setKey, setIdx, expanded, deckNames, isMobile, copying, copyBusy, onToggle, onCopy }: SetSectionProps) {
+export const SetSection = memo(function SetSection({ set, setKey, setIdx, expanded, deckNames, isMobile, onToggle, onCopy }: SetSectionProps) {
   const theme = getTheme();
   const decksRef = useRef<HTMLDivElement>(null);
   // Lags `expanded` while the decks slide shut, so the chevron turns right away but the decks stay until covered.
@@ -52,15 +50,10 @@ export const SetSection = memo(function SetSection({ set, setKey, setIdx, expand
         <button
           type="button"
           className="glass-btn mobile-touch-target"
-          onClick={() => onCopy(set, setIdx)}
-          disabled={copyBusy}
-          style={{
-            ...styles.useButton,
-            cursor: copyBusy ? 'wait' : 'pointer',
-            opacity: copyBusy && !copying ? 0.6 : 1,
-          }}
+          onClick={() => onCopy(set)}
+          style={{ ...styles.useButton, cursor: 'pointer' }}
         >
-          <BuilderIcon spinning={copying} />
+          <BuilderIcon />
           Use set in builder
         </button>
       </GeneratorHeader>
@@ -85,14 +78,7 @@ export const SetSection = memo(function SetSection({ set, setKey, setIdx, expand
   );
 });
 
-function BuilderIcon({ spinning }: { spinning: boolean }) {
-  if (spinning) {
-    return (
-      <svg viewBox="0 0 24 24" style={{ ...styles.icon, animation: 'spin 1s linear infinite' }} aria-hidden="true">
-        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20" strokeLinecap="round" />
-      </svg>
-    );
-  }
+function BuilderIcon() {
   return (
     <svg viewBox="0 0 24 24" style={styles.icon} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="9" rx="1.5" />

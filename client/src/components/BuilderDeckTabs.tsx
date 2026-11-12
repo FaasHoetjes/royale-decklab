@@ -5,7 +5,8 @@ import CardTile from './CardTile';
 import { cardIconUrl } from '../lib/cardDisplay';
 import type { BuilderCard } from '../lib/builderCards';
 import { featuredCard } from '../lib/archetypes';
-import { deckCards, type Deck } from '../lib/builderDecks';
+import { deckCards, unownedCards, type Deck } from '../lib/builderDecks';
+import LockIcon from './LockIcon';
 import { useRovingGroup } from '../hooks/useRovingGroup';
 
 interface BuilderDeckTabsProps {
@@ -61,7 +62,7 @@ export default function BuilderDeckTabs({ decks, names, scores, active, onSelect
               {!isMobile && (
                 <span style={{ ...styles.name, color: selected ? theme.text.primary : theme.text.secondary }}>{names[i]}</span>
               )}
-              <ScoreText score={scores?.[i]} theme={theme} style={{ fontSize: isMobile ? '13px' : '15px' }} />
+              <ScoreText score={scores?.[i]} unowned={unownedCards(deck, cardById).length > 0} theme={theme} style={{ fontSize: isMobile ? '13px' : '15px' }} />
             </span>
           </button>
         );
@@ -70,7 +71,14 @@ export default function BuilderDeckTabs({ decks, names, scores, active, onSelect
   );
 }
 
-function ScoreText({ score, theme, style }: { score?: BuilderDeckScore; theme: Theme; style?: CSSProperties }) {
+function ScoreText({ score, unowned, theme, style }: { score?: BuilderDeckScore; unowned: boolean; theme: Theme; style?: CSSProperties }) {
+  if (unowned) {
+    return (
+      <span style={{ ...styles.score, ...style, color: theme.text.secondary }} title="Not scored: this deck has cards you don't own">
+        <LockIcon size="1em" style={{ verticalAlign: '-0.1em' }} />
+      </span>
+    );
+  }
   if (!score || score.score == null) {
     return <span style={{ ...styles.score, ...style, color: theme.text.tertiary }}>–</span>;
   }
