@@ -1,34 +1,41 @@
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>Keeps every catalog card's art on disk and current, so new and replaced art reach the site within a cycle.</summary>
 public sealed class CardArtRefreshService(
     CardCatalog catalog,
     CardArtCache art,
     ILogger<CardArtRefreshService> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(1);
     private const int ParallelDownloads = 4;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
-            using var timer = new PeriodicTimer(Interval);
-            do
+            await art.LoadVersionsFromDiskAsync(stoppingToken);
+            while (!stoppingToken.IsCancellationRequested)
             {
-                try
-                {
-                    await RefreshAllAsync(stoppingToken);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogError(ex, "Card art refresh failed; retrying on the next tick");
-                }
+                var succeeded = await TryRefreshAllAsync(stoppingToken);
+                await Task.Delay(succeeded ? Interval : RetryDelay, stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    private async Task<bool> TryRefreshAllAsync(CancellationToken ct)
+    {
+        try
+        {
+            await RefreshAllAsync(ct);
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Card art refresh failed; retrying in {Delay}", RetryDelay);
+            return false;
         }
     }
 

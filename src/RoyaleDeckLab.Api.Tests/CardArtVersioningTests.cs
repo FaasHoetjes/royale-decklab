@@ -107,6 +107,24 @@ public sealed class CardArtVersioningTests : IDisposable
     }
 
     [Fact]
+    public async Task ArtOnDisk_IsPublishedBeforeAnyCdnCheck()
+    {
+        await _art.RefreshAsync(Kind, Hash, CancellationToken.None);
+        var before = _art.PublishedUrl(ArtUrl);
+
+        var restarted = new CardArtCache(
+            _provider.GetRequiredService<IHttpClientFactory>(),
+            _provider.GetRequiredService<CardCatalog>(),
+            _provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaOptions>>(),
+            _provider.GetRequiredService<IHostEnvironment>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CardArtCache>.Instance);
+        await restarted.LoadVersionsFromDiskAsync(CancellationToken.None);
+
+        Assert.Equal(before, restarted.PublishedUrl(ArtUrl));
+        Assert.Equal(0, _cdn.NotModifiedAnswers);
+    }
+
+    [Fact]
     public async Task ApiResponses_CarryTheVersionedUrl()
     {
         await _art.RefreshAsync(Kind, Hash, CancellationToken.None);

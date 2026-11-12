@@ -112,6 +112,26 @@ public sealed partial class CardArtCache
         await DownloadOnceAsync(kind, hash, ct);
     }
 
+    /// <summary>Publishes the art already on disk before any check against the CDN has run.</summary>
+    public async Task LoadVersionsFromDiskAsync(CancellationToken ct)
+    {
+        if (!Directory.Exists(_dir))
+        {
+            return;
+        }
+        foreach (var path in Directory.EnumerateFiles(_dir, "*.webp", SearchOption.AllDirectories))
+        {
+            ct.ThrowIfCancellationRequested();
+            var kind = Path.GetFileName(Path.GetDirectoryName(path)) ?? "";
+            var hash = Path.GetFileNameWithoutExtension(path);
+            if (!IsWellFormed(kind, hash))
+            {
+                continue;
+            }
+            await RememberVersionFromDiskAsync(kind, hash, path);
+        }
+    }
+
     private static string Key(string kind, string hash) => $"{kind}/{hash}";
 
     private string ArtPath(string kind, string hash) => Path.Combine(_dir, kind, hash + ".webp");
@@ -227,7 +247,8 @@ public sealed partial class CardArtCache
         {
             return;
         }
-        _versions[key] = VersionOf(await File.ReadAllBytesAsync(path));
+        // TryAdd: a download that finished while the file was being read already holds the newer version.
+        _versions.TryAdd(key, VersionOf(await File.ReadAllBytesAsync(path)));
     }
 
     private static string VersionOf(byte[] webp) =>
