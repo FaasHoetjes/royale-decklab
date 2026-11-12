@@ -45,7 +45,10 @@ public sealed class MetaCache(
         }
     }
 
-    /// <summary>False after a restart until the stored battles are aggregated, or startup finds there are none.</summary>
+    /// <summary>
+    /// False after a restart until the stored battles are aggregated. With no stored battles it stays false until the
+    /// first crawl ends, however it ends, so a new install answers 503 on the meta endpoints for that crawl.
+    /// </summary>
     public bool IsLoaded => _isLoaded;
 
     public static string DeckKey(IEnumerable<int> cardIds) => string.Join(',', cardIds.OrderBy(x => x));
