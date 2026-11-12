@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useNavigationType } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
@@ -27,6 +27,9 @@ const setKey = (set: BestDeckSet) => set.decks.map((d) => deckKey(d.cardIds)).so
 
 const FOLDED_KEY = 'bestDecks_folded';
 
+// Enough to fill a screen. The rest render after the page appears, so tapping its tab doesn't wait on all ten.
+const FIRST_SETS = 2;
+
 function loadFolded(): ReadonlySet<string> {
   try {
     const saved: unknown = JSON.parse(sessionStorage.getItem(FOLDED_KEY) ?? '[]');
@@ -45,6 +48,12 @@ export default function BestWarDecks() {
   const { data, isLoading, isError, isFetching, refetch } = useBestDecks();
   const [copyingSetIdx, setCopyingSetIdx] = useState<number | null>(null);
   const [foldedSets, setFoldedSets] = useState(loadFolded);
+  // Back and forward restore the scroll position as the page mounts, so those need every set there at once.
+  const navigationType = useNavigationType();
+  const [allSets, setAllSets] = useState(navigationType === 'POP');
+  useEffect(() => {
+    if (data && !allSets) startTransition(() => setAllSets(true));
+  }, [data, allSets]);
 
   const toggleSet = useCallback((key: string) => {
     setFoldedSets((folded) => {
@@ -135,7 +144,7 @@ export default function BestWarDecks() {
 
       {data && (
         <div style={{ ...styles.setList, gap: isMobile ? '14px' : '16px' }}>
-          {data.sets.map((set, setIdx) => {
+          {(allSets ? data.sets : data.sets.slice(0, FIRST_SETS)).map((set, setIdx) => {
             const key = setKey(set);
             return (
               <SetSection
