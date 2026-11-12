@@ -79,6 +79,11 @@
   --down: #dc2626;
   --warn: #b45309;
   --info: #2563eb;
+  --rarity-common: #5b7a99;
+  --rarity-rare: #c2410c;
+  --rarity-epic: #9333ea;
+  --rarity-legendary: #0e7490;
+  --rarity-champion: #a16207;
   --status-started: #d97706;
   --water: linear-gradient(180deg, #e0ecf8, #c9ddf2);
   --segment-thumb: #ffffff;
@@ -153,6 +158,11 @@
   --down: #f87171;
   --warn: #fbbf24;
   --info: #60a5fa;
+  --rarity-common: #9db7d1;
+  --rarity-rare: #fbb04c;
+  --rarity-epic: #cf8bf5;
+  --rarity-legendary: #5fdcec;
+  --rarity-champion: #f2c94c;
   --status-started: #e8b24a;
   --water: linear-gradient(180deg, #0e2747, #0a1a31);
   --segment-thumb: #3a3a40;

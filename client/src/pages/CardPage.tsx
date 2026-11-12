@@ -27,10 +27,35 @@ const VERSION_SLOT = { evo: 0, hero: 1, normal: undefined } as const;
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function specialVersionLabel(versions: { evo: boolean; hero: boolean }): string | null {
-  if (versions.evo && versions.hero) return 'has Evo and Hero';
-  if (versions.evo) return 'has an Evo';
-  if (versions.hero) return 'has a Hero';
+  if (versions.evo && versions.hero) return 'Evo & Hero';
+  if (versions.evo) return 'Evo';
+  if (versions.hero) return 'Hero';
   return null;
+}
+
+// The elixir cost is left out: the drop on the card art already shows it.
+function FactChips({ rarity, facts }: { rarity: string | undefined; facts: (string | null)[] }) {
+  const rarityColor = rarity ? `var(--rarity-${rarity})` : null;
+  return (
+    <div style={styles.chips}>
+      {rarity && rarityColor && (
+        <span
+          style={{
+            ...styles.chip,
+            color: rarityColor,
+            borderColor: `color-mix(in srgb, ${rarityColor} 45%, transparent)`,
+            backgroundColor: `color-mix(in srgb, ${rarityColor} 12%, transparent)`,
+          }}
+        >
+          <span style={{ ...styles.chipDot, backgroundColor: rarityColor }} />
+          {capitalize(rarity)}
+        </span>
+      )}
+      {facts.filter(Boolean).map((fact) => (
+        <span key={fact} style={styles.chip}>{fact}</span>
+      ))}
+    </div>
+  );
 }
 
 /** The generator with this card required, for the active player; without one, the landing page carries it to the generator. */
@@ -92,12 +117,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
   const versions = specialVersions(card.maxEvolutionLevel);
   const isChampion = card.rarity === 'champion';
   const shownVersion = mostPlayedVersion(stat);
-  const facts = [
-    card.elixirCost != null ? `${card.elixirCost} elixir` : null,
-    card.rarity ? capitalize(card.rarity) : null,
-    cardType(card.id),
-    specialVersionLabel(versions),
-  ].filter(Boolean);
+  const factChips = <FactChips rarity={card.rarity} facts={[cardType(card.id), specialVersionLabel(versions)]} />;
 
   const rough = stat ? isLowSample(stat) : false;
   const buildHref = buildLink(card.id, activePlayerTag);
@@ -157,7 +177,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
             {art}
             <div style={{ minWidth: 0 }}>
               <h1 style={{ ...styles.name, fontSize: '26px', color: theme.text.primary }}>{card.name} Decks</h1>
-              <div style={{ ...styles.facts, marginTop: '6px', color: theme.text.secondary }}>{facts.join(' · ')}</div>
+              <div style={{ marginTop: '8px' }}>{factChips}</div>
             </div>
           </div>
         ) : (
@@ -167,7 +187,7 @@ function CardDetails({ card }: { card: CatalogCard }) {
           {!isMobile && (
             <>
               <h1 style={{ ...styles.name, color: theme.text.primary }}>{card.name} Decks</h1>
-              <div style={{ ...styles.facts, color: theme.text.secondary }}>{facts.join(' · ')}</div>
+              <div style={styles.facts}>{factChips}</div>
             </>
           )}
           {statsQuery.isLoading && <span className="skeleton" style={styles.tilesSkeleton} />}
@@ -308,8 +328,32 @@ const styles = {
     lineHeight: 1.1,
   },
   facts: {
-    marginTop: '-8px',
-    fontSize: '14px',
+    marginTop: '-6px',
+  },
+  chips: {
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    gap: '6px',
+  },
+  chip: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '5px',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    borderWidth: '1px',
+    borderStyle: 'solid' as const,
+    borderColor: 'var(--chip-border)',
+    backgroundColor: 'var(--chip-bg)',
+    color: 'var(--text-primary)',
+    fontSize: '12.5px',
+    fontWeight: 700 as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  chipDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
   },
   tiles: {
     display: 'grid' as const,
