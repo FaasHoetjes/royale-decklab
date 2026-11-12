@@ -84,6 +84,13 @@ public sealed class ReminderService(
             reset = dayEndsAt;
         }
 
+        // The reminder was due by its stored reset time; if the clan's real reset moved earlier and already passed,
+        // the next one is a day away, and claiming it now would post a day early and skip tomorrow's reminder.
+        var isTooEarly = now < reset - TimeSpan.FromHours(reminder.Settings.HoursBeforeReset);
+        if (isTooEarly)
+        {
+            return;
+        }
         if (!store.TryClaim(webhookId, reset))
         {
             return;
