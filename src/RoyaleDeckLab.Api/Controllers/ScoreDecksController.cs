@@ -14,7 +14,7 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
     private const int MaxRequestBytes = 64 * 1024;
 
     private static readonly BuilderDeckScore Unscored =
-        new(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null);
+        new(Score: null, IsMeta: false, WinRate: null, Fieldability: null, Players: null, MetaCards: false);
 
     [HttpPost("api/score-decks")]
     [RequireMetaLoaded]
@@ -79,6 +79,6 @@ public sealed class ScoreDecksController(MetaCache cache, DeckAnalyzer analyzer)
             return Unscored;
         }
 
-        return new BuilderDeckScore(result.Score, result.IsMeta, result.WinRate, result.Fieldability, result.Players);
+        return new BuilderDeckScore(result.Score, result.IsMeta, result.WinRate, result.Fieldability, result.Players, result.MetaCards);
     }
 }

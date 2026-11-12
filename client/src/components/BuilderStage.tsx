@@ -196,6 +196,7 @@ function ScoreKind({ score, filled, unowned, theme }: { score?: BuilderDeckScore
       </>
     );
   }
+  if (score.metaCards) return <>{estimate}, meta cards in a different Evo/Hero setup</>;
   return <>{estimate}, not a known meta deck</>;
 }
 

@@ -19,7 +19,9 @@ public sealed class DeckAnalyzer
 
     private const int DecksPerLineup = 4;
 
-    public sealed record BuilderScore(double Score, double WinRate, double Fieldability, bool IsMeta, int Players);
+    /// <param name="IsMeta">A meta deck played with the meta's specials in place.</param>
+    /// <param name="MetaCards">The cards of a meta deck, whatever their setup.</param>
+    public sealed record BuilderScore(double Score, double WinRate, double Fieldability, bool IsMeta, int Players, bool MetaCards);
 
     public double? ScoreDeckForPlayer(
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
@@ -122,19 +124,22 @@ public sealed class DeckAnalyzer
             {
                 return null;
             }
-            var placementFit = slots is null ? 1.0 : CardVersionRules.PlacementFit(slots, meta.CardVersions, cardMap);
+            var placement = slots is null
+                ? new CardVersionRules.Placement(1, AsMeta: true)
+                : CardVersionRules.PlacementFit(slots, meta.CardVersions, cardMap);
             return new BuilderScore(
-                score.Value * placementFit,
+                score.Value * placement.Fit,
                 meta.Confidence,
                 fieldability.Value,
-                IsMeta: true,
-                meta.Players ?? 0);
+                IsMeta: placement.AsMeta,
+                meta.Players ?? 0,
+                MetaCards: true);
         }
 
         var levels = cardIds.Select(id => LevelModel.DisplayLevel(cardMap[id])).ToList();
         var levelLogit = LevelModel.LevelLogit(levels, opponent);
         var neutral = LevelModel.WinProbability(NeutralWinRate, levelLogit) * UnprovenDeckDampener;
-        return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0);
+        return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0, MetaCards: false);
     }
 
     private static ScoredDeck ToScoredDeck(

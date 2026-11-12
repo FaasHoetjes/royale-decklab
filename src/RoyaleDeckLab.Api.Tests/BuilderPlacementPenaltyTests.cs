@@ -143,6 +143,67 @@ public sealed class BuilderPlacementPenaltyTests
     }
 
     [Fact]
+    public void AnotherSpecialInTheFreedSlot_NoPenalty_ButNotPlayedAsMeta()
+    {
+        var cards = Build.Collection(Ids);
+        cards[0] = Build.Card(1, evo: 1);
+        cards[6] = Build.Card(7, evo: 1);
+        var map = Build.CardMap(cards);
+        var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));
+
+        var baseline = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(1, 2, 3, 4, 5, 6, 7, 8))!;
+        var swapped = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(7, 2, 3, 4, 5, 6, 1, 8))!;
+
+        Assert.True(baseline.IsMeta);
+        Assert.Equal(baseline.Score, swapped.Score, 12);
+        Assert.False(swapped.IsMeta);
+        Assert.True(swapped.MetaCards);
+    }
+
+    [Fact]
+    public void FreedSlotWithoutASpecial_CostsTheMissingSpecialMultiplier_AndIsNotPlayedAsMeta()
+    {
+        var cards = Build.Collection(Ids);
+        cards[0] = Build.Card(1, evo: 1);
+        var map = Build.CardMap(cards);
+        var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));
+
+        var baseline = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(1, 2, 3, 4, 5, 6, 7, 8))!;
+        var wasted = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(7, 2, 3, 4, 5, 6, 1, 8))!;
+
+        Assert.Equal(baseline.Score * MissingSpecial, wasted.Score, 12);
+        Assert.False(wasted.IsMeta);
+        Assert.True(wasted.MetaCards);
+    }
+
+    [Fact]
+    public void AHeroInTheEvoSlot_FieldsNothing()
+    {
+        var cards = Build.Collection(Ids);
+        cards[0] = Build.Card(1, evo: 1);
+        cards[6] = Build.Card(7, evo: 2);
+        var map = Build.CardMap(cards);
+        var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));
+
+        var baseline = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(1, 2, 3, 4, 5, 6, 7, 8))!;
+        var heroInEvoSlot = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(7, 2, 3, 4, 5, 6, 1, 8))!;
+
+        Assert.Equal(baseline.Score * MissingSpecial, heroInEvoSlot.Score, 12);
+    }
+
+    [Fact]
+    public void UnownedMetaSpecial_IsNotPlayedAsMeta()
+    {
+        var map = Build.CardMap(Build.Collection(Ids));
+        var meta = Build.Deck(Ids, versions: Versions(new CardVersion(1, CardVersionKind.Evo)));
+
+        var result = _analyzer.ScoreBuilderDeck(map, Ids, meta, Slots(1, 2, 3, 4, 5, 6, 7, 8))!;
+
+        Assert.False(result.IsMeta);
+        Assert.True(result.MetaCards);
+    }
+
+    [Fact]
     public void NonMetaDeck_PlacementIgnored()
     {
         var cards = Build.Collection(Ids);

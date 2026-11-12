@@ -5,4 +5,5 @@ public sealed record BuilderDeckScore(
     bool IsMeta,
     double? WinRate,
     double? Fieldability,
-    int? Players);
+    int? Players,
+    bool MetaCards);

@@ -89,6 +89,8 @@ export interface OwnedCard {
 export interface BuilderDeckScore {
   score: number | null;
   isMeta: boolean;
+  /** The cards of a meta deck, whatever their Evo/Hero setup; isMeta also needs the meta's setup. */
+  metaCards: boolean;
   winRate?: number;
   fieldability?: number;
   players?: number;
