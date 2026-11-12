@@ -187,7 +187,8 @@ export function useDeckScores(
     queryFn: ({ signal }) => scoreBuilderDecks(cards, decks, maxed, signal),
     enabled,
     staleTime: Infinity,
-    placeholderData: keepPreviousData,
+    // Keep the last scores while a deck changes, but not across a mode switch: those scores belong to other cards.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[3] === maxed ? previous : undefined),
   });
 }
 

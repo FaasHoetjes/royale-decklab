@@ -19,7 +19,6 @@ interface CardTileProps {
   lazyLoad?: boolean;
   fetchPriority?: 'high' | 'low' | 'auto';
   artStyle?: CSSProperties;
-  /** Greys the art out with a lock, for a card the player doesn't own. */
   locked?: boolean;
   children?: ReactNode;
 }

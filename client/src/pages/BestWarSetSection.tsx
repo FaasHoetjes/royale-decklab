@@ -51,7 +51,7 @@ export const SetSection = memo(function SetSection({ set, setKey, setIdx, expand
           type="button"
           className="glass-btn mobile-touch-target"
           onClick={() => onCopy(set)}
-          style={{ ...styles.useButton, cursor: 'pointer' }}
+          style={styles.useButton}
         >
           <BuilderIcon />
           Use set in builder
@@ -92,6 +92,7 @@ function BuilderIcon() {
 const styles = {
   useButton: {
     alignSelf: 'flex-start' as const,
+    cursor: 'pointer' as const,
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '7px',

@@ -74,7 +74,7 @@ export default function BuilderDeckTabs({ decks, names, scores, active, onSelect
 function ScoreText({ score, unowned, theme, style }: { score?: BuilderDeckScore; unowned: boolean; theme: Theme; style?: CSSProperties }) {
   if (unowned) {
     return (
-      <span style={{ ...styles.score, ...style, color: theme.text.secondary }} title="Not scored: this deck has cards you don't own">
+      <span role="img" aria-label="Not scored" style={{ ...styles.score, ...style, color: theme.text.secondary }} title="Not scored: this deck has cards you don't own">
         <LockIcon size="1em" style={{ verticalAlign: '-0.1em' }} />
       </span>
     );
