@@ -20,7 +20,7 @@ public sealed class CardArtRefreshService(
                 await Task.Delay(succeeded ? Interval : RetryDelay, stoppingToken);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
         }
     }
@@ -32,14 +32,14 @@ public sealed class CardArtRefreshService(
             await RefreshAllAsync(ct);
             return true;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Card art refresh failed; retrying in {Delay}", RetryDelay);
             return false;
         }
     }
 
-    public async Task RefreshAllAsync(CancellationToken ct)
+    private async Task RefreshAllAsync(CancellationToken ct)
     {
         var cards = await catalog.GetAsync(ct);
         var assets = cards
@@ -57,7 +57,7 @@ public sealed class CardArtRefreshService(
             {
                 await art.RefreshAsync(asset.Kind, asset.Hash, token);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!token.IsCancellationRequested)
             {
                 Interlocked.Increment(ref failed);
                 logger.LogWarning(ex, "Refreshing card art {Kind}/{Hash} failed", asset.Kind, asset.Hash);
