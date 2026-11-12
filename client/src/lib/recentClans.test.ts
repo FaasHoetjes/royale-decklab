@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { loadRecentClans, parseClanQuery, recentClansToShow, rememberClan, type ClanRef } from './recentClans';
+import { isPickingClan, loadRecentClans, parseClanQuery, recentClansToShow, rememberClan, startPickingClan, type ClanRef } from './recentClans';
 
 const store = new Map<string, string>();
 globalThis.localStorage = {
@@ -22,6 +22,16 @@ describe('recent clans', () => {
     rememberClan(clan('#A'));
 
     expect(loadRecentClans().map((c) => c.tag)).toEqual(['#A', '#B']);
+  });
+
+  test('picking another clan lasts until one is opened, keeping the list', () => {
+    rememberClan(clan('#A'));
+    startPickingClan();
+    expect(isPickingClan()).toBe(true);
+    expect(loadRecentClans().map((c) => c.tag)).toEqual(['#A']);
+
+    rememberClan(clan('#B'));
+    expect(isPickingClan()).toBe(false);
   });
 
   test('keep five at most', () => {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { ClanWar, RaceClan } from '../../api';
 import { prefersReducedMotion } from '../../lib/motion';
 import { useNow } from '../../hooks/useNow';
+import { startPickingClan } from '../../lib/recentClans';
 import { boatProgress } from '../../lib/clanWar';
 
 const OUR_BOAT = '#e8b24a';
@@ -44,7 +45,7 @@ export const BannerTop = ({ war, eyebrow, isMobile, aside }: BannerTopProps) => 
       </div>
     </div>
     <div style={isMobile ? { ...styles.aside, ...styles.asideRow } : styles.aside}>
-      <Link to="/clan" state={{ pickClan: true }} style={styles.otherClan}>
+      <Link to="/clan" onClick={startPickingClan} style={styles.otherClan}>
         Other clan
       </Link>
       {aside}

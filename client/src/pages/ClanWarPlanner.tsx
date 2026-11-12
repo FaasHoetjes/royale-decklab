@@ -1,13 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { ApiError, type ClanWar } from '../api';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useClanWar, usePlayerSummary } from '../queries';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
-import { routeFlag } from '../lib/routeState';
-import { loadRecentClans, rememberClan } from '../lib/recentClans';
+import { isPickingClan, loadRecentClans, rememberClan } from '../lib/recentClans';
 import { TODAY_STATUSES, groupByToday, todayStatusLabel, type TodayStatus } from '../lib/clanWar';
 import ClanFinder from '../components/clan/ClanFinder';
 import ClanRiverHeader from '../components/clan/ClanRiverHeader';
@@ -66,8 +65,7 @@ export default ClanWarPlanner;
 /** Without a tag in the address, the last clan viewed reopens, else the active player's own, unless they came to pick another. */
 const OwnClan = ({ isMobile }: { isMobile: boolean }) => {
   const { activePlayerTag } = useApp();
-  const location = useLocation();
-  const wantsOtherClan = routeFlag(location.state, 'pickClan');
+  const wantsOtherClan = isPickingClan();
   const [lastClan] = useState(() => loadRecentClans()[0] ?? null);
   const player = usePlayerSummary(wantsOtherClan || lastClan ? null : activePlayerTag);
 
