@@ -1,5 +1,5 @@
-// Anonymous usage pings for the admin stats page. Deck exports count every action; other events skip repeats
-// within a page load here and count each visitor once a day per event on the server.
+// Anonymous usage pings for the admin stats page. Page views and deck exports count every time; other events skip
+// repeats within a page load here and count each visitor once a day per event on the server.
 import { isValidTag } from './playerTag';
 
 export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq';
@@ -82,17 +82,31 @@ export function toolForPath(pathname: string): StatsTool | null {
 
 export function track(event: StatsEvent): void {
   if (isStatsExcluded()) return;
-  if (event.kind !== 'deck_copy' && event.kind !== 'deck_open') {
+  if (event.kind !== 'tool' && event.kind !== 'deck_copy' && event.kind !== 'deck_open') {
     const key = JSON.stringify(event);
     if (sent.has(key)) return;
     sent.add(key);
   }
-  fetch('/api/stats/event', {
+  fetch(event.kind === 'tool' ? '/api/stats/view' : '/api/stats/event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...event, ref: referrerHost(), ...campaign }),
     keepalive: true,
   }).catch(() => {});
+}
+
+let lastView: { pathname: string; tool: StatsTool | null } | null = null;
+
+/**
+ * Counts a page opened. The same address again isn't a new view (React's dev mode runs effects twice), nor is a
+ * redirect within the same page, such as /clan forwarding to /clan/TAG.
+ */
+export function trackPageView(pathname: string, redirected: boolean): void {
+  const tool = toolForPath(pathname);
+  const previous = lastView;
+  lastView = { pathname, tool };
+  if (!tool || previous?.pathname === pathname || (redirected && previous?.tool === tool)) return;
+  track({ kind: 'tool', tool });
 }
 
 /** Only the page category is sent: no deck URL, cards, or player tag. */

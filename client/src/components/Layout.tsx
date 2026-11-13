@@ -12,7 +12,7 @@ import { usePrefetchAppData } from '../queries';
 import { isValidTag } from '../lib/playerTag';
 import { documentMeta, toolItems } from './navItems';
 import { startPresence } from '../lib/live';
-import { toolForPath, track } from '../lib/stats';
+import { trackPageView } from '../lib/stats';
 import { preloadPage } from '../lib/pageLoaders';
 
 // Where each history entry was scrolled to, so going back returns there.
@@ -58,8 +58,7 @@ export default function Layout() {
   usePrefetchAppData(activePlayerTag);
 
   useEffect(() => {
-    const tool = toolForPath(pathname);
-    if (tool) track({ kind: 'tool', tool });
+    trackPageView(pathname, navigationType === 'REPLACE');
   }, [pathname]);
 
   const isAdminPage = pathname.startsWith('/admin');

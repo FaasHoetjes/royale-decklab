@@ -85,7 +85,7 @@ builder.Services.AddSingleton<ShareImageService>();
 var metaDbPath = builder.Configuration.GetSection(MetaOptions.SectionName).Get<MetaOptions>()?.DbPath ?? new MetaOptions().DbPath;
 var dataDirectory = Path.GetDirectoryName(Path.GetFullPath(metaDbPath, contentRoot))
     ?? throw new InvalidOperationException("The meta database path has no directory");
-builder.Services.AddSingleton(_ => new StatsStore(Path.Combine(dataDirectory, "stats.db")));
+builder.Services.AddSingleton(sp => new StatsStore(Path.Combine(dataDirectory, "stats.db"), sp.GetRequiredService<TimeProvider>()));
 builder.Services.AddSingleton<StatsRecorder>();
 builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();

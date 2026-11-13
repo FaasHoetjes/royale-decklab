@@ -16,6 +16,7 @@ internal static class StatsMetrics
     [
         ("users", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'lookup' AND {Range}"),
         ("visitors", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE {Visit} AND {Range}"),
+        ("pageviews", t => $"SELECT COALESCE(SUM(occurrences), 0) FROM {t} WHERE kind = 'tool' AND {Range}"),
         ("lookups", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'lookup' AND {Range}"),
         ("players", t => $"SELECT COUNT(DISTINCT tag) FROM {t} WHERE kind = 'lookup' AND {Range}"),
         ("returning", t => $"SELECT COUNT(*) FROM (SELECT visitor FROM {t} WHERE kind = 'lookup' AND {Range} GROUP BY visitor HAVING COUNT(DISTINCT day) > 1)"),

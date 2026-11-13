@@ -51,11 +51,25 @@ export const sourceLabel = (key: string) => SOURCE_LABELS[key] ?? key;
 export const deviceLabel = (key: string) => DEVICE_LABELS[key] ?? key;
 export const toolLabel = (key: string) => TOOL_LABELS[key] ?? key;
 
-export const FILTER_NAMES: Record<keyof StatsFilters, string> = { source: 'Source', country: 'Country', device: 'Device' };
+/** The hours come in UTC; this shows them on the viewer's clock, as on the given UTC day. */
+export const hourLabel = (key: string, day = new Date().toISOString().slice(0, 10)) =>
+  new Date(`${day}T${key}:00:00Z`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+export const FILTER_NAMES: Record<keyof StatsFilters, string> = {
+  source: 'Source',
+  country: 'Country',
+  device: 'Device',
+  tool: 'Page',
+  hour: 'First visit at',
+  campaign: 'Campaign',
+};
 export const FILTER_LABELS: Record<keyof StatsFilters, (key: string) => string> = {
   source: sourceLabel,
   country: countryLabel,
   device: deviceLabel,
+  tool: toolLabel,
+  hour: (key) => hourLabel(key),
+  campaign: (key) => key,
 };
 
 export const number = (value: number) => value.toLocaleString('en-US');

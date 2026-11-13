@@ -24,6 +24,8 @@ public static class StatsReport
         long? PreviousUsers,
         long Visitors,
         long? PreviousVisitors,
+        long Pageviews,
+        long? PreviousPageviews,
         long Lookups,
         long Players,
         long Returning,
@@ -49,7 +51,7 @@ public static class StatsReport
         DeckExports DeckExports);
 
     public sealed record MonthReport(
-        string Month, bool Partial, long Users, long Visitors, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian,
+        string Month, bool Partial, long Users, long Visitors, long? Pageviews, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian,
         long DeckCopies, long DeckOpens, long DeckExporters);
 
     public sealed record Report(
@@ -61,7 +63,7 @@ public static class StatsReport
         IReadOnlyList<RangeReport> Ranges,
         IReadOnlyList<MonthReport> Months);
 
-    private static readonly IReadOnlySet<string> TrendMetrics = new HashSet<string> { "users", "visitors", "daily_users", "daily_visitors", "time_median" };
+    private static readonly IReadOnlySet<string> TrendMetrics = new HashSet<string> { "users", "visitors", "pageviews", "daily_users", "daily_visitors", "time_median" };
 
     /// <param name="filter">Applies to the ranges; the months are always the whole site.</param>
     public static Report Build(StatsStore store, DateTimeOffset now, StatsFilter? filter = null, int inView = 0, int discordWebhooks = 0)
@@ -104,6 +106,8 @@ public static class StatsReport
             previous is null ? null : ScalarOf(previous, "users"),
             Scalar("visitors"),
             previous is null ? null : ScalarOf(previous, "visitors"),
+            Scalar("pageviews"),
+            previous is null || from.AddDays(-length) <= store.PageviewsSince ? null : ScalarOf(previous, "pageviews"),
             Scalar("lookups"),
             Scalar("players"),
             Scalar("returning"),
@@ -199,7 +203,8 @@ public static class StatsReport
     }
 
     private static MonthReport Month(string month, IReadOnlyList<StatsTotal> totals, bool partial)
-        => new(month, partial, ScalarOf(totals, "users"), ScalarOf(totals, "visitors"), ScalarOf(totals, "lookups"),
+        => new(month, partial, ScalarOf(totals, "users"), ScalarOf(totals, "visitors"), OptionalScalarOf(totals, "pageviews"),
+            ScalarOf(totals, "lookups"),
             ScalarOf(totals, "players"), ScalarOf(totals, "share_opens"), ScalarOf(totals, "new_from_share"),
             OptionalScalarOf(totals, "time_median"), ScalarOf(totals, "deck_copies"), ScalarOf(totals, "deck_opens"),
             ScalarOf(totals, "deck_exporters"));

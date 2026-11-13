@@ -8,11 +8,16 @@ public sealed record StatsEvent(
     long AtMs, string Kind, byte[] Visitor, byte[] Tag, string Tool, string? Country, string? Device, string? Source,
     string? Campaign = null);
 
-/// <summary>Narrows the stats to the visitors who, in the period, came from that source, country and device.</summary>
-public sealed record StatsFilter(string? Source = null, string? Country = null, string? Device = null)
+/// <summary>
+/// Narrows the stats to the visitors who, in the period, came from that source, country, device and campaign, opened
+/// that page, and first showed up on a day in that UTC hour ("00" to "23").
+/// </summary>
+public sealed record StatsFilter(
+    string? Source = null, string? Country = null, string? Device = null, string? Tool = null, string? Hour = null,
+    string? Campaign = null)
 {
     [JsonIgnore]
-    public bool IsEmpty => Source is null && Country is null && Device is null;
+    public bool IsEmpty => Source is null && Country is null && Device is null && Tool is null && Hour is null && Campaign is null;
 }
 
 public sealed record StatsHour(string Hour, long Users, long Visitors);

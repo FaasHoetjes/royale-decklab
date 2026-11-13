@@ -35,6 +35,10 @@ internal static class StatsSchema
                 ms INTEGER NOT NULL,
                 PRIMARY KEY (day, visitor)
             ) WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT NOT NULL PRIMARY KEY,
+                value TEXT NOT NULL
+            ) WITHOUT ROWID;
             CREATE TABLE IF NOT EXISTS totals (
                 period TEXT NOT NULL,
                 metric TEXT NOT NULL,

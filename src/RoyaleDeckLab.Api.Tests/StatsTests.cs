@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -88,6 +89,22 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
+    public void Pageviews_CountEveryViewWhileVisitorsStayDistinct()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "home"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddMinutes(5), tool: "home"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddMinutes(9), tool: "builder"),
+            Event(StatsStore.Kinds.Tool, 2, Noon, tool: "home"),
+            Event(StatsStore.Kinds.Lookup, 2, Noon, tag: 10),
+        ]);
+
+        Assert.Equal(4, Metric(Today, Today, "pageviews"));
+        Assert.Equal(2, Metric(Today, Today, "visitors"));
+        Assert.Equal(2, Metric(Today, Today, "tool", "home"));
+    }
+
+    [Fact]
     public void Exports_CountEveryActionAndDistinctPeopleAcrossToolsAndDays()
     {
         var copy = Event(StatsStore.Kinds.DeckCopy, 1, Noon, tool: "generator", country: "NL", source: "reddit");
@@ -132,6 +149,32 @@ public sealed class StatsTests : IDisposable
         Assert.Equal(1, day.Single(t => t.Metric == "deck_exporters").Value);
         var month = Assert.Single(StatsReport.Build(_store, Noon).Months);
         Assert.Equal((2L, 1L, 1L), (month.DeckCopies, month.DeckOpens, month.DeckExporters));
+    }
+
+    [Theory]
+    [InlineData("builder", true)]
+    [InlineData("card", true)]
+    [InlineData("admin", false)]
+    [InlineData(null, false)]
+    public void Controller_RecordsPageViewsOnlyForKnownPages(string? tool, bool accepted)
+    {
+        var clock = new Clock(Noon);
+        var recorder = new StatsRecorder(_store, clock, NullLogger<StatsRecorder>.Instance);
+        var controller = new StatsController(recorder, new LivePresence(clock), _store, clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = Request("84.1.2.3", Phone) },
+        };
+        Assert.IsType<NoContentResult>(controller.PageView(new StatsController.EventBody(null, null, tool, "www.reddit.com", null, null)));
+        var events = Drain(recorder);
+        if (accepted)
+        {
+            var recorded = Assert.Single(events);
+            Assert.Equal((StatsStore.Kinds.Tool, tool, "reddit"), (recorded.Kind, recorded.Tool, recorded.Source));
+        }
+        else
+        {
+            Assert.Empty(events);
+        }
     }
 
     [Theory]
@@ -470,6 +513,83 @@ public sealed class StatsTests : IDisposable
         Assert.Equal(reddit, report.Filters);
         Assert.Equal(3, report.Months.Single().Visitors);
     }
+
+    [Fact]
+    public void Pageviews_AreLeftOutWhereTheyWerentCountedYet()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"stats-since-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new StatsStore(path, new Clock(Noon));
+            Assert.Equal(Today, store.PageviewsSince);
+            Assert.Equal(Today, new StatsStore(path, new Clock(Noon.AddDays(30))).PageviewsSince);
+
+            var old = Noon.AddDays(-StatsStore.RetentionDays);
+            store.Add([Event(StatsStore.Kinds.Tool, 1, old, tool: "home"), Event(StatsStore.Kinds.Tool, 1, Noon, tool: "home")]);
+            store.Maintain(Today);
+            using (var connection = new SqliteConnection($"Data Source={path}"))
+            {
+                connection.Open();
+                using var forget = connection.CreateCommand();
+                forget.CommandText = "DELETE FROM totals WHERE metric = 'pageviews'";
+                forget.ExecuteNonQuery();
+            }
+            var oldMonth = StatsReport.Build(store, Noon).Months.Single(m => m.Month == StatsStore.Month(DateOnly.FromDateTime(old.UtcDateTime)));
+            Assert.True(oldMonth.Visitors > 0);
+            Assert.Null(oldMonth.Pageviews);
+
+            store.Add([Event(StatsStore.Kinds.Tool, 1, Noon.AddDays(1), tool: "home")]);
+            Assert.Null(StatsReport.Build(store, Noon.AddDays(13)).Ranges.Single(r => r.Key == "7d").PreviousPageviews);
+            Assert.Equal(1, StatsReport.Build(store, Noon.AddDays(14)).Ranges.Single(r => r.Key == "7d").PreviousPageviews);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Compute_FiltersEachDimensionOnItsOwn()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "builder", campaign: "launch"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddHours(1), tool: "home"),
+        ]);
+        var both = _store.Compute(Today, Today, new StatsFilter(Tool: "home", Campaign: "launch"));
+        Assert.Equal(1, both.Single(t => t.Metric == "visitors").Value);
+    }
+
+    [Fact]
+    public void Compute_FiltersByPageCampaignAndFirstHour()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "builder", campaign: "launch"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddHours(2), tool: "home"),
+            Event(StatsStore.Kinds.Tool, 2, Noon.AddHours(2), tool: "builder"),
+            Event(StatsStore.Kinds.Tool, 3, Noon.AddHours(2), tool: "faq"),
+        ]);
+        long Count(string metric, StatsFilter filter) => _store.Compute(Today, Today, filter).Single(t => t.Metric == metric).Value;
+        var noon = Noon.UtcDateTime.Hour.ToString("00", CultureInfo.InvariantCulture);
+        var later = Noon.AddHours(2).UtcDateTime.Hour.ToString("00", CultureInfo.InvariantCulture);
+
+        Assert.Equal(2, Count("visitors", new StatsFilter(Tool: "builder")));
+        Assert.Equal(1, Count("visitors", new StatsFilter(Campaign: "launch")));
+        Assert.Equal(1, Count("visitors", new StatsFilter(Hour: noon)));
+        Assert.Equal(2, Count("pageviews", new StatsFilter(Hour: noon)));
+        Assert.Equal(2, Count("visitors", new StatsFilter(Hour: later)));
+        Assert.Equal(1, Count("visitors", new StatsFilter(Tool: "builder", Hour: later)));
+    }
+
+    [Theory]
+    [InlineData("00", "00")]
+    [InlineData("23", "23")]
+    [InlineData("24", null)]
+    [InlineData("7", null)]
+    [InlineData("-1", null)]
+    [InlineData(null, null)]
+    public void Hour_AcceptsOnlyTwoDigitHours(string? value, string? expected)
+        => Assert.Equal(expected, StatsClassify.Hour(value));
 
     [Fact]
     public void Compute_CountsWhoLookedUpAPlayerPerSourceAndCountry()

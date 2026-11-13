@@ -412,6 +412,10 @@ export interface StatsFilters {
   source?: string;
   country?: string;
   device?: string;
+  tool?: string;
+  /** The UTC hour, "00" to "23", in which visitors first showed up on a day. */
+  hour?: string;
+  campaign?: string;
 }
 
 export interface StatsRange {
@@ -422,6 +426,9 @@ export interface StatsRange {
   previousUsers: number | null;
   visitors: number;
   previousVisitors: number | null;
+  /** Every page opened, repeats included; the visitors count each browser once. */
+  pageviews: number;
+  previousPageviews: number | null;
   lookups: number;
   players: number;
   returning: number;
@@ -468,6 +475,8 @@ export interface StatsMonth {
   partial: boolean;
   users: number;
   visitors: number;
+  /** Missing for months summed up before page views were counted. */
+  pageviews: number | null;
   lookups: number;
   players: number;
   shareOpens: number;

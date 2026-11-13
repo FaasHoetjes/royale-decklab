@@ -20,6 +20,12 @@ export const statsStyles = {
     margin: '0 0 12px',
     fontSize: '16px',
   },
+  hinted: {
+    cursor: 'help',
+    textDecoration: 'underline dotted',
+    textUnderlineOffset: '3px',
+    textDecorationThickness: '1px',
+  },
   note: {
     margin: 0,
     fontSize: '13px',

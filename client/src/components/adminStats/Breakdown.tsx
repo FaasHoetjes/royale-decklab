@@ -8,6 +8,7 @@ const ROWS_SHOWN = 8;
 
 type BreakdownProps = {
   title: string;
+  hint: string;
   counts: StatsCount[];
   /** Without a total, the counts aren't shares of the users above (tools count every visitor), so bars scale to the largest. */
   total?: number;
@@ -17,10 +18,10 @@ type BreakdownProps = {
   times?: Map<string, number>;
   selected?: string;
   onSelect?: (key: string) => void;
-  extra?: { title: string; counts: StatsCount[] };
+  extra?: { title: string; counts: StatsCount[]; selected?: string; onSelect: (key: string) => void };
 };
 
-export function Breakdown({ title, counts, total, label, lookedUp, times, selected, onSelect, extra }: BreakdownProps) {
+export function Breakdown({ title, hint, counts, total, label, lookedUp, times, selected, onSelect, extra }: BreakdownProps) {
   const theme = getTheme();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? counts : counts.slice(0, ROWS_SHOWN);
@@ -51,7 +52,9 @@ export function Breakdown({ title, counts, total, label, lookedUp, times, select
 
   return (
     <section style={statsStyles.panel}>
-      <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>{title}</h2>
+      <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>
+        <span title={hint} style={statsStyles.hinted}>{title}</span>
+      </h2>
       {counts.length === 0 && <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>Nothing yet.</p>}
       {counts.length > 0 && (
         <div style={statsStyles.list}>
@@ -82,12 +85,22 @@ export function Breakdown({ title, counts, total, label, lookedUp, times, select
         <>
           <h3 style={{ ...styles.subheading, color: theme.text.secondary }}>{extra.title}</h3>
           <div style={statsStyles.list}>
-            {extra.counts.slice(0, ROWS_SHOWN).map((c) => (
-              <div key={c.key} style={statsStyles.listRow}>
-                <span style={{ color: theme.text.primary }}>{c.key}</span>
-                <span style={{ ...statsStyles.listValue, color: theme.text.secondary }}>{number(c.users)}</span>
-              </div>
-            ))}
+            {extra.counts.slice(0, ROWS_SHOWN).map((c) => {
+              const active = extra.selected === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => extra.onSelect(c.key)}
+                  aria-pressed={active}
+                  title={active ? 'Remove this filter' : 'Show only these visitors'}
+                  style={{ ...styles.rowButton, ...statsStyles.listRow }}
+                >
+                  <span style={{ color: theme.text.primary, fontWeight: active ? 700 : 400 }}>{c.key}</span>
+                  <span style={{ ...statsStyles.listValue, color: theme.text.secondary }}>{number(c.users)}</span>
+                </button>
+              );
+            })}
           </div>
         </>
       )}
