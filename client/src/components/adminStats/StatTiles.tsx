@@ -35,7 +35,7 @@ export function StatTiles({ range }: { range: StatsRange }) {
         <Tile label="Active users" hint={HINTS.activeUsers} value={number(range.users)} detail={usersDetail(range)} />
         <Tile label="Player lookups" hint={HINTS.lookups} value={number(range.lookups)} detail={lookupsDetail(range)} />
       </div>
-      <div style={{ ...styles.tiles, gridTemplateColumns: `repeat(${showReturning ? 3 : 2}, minmax(0, 1fr))` }}>
+      <div style={styles.tiles}>
         <Tile label="Unique players" hint={HINTS.uniquePlayers} value={number(range.players)} />
         {showReturning && <Tile label="Returning users" hint={HINTS.returning} value={percent(range.returning, range.users)} detail={`${number(range.returning)} on more than one day`} />}
         <Tile label="Time on site" hint={HINTS.timeOnSite} value={range.timeMedian === null ? '–' : duration(range.timeMedian)} detail={timeDetail(range)} />
@@ -57,13 +57,13 @@ function Tile({ label, hint, value, detail }: { label: string; hint: string; val
 
 const styles = {
   groups: {
-    display: 'grid' as const,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
     gap: '12px',
   },
   tiles: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))',
     gap: '12px',
   },
   tile: {
