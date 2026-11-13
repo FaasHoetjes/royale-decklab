@@ -118,16 +118,32 @@ public sealed class CardPeriodStorageTests : IDisposable
     }
 
     [Fact]
-    public async Task A_new_season_is_saved_together_with_its_patch_boundary()
+    public async Task A_new_patch_is_saved_and_tallied()
     {
         using var sp = Services();
         var cache = await StartAsync(sp, 3, 2, 1);
 
-        await cache.StartSeasonAsync(150, Now);
+        Assert.True(await cache.StartPatchAsync(Now - Day / 2, "test"));
 
-        Assert.Equal(150, Store(sp, s => s.GetKnownSeasonId()));
-        Assert.Equal(Now, Store(sp, s => s.GetEpochStart()));
-        Assert.Equal(Now, cache.EpochStart);
+        Assert.Equal(Now - Day / 2, Store(sp, s => s.GetEpochStart()));
+        Assert.Equal(Now - Day / 2, cache.EpochStart);
+        Assert.True(cache.CardStats.IsLastPatch);
+        Assert.Equal(3, cache.CardStats.Battles);
+    }
+
+    [Theory]
+    [InlineData(11)]
+    [InlineData(-30)]
+    public async Task A_new_patch_less_than_12_hours_after_the_boundary_or_before_it_keeps_the_boundary(int hoursLater)
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp, 3, 2, 1);
+        await cache.SetEpochAsync(Now - Day);
+
+        Assert.False(await cache.StartPatchAsync(Now - Day + hoursLater * 60L * 60 * 1000, "test"));
+
+        Assert.Equal(Now - Day, cache.EpochStart);
+        Assert.Equal(0, Store(sp, s => s.GetPreviousEpochStart()));
     }
 
     [Fact]
@@ -138,11 +154,10 @@ public sealed class CardPeriodStorageTests : IDisposable
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.StartSeasonAsync(150, Now, cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.StartPatchAsync(Now, "test", cancelled.Token));
 
         Assert.Equal(0, cache.EpochStart);
         Assert.Equal(0, Store(sp, s => s.GetEpochStart()));
-        Assert.Equal(0, Store(sp, s => s.GetKnownSeasonId()));
     }
 
     [Fact]

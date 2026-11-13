@@ -91,7 +91,14 @@ builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
-builder.Services.AddHostedService<SeasonWatchService>();
+builder.Services.AddScoped<CardReleases>();
+builder.Services.AddHttpClient<SupercellBlogClient>(http =>
+    {
+        http.BaseAddress = new Uri("https://supercell.com/");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("RoyaleDeckLab");
+    })
+    .AddStandardResilienceHandler();
+builder.Services.AddHostedService<PatchNotesWatchService>();
 builder.Services.AddDiscordReminders(dataDirectory);
 
 builder.Services.AddSingleton<DeckAnalyzer>();

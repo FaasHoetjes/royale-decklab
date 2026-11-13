@@ -11,6 +11,8 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
     public DbSet<BattleEntity> Battles => Set<BattleEntity>();
     public DbSet<MetaStateEntity> MetaState => Set<MetaStateEntity>();
     public DbSet<CardPeriodEntity> CardPeriods => Set<CardPeriodEntity>();
+    public DbSet<KnownCardVersionEntity> KnownCardVersions => Set<KnownCardVersionEntity>();
+    public DbSet<SeenPatchNoteEntity> SeenPatchNotes => Set<SeenPatchNoteEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,7 +69,21 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             m.Property(x => x.EpochStartMs).HasColumnName("epoch_start_ms").IsRequired();
             m.Property(x => x.PreviousEpochStartMs).HasColumnName("previous_epoch_start_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastBuildMs).HasColumnName("last_build_ms").IsRequired();
-            m.Property(x => x.KnownSeasonId).HasColumnName("known_season_id").IsRequired().HasDefaultValue(0);
+        });
+
+        modelBuilder.Entity<KnownCardVersionEntity>(k =>
+        {
+            k.ToTable("known_card_versions");
+            k.HasKey(x => new { x.CardId, x.Version });
+            k.Property(x => x.CardId).HasColumnName("card_id").ValueGeneratedNever();
+            k.Property(x => x.Version).HasColumnName("version").HasConversion<string>();
+        });
+
+        modelBuilder.Entity<SeenPatchNoteEntity>(n =>
+        {
+            n.ToTable("seen_patch_notes");
+            n.HasKey(x => x.Key);
+            n.Property(x => x.Key).HasColumnName("key");
         });
 
         modelBuilder.Entity<CardPeriodEntity>(c =>

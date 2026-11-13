@@ -33,7 +33,7 @@ public sealed class MetaCacheTests : IDisposable
         File.Delete(_dbPath);
     }
 
-    /// <summary>Answers the crawl's three calls with one clan, one member and one war battle played now.</summary>
+    /// <summary>Answers the crawl's three calls with one clan, one member and one war battle played now, and lists cards 1-28.</summary>
     private sealed class CrawlHandler(bool fail) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -44,7 +44,8 @@ public sealed class MetaCacheTests : IDisposable
             }
 
             var path = request.RequestUri!.AbsolutePath;
-            var json = path.Contains("/rankings/") ? """{"items":[{"tag":"#CLAN"}]}"""
+            var json = path.EndsWith("/cards") ? """{"items":[""" + string.Join(',', Enumerable.Range(1, 28).Select(id => $$"""{"id":{{id}},"name":"C{{id}}","maxLevel":16}""")) + "]}"
+                : path.Contains("/rankings/") ? """{"items":[{"tag":"#CLAN"}]}"""
                 : path.Contains("/clans/") ? """{"memberList":[{"tag":"#P1"}]}"""
                 : $$"""
                   [{
@@ -75,6 +76,9 @@ public sealed class MetaCacheTests : IDisposable
         services.AddSingleton(new ClashRoyaleClient(
             new HttpClient(new CrawlHandler(crawlFails)) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddScoped<MetaBuilder>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<CardCatalog>();
+        services.AddScoped<CardReleases>();
         services.AddSingleton<MetaCache>();
         return services.BuildServiceProvider();
     }
@@ -136,6 +140,43 @@ public sealed class MetaCacheTests : IDisposable
         Assert.True(cache.LastCacheTime > FortyDaysAgo);
     }
 
+    private static HashSet<CardVersion> KnownVersions(ServiceProvider sp)
+    {
+        using var scope = sp.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<BattleRepository>().GetKnownCardVersions();
+    }
+
+    [Fact]
+    public async Task The_first_crawl_remembers_the_cards_out_without_starting_a_patch()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        var cache = sp.GetRequiredService<MetaCache>();
+
+        await cache.InitializeAsync();
+
+        Assert.Equal(0, cache.EpochStart);
+        Assert.Equal(28, KnownVersions(sp).Count);
+    }
+
+    [Fact]
+    public async Task A_card_version_played_for_the_first_time_starts_a_patch_at_that_battle()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using (var scope = sp.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<BattleRepository>().AddKnownCardVersionsAsync(
+                Enumerable.Range(1, 27).Select(id => new CardVersion(id, CardVersionKind.Normal)));
+        }
+        var cache = sp.GetRequiredService<MetaCache>();
+
+        await cache.InitializeAsync();
+
+        Assert.Equal(Assert.Single(StoredBattles(sp), b => b.PlayerTag == "#P2").BattleTimeMs, cache.EpochStart);
+        Assert.Contains(new CardVersion(28, CardVersionKind.Normal), KnownVersions(sp));
+    }
+
     [Fact]
     public async Task A_patch_boundary_update_does_not_prune()
     {
@@ -157,8 +198,7 @@ public sealed class MetaCacheTests : IDisposable
         var cache = sp.GetRequiredService<MetaCache>();
         await cache.InitializeAsync();
 
-        using var scope = sp.CreateScope();
-        var controller = new MetaController(cache, scope.ServiceProvider.GetRequiredService<BattleRepository>());
+        var controller = new MetaController(cache);
         var result = Assert.IsType<ObjectResult>(await controller.Refresh());
 
         Assert.Equal(StatusCodes.Status502BadGateway, result.StatusCode);
@@ -173,8 +213,7 @@ public sealed class MetaCacheTests : IDisposable
         var cache = sp.GetRequiredService<MetaCache>();
         await cache.InitializeAsync();
 
-        using var scope = sp.CreateScope();
-        var controller = new MetaController(cache, scope.ServiceProvider.GetRequiredService<BattleRepository>());
+        var controller = new MetaController(cache);
 
         Assert.IsType<OkObjectResult>(await controller.Refresh());
     }

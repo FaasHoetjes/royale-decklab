@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
 
@@ -10,7 +9,7 @@ namespace RoyaleDeckLab.Api.Controllers;
 
 [ApiController]
 [Route("api/meta")]
-public sealed class MetaController(MetaCache cache, BattleRepository store) : ControllerBase
+public sealed class MetaController(MetaCache cache) : ControllerBase
 {
     private const long FutureTimestampToleranceMs = 5 * 60_000;
 
@@ -19,15 +18,13 @@ public sealed class MetaController(MetaCache cache, BattleRepository store) : Co
     {
         var last = cache.LastCacheTime;
         var epoch = cache.EpochStart;
-        var season = store.GetKnownSeasonId();
         return Ok(new
         {
             status = "ok",
             deckCount = cache.DeckCount,
             cacheAgeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - last,
             lastRefresh = MetaCache.IsoMs(last),
-            epochStart = epoch > 0 ? MetaCache.IsoMs(epoch) : null,
-            seasonId = season > 0 ? season : (int?)null
+            epochStart = epoch > 0 ? MetaCache.IsoMs(epoch) : null
         });
     }
 

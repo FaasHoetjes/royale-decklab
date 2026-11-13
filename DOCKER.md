@@ -94,13 +94,27 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json
   -d '{"timestamp":"now"}' http://localhost:3000/api/meta/epoch
 ```
 
-Season rollovers set the boundary automatically: a background watcher probes the
-Path of Legend rankings for the next season id every hour and sets the epoch the
-moment the new season appears. The manual endpoint is only needed for mid-season
-balance hotfixes. Battles from before the boundary aren't deleted; they count at
-reduced weight (`Meta__PreEpochWeight`, default `0.25`) until they age out of the
-30-day window, so the meta stays populated between a Monday rollover and the next
-war battle days.
+Two things set the boundary automatically:
+
+- **Balance updates.** Every 30 minutes (`Meta__PatchCheckIntervalMs`) a watcher
+  reads Supercell's Clash Royale blog. Each "Balance Update – October 19th"
+  heading in a balance post counts as one update, which also covers sections
+  added to an existing post. A new update sets the boundary once its day has
+  come. If the blog stops listing release notes (for example after a redesign),
+  the watcher logs an error, and you set the boundary by hand.
+- **New cards, Evos and Heroes.** After each crawl, a card version that has
+  never been played before sets the boundary to the first battle that used it.
+  New versions don't always arrive with the season: the Mirror Evo first
+  appeared a week into November 2026. On the first run, the versions the
+  catalog lists and the battles already stored are recorded as known, so they
+  don't count as new.
+
+A boundary less than 12 hours after the current one, or before it, is ignored,
+so an Evo and a balance update released on the same day give one patch. The
+manual endpoint ignores this rule and sets any time. Battles from before the
+boundary aren't deleted; they count at reduced weight (`Meta__PreEpochWeight`,
+default `0.25`) until they age out of the 30-day window, so the meta stays
+populated until the next war battle days.
 
 ### The `meta.db` volume
 

@@ -78,8 +78,8 @@ public sealed class CardTallier((long From, long To)[] periods)
 
 public static class CardPeriods
 {
-    // A season starts on a Monday and war battles only start on Thursday, so for the first days of a patch
-    // there is next to nothing to show; until this many battles are in, the page shows last patch's numbers.
+    // War battles only start on Thursday, so for the first days of a patch there may be next to nothing to show;
+    // until this many battles are in, the page shows last patch's numbers.
     public const int MinCurrentBattles = 10_000;
 
     public const int MinGamesForChange = 100;

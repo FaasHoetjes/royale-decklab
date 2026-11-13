@@ -20,8 +20,8 @@ public sealed class MetaOptions
     public int WarRecordTarget { get; set; } = 250_000;
 
     // Battles from before the patch boundary still count, at reduced weight,
-    // so the meta isn't empty between a season rollover (Monday) and the next
-    // war battle days (Thursday).
+    // so the meta isn't empty between a patch and the next war battle days
+    // (Thursday).
     public double PreEpochWeight { get; set; } = 0.25;
 
     // Decks rank by a cautious estimate: the RankingQuantile of their posterior win rate after adding
@@ -33,8 +33,5 @@ public sealed class MetaOptions
 
     public double RankingQuantile { get; set; } = 0.25;
 
-    public long SeasonCheckIntervalMs { get; set; } = 60L * 60 * 1000;
-
-    // Any past Path of Legend season id works as a probe floor; 141 = July 2026.
-    public int SeasonIdSeed { get; set; } = 141;
+    public long PatchCheckIntervalMs { get; set; } = 30L * 60 * 1000;
 }
