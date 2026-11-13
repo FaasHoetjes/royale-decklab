@@ -232,7 +232,13 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
+    // Reloaded each time: a long-lived scope, like a rebuild's, would otherwise keep the row from before another
+    // scope moved the patch boundary.
     private MetaStateEntity State()
-        => db.MetaState.Find(1)
-           ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");
+    {
+        var state = db.MetaState.Find(1)
+                    ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");
+        db.Entry(state).Reload();
+        return state;
+    }
 }

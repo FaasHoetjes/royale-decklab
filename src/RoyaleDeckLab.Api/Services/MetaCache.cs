@@ -11,9 +11,10 @@ public sealed class MetaCache(
     IOptions<MetaOptions> options,
     ILogger<MetaCache> logger)
 {
-    // A season's new Evo and its balance update often come out on the same day, and a restart can report the same
-    // release twice; a second boundary hours after the first would leave the last patch only hours long.
-    public static readonly TimeSpan MinPatchLength = TimeSpan.FromHours(12);
+    // A season brings its Hero on Monday, its balance update on Tuesday and an event Evo days later, all before the
+    // Thursday war battles; a boundary for each would leave the last patch a day or two of training battles.
+    // Four days keeps the releases of Oct-Nov 2026 apart: the 6th, 19th, 2nd and 9th, a week or more between them.
+    public static readonly TimeSpan MinPatchLength = TimeSpan.FromDays(4);
 
     private readonly MetaOptions _opt = options.Value;
     private readonly object _buildLock = new();
@@ -254,27 +255,27 @@ public sealed class MetaCache(
     /// </summary>
     public async Task<bool> StartPatchAsync(long ms, string reason, CancellationToken ct = default)
     {
-        using (var scope = scopeFactory.CreateScope())
+        if (!await TryStartPatchAsync(ms, reason, ct))
         {
-            if (!await TryStartPatchAsync(scope.ServiceProvider.GetRequiredService<BattleRepository>(), ms, reason, ct))
-            {
-                return false;
-            }
+            return false;
         }
         await AggregateFromStoreAsync("patch boundary", CancellationToken.None);
         return true;
     }
 
-    private async Task<bool> TryStartPatchAsync(BattleRepository store, long ms, string reason, CancellationToken ct)
+    // Reads the boundary from the store: a watcher can tick before InitializeAsync has loaded it into memory.
+    private async Task<bool> TryStartPatchAsync(long ms, string reason, CancellationToken ct)
     {
+        using var scope = scopeFactory.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
         await _boundaryGate.WaitAsync(ct);
         try
         {
-            var epoch = EpochStart;
+            var epoch = store.GetEpochStart();
             if (ms < epoch + (long)MinPatchLength.TotalMilliseconds)
             {
-                logger.LogInformation("{Reason} at {At}: within {Hours}h of the patch boundary {Epoch} or before it; boundary kept",
-                    reason, IsoMs(ms), MinPatchLength.TotalHours, IsoMs(epoch));
+                logger.LogInformation("{Reason} at {At}: within {Days} days of the patch boundary {Epoch} or before it; boundary kept",
+                    reason, IsoMs(ms), MinPatchLength.TotalDays, IsoMs(epoch));
                 return false;
             }
             await SaveEpochAsync(store, ms, ct);
@@ -304,7 +305,7 @@ public sealed class MetaCache(
             return;
         }
         var names = string.Join(", ", release.Versions.Select(v => $"{v.CardId} {v.Version}"));
-        await TryStartPatchAsync(store, release.FirstSeenMs, $"New card version first played ({names})", ct);
+        await TryStartPatchAsync(release.FirstSeenMs, $"New card version first played ({names})", ct);
         await store.AddKnownCardVersionsAsync(release.Versions, ct);
     }
 

@@ -109,9 +109,10 @@ Two things set the boundary automatically:
   catalog lists and the battles already stored are recorded as known, so they
   don't count as new.
 
-A boundary less than 12 hours after the current one, or before it, is ignored,
-so an Evo and a balance update released on the same day give one patch. The
-manual endpoint ignores this rule and sets any time. Battles from before the
+A boundary less than 4 days after the current one, or before it, is ignored. A
+season's Hero (Monday), its balance update (Tuesday) and an event Evo (a few
+days later) all arrive before the Thursday war battles, and four days merges
+them into one patch. The manual endpoint ignores this rule and sets any time. Battles from before the
 boundary aren't deleted; they count at reduced weight (`Meta__PreEpochWeight`,
 default `0.25`) until they age out of the 30-day window, so the meta stays
 populated until the next war battle days.

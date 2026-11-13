@@ -132,18 +132,64 @@ public sealed class CardPeriodStorageTests : IDisposable
     }
 
     [Theory]
-    [InlineData(11)]
-    [InlineData(-30)]
-    public async Task A_new_patch_less_than_12_hours_after_the_boundary_or_before_it_keeps_the_boundary(int hoursLater)
+    [InlineData(3.9)]
+    [InlineData(-1)]
+    public async Task A_new_patch_less_than_4_days_after_the_boundary_or_before_it_keeps_the_boundary(double daysLater)
     {
         using var sp = Services();
         var cache = await StartAsync(sp, 3, 2, 1);
-        await cache.SetEpochAsync(Now - Day);
+        await cache.SetEpochAsync(Now - 5 * Day);
 
-        Assert.False(await cache.StartPatchAsync(Now - Day + hoursLater * 60L * 60 * 1000, "test"));
+        Assert.False(await cache.StartPatchAsync(Now - 5 * Day + (long)(daysLater * Day), "test"));
 
-        Assert.Equal(Now - Day, cache.EpochStart);
+        Assert.Equal(Now - 5 * Day, cache.EpochStart);
         Assert.Equal(0, Store(sp, s => s.GetPreviousEpochStart()));
+    }
+
+    [Fact]
+    public async Task The_releases_of_October_and_November_2026_make_four_patches()
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp);
+        var patches = new List<long>();
+
+        foreach (var release in new[]
+                 {
+                     "2026-10-05T09:00:00Z", // Season: Electro Wizard Hero
+                     "2026-10-06T06:30:00Z", // Balance update
+                     "2026-10-08T12:00:00Z", // Electro Giant Evo, from the Album Event
+                     "2026-10-19T00:30:00Z", // Balance update
+                     "2026-11-02T13:12:00Z", // Season: Giant Evo
+                     "2026-11-09T10:52:00Z", // Mirror Evo
+                 })
+        {
+            var ms = DateTimeOffset.Parse(release).ToUnixTimeMilliseconds();
+            if (await cache.StartPatchAsync(ms, release))
+            {
+                patches.Add(ms);
+            }
+        }
+
+        Assert.Equal(
+            ["2026-10-05T09:00:00.000Z", "2026-10-19T00:30:00.000Z", "2026-11-02T13:12:00.000Z", "2026-11-09T10:52:00.000Z"],
+            patches.Select(MetaCache.IsoMs));
+        Assert.Equal(DateTimeOffset.Parse("2026-11-02T13:12:00Z").ToUnixTimeMilliseconds(), Store(sp, s => s.GetPreviousEpochStart()));
+    }
+
+    [Fact]
+    public async Task A_store_opened_before_the_boundary_moved_reads_the_moved_boundary()
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp, 3, 2, 1);
+        await cache.SetEpochAsync(Now - 10 * Day);
+        using var rebuild = sp.CreateScope();
+        var store = rebuild.ServiceProvider.GetRequiredService<BattleRepository>();
+        Assert.Equal(Now - 10 * Day, store.GetEpochStart());
+
+        await cache.StartPatchAsync(Now - Day, "test");
+
+        Assert.Equal(Now - Day, store.GetEpochStart());
+        Assert.Equal(Now - 10 * Day, store.GetPreviousEpochStart());
     }
 
     [Fact]
