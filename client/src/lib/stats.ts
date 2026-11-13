@@ -87,12 +87,26 @@ export function track(event: StatsEvent): void {
     if (sent.has(key)) return;
     sent.add(key);
   }
-  fetch('/api/stats/event', {
+  fetch(event.kind === 'tool' ? '/api/stats/view' : '/api/stats/event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...event, ref: referrerHost(), ...campaign }),
     keepalive: true,
   }).catch(() => {});
+}
+
+let lastView: { pathname: string; tool: StatsTool | null } | null = null;
+
+/**
+ * Counts a page opened. The same address again isn't a new view (React's dev mode runs effects twice), nor is a
+ * redirect within the same page, such as /clan forwarding to /clan/TAG.
+ */
+export function trackPageView(pathname: string, redirected: boolean): void {
+  const tool = toolForPath(pathname);
+  const previous = lastView;
+  lastView = { pathname, tool };
+  if (!tool || previous?.pathname === pathname || (redirected && previous?.tool === tool)) return;
+  track({ kind: 'tool', tool });
 }
 
 /** Only the page category is sent: no deck URL, cards, or player tag. */

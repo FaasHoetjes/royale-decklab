@@ -93,6 +93,12 @@ export default function AdminStats() {
   const toggleFilter = (name: keyof StatsFilters, key: string) =>
     setFilters((current) => ({ ...current, [name]: current[name] === key ? undefined : key }));
 
+  // The hour is picked on today's chart, which the other ranges don't show.
+  const selectRange = (key: StatsRange['key']) => {
+    setRangeKey(key);
+    if (key !== 'today') setFilters((current) => (current.hour ? { ...current, hour: undefined } : current));
+  };
+
   if (!token) {
     return (
       <Gate>
@@ -138,7 +144,7 @@ export default function AdminStats() {
   return (
     <div style={styles.page}>
       <StatsHeader inView={liveInView ?? report.inView} live={live} onToggleLive={toggleLive} onSignOut={signOut} />
-      <RangeTabs ranges={report.ranges} selected={range.key} onSelect={setRangeKey} />
+      <RangeTabs ranges={report.ranges} selected={range.key} onSelect={selectRange} />
       {filtersShown.length > 0 && <FilterBar filters={filtersShown} onRemove={toggleFilter} onClear={() => setFilters({})} />}
 
       <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>

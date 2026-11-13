@@ -6,7 +6,7 @@ import { statsStyles } from './styles';
 
 const COLUMNS: { label: string; hint: string; value: (m: StatsMonth) => string }[] = [
   { label: 'Visitors', hint: HINTS.visitors, value: (m) => number(m.visitors) },
-  { label: 'Pageviews', hint: HINTS.pageviews, value: (m) => number(m.pageviews) },
+  { label: 'Pageviews', hint: HINTS.pageviews, value: (m) => (m.pageviews === null ? '–' : number(m.pageviews)) },
   { label: 'Active users', hint: HINTS.activeUsers, value: (m) => number(m.users) },
   { label: 'Lookups', hint: HINTS.lookups, value: (m) => number(m.lookups) },
   { label: 'Unique players', hint: HINTS.uniquePlayers, value: (m) => number(m.players) },

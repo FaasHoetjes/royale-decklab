@@ -32,12 +32,19 @@ public sealed class StatsStore
     private readonly ConcurrentDictionary<string, byte[]> _secrets = new();
     private bool _checkpointPending;
 
-    public StatsStore(string path)
+    public StatsStore(string path, TimeProvider? clock = null)
     {
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
         using var connection = Open();
         StatsSchema.Ensure(connection);
+        PageviewsSince = FirstDayOf(connection, "pageviews_since", DateOnly.FromDateTime((clock ?? TimeProvider.System).GetUtcNow().UtcDateTime));
     }
+
+    /// <summary>
+    /// The day this store first counted every page view. Before it a page counted once per visitor a day, so
+    /// pageviews from before then can't be compared with later ones.
+    /// </summary>
+    public DateOnly PageviewsSince { get; }
 
     public static string Day(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     public static string Month(DateOnly day) => day.ToString("yyyy-MM", CultureInfo.InvariantCulture);
@@ -278,18 +285,21 @@ public sealed class StatsStore
         }
         // Pooled connections keep their temp tables, so one left behind by a failed request is dropped first.
         Execute(connection, "DROP TABLE IF EXISTS temp.filtered;");
+        // Each filter picks its visitors on its own: a page and a campaign needn't be on the same day's row, since a
+        // row keeps the source and campaign of that day's first ping only.
+        static string Matching(string condition) =>
+            $"visitor IN (SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range} AND {condition})";
         using (var copy = RangeCommand(connection,
             $"""
-            CREATE TEMP TABLE filtered AS SELECT * FROM events WHERE visitor IN (
-                SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range}
-                  AND (@source IS NULL OR COALESCE(source, 'direct') = @source)
-                  AND (@country IS NULL OR COALESCE(country, 'XX') = @country)
-                  AND (@device IS NULL OR COALESCE(device, 'desktop') = @device)
-                  AND (@campaign IS NULL OR campaign = @campaign)
-                  AND (@tool IS NULL OR (kind = 'tool' AND tool = @tool))
-                  AND (@hour IS NULL OR visitor IN (
-                      SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range} GROUP BY visitor, day
-                      HAVING strftime('%H', MIN(at_ms) / 1000, 'unixepoch') = @hour)))
+            CREATE TEMP TABLE filtered AS SELECT * FROM events WHERE
+                (@source IS NULL OR {Matching("COALESCE(source, 'direct') = @source")})
+                AND (@country IS NULL OR {Matching("COALESCE(country, 'XX') = @country")})
+                AND (@device IS NULL OR {Matching("COALESCE(device, 'desktop') = @device")})
+                AND (@campaign IS NULL OR {Matching("campaign = @campaign")})
+                AND (@tool IS NULL OR {Matching("kind = 'tool' AND tool = @tool")})
+                AND (@hour IS NULL OR visitor IN (
+                    SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range} GROUP BY visitor, day
+                    HAVING strftime('%H', MIN(at_ms) / 1000, 'unixepoch') = @hour))
             """, from, to))
         {
             copy.Parameters.AddWithValue("@source", (object?)filter.Source ?? DBNull.Value);
@@ -309,6 +319,19 @@ public sealed class StatsStore
         {
             Execute(connection, "DROP TABLE IF EXISTS temp.filtered;");
         }
+    }
+
+    private static DateOnly FirstDayOf(SqliteConnection connection, string key, DateOnly today)
+    {
+        using (var insert = Command(connection, "INSERT OR IGNORE INTO settings (key, value) VALUES (@key, @value)"))
+        {
+            insert.Parameters.AddWithValue("@key", key);
+            insert.Parameters.AddWithValue("@value", Day(today));
+            insert.ExecuteNonQuery();
+        }
+        using var select = Command(connection, "SELECT value FROM settings WHERE key = @key");
+        select.Parameters.AddWithValue("@key", key);
+        return DateOnly.ParseExact((string)select.ExecuteScalar()!, "yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
     private static bool HasTotals(SqliteConnection connection, SqliteTransaction transaction, string period)

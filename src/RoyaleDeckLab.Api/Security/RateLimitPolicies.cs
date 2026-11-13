@@ -24,4 +24,7 @@ public static class RateLimitPolicies
     /// <summary>Viewing the stats, which refreshes itself and refetches on every filter click.</summary>
     public const string AdminStats = "admin-stats";
     public const string Stats = "stats";
+
+    /// <summary>Page view pings, apart from the other stats so browsing many pages can't crowd out a lookup's ping.</summary>
+    public const string PageViews = "page-views";
 }

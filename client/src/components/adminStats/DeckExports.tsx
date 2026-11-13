@@ -50,7 +50,7 @@ export function DeckExports({ range }: { range: StatsRange }) {
         </div>
       )}
       <p style={{ ...statsStyles.note, marginTop: '12px', lineHeight: 1.5, color: theme.text.tertiary }}>
-        Every successful copy and open click counts. People are anonymous estimates across both actions.
+        Every successful copy and open click counts. Visitors are anonymous estimates across both actions.
         Open clicks show intent; they do not confirm a deck was imported.
       </p>
     </section>

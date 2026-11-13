@@ -27,6 +27,7 @@ public static class SiteRateLimits
         o.AddPolicy(RateLimitPolicies.Admin, ctx => PerMinute(ctx, 5));
         o.AddPolicy(RateLimitPolicies.AdminStats, ctx => PerMinute(ctx, 30));
         o.AddPolicy(RateLimitPolicies.Stats, ctx => PerMinute(ctx, 60));
+        o.AddPolicy(RateLimitPolicies.PageViews, ctx => PerMinute(ctx, 120));
         o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => PerMinute(ctx, GlobalPerMinute));
     });
 

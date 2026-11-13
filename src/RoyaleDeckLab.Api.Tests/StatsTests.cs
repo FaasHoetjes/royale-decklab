@@ -152,6 +152,32 @@ public sealed class StatsTests : IDisposable
     }
 
     [Theory]
+    [InlineData("builder", true)]
+    [InlineData("card", true)]
+    [InlineData("admin", false)]
+    [InlineData(null, false)]
+    public void Controller_RecordsPageViewsOnlyForKnownPages(string? tool, bool accepted)
+    {
+        var clock = new Clock(Noon);
+        var recorder = new StatsRecorder(_store, clock, NullLogger<StatsRecorder>.Instance);
+        var controller = new StatsController(recorder, new LivePresence(clock), _store, clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = Request("84.1.2.3", Phone) },
+        };
+        Assert.IsType<NoContentResult>(controller.PageView(new StatsController.EventBody(null, null, tool, "www.reddit.com", null, null)));
+        var events = Drain(recorder);
+        if (accepted)
+        {
+            var recorded = Assert.Single(events);
+            Assert.Equal((StatsStore.Kinds.Tool, tool, "reddit"), (recorded.Kind, recorded.Tool, recorded.Source));
+        }
+        else
+        {
+            Assert.Empty(events);
+        }
+    }
+
+    [Theory]
     [InlineData("deck_copy", "generator", true)]
     [InlineData("deck_copy", "builder", true)]
     [InlineData("deck_open", "upgrades", true)]
@@ -486,6 +512,52 @@ public sealed class StatsTests : IDisposable
         Assert.Equal((1L, 1L), (today.Visitors, today.Users));
         Assert.Equal(reddit, report.Filters);
         Assert.Equal(3, report.Months.Single().Visitors);
+    }
+
+    [Fact]
+    public void Pageviews_AreLeftOutWhereTheyWerentCountedYet()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"stats-since-{Guid.NewGuid():N}.db");
+        try
+        {
+            var store = new StatsStore(path, new Clock(Noon));
+            Assert.Equal(Today, store.PageviewsSince);
+            Assert.Equal(Today, new StatsStore(path, new Clock(Noon.AddDays(30))).PageviewsSince);
+
+            var old = Noon.AddDays(-StatsStore.RetentionDays);
+            store.Add([Event(StatsStore.Kinds.Tool, 1, old, tool: "home"), Event(StatsStore.Kinds.Tool, 1, Noon, tool: "home")]);
+            store.Maintain(Today);
+            using (var connection = new SqliteConnection($"Data Source={path}"))
+            {
+                connection.Open();
+                using var forget = connection.CreateCommand();
+                forget.CommandText = "DELETE FROM totals WHERE metric = 'pageviews'";
+                forget.ExecuteNonQuery();
+            }
+            var oldMonth = StatsReport.Build(store, Noon).Months.Single(m => m.Month == StatsStore.Month(DateOnly.FromDateTime(old.UtcDateTime)));
+            Assert.True(oldMonth.Visitors > 0);
+            Assert.Null(oldMonth.Pageviews);
+
+            store.Add([Event(StatsStore.Kinds.Tool, 1, Noon.AddDays(1), tool: "home")]);
+            Assert.Null(StatsReport.Build(store, Noon.AddDays(13)).Ranges.Single(r => r.Key == "7d").PreviousPageviews);
+            Assert.Equal(1, StatsReport.Build(store, Noon.AddDays(14)).Ranges.Single(r => r.Key == "7d").PreviousPageviews);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Compute_FiltersEachDimensionOnItsOwn()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "builder", campaign: "launch"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddHours(1), tool: "home"),
+        ]);
+        var both = _store.Compute(Today, Today, new StatsFilter(Tool: "home", Campaign: "launch"));
+        Assert.Equal(1, both.Single(t => t.Metric == "visitors").Value);
     }
 
     [Fact]

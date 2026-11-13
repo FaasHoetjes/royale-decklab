@@ -51,7 +51,7 @@ public static class StatsReport
         DeckExports DeckExports);
 
     public sealed record MonthReport(
-        string Month, bool Partial, long Users, long Visitors, long Pageviews, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian,
+        string Month, bool Partial, long Users, long Visitors, long? Pageviews, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian,
         long DeckCopies, long DeckOpens, long DeckExporters);
 
     public sealed record Report(
@@ -107,7 +107,7 @@ public static class StatsReport
             Scalar("visitors"),
             previous is null ? null : ScalarOf(previous, "visitors"),
             Scalar("pageviews"),
-            previous is null ? null : ScalarOf(previous, "pageviews"),
+            previous is null || from.AddDays(-length) <= store.PageviewsSince ? null : ScalarOf(previous, "pageviews"),
             Scalar("lookups"),
             Scalar("players"),
             Scalar("returning"),
@@ -203,7 +203,7 @@ public static class StatsReport
     }
 
     private static MonthReport Month(string month, IReadOnlyList<StatsTotal> totals, bool partial)
-        => new(month, partial, ScalarOf(totals, "users"), ScalarOf(totals, "visitors"), ScalarOf(totals, "pageviews"),
+        => new(month, partial, ScalarOf(totals, "users"), ScalarOf(totals, "visitors"), OptionalScalarOf(totals, "pageviews"),
             ScalarOf(totals, "lookups"),
             ScalarOf(totals, "players"), ScalarOf(totals, "share_opens"), ScalarOf(totals, "new_from_share"),
             OptionalScalarOf(totals, "time_median"), ScalarOf(totals, "deck_copies"), ScalarOf(totals, "deck_opens"),

@@ -475,7 +475,8 @@ export interface StatsMonth {
   partial: boolean;
   users: number;
   visitors: number;
-  pageviews: number;
+  /** Missing for months summed up before page views were counted. */
+  pageviews: number | null;
   lookups: number;
   players: number;
   shareOpens: number;

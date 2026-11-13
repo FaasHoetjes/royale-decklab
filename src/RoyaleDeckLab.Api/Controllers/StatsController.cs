@@ -37,9 +37,20 @@ public sealed class StatsController(StatsRecorder recorder, LivePresence presenc
                 when body.Tool is { } exportTool && StatsClassify.DeckExportTools.Contains(exportTool):
                 recorder.Record(HttpContext, body.Kind, tool: exportTool, origin: origin);
                 break;
-            case StatsStore.Kinds.Tool when body.Tool is { } tool && StatsClassify.Tools.Contains(tool):
-                recorder.Record(HttpContext, body.Kind, tool: tool, origin: origin);
-                break;
+        }
+        return NoContent();
+    }
+
+    /// <summary>A page opened. Always 204, like <see cref="Event"/>.</summary>
+    [HttpPost("api/stats/view")]
+    [EnableRateLimiting(RateLimitPolicies.PageViews)]
+    [RequestSizeLimit(1024)]
+    public IActionResult PageView([FromBody] EventBody body)
+    {
+        if (body.Tool is { } tool && StatsClassify.Tools.Contains(tool))
+        {
+            recorder.Record(HttpContext, StatsStore.Kinds.Tool, tool: tool, origin: new VisitOrigin(
+                body.Ref is { Length: <= 253 } host ? host : null, body.UtmSource, body.UtmCampaign));
         }
         return NoContent();
     }
