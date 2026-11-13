@@ -1,5 +1,5 @@
-// Anonymous usage pings for the admin stats page. Deck exports count every action; other events skip repeats
-// within a page load here and count each visitor once a day per event on the server.
+// Anonymous usage pings for the admin stats page. Page views and deck exports count every time; other events skip
+// repeats within a page load here and count each visitor once a day per event on the server.
 import { isValidTag } from './playerTag';
 
 export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq';
@@ -82,7 +82,7 @@ export function toolForPath(pathname: string): StatsTool | null {
 
 export function track(event: StatsEvent): void {
   if (isStatsExcluded()) return;
-  if (event.kind !== 'deck_copy' && event.kind !== 'deck_open') {
+  if (event.kind !== 'tool' && event.kind !== 'deck_copy' && event.kind !== 'deck_open') {
     const key = JSON.stringify(event);
     if (sent.has(key)) return;
     sent.add(key);

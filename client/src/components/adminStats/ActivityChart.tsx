@@ -23,7 +23,7 @@ const tooltipShift = (share: number) => {
   return 'translateX(-50%)';
 };
 
-/** Visitors behind real users per bar; the last bar is the day or hour still going on. */
+/** Visitors behind active users per bar; the last bar is the day or hour still going on. */
 export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps) {
   const theme = getTheme();
   const max = Math.max(1, ...points.map((p) => p.visitors), ...(previous ?? []).map((p) => p.visitors));
@@ -38,7 +38,7 @@ export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps
   return (
     <div>
       <div style={styles.plot} onPointerLeave={() => setHovered(null)}>
-        <svg viewBox={`0 0 ${points.length * BAR_SLOT} 100`} preserveAspectRatio="none" width="100%" height="160" role="img" aria-label="Visitors and real users per period" style={styles.chart}>
+        <svg viewBox={`0 0 ${points.length * BAR_SLOT} 100`} preserveAspectRatio="none" width="100%" height="160" role="img" aria-label="Visitors and active users per period" style={styles.chart}>
           {points.map((p, i) => (
             <g key={p.key} opacity={i === last ? IN_PROGRESS_OPACITY : 1}>
               <rect x={i * BAR_SLOT + 1} y={y(p.visitors)} width={BAR_WIDTH} height={100 - y(p.visitors)} fill="var(--accent)" fillOpacity={VISITORS_OPACITY} />
@@ -76,7 +76,7 @@ export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps
               {hovered === last && ' (so far)'}
             </strong>
             <span>{`${number(point.visitors)} visitors`}</span>
-            <span>{`${number(point.users)} real users`}</span>
+            <span>{`${number(point.users)} active users`}</span>
             {before && <span style={styles.tooltipMuted}>{`${number(before.visitors)} visitors the period before`}</span>}
           </div>
         )}
@@ -88,7 +88,7 @@ export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps
       </div>
       <div style={{ ...styles.legend, color: theme.text.secondary }}>
         <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent, opacity: VISITORS_OPACITY }} />Visitors</span>
-        <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent }} />Real users</span>
+        <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent }} />Active users</span>
         {previous && <span style={styles.legendItem}><span style={{ ...styles.dash, borderColor: theme.text.secondary }} />Visitors, period before</span>}
         <span style={styles.legendItem}><span style={{ ...styles.swatch, backgroundColor: theme.accent, opacity: IN_PROGRESS_OPACITY }} />Faded: still in progress</span>
       </div>

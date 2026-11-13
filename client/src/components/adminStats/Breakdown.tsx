@@ -8,6 +8,7 @@ const ROWS_SHOWN = 8;
 
 type BreakdownProps = {
   title: string;
+  hint: string;
   counts: StatsCount[];
   /** Without a total, the counts aren't shares of the users above (tools count every visitor), so bars scale to the largest. */
   total?: number;
@@ -20,7 +21,7 @@ type BreakdownProps = {
   extra?: { title: string; counts: StatsCount[] };
 };
 
-export function Breakdown({ title, counts, total, label, lookedUp, times, selected, onSelect, extra }: BreakdownProps) {
+export function Breakdown({ title, hint, counts, total, label, lookedUp, times, selected, onSelect, extra }: BreakdownProps) {
   const theme = getTheme();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? counts : counts.slice(0, ROWS_SHOWN);
@@ -51,7 +52,9 @@ export function Breakdown({ title, counts, total, label, lookedUp, times, select
 
   return (
     <section style={statsStyles.panel}>
-      <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>{title}</h2>
+      <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>
+        <span title={hint} style={statsStyles.hinted}>{title}</span>
+      </h2>
       {counts.length === 0 && <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>Nothing yet.</p>}
       {counts.length > 0 && (
         <div style={statsStyles.list}>

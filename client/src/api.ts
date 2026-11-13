@@ -422,6 +422,9 @@ export interface StatsRange {
   previousUsers: number | null;
   visitors: number;
   previousVisitors: number | null;
+  /** Every page opened, repeats included; the visitors count each browser once. */
+  pageviews: number;
+  previousPageviews: number | null;
   lookups: number;
   players: number;
   returning: number;
@@ -468,6 +471,7 @@ export interface StatsMonth {
   partial: boolean;
   users: number;
   visitors: number;
+  pageviews: number;
   lookups: number;
   players: number;
   shareOpens: number;

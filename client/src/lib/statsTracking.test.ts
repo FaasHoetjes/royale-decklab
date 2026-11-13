@@ -34,14 +34,16 @@ describe('export tracking', () => {
     });
   });
 
-  test('counts repeat exports while still deduplicating page visits', () => {
+  test('counts every page view and export while still deduplicating other events', () => {
     track({ kind: 'tool', tool: 'builder' });
     track({ kind: 'tool', tool: 'builder' });
+    track({ kind: 'share' });
+    track({ kind: 'share' });
     trackDeckExport('deck_copy');
     trackDeckExport('deck_copy');
     trackDeckExport('deck_open');
-    expect(requests.map((r) => r.kind)).toEqual(['tool', 'deck_copy', 'deck_copy', 'deck_open']);
-    expect(requests[1]).toEqual({ kind: 'deck_copy', tool: 'builder', ref: 'www.reddit.com' });
+    expect(requests.map((r) => r.kind)).toEqual(['tool', 'tool', 'share', 'deck_copy', 'deck_copy', 'deck_open']);
+    expect(requests[3]).toEqual({ kind: 'deck_copy', tool: 'builder', ref: 'www.reddit.com' });
   });
 
   test.each([

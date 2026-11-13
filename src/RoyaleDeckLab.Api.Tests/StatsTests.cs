@@ -88,6 +88,22 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
+    public void Pageviews_CountEveryViewWhileVisitorsStayDistinct()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "home"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddMinutes(5), tool: "home"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddMinutes(9), tool: "builder"),
+            Event(StatsStore.Kinds.Tool, 2, Noon, tool: "home"),
+            Event(StatsStore.Kinds.Lookup, 2, Noon, tag: 10),
+        ]);
+
+        Assert.Equal(4, Metric(Today, Today, "pageviews"));
+        Assert.Equal(2, Metric(Today, Today, "visitors"));
+        Assert.Equal(2, Metric(Today, Today, "tool", "home"));
+    }
+
+    [Fact]
     public void Exports_CountEveryActionAndDistinctPeopleAcrossToolsAndDays()
     {
         var copy = Event(StatsStore.Kinds.DeckCopy, 1, Noon, tool: "generator", country: "NL", source: "reddit");

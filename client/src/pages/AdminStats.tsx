@@ -7,6 +7,7 @@ import { DeckExports } from '../components/adminStats/DeckExports';
 import { FilterBar } from '../components/adminStats/FilterBar';
 import { countryLabel, deviceLabel, number, sourceLabel, toolLabel } from '../components/adminStats/format';
 import { Gate, TokenForm } from '../components/adminStats/Gate';
+import { HINTS } from '../components/adminStats/hints';
 import { MonthsTable } from '../components/adminStats/MonthsTable';
 import { SharingFunnel } from '../components/adminStats/SharingFunnel';
 import { StatTiles } from '../components/adminStats/StatTiles';
@@ -162,6 +163,7 @@ export default function AdminStats() {
       <div style={styles.grid}>
         <Breakdown
           title="Countries"
+          hint={HINTS.countries}
           counts={range.countries}
           total={range.visitors}
           label={countryLabel}
@@ -171,6 +173,7 @@ export default function AdminStats() {
         />
         <Breakdown
           title="Phone or desktop"
+          hint={HINTS.devices}
           counts={range.devices}
           total={range.users}
           label={deviceLabel}
@@ -178,7 +181,8 @@ export default function AdminStats() {
           onSelect={(key) => toggleFilter('device', key)}
         />
         <Breakdown
-          title="Where users came from"
+          title="Where visitors came from"
+          hint={HINTS.sources}
           counts={range.sources}
           total={range.visitors}
           label={sourceLabel}
@@ -188,7 +192,7 @@ export default function AdminStats() {
           onSelect={(key) => toggleFilter('source', key)}
           extra={range.campaigns.length > 0 ? { title: 'Campaign links', counts: range.campaigns } : undefined}
         />
-        <Breakdown title="Which tools are used" counts={range.tools} label={toolLabel} />
+        <Breakdown title="Pages visited" hint={HINTS.pages} counts={range.tools} label={toolLabel} />
       </div>
 
       <section style={{ ...statsStyles.panel, ...styles.webhooks }}>

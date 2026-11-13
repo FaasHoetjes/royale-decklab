@@ -58,7 +58,9 @@ public sealed class StatsStore
         return (byte[])select.ExecuteScalar()!;
     });
 
-    /// <summary>Counts every deck export; other events are kept once per visitor, subject and tool each day.</summary>
+    /// <summary>
+    /// Counts every deck export and page view; other events are kept once per visitor, subject and tool each day.
+    /// </summary>
     public void Add(IReadOnlyList<StatsEvent> events)
     {
         using var connection = Open();
@@ -68,7 +70,7 @@ public sealed class StatsStore
             INSERT INTO events (day, kind, visitor, tag, tool, at_ms, country, device, source, campaign)
             VALUES (@day, @kind, @visitor, @tag, @tool, @at, @country, @device, @source, @campaign)
             ON CONFLICT (day, kind, visitor, tag, tool) DO UPDATE SET occurrences = occurrences + 1
-            WHERE events.kind IN ('deck_copy', 'deck_open')
+            WHERE events.kind IN ('deck_copy', 'deck_open', 'tool')
             """);
         insert.Transaction = transaction;
         foreach (var e in events)

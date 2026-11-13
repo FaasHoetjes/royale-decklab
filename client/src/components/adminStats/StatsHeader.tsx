@@ -1,6 +1,7 @@
 import type { StatsRange } from '../../api';
 import { getTheme } from '../../theme';
 import { number, RANGE_LABELS } from './format';
+import { HINTS } from './hints';
 import { statsStyles } from './styles';
 
 const LIVE_COLOR = '#2fb463';
@@ -19,7 +20,7 @@ export function StatsHeader({ inView, live, onToggleLive, onSignOut }: StatsHead
     <div style={styles.header}>
       <div style={styles.titleRow}>
         <h1 style={{ ...statsStyles.title, color: theme.text.primary }}>Stats</h1>
-        <span style={{ ...styles.live, color: theme.text.secondary }} title="Visitors with the site open in view right now">
+        <span style={{ ...styles.live, color: theme.text.secondary }} title={HINTS.inView}>
           <span style={{ ...styles.liveDot, backgroundColor: live && inView > 0 ? LIVE_COLOR : theme.text.tertiary }} />
           {number(inView)} on the site now
         </span>
