@@ -15,11 +15,21 @@ const withPatchAfterCards = (tools: NavItem[]): NavItem[] => [
 ];
 
 export default function Sidebar() {
+  const theme = getTheme();
+  return (
+    <nav aria-label="Main menu" style={{ ...styles.sidebar, backgroundColor: theme.bg.secondary, borderRightColor: theme.border }}>
+      <SidebarContent />
+    </nav>
+  );
+}
+
+/** The logo, every page, the contact and theme buttons and the player: the desktop sidebar and the phone's drawer. */
+export function SidebarContent() {
   const { activePlayerTag } = useApp();
   const { pathname } = useLocation();
   const theme = getTheme();
-  const navRef = useRef<HTMLElement>(null);
-  const glideRef = useGlide(navRef, pathname);
+  const listRef = useRef<HTMLDivElement>(null);
+  const glideRef = useGlide(listRef, pathname);
 
   const renderNavLink = (item: NavItem) => (
     <NavLink
@@ -38,15 +48,7 @@ export default function Sidebar() {
   );
 
   return (
-    <nav
-      ref={navRef}
-      aria-label="Main menu"
-      style={{
-        ...styles.sidebar,
-        backgroundColor: theme.bg.secondary,
-        borderRightColor: theme.border,
-      }}
-    >
+    <div ref={listRef} style={styles.content}>
       <span ref={glideRef} className="nav-glide" style={{ ...styles.glide, boxShadow: `inset 3px 0 0 ${theme.accent}` }} />
 
       <Link
@@ -92,7 +94,7 @@ export default function Sidebar() {
 
         <PlayerCard />
       </div>
-    </nav>
+    </div>
   );
 }
 
@@ -221,6 +223,12 @@ const styles = {
     top: 0,
     zIndex: 20,
     alignSelf: 'flex-start' as const,
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+  },
+  content: {
+    position: 'relative' as const,
+    flex: '1 0 auto',
     display: 'flex' as const,
     flexDirection: 'column' as const,
   },

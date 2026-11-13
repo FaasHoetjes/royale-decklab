@@ -415,7 +415,7 @@ const styles = {
     position: 'fixed' as const,
     left: '12px',
     right: '12px',
-    bottom: 'calc(76px + env(safe-area-inset-bottom))',
+    bottom: 'calc(16px + env(safe-area-inset-bottom))',
     zIndex: 850,
     display: 'flex' as const,
     justifyContent: 'center' as const,
