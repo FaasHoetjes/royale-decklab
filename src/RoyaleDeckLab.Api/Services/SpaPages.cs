@@ -25,7 +25,7 @@ public sealed record SpaPage(int StatusCode, string Title, string Description, s
     public string? Body { get; init; }
 }
 
-public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Builder, Upgrades, Clan, Faq }
+public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Patch, Builder, Upgrades, Clan, Faq }
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -45,6 +45,7 @@ public static partial class SpaPages
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
         ("/best-decks", $"Best Clash Royale War Decks ({MonthYear(now)})", "Best War Deck Sets", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.", SpaContentKind.BestDecks),
+        ("/patch", $"Clash Royale Patch Changes in Clan War ({MonthYear(now)})", "Patch Overview", "What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.", SpaContentKind.Patch),
         (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
         ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.", SpaContentKind.Builder),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),

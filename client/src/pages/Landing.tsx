@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
-import { playerWarDecksOptions, useMetaStatus } from '../queries';
+import { playerWarDecksOptions, useAllCards, useCardStats, useMetaStatus } from '../queries';
+import { cardIconUrl } from '../lib/cardDisplay';
+import { mostPlayedVersion } from '../lib/cardInfo';
+import { winRateMovers } from '../lib/patchMovers';
+import CardTile from '../components/CardTile';
 import { parseOptions, toQuery } from '../lib/generatorOptions';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { timeAgo } from '../lib/timeAgo';
-import { preloadGenerator } from '../lib/pageLoaders';
+import { preloadGenerator, preloadPage } from '../lib/pageLoaders';
 import CardWall from '../components/CardWall';
 import SlotNumber from '../components/SlotNumber';
 
@@ -162,6 +166,8 @@ export default function Landing() {
           </p>
         )}
 
+        <PatchButton />
+
         {status.data && status.data.deckCount > 0 && (
           <p style={{ ...styles.status, color: theme.text.secondary }}>
             <span style={{ ...styles.statusDot, backgroundColor: theme.accent }} aria-hidden="true" />
@@ -176,7 +182,81 @@ export default function Landing() {
   );
 }
 
+const PATCH_THUMBNAILS = 3;
+
+/** Opens the Patch page, showing the cards whose win rate moved the most once the numbers are in. */
+function PatchButton() {
+  const theme = getTheme();
+  const stats = useCardStats().data;
+  const cardById = new Map((useAllCards().data ?? []).map((card) => [card.id, card]));
+  const thumbnails = winRateMovers(stats?.cards ?? []).flatMap(({ stat }) => {
+    const card = cardById.get(stat.id);
+    return card ? [{ card, stat }] : [];
+  }).slice(0, PATCH_THUMBNAILS);
+
+  return (
+    <div style={styles.patchRow}>
+      <Link
+        to="/patch"
+        className="mobile-touch-target"
+        onMouseEnter={() => preloadPage('/patch')}
+        onFocus={() => preloadPage('/patch')}
+        onTouchStart={() => preloadPage('/patch')}
+        style={{ ...styles.patchButton, color: theme.text.primary }}
+      >
+        {thumbnails.length > 0 && (
+          <span style={styles.patchThumbs} aria-hidden="true">
+            {thumbnails.map(({ card, stat }, i) => (
+              <span key={card.id} style={{ ...styles.patchThumb, marginLeft: i === 0 ? 0 : '-7px' }}>
+                <CardTile name={card.name} iconUrl={cardIconUrl(card.iconUrls, mostPlayedVersion(stat))} showName={false} artStyle={styles.patchThumbArt} />
+              </span>
+            ))}
+          </span>
+        )}
+        See what changed this patch
+        <span style={{ ...styles.patchArrow, backgroundColor: theme.accent, color: theme.onAccent }} aria-hidden="true">→</span>
+      </Link>
+    </div>
+  );
+}
+
 const styles = {
+  patchRow: {
+    marginTop: '8px',
+  },
+  patchButton: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: '8px',
+    padding: '7px 8px 7px 7px',
+    borderRadius: '999px',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--panel-shadow)',
+    fontSize: '13.5px',
+    fontWeight: 650 as const,
+    textDecoration: 'none',
+  },
+  patchThumbs: {
+    display: 'flex' as const,
+  },
+  patchThumb: {
+    display: 'block' as const,
+    width: '22px',
+    borderRadius: '6px',
+    boxShadow: '0 0 0 2px var(--bg-secondary)',
+  },
+  patchThumbArt: {
+    borderRadius: '6px',
+  },
+  patchArrow: {
+    display: 'grid' as const,
+    placeItems: 'center' as const,
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    fontSize: '13px',
+  },
   page: {
     display: 'flex' as const,
     alignItems: 'center' as const,

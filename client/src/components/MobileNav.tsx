@@ -6,7 +6,7 @@ import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
 import Sheet from './Sheet';
 import PlayerMenu, { Avatar } from './PlayerMenu';
-import { toolItems, pageTitle, FAQ_ITEM } from './navItems';
+import { toolItems, pageTitle, FAQ_ITEM, PATCH_ITEM } from './navItems';
 import { MailIcon, GitHubIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
@@ -93,6 +93,10 @@ function MoreSheet({ theme, onClose }: { theme: Theme; onClose: () => void }) {
       <div style={{ ...styles.sheetHeading, color: theme.text.tertiary }}>Player</div>
       <PlayerMenu switcher={switcher} theme={theme} onDone={onClose} />
       <div style={{ ...styles.divider, backgroundColor: theme.border }} />
+      <Link to={PATCH_ITEM.to} onClick={onClose} className="nav-link" style={rowStyle}>
+        <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true">{PATCH_ITEM.icon}</span>
+        {PATCH_ITEM.label}
+      </Link>
       <Link to={FAQ_ITEM.to} onClick={onClose} className="nav-link" style={rowStyle}>
         <span style={{ ...styles.rowIcon, color: theme.text.secondary }} aria-hidden="true">{FAQ_ITEM.icon}</span>
         FAQ

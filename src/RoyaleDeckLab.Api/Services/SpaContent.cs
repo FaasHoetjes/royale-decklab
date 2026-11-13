@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using RoyaleDeckLab.Api.Dtos;
+using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
@@ -17,6 +18,7 @@ public static class SpaContent
         ("/", "War Deck Generator"),
         ("/best-decks", "Best War Decks"),
         ("/cards", "Cards"),
+        ("/patch", "Patch Overview"),
         ("/builder", "War Deck Builder"),
         ("/upgrades", "Upgrade Advisor"),
         ("/clan", "Clan War Planner"),
@@ -78,6 +80,68 @@ public static class SpaContent
             html.Append("</tbody></table>");
         }
         return Page(html.ToString());
+    }
+
+    public const int PatchMoverCount = 12;
+
+    /// <summary>
+    /// The Patch page's h1: the month the patch went live. While only last patch's numbers are in, the new patch
+    /// began where they end.
+    /// </summary>
+    public static string PatchHeading(CardStatsResponse stats)
+    {
+        var start = stats.IsLastPatch ? stats.Until : stats.Since;
+        if (start is null)
+        {
+            return "This Patch";
+        }
+        return DateTimeOffset.Parse(start, CultureInfo.InvariantCulture).ToString("MMMM", CultureInfo.InvariantCulture) + " Patch";
+    }
+
+    public static string Patch(IReadOnlyList<CatalogCard> cards, CardStatsResponse stats, IReadOnlyList<BalanceUpdate> updates)
+    {
+        var html = new StringBuilder(H1(PatchHeading(stats)))
+            .Append(P("The latest balance changes, and the cards whose Clan War win rate and play rate moved the most since the last patch."));
+        var nameById = cards.ToDictionary(c => c.Id, c => c.Name);
+        foreach (var update in updates)
+        {
+            html.Append(H2($"Balance changes, {update.LiveFrom.ToString("MMMM d", CultureInfo.InvariantCulture)}")).Append("<ul>");
+            foreach (var change in update.Changes.Where(c => nameById.ContainsKey(c.CardId)))
+            {
+                var kind = change.Kind.ToString().ToLowerInvariant();
+                html.Append("<li>").Append(CardLink(nameById[change.CardId])).Append(Encode($" ({kind}): {change.Summary}")).Append("</li>");
+            }
+            html.Append("</ul>");
+        }
+
+        // A change is only set once both patches have enough games for it.
+        var compared = stats.Cards.Where(s => s.WinRateChange is not null && nameById.ContainsKey(s.Id)).ToList();
+        if (compared.Count == 0)
+        {
+            return Page(html.ToString());
+        }
+        var playRateMovers = compared
+            .OrderByDescending(s => Math.Abs(s.PlayRate - (s.PreviousPlayRate ?? s.PlayRate)))
+            .Take(PatchMoverCount)
+            .Select(s => (nameById[s.Id], s.PreviousPlayRate ?? 0, s.PlayRate));
+        var winRateMovers = compared
+            .Where(s => s.ChangeIsClear)
+            .OrderByDescending(s => Math.Abs(s.WinRateChange ?? 0))
+            .Take(PatchMoverCount)
+            .Select(s => (nameById[s.Id], s.PreviousWinRate ?? 0, s.WinRate));
+        html.Append(H2("Biggest play rate changes")).Append(MoverList(playRateMovers))
+            .Append(H2("Biggest win rate changes")).Append(MoverList(winRateMovers));
+        return Page(html.ToString());
+    }
+
+    private static string MoverList(IEnumerable<(string Name, double From, double To)> movers)
+    {
+        var html = new StringBuilder("<ul>");
+        foreach (var (name, from, to) in movers)
+        {
+            html.Append("<li>").Append(CardLink(name)).Append(Encode($": {SpaPages.Percent(from)} → {SpaPages.Percent(to)}")).Append("</li>");
+        }
+        return html.Append("</ul>").ToString();
     }
 
     public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks)

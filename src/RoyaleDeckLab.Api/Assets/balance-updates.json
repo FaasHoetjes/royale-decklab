@@ -1,0 +1,39 @@
+[
+  {
+    "liveFrom": "2026-10-19",
+    "notesUrl": "https://supercell.com/en/games/clashroyale/blog/release-notes/october-balance-changes-2026/",
+    "changes": [
+      { "cardId": 26000054, "version": "normal", "kind": "nerf", "summary": "Damage 212 → 202, mass doubled" },
+      { "cardId": 26000040, "version": "normal", "kind": "nerf", "summary": "Damage 151 → 143" },
+      { "cardId": 26000107, "version": "normal", "kind": "nerf", "summary": "Damage 168 → 153" },
+      { "cardId": 26000101, "version": "normal", "kind": "nerf", "summary": "Enchantment lingers 0.5s, was 5s" },
+      { "cardId": 26000063, "version": "normal", "kind": "buff", "summary": "First hit 0.5s, was 0.7s" },
+      { "cardId": 26000057, "version": "normal", "kind": "buff", "summary": "Damage 171 → 179" },
+      { "cardId": 28000023, "version": "normal", "kind": "buff", "summary": "Damage on 2 to 4 targets 296 → 307" },
+      { "cardId": 26000056, "version": "evo", "kind": "rework", "summary": "Death damage 192 → 163" },
+      { "cardId": 26000056, "version": "normal", "kind": "rework", "summary": "Death damage 145 → 163" },
+      { "cardId": 26000010, "version": "normal", "kind": "rework", "summary": "Spawn spread 0.4 → 0.5 tiles" }
+    ]
+  },
+  {
+    "liveFrom": "2026-10-06",
+    "notesUrl": "https://supercell.com/en/games/clashroyale/blog/release-notes/october-balance-changes-2026/",
+    "changes": [
+      { "cardId": 26000023, "version": "hero", "kind": "nerf", "summary": "Freeze damage 89 → 46" },
+      { "cardId": 27000000, "version": "evo", "kind": "nerf", "summary": "Barrage damage 281 → 261" },
+      { "cardId": 28000015, "version": "normal", "kind": "nerf", "summary": "Damage 232 → 215" },
+      { "cardId": 27000007, "version": "normal", "kind": "nerf", "summary": "Produces every 15s, was 13s; lasts 1m 50s" },
+      { "cardId": 26000107, "version": "normal", "kind": "nerf", "summary": "Hit speed 1.5s → 1.7s" },
+      { "cardId": 26000050, "version": "normal", "kind": "nerf", "summary": "Hitpoints 1210 → 1152" },
+      { "cardId": 28000004, "version": "normal", "kind": "buff", "summary": "First hit 0.3s, was 0.4s" },
+      { "cardId": 27000013, "version": "normal", "kind": "buff", "summary": "Spawn damage to Crown Towers 0 → 20" },
+      { "cardId": 26000029, "version": "normal", "kind": "buff", "summary": "Damage 53 → 71, hit speed 1.3s → 1.5s" },
+      { "cardId": 26000051, "version": "normal", "kind": "buff", "summary": "Damage 250 → 271" },
+      { "cardId": 26000058, "version": "normal", "kind": "buff", "summary": "Damage 281 → 302" },
+      { "cardId": 27000008, "version": "normal", "kind": "buff", "summary": "Damage 58 → 61" },
+      { "cardId": 26000077, "version": "normal", "kind": "buff", "summary": "Ability casts in 0.7s, was 0.93s" },
+      { "cardId": 26000028, "version": "normal", "kind": "buff", "summary": "Hitpoints 883 → 906" },
+      { "cardId": 26000074, "version": "normal", "kind": "rework", "summary": "Damage 161 → 168, dash range 5.5 → 5 tiles" }
+    ]
+  }
+]

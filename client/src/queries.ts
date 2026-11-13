@@ -14,6 +14,7 @@ import {
   fetchPlayerCollection,
   fetchBestDecks,
   fetchCardStats,
+  fetchPatch,
   fetchCardDecks,
   fetchUpgradeAdvice,
   fetchClanWar,
@@ -33,6 +34,7 @@ export const queryKeys = {
   cards: ['cards'] as const,
   bestDecks: ['best-decks'] as const,
   cardStats: ['card-stats'] as const,
+  patch: ['patch'] as const,
   cardDecks: (cardId: number) => ['card-decks', cardId] as const,
   playerWarDecks: (tag: string, options = '') => ['player', tag, 'war-decks', options] as const,
   playerSummary: (tag: string) => ['player', tag, 'summary'] as const,
@@ -163,6 +165,14 @@ export function useCardStats() {
   return useQuery({
     queryKey: queryKeys.cardStats,
     queryFn: ({ signal }) => fetchCardStats(signal),
+    staleTime: FIVE_MINUTES_MS,
+  });
+}
+
+export function usePatch() {
+  return useQuery({
+    queryKey: queryKeys.patch,
+    queryFn: ({ signal }) => fetchPatch(signal),
     staleTime: FIVE_MINUTES_MS,
   });
 }

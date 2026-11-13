@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon } from './navIcons';
+import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
@@ -82,6 +82,17 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
   ];
 }
 
+/** Not one of the phone's tabs: the sidebar lists it after Cards, the phone keeps it in its sheet. */
+export const PATCH_ITEM: NavItem = {
+  to: '/patch',
+  label: 'Patch Overview',
+  tab: 'Patch',
+  title: `Clash Royale Patch Changes in Clan War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`,
+  description: 'What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.',
+  end: false,
+  icon: <ChangesIcon />,
+};
+
 export const FAQ_ITEM: NavItem = {
   to: '/faq',
   label: 'FAQ',
@@ -93,7 +104,7 @@ export const FAQ_ITEM: NavItem = {
 };
 
 function pageItem(pathname: string, items: NavItem[]): NavItem | undefined {
-  return [...items, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
+  return [...items, PATCH_ITEM, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
 }
 
 export function pageTitle(pathname: string, items: NavItem[]): string | undefined {

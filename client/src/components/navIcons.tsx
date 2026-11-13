@@ -63,6 +63,17 @@ export function TrendingUpIcon() {
   );
 }
 
+export function ChangesIcon() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M7 20V4" />
+      <path d="m3 8 4-4 4 4" />
+      <path d="M17 4v16" />
+      <path d="m13 16 4 4 4-4" />
+    </svg>
+  );
+}
+
 export function ShieldIcon() {
   return (
     <svg {...iconProps()}>

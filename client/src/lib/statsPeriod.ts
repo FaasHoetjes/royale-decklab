@@ -1,6 +1,6 @@
 import type { CardStatsResponse } from '../api';
 
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+export const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 const battlesIn = (stats: CardStatsResponse) => `${stats.battles.toLocaleString('en-US')} battles in the top 100 war clans`;
 const patchSpan = (since: string | null, until: string) => (since ? `${shortDate(since)} to ${shortDate(until)}` : `up to ${shortDate(until)}`);

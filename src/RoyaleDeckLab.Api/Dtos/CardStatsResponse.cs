@@ -3,13 +3,15 @@ namespace RoyaleDeckLab.Api.Dtos;
 /// <summary>
 /// Every card's war numbers since <see cref="Since"/> (null: all stored battles). When this patch has
 /// too few battles yet, <see cref="IsLastPatch"/> is set and the numbers cover the last patch, up to <see cref="Until"/>.
+/// <see cref="PreviousSince"/> is when the patch the changes compare against began.
 /// </summary>
 public sealed record CardStatsResponse(
     string? Since,
     string? Until,
     int Battles,
     bool IsLastPatch,
-    IReadOnlyList<CardStat> Cards);
+    IReadOnlyList<CardStat> Cards,
+    string? PreviousSince = null);
 
 /// <summary>
 /// Win rate change since the last patch is only set when both patches have enough games. <see cref="ChangeMargin"/> is how far
