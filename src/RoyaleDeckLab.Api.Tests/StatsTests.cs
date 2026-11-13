@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -486,6 +487,37 @@ public sealed class StatsTests : IDisposable
         Assert.Equal(reddit, report.Filters);
         Assert.Equal(3, report.Months.Single().Visitors);
     }
+
+    [Fact]
+    public void Compute_FiltersByPageCampaignAndFirstHour()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.Tool, 1, Noon, tool: "builder", campaign: "launch"),
+            Event(StatsStore.Kinds.Tool, 1, Noon.AddHours(2), tool: "home"),
+            Event(StatsStore.Kinds.Tool, 2, Noon.AddHours(2), tool: "builder"),
+            Event(StatsStore.Kinds.Tool, 3, Noon.AddHours(2), tool: "faq"),
+        ]);
+        long Count(string metric, StatsFilter filter) => _store.Compute(Today, Today, filter).Single(t => t.Metric == metric).Value;
+        var noon = Noon.UtcDateTime.Hour.ToString("00", CultureInfo.InvariantCulture);
+        var later = Noon.AddHours(2).UtcDateTime.Hour.ToString("00", CultureInfo.InvariantCulture);
+
+        Assert.Equal(2, Count("visitors", new StatsFilter(Tool: "builder")));
+        Assert.Equal(1, Count("visitors", new StatsFilter(Campaign: "launch")));
+        Assert.Equal(1, Count("visitors", new StatsFilter(Hour: noon)));
+        Assert.Equal(2, Count("pageviews", new StatsFilter(Hour: noon)));
+        Assert.Equal(2, Count("visitors", new StatsFilter(Hour: later)));
+        Assert.Equal(1, Count("visitors", new StatsFilter(Tool: "builder", Hour: later)));
+    }
+
+    [Theory]
+    [InlineData("00", "00")]
+    [InlineData("23", "23")]
+    [InlineData("24", null)]
+    [InlineData("7", null)]
+    [InlineData("-1", null)]
+    [InlineData(null, null)]
+    public void Hour_AcceptsOnlyTwoDigitHours(string? value, string? expected)
+        => Assert.Equal(expected, StatsClassify.Hour(value));
 
     [Fact]
     public void Compute_CountsWhoLookedUpAPlayerPerSourceAndCountry()

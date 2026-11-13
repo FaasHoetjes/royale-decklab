@@ -5,7 +5,7 @@ import { ActivityChart } from '../components/adminStats/ActivityChart';
 import { Breakdown } from '../components/adminStats/Breakdown';
 import { DeckExports } from '../components/adminStats/DeckExports';
 import { FilterBar } from '../components/adminStats/FilterBar';
-import { countryLabel, deviceLabel, number, sourceLabel, toolLabel } from '../components/adminStats/format';
+import { countryLabel, deviceLabel, hourLabel, number, sourceLabel, toolLabel } from '../components/adminStats/format';
 import { Gate, TokenForm } from '../components/adminStats/Gate';
 import { HINTS } from '../components/adminStats/hints';
 import { MonthsTable } from '../components/adminStats/MonthsTable';
@@ -18,7 +18,7 @@ import { readAdminToken, saveAdminToken } from '../lib/adminToken';
 import { excludeThisBrowser } from '../lib/stats';
 import { getTheme } from '../theme';
 
-const FILTER_KEYS = ['source', 'country', 'device'] as const;
+const FILTER_KEYS = ['source', 'country', 'device', 'tool', 'hour', 'campaign'] as const;
 const LIVE_REFRESH_MS = 30_000;
 const REFRESH_MS = 60_000;
 // Below this, one visitor who left a tab open would set a source's time on their own.
@@ -35,9 +35,7 @@ const toMap = (counts: StatsCount[]) => new Map(counts.map((c) => [c.key, c.user
 const timesOf = (durations: StatsDuration[]) =>
   new Map(durations.filter((d) => d.visitors >= MIN_TIMED_VISITORS).map((d) => [d.key, d.seconds]));
 
-/** The hours come in UTC; this shows them on the viewer's clock. */
-const localHour = (day: string) => (key: string) =>
-  new Date(`${day}T${key}:00:00Z`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const localHour = (day: string) => (key: string) => hourLabel(key, day);
 const dayLabel = (key: string) => key;
 
 export default function AdminStats() {
@@ -153,7 +151,13 @@ export default function AdminStats() {
       {chartPoints.length > 0 && (
         <section style={statsStyles.panel}>
           <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>{isToday ? 'Today, per hour (your time)' : 'Per day'}</h2>
-          <ActivityChart points={chartPoints} previous={isToday ? null : range.previousDaily} keyLabel={isToday ? localHour(range.from) : dayLabel} />
+          <ActivityChart
+            points={chartPoints}
+            previous={isToday ? null : range.previousDaily}
+            keyLabel={isToday ? localHour(range.from) : dayLabel}
+            selected={isToday ? filters.hour : undefined}
+            onSelect={isToday ? (key) => toggleFilter('hour', key) : undefined}
+          />
         </section>
       )}
 
@@ -190,9 +194,18 @@ export default function AdminStats() {
           times={timesOf(range.sourceTime)}
           selected={filters.source}
           onSelect={(key) => toggleFilter('source', key)}
-          extra={range.campaigns.length > 0 ? { title: 'Campaign links', counts: range.campaigns } : undefined}
+          extra={range.campaigns.length > 0
+            ? { title: 'Campaign links', counts: range.campaigns, selected: filters.campaign, onSelect: (key) => toggleFilter('campaign', key) }
+            : undefined}
         />
-        <Breakdown title="Pages visited" hint={HINTS.pages} counts={range.tools} label={toolLabel} />
+        <Breakdown
+          title="Pages visited"
+          hint={HINTS.pages}
+          counts={range.tools}
+          label={toolLabel}
+          selected={filters.tool}
+          onSelect={(key) => toggleFilter('tool', key)}
+        />
       </div>
 
       <section style={{ ...statsStyles.panel, ...styles.webhooks }}>
@@ -203,7 +216,7 @@ export default function AdminStats() {
       {report.months.length > 0 && <MonthsTable months={report.months} />}
 
       <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>
-        Visits are kept for {report.retentionDays} days, then only the totals remain. Bots, and browsers that opened this page, aren't counted. Click a country, device or source to filter the page by it.
+        Visits are kept for {report.retentionDays} days, then only the totals remain. Bots, and browsers that opened this page, aren't counted. Click a country, device, source, campaign, page or one of today's hour bars to filter the page by it.
       </p>
     </div>
   );

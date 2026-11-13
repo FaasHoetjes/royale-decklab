@@ -48,13 +48,17 @@ public sealed class StatsController(StatsRecorder recorder, LivePresence presenc
     [RequireAdminToken]
     [EnableRateLimiting(RateLimitPolicies.AdminStats)]
     public IActionResult Report(
-        [FromQuery] string? source, [FromQuery] string? country, [FromQuery] string? device, [FromServices] ReminderStore reminders)
+        [FromQuery] string? source, [FromQuery] string? country, [FromQuery] string? device, [FromQuery] string? tool,
+        [FromQuery] string? hour, [FromQuery] string? campaign, [FromServices] ReminderStore reminders)
     {
         Response.Headers.CacheControl = "no-store";
         var filter = new StatsFilter(
             source is not null && StatsClassify.Sources.Contains(source) ? source : null,
             StatsClassify.Country(country),
-            device is "phone" or "desktop" ? device : null);
+            device is "phone" or "desktop" ? device : null,
+            tool is not null && StatsClassify.Tools.Contains(tool) ? tool : null,
+            StatsClassify.Hour(hour),
+            StatsClassify.Campaign(campaign));
         return Ok(StatsReport.Build(store, clock.GetUtcNow(), filter, presence.InView, reminders.RowCount()));
     }
 }

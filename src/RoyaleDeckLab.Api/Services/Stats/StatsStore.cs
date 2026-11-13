@@ -284,12 +284,20 @@ public sealed class StatsStore
                 SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range}
                   AND (@source IS NULL OR COALESCE(source, 'direct') = @source)
                   AND (@country IS NULL OR COALESCE(country, 'XX') = @country)
-                  AND (@device IS NULL OR COALESCE(device, 'desktop') = @device))
+                  AND (@device IS NULL OR COALESCE(device, 'desktop') = @device)
+                  AND (@campaign IS NULL OR campaign = @campaign)
+                  AND (@tool IS NULL OR (kind = 'tool' AND tool = @tool))
+                  AND (@hour IS NULL OR visitor IN (
+                      SELECT visitor FROM events WHERE {StatsMetrics.Visit} AND {StatsMetrics.Range} GROUP BY visitor, day
+                      HAVING strftime('%H', MIN(at_ms) / 1000, 'unixepoch') = @hour)))
             """, from, to))
         {
             copy.Parameters.AddWithValue("@source", (object?)filter.Source ?? DBNull.Value);
             copy.Parameters.AddWithValue("@country", (object?)filter.Country ?? DBNull.Value);
             copy.Parameters.AddWithValue("@device", (object?)filter.Device ?? DBNull.Value);
+            copy.Parameters.AddWithValue("@campaign", (object?)filter.Campaign ?? DBNull.Value);
+            copy.Parameters.AddWithValue("@tool", (object?)filter.Tool ?? DBNull.Value);
+            copy.Parameters.AddWithValue("@hour", (object?)filter.Hour ?? DBNull.Value);
             copy.ExecuteNonQuery();
         }
         try

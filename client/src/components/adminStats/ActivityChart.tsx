@@ -8,12 +8,15 @@ const BAR_WIDTH = 8;
 const VISITORS_OPACITY = 0.3;
 const IN_PROGRESS_OPACITY = 0.45;
 const HOVER_OPACITY = 0.08;
+const UNSELECTED_OPACITY = 0.25;
 const EDGE_SHARE = 0.15;
 
 type ActivityChartProps = {
   points: StatsPoint[];
   previous: StatsPoint[] | null;
   keyLabel: (key: string) => string;
+  selected?: string;
+  onSelect?: (key: string) => void;
 };
 
 /** Keeps the tooltip inside the chart: anchored by its left or right edge near the sides, centred elsewhere. */
@@ -24,7 +27,7 @@ const tooltipShift = (share: number) => {
 };
 
 /** Visitors behind active users per bar; the last bar is the day or hour still going on. */
-export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps) {
+export function ActivityChart({ points, previous, keyLabel, selected, onSelect }: ActivityChartProps) {
   const theme = getTheme();
   const max = Math.max(1, ...points.map((p) => p.visitors), ...(previous ?? []).map((p) => p.visitors));
   const y = (value: number) => 100 - (value / max) * 100;
@@ -40,7 +43,7 @@ export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps
       <div style={styles.plot} onPointerLeave={() => setHovered(null)}>
         <svg viewBox={`0 0 ${points.length * BAR_SLOT} 100`} preserveAspectRatio="none" width="100%" height="160" role="img" aria-label="Visitors and active users per period" style={styles.chart}>
           {points.map((p, i) => (
-            <g key={p.key} opacity={i === last ? IN_PROGRESS_OPACITY : 1}>
+            <g key={p.key} opacity={selected !== undefined && p.key !== selected ? UNSELECTED_OPACITY : i === last ? IN_PROGRESS_OPACITY : 1}>
               <rect x={i * BAR_SLOT + 1} y={y(p.visitors)} width={BAR_WIDTH} height={100 - y(p.visitors)} fill="var(--accent)" fillOpacity={VISITORS_OPACITY} />
               <rect x={i * BAR_SLOT + 1} y={y(p.users)} width={BAR_WIDTH} height={100 - y(p.users)} fill="var(--accent)" />
             </g>
@@ -65,6 +68,7 @@ export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps
               fill="var(--text-primary)"
               fillOpacity={i === hovered ? HOVER_OPACITY : 0}
               onPointerEnter={() => setHovered(p.visitors > 0 ? i : null)}
+              onClick={onSelect && p.visitors > 0 ? () => onSelect(p.key) : undefined}
               style={p.visitors > 0 ? styles.hit : undefined}
             />
           ))}
@@ -78,6 +82,9 @@ export function ActivityChart({ points, previous, keyLabel }: ActivityChartProps
             <span>{`${number(point.visitors)} visitors`}</span>
             <span>{`${number(point.users)} active users`}</span>
             {before && <span style={styles.tooltipMuted}>{`${number(before.visitors)} visitors the period before`}</span>}
+            {onSelect && (
+              <span style={styles.tooltipMuted}>{point.key === selected ? 'Click to remove the filter' : 'Click to show only these visitors'}</span>
+            )}
           </div>
         )}
       </div>

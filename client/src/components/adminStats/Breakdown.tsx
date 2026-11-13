@@ -18,7 +18,7 @@ type BreakdownProps = {
   times?: Map<string, number>;
   selected?: string;
   onSelect?: (key: string) => void;
-  extra?: { title: string; counts: StatsCount[] };
+  extra?: { title: string; counts: StatsCount[]; selected?: string; onSelect: (key: string) => void };
 };
 
 export function Breakdown({ title, hint, counts, total, label, lookedUp, times, selected, onSelect, extra }: BreakdownProps) {
@@ -85,12 +85,22 @@ export function Breakdown({ title, hint, counts, total, label, lookedUp, times, 
         <>
           <h3 style={{ ...styles.subheading, color: theme.text.secondary }}>{extra.title}</h3>
           <div style={statsStyles.list}>
-            {extra.counts.slice(0, ROWS_SHOWN).map((c) => (
-              <div key={c.key} style={statsStyles.listRow}>
-                <span style={{ color: theme.text.primary }}>{c.key}</span>
-                <span style={{ ...statsStyles.listValue, color: theme.text.secondary }}>{number(c.users)}</span>
-              </div>
-            ))}
+            {extra.counts.slice(0, ROWS_SHOWN).map((c) => {
+              const active = extra.selected === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => extra.onSelect(c.key)}
+                  aria-pressed={active}
+                  title={active ? 'Remove this filter' : 'Show only these visitors'}
+                  style={{ ...styles.rowButton, ...statsStyles.listRow }}
+                >
+                  <span style={{ color: theme.text.primary, fontWeight: active ? 700 : 400 }}>{c.key}</span>
+                  <span style={{ ...statsStyles.listValue, color: theme.text.secondary }}>{number(c.users)}</span>
+                </button>
+              );
+            })}
           </div>
         </>
       )}

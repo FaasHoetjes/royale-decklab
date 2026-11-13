@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace RoyaleDeckLab.Api.Services.Stats;
@@ -80,6 +81,10 @@ public static partial class StatsClassify
         }
         return name != "direct" && Sources.Contains(name) ? name : "other";
     }
+
+    /// <summary>A UTC hour as two digits, "00" to "23", or null.</summary>
+    public static string? Hour(string? value)
+        => value is { Length: 2 } && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var hour) && hour < 24 ? value : null;
 
     /// <summary>A campaign link's utm_campaign, kept only as a short plain name.</summary>
     public static string? Campaign(string? value)

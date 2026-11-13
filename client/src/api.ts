@@ -412,6 +412,10 @@ export interface StatsFilters {
   source?: string;
   country?: string;
   device?: string;
+  tool?: string;
+  /** The UTC hour, "00" to "23", in which visitors first showed up on a day. */
+  hour?: string;
+  campaign?: string;
 }
 
 export interface StatsRange {
