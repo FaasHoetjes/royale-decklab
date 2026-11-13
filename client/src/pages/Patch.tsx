@@ -342,7 +342,6 @@ const styles = {
     borderRadius: '4px',
   },
   wordmarkBottom: {
-    fontFamily: "'Baloo 2', system-ui, -apple-system, sans-serif",
     fontWeight: 800 as const,
     letterSpacing: '1px',
   },

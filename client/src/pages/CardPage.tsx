@@ -319,7 +319,6 @@ const styles = {
   },
   name: {
     margin: 0,
-    fontFamily: "'Baloo 2', system-ui, -apple-system, sans-serif",
     fontSize: '33px',
     fontWeight: 800 as const,
     lineHeight: 1.1,
