@@ -46,7 +46,7 @@ const queryClient = new QueryClient({
 })
 
 // A player link's requests start with the app instead of waiting for the generator's code to download.
-function prefetchPlayerPage() {
+const prefetchPlayerPage = () => {
   const [segment, ...rest] = window.location.pathname.split('/').filter(Boolean)
   if (!segment || rest.length > 0 || !isValidTag(segment)) return
   const tag = `#${segment}`

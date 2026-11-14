@@ -60,8 +60,8 @@ export default function WarDeckGenerator() {
   const fallback = lastLoaded.current?.tag === tag ? lastLoaded.current.data : null;
   const playerData = warDecks.data ?? fallback;
   const optionsFailed = warDecks.isError && fallback != null;
-  // A request that never got an answer means the server is down, not that the tag is wrong.
-  const unreachable = warDecks.isError && !fallback && !(warDecks.error instanceof ApiError);
+  // No answer, or Cloudflare's 5xx for a down origin, means the server is down, not that the tag is wrong.
+  const unreachable = warDecks.isError && !fallback && !(warDecks.error instanceof ApiError && warDecks.error.status < 500);
 
   const catalog = useAllCards();
   const collection = usePlayerCollection(playerData && !shared ? tag : null);

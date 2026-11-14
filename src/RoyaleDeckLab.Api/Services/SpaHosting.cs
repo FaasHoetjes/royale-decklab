@@ -24,24 +24,28 @@ public static partial class SpaHosting
         app.UseStaticFiles(new StaticFileOptions
         {
             ContentTypeProvider = new PrecompressedContentTypes(),
-            OnPrepareResponse = ctx =>
-            {
-                var request = ctx.Context.Request;
-                // The build puts a content hash in the head scripts' ?v=, so a new version always has a new URL.
-                ctx.Context.Response.Headers.CacheControl =
-                    request.Path.StartsWithSegments("/assets") || request.Query.ContainsKey("v") ? "public, max-age=31536000, immutable"
-                    : request.Path.StartsWithSegments("/badges") ? "public, max-age=604800"
-                    : "no-cache";
-            },
+            OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = CacheControlFor(ctx.Context.Request),
         });
+    }
+
+    private static string CacheControlFor(HttpRequest request)
+    {
+        var isBundle = request.Path.StartsWithSegments("/assets");
+        // The build puts a content hash in the head scripts' ?v=, so a new version always has a new URL.
+        var isVersioned = request.Query.ContainsKey("v");
+        if (isBundle || isVersioned) return "public, max-age=31536000, immutable";
+        if (request.Path.StartsWithSegments("/badges")) return "public, max-age=604800";
+        return "no-cache";
     }
 
     // The build writes a top-quality .br beside each bundle, smaller than the on-the-fly compression and free to send.
     public static void ServePrecompressed(HttpContext ctx, IFileProvider files)
     {
         var request = ctx.Request;
-        if (!(HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method)) || !request.Path.StartsWithSegments("/assets")) return;
-        if (!request.GetTypedHeaders().AcceptEncoding.Any(e => e.Value == "br" && (e.Quality ?? 1) > 0)) return;
+        var isRead = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
+        var isBundle = request.Path.StartsWithSegments("/assets");
+        var acceptsBrotli = request.GetTypedHeaders().AcceptEncoding.Any(e => e.Value == "br" && (e.Quality ?? 1) > 0);
+        if (!isRead || !isBundle || !acceptsBrotli) return;
         var compressed = request.Path + ".br";
         if (!files.GetFileInfo(compressed).Exists) return;
         request.Path = compressed;
