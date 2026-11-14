@@ -221,6 +221,11 @@ public static partial class SpaPages
                 .Replace("property=\"og:image:height\" content=\"1260\"", $"property=\"og:image:height\" content=\"{ShareImageRenderer.Height}\"")
                 .Replace("property=\"og:image:alt\" content=\"Royale DeckLab\"", $"property=\"og:image:alt\" content=\"{title}\"");
         }
+        var preloads = string.Concat(ApiPreloads(page).Select(url => $"  <link rel=\"preload\" href=\"{url}\" as=\"fetch\" crossorigin=\"anonymous\">\n  "));
+        if (preloads.Length > 0)
+        {
+            html = html.Replace("</head>", $"{preloads}</head>");
+        }
         if (page.StructuredData is { } structuredData)
         {
             html = html.Replace("</head>", $"  <script type=\"application/ld+json\">{structuredData}</script>\n  </head>");
@@ -231,6 +236,17 @@ public static partial class SpaPages
         }
         return html;
     }
+
+    // The page fetches these as soon as it runs; preloading them overlaps the requests with the script download.
+    // crossorigin="anonymous" matches what fetch() sends, so the page's own request takes the preloaded response.
+    public static IReadOnlyList<string> ApiPreloads(SpaPage page) => page.Content switch
+    {
+        SpaContentKind.Home or SpaContentKind.Patch => ["/api/meta/status", "/api/cards", "/api/cards/stats", "/api/best-decks", "/api/patch"],
+        SpaContentKind.BestDecks => ["/api/best-decks"],
+        SpaContentKind.Cards => ["/api/cards", "/api/cards/stats"],
+        SpaContentKind.Card when page.Card is { } card => ["/api/cards", "/api/cards/stats", $"/api/cards/{card.Id}/decks"],
+        _ => [],
+    };
 
     public static string Sitemap(IEnumerable<CatalogCard> cards)
     {

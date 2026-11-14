@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import WarDeckResult from '../components/WarDeckResult';
-import { useAllCards, useMetaStatus, usePlayerCollection, usePlayerWarDecks } from '../queries';
+import { useAllCards, usePlayerCollection, usePlayerWarDecks } from '../queries';
+import { ApiError } from '../api';
 import { toBuilderCards } from '../lib/builderCards';
-import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, parseOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
-import { decodeShare } from '../lib/shareLink';
+import { deckKey, hasActiveOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
+import { playerLinkOptions } from '../lib/shareLink';
 import { track } from '../lib/stats';
 import { routeFlag } from '../lib/routeState';
 import { useApp } from '../AppContext';
@@ -28,12 +29,7 @@ export default function WarDeckGenerator() {
   // Options live in the URL (shareable). Each change loads at once: deck count and level are single
   // clicks, and the card picker applies its picks in one go when it closes.
   const [searchParams] = useSearchParams();
-  // A share link pins its decks with locks and ignores the reader's own remembered options.
-  const shared = useMemo(() => decodeShare(searchParams.get('share')), [searchParams]);
-  const options = useMemo(
-    () => (shared ? { ...DEFAULT_OPTIONS, decks: shared.length, lock: shared } : parseOptions(searchParams)),
-    [shared, searchParams]
-  );
+  const { shared, options } = useMemo(() => playerLinkOptions(searchParams), [searchParams]);
   const query = toQuery(options);
 
   // Locking or unlocking a deck doesn't change the lineup on screen, so it doesn't fetch: the locks
@@ -57,16 +53,15 @@ export default function WarDeckGenerator() {
     showOptions(toQuery(next));
   };
 
-  const meta = useMetaStatus();
-  const metaReady = meta.isSuccess;
-
-  const warDecks = usePlayerWarDecks(tag, metaReady, apiQuery);
+  const warDecks = usePlayerWarDecks(tag, apiQuery);
   // If changing options fails (e.g. the rate limit), keep showing this player's last decks instead of leaving the page.
   const lastLoaded = useRef<{ tag: string; data: NonNullable<typeof warDecks.data> } | null>(null);
   if (tag && warDecks.data && !warDecks.isPlaceholderData) lastLoaded.current = { tag, data: warDecks.data };
   const fallback = lastLoaded.current?.tag === tag ? lastLoaded.current.data : null;
   const playerData = warDecks.data ?? fallback;
   const optionsFailed = warDecks.isError && fallback != null;
+  // A request that never got an answer means the server is down, not that the tag is wrong.
+  const unreachable = warDecks.isError && !fallback && !(warDecks.error instanceof ApiError);
 
   const catalog = useAllCards();
   const collection = usePlayerCollection(playerData && !shared ? tag : null);
@@ -88,7 +83,7 @@ export default function WarDeckGenerator() {
   }, [warDecks.isSuccess, tag, shared, fromClan]);
 
   useEffect(() => {
-    if (warDecks.isError && playerId && !fallback) {
+    if (warDecks.isError && playerId && !fallback && !unreachable) {
       if (!shared && !fromClan) setActivePlayerTag(null);
       navigate('/', {
         replace: true,
@@ -121,15 +116,13 @@ export default function WarDeckGenerator() {
     navigate('/');
   };
 
-  if (!metaReady) {
-    if (!meta.isError) return <WarDecksSkeleton isMobile={isMobile} />;
-
+  if (unreachable) {
     return (
       <LoadError
         title="Can't reach the server"
         message="Royale DeckLab is unreachable right now. Please try again in a moment."
-        onRetry={() => meta.refetch()}
-        retrying={meta.isFetching}
+        onRetry={() => warDecks.refetch()}
+        retrying={warDecks.isFetching}
         retryLabel="Retry connection"
         style={{ minHeight: '80dvh' }}
       />

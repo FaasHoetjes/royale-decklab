@@ -170,6 +170,24 @@ public sealed class SpaPagesTests
     }
 
     [Fact]
+    public void CardPage_PreloadsItsOwnDecks()
+    {
+        var html = SpaPages.Render(File.ReadAllText(IndexHtmlPath()), Resolve("/cards/mini-pekka"));
+        Assert.Contains("<link rel=\"preload\" href=\"/api/cards/2/decks\" as=\"fetch\" crossorigin=\"anonymous\">", html);
+        Assert.Contains("href=\"/api/cards/stats\"", html);
+    }
+
+    [Theory]
+    [InlineData("/", 5)]
+    [InlineData("/patch", 5)]
+    [InlineData("/best-decks", 1)]
+    [InlineData("/cards", 2)]
+    [InlineData("/2QGG92L9", 0)]
+    [InlineData("/faq", 0)]
+    public void Pages_PreloadTheDataTheyFetchFirst(string path, int count)
+        => Assert.Equal(count, Count(SpaPages.Render(File.ReadAllText(IndexHtmlPath()), Resolve(path)), "rel=\"preload\""));
+
+    [Fact]
     public void Sitemap_ListsThePagesAndEveryCard()
     {
         var xml = SpaPages.Sitemap(Cards);

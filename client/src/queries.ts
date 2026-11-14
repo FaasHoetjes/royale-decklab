@@ -92,16 +92,16 @@ export function usePlayerSummary(tag: string | null) {
   });
 }
 
-export function usePlayerWarDecks(tag: string | null, enabled = true, options = '') {
+export function usePlayerWarDecks(tag: string | null, options = '') {
   return useQuery({
     ...playerWarDecksOptions(tag ?? '', options),
-    enabled: !!tag && enabled,
+    enabled: !!tag,
     // Keep showing the current decks while new options load, but never another player's decks.
     placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === tag ? previous : undefined),
   });
 }
 
-function allCardsOptions() {
+export function allCardsOptions() {
   return {
     queryKey: queryKeys.cards,
     queryFn: ({ signal }: { signal: AbortSignal }) => fetchAllCards(signal),
@@ -248,9 +248,15 @@ export const useClanSearch = (name: string | null) =>
     retry: 1,
   });
 
+export function warDecksTodayOptions(playerTag: string) {
+  return {
+    queryKey: queryKeys.playerWarToday(playerTag),
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchWarDecksToday(playerTag, signal),
+  };
+}
+
 export const useWarDecksToday = (playerTag: string | null) =>
   useQuery({
-    queryKey: queryKeys.playerWarToday(playerTag ?? ''),
-    queryFn: ({ signal }) => fetchWarDecksToday(playerTag ?? '', signal),
+    ...warDecksTodayOptions(playerTag ?? ''),
     enabled: !!playerTag,
   });

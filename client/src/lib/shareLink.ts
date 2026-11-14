@@ -2,7 +2,7 @@
 // Card ids are 26/27/28 million (troops, buildings, spells) plus a small number, so two characters per card
 // keep a four-deck link around 70 characters where the generator's `lock` parameters would take 300.
 
-import { MAX_DECKS } from './generatorOptions';
+import { DEFAULT_OPTIONS, MAX_DECKS, parseOptions, type GeneratorOptions } from './generatorOptions';
 
 const CARDS_PER_DECK = 8;
 const CHARS_PER_CARD = 2;
@@ -50,4 +50,10 @@ export function decodeShare(raw: string | null): number[][] | null {
     decks.push(deck);
   }
   return decks;
+}
+
+/** The generator's options for a player link: a share link pins its decks with locks and ignores the reader's remembered options. */
+export function playerLinkOptions(params: URLSearchParams): { shared: number[][] | null; options: GeneratorOptions } {
+  const shared = decodeShare(params.get('share'));
+  return { shared, options: shared ? { ...DEFAULT_OPTIONS, decks: shared.length, lock: shared } : parseOptions(params) };
 }

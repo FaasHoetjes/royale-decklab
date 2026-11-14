@@ -67,6 +67,8 @@ function buildLink(cardId: number, activePlayerTag: string | null): string {
 export default function CardPage() {
   const { slug } = useParams();
   const catalog = useAllCards();
+  // Started here so the stats load alongside the catalog instead of after the card is found in it.
+  useCardStats();
   const card = catalog.data?.find((c) => cardSlug(c.name) === slug?.toLowerCase());
 
   if (catalog.isError) {

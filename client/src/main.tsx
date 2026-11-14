@@ -10,6 +10,9 @@ import Landing from './pages/Landing'
 import { retryDelay, shouldRetry } from './lib/retry'
 import { pageLoaders } from './lib/pageLoaders'
 import { isValidTag } from './lib/playerTag'
+import { playerLinkOptions } from './lib/shareLink'
+import { toQuery } from './lib/generatorOptions'
+import { allCardsOptions, playerCollectionOptions, playerWarDecksOptions, warDecksTodayOptions } from './queries'
 import './index.css'
 
 // Route chunks load on navigation or a focused, hovered, or touched destination.
@@ -41,6 +44,21 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// A player link's requests start with the app instead of waiting for the generator's code to download.
+function prefetchPlayerPage() {
+  const [segment, ...rest] = window.location.pathname.split('/').filter(Boolean)
+  if (!segment || rest.length > 0 || !isValidTag(segment)) return
+  const tag = `#${segment}`
+  const { shared, options } = playerLinkOptions(new URLSearchParams(window.location.search))
+  queryClient.prefetchQuery(playerWarDecksOptions(tag, toQuery(options)))
+  queryClient.prefetchQuery(allCardsOptions())
+  if (shared) return
+  queryClient.prefetchQuery(playerCollectionOptions(tag))
+  queryClient.prefetchQuery(warDecksTodayOptions(tag))
+}
+
+prefetchPlayerPage()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
