@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getTheme } from '../theme';
 import { useAllCards, useCardStats, usePatch } from '../queries';
@@ -16,7 +16,6 @@ import LoadError from './LoadError';
 import { ChangePill } from './WinRateChange';
 
 const SKELETON_TILES = 10;
-const QUILT_TILE = 66;
 
 const KIND_LABEL: Record<BalanceChangeKind, string> = { buff: 'Buff', nerf: 'Nerf', rework: 'Rework' };
 const KIND_COLOR: Record<BalanceChangeKind, string> = { buff: 'var(--up)', nerf: 'var(--down)', rework: 'var(--text-secondary)' };
@@ -64,10 +63,7 @@ export default function PatchOverview() {
   const name = stats ? (patchName(stats, updates) ?? 'This') : null;
   return (
     <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 12px 16px' : '0 20px 20px' }}>
-      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '190px' : '210px', margin: isMobile ? '0 -12px' : '0 -20px' }}>
-        <Quilt />
-        <div style={styles.bannerLight} aria-hidden="true" />
-        <div style={styles.bannerFade} aria-hidden="true" />
+      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '170px' : '190px' }}>
         <div style={styles.bannerText}>
           <h2 aria-label={name ? `${name} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
             <MonthLine name={name} isMobile={isMobile} />
@@ -156,28 +152,6 @@ const battlesLine = (stats: CardStatsResponse): string => {
   if (!stats.since) return `${battles} over the last 30 days`;
   return battles;
 };
-
-// The diamond quilt of Supercell's patch notes banner, in the theme's neutrals instead of their blue.
-function Quilt() {
-  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
-  const size = QUILT_TILE;
-  return (
-    <svg aria-hidden="true" style={styles.quilt}>
-      <defs>
-        <linearGradient id={`${id}-shade`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" style={{ stopColor: 'var(--quilt-hi)' }} />
-          <stop offset="1" style={{ stopColor: 'var(--quilt-lo)' }} />
-        </linearGradient>
-        <pattern id={`${id}-tile`} width={size} height={size} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width={size} height={size} fill={`url(#${id}-shade)`} />
-          <path d={`M0 .75H${size}M.75 0V${size}`} strokeWidth="1.5" style={{ stroke: 'var(--quilt-edge)' }} />
-          <path d={`M0 ${size - 0.5}H${size}M${size - 0.5} 0V${size}`} strokeWidth="1" style={{ stroke: 'var(--quilt-seam)' }} />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id}-tile)`} />
-    </svg>
-  );
-}
 
 function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean }) {
   const style = { ...styles.wordmarkTop, fontSize: isMobile ? '18px' : '22px' };
@@ -393,32 +367,10 @@ const styles = {
     display: 'grid' as const,
     placeItems: 'center' as const,
     textAlign: 'center' as const,
-    borderRadius: '15px 15px 0 0',
-  },
-  quilt: {
-    position: 'absolute' as const,
-    inset: 0,
-    width: '100%',
-    height: '100%',
-  },
-  bannerLight: {
-    position: 'absolute' as const,
-    inset: 0,
-    background:
-      'radial-gradient(ellipse 55% 85% at 50% 45%, var(--quilt-glow), transparent 70%), radial-gradient(ellipse 120% 140% at 50% 50%, transparent 45%, var(--quilt-vignette) 100%)',
-  },
-  bannerFade: {
-    position: 'absolute' as const,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '45%',
-    background: 'linear-gradient(to bottom, transparent, var(--bg-secondary))',
   },
   bannerText: {
     position: 'relative' as const,
     zIndex: 1,
-    marginTop: '-8px',
   },
   wordmark: {
     display: 'inline-flex' as const,

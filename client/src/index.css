@@ -102,12 +102,6 @@
   --boat-3: #e11d48;
   --boat-4: #16a34a;
   --boat-5: #ea580c;
-  --quilt-hi: #ffffff;
-  --quilt-lo: #e2e5ea;
-  --quilt-seam: #c9ced7;
-  --quilt-edge: rgba(255, 255, 255, 0.9);
-  --quilt-glow: rgba(255, 255, 255, 0.75);
-  --quilt-vignette: rgba(150, 158, 172, 0.35);
 }
 
 :root[data-theme='dark'] {
@@ -187,12 +181,6 @@
   --boat-3: #fca5a5;
   --boat-4: #86efac;
   --boat-5: #fdba74;
-  --quilt-hi: #2a2a2f;
-  --quilt-lo: #141416;
-  --quilt-seam: #070708;
-  --quilt-edge: rgba(255, 255, 255, 0.06);
-  --quilt-glow: rgba(255, 255, 255, 0.07);
-  --quilt-vignette: rgba(0, 0, 0, 0.55);
 }
 
 body {
