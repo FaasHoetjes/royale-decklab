@@ -43,6 +43,14 @@ public static class MetaSchema
             );
             """);
         db.Database.ExecuteSqlRaw(
+            """
+            CREATE TABLE IF NOT EXISTS balance_updates (
+                day TEXT NOT NULL CONSTRAINT PK_balance_updates PRIMARY KEY,
+                notes_url TEXT NOT NULL,
+                changes TEXT NOT NULL
+            );
+            """);
+        db.Database.ExecuteSqlRaw(
             "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
     }
 

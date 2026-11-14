@@ -17,6 +17,7 @@ public sealed class PublicApiCachingTests
         services.AddLogging();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddSingleton<MetaCache>();
+        services.AddSingleton<BalanceUpdateStore>();
         services.AddPublicApiCaching();
         await using var provider = services.BuildServiceProvider();
         var calls = 0;

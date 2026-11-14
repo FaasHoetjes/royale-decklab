@@ -137,6 +137,7 @@ public sealed class PatchNotesTests : IDisposable
         public required Blog Blog { get; init; }
         public required PatchNotesWatchService Service { get; init; }
         public MetaCache Cache => Services.GetRequiredService<MetaCache>();
+        public BalanceUpdateStore BalanceUpdates => Services.GetRequiredService<BalanceUpdateStore>();
 
         public Task CheckAsync() => Service.CheckAsync(CancellationToken.None);
 
@@ -168,6 +169,7 @@ public sealed class PatchNotesTests : IDisposable
         services.AddSingleton(new ClashRoyaleClient(new HttpClient(blog) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddSingleton(new SupercellBlogClient(new HttpClient(blog) { BaseAddress = new Uri("https://blog.test/") }));
         services.AddSingleton<MetaCache>();
+        services.AddSingleton<BalanceUpdateStore>();
         var sp = services.BuildServiceProvider();
         using (var scope = sp.CreateScope())
         {
@@ -177,9 +179,75 @@ public sealed class PatchNotesTests : IDisposable
             await db.SaveChangesAsync();
         }
         var service = new PatchNotesWatchService(
-            sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<MetaCache>(), clock,
+            sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<MetaCache>(), sp.GetRequiredService<BalanceUpdateStore>(), clock,
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaOptions>>(), NullLogger<PatchNotesWatchService>.Instance);
         return new Watch { Services = sp, Clock = clock, Blog = blog, Service = service };
+    }
+
+    private static string OctoberFixture([System.Runtime.CompilerServices.CallerFilePath] string thisFile = "")
+        => File.ReadAllText(Path.Combine(Path.GetDirectoryName(thisFile)!, "Fixtures", "balance-post-october-2026.html"));
+
+    private static IReadOnlyList<DateOnly> ShownDays(Watch watch)
+        => watch.BalanceUpdates
+            .During(new Dtos.CardStatsResponse("2026-10-01T00:00:00Z", null, 1, false, []), [new Dtos.CatalogCard(26000010, "Skeletons", 16, null, null, null, null)])
+            .Select(u => u.LiveFrom)
+            .ToList();
+
+    [Fact]
+    public async Task The_changes_of_updates_out_when_the_watch_starts_are_kept_for_the_Patch_page()
+    {
+        using var watch = await WatchAsync("2026-10-25T12:00:00Z");
+        ListOctober(watch.Blog);
+        watch.Blog.Pages[October] = OctoberFixture();
+
+        await watch.CheckAsync();
+
+        Assert.Equal([new DateOnly(2026, 10, 19), new DateOnly(2026, 10, 6)], ShownDays(watch));
+        Assert.Equal(0, watch.StoredEpoch());
+    }
+
+    [Fact]
+    public async Task An_update_announced_ahead_of_its_day_isnt_shown_until_then()
+    {
+        using var watch = await WatchAsync("2026-10-17T12:00:00Z");
+        ListOctober(watch.Blog);
+        watch.Blog.Pages[October] = OctoberFixture();
+        await watch.CheckAsync();
+        Assert.Equal([new DateOnly(2026, 10, 6)], ShownDays(watch));
+
+        watch.Clock.Now = DateTimeOffset.Parse("2026-10-19T03:00:00Z");
+        await watch.CheckAsync();
+
+        Assert.Equal([new DateOnly(2026, 10, 19), new DateOnly(2026, 10, 6)], ShownDays(watch));
+    }
+
+    [Fact]
+    public async Task Only_a_change_to_the_stored_updates_drops_cached_responses()
+    {
+        using var watch = await WatchAsync("2026-10-25T12:00:00Z");
+        ListOctober(watch.Blog);
+        watch.Blog.Pages[October] = OctoberFixture();
+
+        await watch.CheckAsync();
+        var afterFirstRead = watch.BalanceUpdates.Version;
+        await watch.CheckAsync();
+
+        Assert.Equal(1, afterFirstRead);
+        Assert.Equal(1, watch.BalanceUpdates.Version);
+    }
+
+    [Fact]
+    public async Task A_post_that_loads_without_its_changes_keeps_the_ones_read_before()
+    {
+        using var watch = await WatchAsync("2026-10-25T12:00:00Z");
+        ListOctober(watch.Blog);
+        watch.Blog.Pages[October] = OctoberFixture();
+        await watch.CheckAsync();
+
+        ListOctober(watch.Blog, "Balance Update – October 19th", "Balance Update – October 6th");
+        await watch.CheckAsync();
+
+        Assert.Equal([new DateOnly(2026, 10, 19), new DateOnly(2026, 10, 6)], ShownDays(watch));
     }
 
     [Fact]

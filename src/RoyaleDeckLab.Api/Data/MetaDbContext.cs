@@ -13,6 +13,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
     public DbSet<CardPeriodEntity> CardPeriods => Set<CardPeriodEntity>();
     public DbSet<KnownCardVersionEntity> KnownCardVersions => Set<KnownCardVersionEntity>();
     public DbSet<SeenPatchNoteEntity> SeenPatchNotes => Set<SeenPatchNoteEntity>();
+    public DbSet<BalanceUpdateEntity> BalanceUpdates => Set<BalanceUpdateEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +85,15 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             n.ToTable("seen_patch_notes");
             n.HasKey(x => x.Key);
             n.Property(x => x.Key).HasColumnName("key");
+        });
+
+        modelBuilder.Entity<BalanceUpdateEntity>(u =>
+        {
+            u.ToTable("balance_updates");
+            u.HasKey(x => x.Day);
+            u.Property(x => x.Day).HasColumnName("day");
+            u.Property(x => x.NotesUrl).HasColumnName("notes_url");
+            u.Property(x => x.Changes).HasColumnName("changes");
         });
 
         modelBuilder.Entity<CardPeriodEntity>(c =>

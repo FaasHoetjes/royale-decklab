@@ -12,5 +12,6 @@ public static class PublicApiCaching
             .SetVaryByQuery(Array.Empty<string>())
             .SetVaryByHeader("Accept-Encoding")
             .VaryByValue(context => new KeyValuePair<string, string>("meta-version",
-                context.RequestServices.GetRequiredService<MetaCache>().Version.ToString()))));
+                $"{context.RequestServices.GetRequiredService<MetaCache>().Version}." +
+                $"{context.RequestServices.GetRequiredService<BalanceUpdateStore>().Version}"))));
 }

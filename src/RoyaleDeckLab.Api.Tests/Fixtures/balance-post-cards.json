@@ -1,0 +1,162 @@
+[
+ {
+  "id": 26000006,
+  "name": "Balloon"
+ },
+ {
+  "id": 26000009,
+  "name": "Golem"
+ },
+ {
+  "id": 26000010,
+  "name": "Skeletons"
+ },
+ {
+  "id": 26000013,
+  "name": "Bomber"
+ },
+ {
+  "id": 26000017,
+  "name": "Wizard"
+ },
+ {
+  "id": 26000023,
+  "name": "Ice Wizard"
+ },
+ {
+  "id": 26000028,
+  "name": "Three Musketeers"
+ },
+ {
+  "id": 26000029,
+  "name": "Lava Hound"
+ },
+ {
+  "id": 26000031,
+  "name": "Fire Spirit"
+ },
+ {
+  "id": 26000036,
+  "name": "Battle Ram"
+ },
+ {
+  "id": 26000038,
+  "name": "Ice Golem"
+ },
+ {
+  "id": 26000039,
+  "name": "Mega Minion"
+ },
+ {
+  "id": 26000040,
+  "name": "Dart Goblin"
+ },
+ {
+  "id": 26000042,
+  "name": "Electro Wizard"
+ },
+ {
+  "id": 26000043,
+  "name": "Elite Barbarians"
+ },
+ {
+  "id": 26000050,
+  "name": "Royal Ghost"
+ },
+ {
+  "id": 26000051,
+  "name": "Ram Rider"
+ },
+ {
+  "id": 26000052,
+  "name": "Zappies"
+ },
+ {
+  "id": 26000054,
+  "name": "Cannon Cart"
+ },
+ {
+  "id": 26000056,
+  "name": "Skeleton Barrel"
+ },
+ {
+  "id": 26000057,
+  "name": "Flying Machine"
+ },
+ {
+  "id": 26000058,
+  "name": "Wall Breakers"
+ },
+ {
+  "id": 26000063,
+  "name": "Electro Dragon"
+ },
+ {
+  "id": 26000074,
+  "name": "Golden Knight"
+ },
+ {
+  "id": 26000077,
+  "name": "Monk"
+ },
+ {
+  "id": 26000099,
+  "name": "Goblinstein"
+ },
+ {
+  "id": 26000101,
+  "name": "Rune Giant"
+ },
+ {
+  "id": 26000106,
+  "name": "Ronin"
+ },
+ {
+  "id": 26000107,
+  "name": "Minion Giant"
+ },
+ {
+  "id": 27000000,
+  "name": "Cannon"
+ },
+ {
+  "id": 27000007,
+  "name": "Elixir Collector"
+ },
+ {
+  "id": 27000008,
+  "name": "X-Bow"
+ },
+ {
+  "id": 27000012,
+  "name": "Goblin Cage"
+ },
+ {
+  "id": 27000013,
+  "name": "Goblin Drill"
+ },
+ {
+  "id": 28000000,
+  "name": "Fireball"
+ },
+ {
+  "id": 28000004,
+  "name": "Goblin Barrel"
+ },
+ {
+  "id": 28000005,
+  "name": "Freeze"
+ },
+ {
+  "id": 28000015,
+  "name": "Barbarian Barrel"
+ },
+ {
+  "id": 28000023,
+  "name": "Void"
+ },
+ {
+  "id": 28000025,
+  "name": "Spirit Empress"
+ }
+]

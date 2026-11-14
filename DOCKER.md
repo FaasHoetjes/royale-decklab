@@ -103,7 +103,10 @@ Two things set the boundary automatically:
   to the start of its day (or to when it was posted, if that was the same day)
   once that day has come. If the blog lists no posts, or a balance post has no
   such headings (for example after a redesign), the watcher logs an error, and
-  you set the boundary by hand.
+  you set the boundary by hand. The same watcher stores each update's card
+  changes for the Patch page (in `balance_updates`), so they need no typing in.
+  A card name in the notes that the card catalog doesn't know is logged as a
+  warning and left off the page.
 - **New cards, Evos and Heroes.** After each crawl, a card version that has
   never been played before sets the boundary to the first battle that used it,
   once it has been out a day and is in as many of the last week's decks as all

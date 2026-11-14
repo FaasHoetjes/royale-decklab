@@ -67,7 +67,7 @@ public static partial class SpaHosting
         var faqHtml = File.Exists(faqFile) ? File.ReadAllText(faqFile) : null;
 
         app.MapFallback("/api/{**rest}", () => Results.Json(new { error = "Not found" }, statusCode: 404));
-        app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta, PlayerProfileCache profiles, BestDecksBuilder decks, ILogger<SpaPage> logger) =>
+        app.MapFallback(async (HttpContext ctx, CardCatalog catalog, MetaCache meta, PlayerProfileCache profiles, BestDecksBuilder decks, BalanceUpdateStore balanceUpdates, ILogger<SpaPage> logger) =>
         {
             ctx.Response.Headers.CacheControl = "no-cache";
             ctx.Response.Headers.Link = earlyHintLink;
@@ -86,7 +86,7 @@ public static partial class SpaHosting
             }
             try
             {
-                page = page with { Body = await PageBody(page, catalog, meta, decks, faqHtml, ctx.RequestAborted) };
+                page = page with { Body = await PageBody(page, catalog, meta, decks, balanceUpdates, faqHtml, ctx.RequestAborted) };
             }
             catch (Exception ex) when (!ctx.RequestAborted.IsCancellationRequested)
             {
@@ -112,7 +112,7 @@ public static partial class SpaHosting
     }
 
     // Crawlers that don't run JavaScript get each page's content in its HTML; a page whose data isn't in yet still gets its heading.
-    private static async Task<string?> PageBody(SpaPage page, CardCatalog catalog, MetaCache meta, BestDecksBuilder decks, string? faqHtml, CancellationToken requestAborted)
+    private static async Task<string?> PageBody(SpaPage page, CardCatalog catalog, MetaCache meta, BestDecksBuilder decks, BalanceUpdateStore balanceUpdates, string? faqHtml, CancellationToken requestAborted)
     {
         var heading = page.Heading ?? "";
         switch (page.Content)
@@ -125,7 +125,8 @@ public static partial class SpaHosting
         }
         if (page.Content is SpaContentKind.Patch)
         {
-            return SpaContent.Patch(await CardsOrEmpty(catalog, requestAborted), meta.CardStats, BalanceUpdates.During(meta.CardStats));
+            var catalogCards = await CardsOrEmpty(catalog, requestAborted);
+            return SpaContent.Patch(catalogCards, meta.CardStats, balanceUpdates.During(meta.CardStats, catalogCards));
         }
         if (page.Content is not (SpaContentKind.BestDecks or SpaContentKind.Cards or SpaContentKind.Card))
         {

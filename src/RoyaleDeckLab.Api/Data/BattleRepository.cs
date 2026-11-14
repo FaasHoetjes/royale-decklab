@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
@@ -171,6 +172,51 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public Task AddSeenPatchNotesAsync(IEnumerable<string> keys, CancellationToken ct = default)
         => AddMissingAsync(db.SeenPatchNotes, keys.Distinct().Select(k => new SeenPatchNoteEntity { Key = k }), e => [e.Key], ct);
+
+    public IReadOnlyList<PostedUpdate> GetBalanceUpdates()
+        => db.BalanceUpdates.AsNoTracking().AsEnumerable()
+            .Select(u => new PostedUpdate(
+                DateOnly.ParseExact(u.Day, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+                u.NotesUrl,
+                JsonSerializer.Deserialize<List<PostedChange>>(u.Changes, StorageJson.Options) ?? []))
+            .OrderByDescending(u => u.Day)
+            .ToList();
+
+    /// <summary>
+    /// Adds or replaces each day's update and says whether anything changed. An update read without any changes is
+    /// skipped: that's a page that came through wrong, not an update taken back.
+    /// </summary>
+    public async Task<bool> SaveBalanceUpdatesAsync(IEnumerable<PostedUpdate> updates, CancellationToken ct = default)
+    {
+        await WriteGate.WaitAsync(ct);
+        try
+        {
+            var hasChanged = false;
+            foreach (var update in updates.Where(u => u.Changes.Count > 0).GroupBy(u => u.Day).Select(g => g.MaxBy(u => u.Changes.Count)!))
+            {
+                var day = update.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                var changes = JsonSerializer.Serialize(update.Changes, StorageJson.Options);
+                var row = await db.BalanceUpdates.FindAsync([day], ct);
+                if (row is null)
+                {
+                    db.BalanceUpdates.Add(new BalanceUpdateEntity { Day = day, NotesUrl = update.NotesUrl, Changes = changes });
+                    hasChanged = true;
+                }
+                else if (row.NotesUrl != update.NotesUrl || row.Changes != changes)
+                {
+                    row.NotesUrl = update.NotesUrl;
+                    row.Changes = changes;
+                    hasChanged = true;
+                }
+            }
+            await db.SaveChangesAsync(ct);
+            return hasChanged;
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
 
     private async Task AddMissingAsync<T>(DbSet<T> set, IEnumerable<T> rows, Func<T, object[]> key, CancellationToken ct)
         where T : class

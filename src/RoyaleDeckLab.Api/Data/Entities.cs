@@ -49,3 +49,14 @@ public sealed class SeenPatchNoteEntity
 {
     public string Key { get; set; } = "";
 }
+
+public sealed class BalanceUpdateEntity
+{
+    /// <summary>The day it went live, as yyyy-MM-dd.</summary>
+    public string Day { get; set; } = "";
+
+    public string NotesUrl { get; set; } = "";
+
+    /// <summary>The changes as JSON: they're only ever read and written together.</summary>
+    public string Changes { get; set; } = "[]";
+}

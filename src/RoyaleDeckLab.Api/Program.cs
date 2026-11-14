@@ -98,6 +98,7 @@ builder.Services.AddHttpClient<SupercellBlogClient>(http =>
         http.DefaultRequestHeaders.UserAgent.ParseAdd("RoyaleDeckLab");
     })
     .AddStandardResilienceHandler();
+builder.Services.AddSingleton<BalanceUpdateStore>();
 builder.Services.AddHostedService<PatchNotesWatchService>();
 builder.Services.AddDiscordReminders(dataDirectory);
 

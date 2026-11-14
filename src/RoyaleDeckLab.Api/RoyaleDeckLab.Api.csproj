@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets\balance-updates.json" LogicalName="BalanceUpdates.json" />
   </ItemGroup>
 
 </Project>

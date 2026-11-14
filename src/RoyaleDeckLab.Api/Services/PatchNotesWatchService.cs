@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Data;
+using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Options;
 
 namespace RoyaleDeckLab.Api.Services;
@@ -8,6 +9,7 @@ namespace RoyaleDeckLab.Api.Services;
 public sealed class PatchNotesWatchService(
     IServiceScopeFactory scopeFactory,
     MetaCache cache,
+    BalanceUpdateStore balanceUpdates,
     TimeProvider clock,
     IOptions<MetaOptions> options,
     ILogger<PatchNotesWatchService> logger) : BackgroundService
@@ -63,17 +65,25 @@ public sealed class PatchNotesWatchService(
         }
 
         var notes = new List<PatchNote>();
+        var changes = new List<PostedUpdate>();
         var unreadable = 0;
         foreach (var post in posts.Where(PatchNotes.IsBalanceUpdate))
         {
-            var found = PatchNotes.ParseArticle(await blog.GetPageAsync(post.Path, ct), post);
+            var html = await blog.GetPageAsync(post.Path, ct);
+            var found = PatchNotes.ParseArticle(html, post);
             if (found.Count == 0)
             {
                 logger.LogError("Balance post {Path} has no \"Balance Update – <date>\" headings; skipped", post.Path);
                 unreadable++;
             }
             notes.AddRange(found);
+            changes.AddRange(PatchNotes.ParseUpdates(html, post));
         }
+
+        // Stored before anything below can return, as the updates that were out when the watch began are the ones
+        // the Patch page shows first. An update announced ahead of its day waits for that day.
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        await balanceUpdates.SaveAsync(changes.Where(u => u.Day <= today).ToList(), ct);
 
         var live = notes.Where(n => n.LiveFromMs <= now.ToUnixTimeMilliseconds()).ToList();
         var seen = store.GetSeenPatchNotes();
