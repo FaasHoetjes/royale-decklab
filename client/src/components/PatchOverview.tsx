@@ -63,7 +63,7 @@ export default function PatchOverview() {
   const name = stats ? (patchName(stats, updates) ?? 'This') : null;
   return (
     <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 12px 16px' : '0 20px 20px' }}>
-      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '170px' : '190px' }}>
+      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '185px' : '210px' }}>
         <div style={styles.bannerText}>
           <h2 aria-label={name ? `${name} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
             <MonthLine name={name} isMobile={isMobile} />
@@ -154,7 +154,7 @@ const battlesLine = (stats: CardStatsResponse): string => {
 };
 
 function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean }) {
-  const style = { ...styles.wordmarkTop, fontSize: isMobile ? '18px' : '22px' };
+  const style = { ...styles.wordmarkTop, fontSize: isMobile ? '30px' : '37px' };
   if (!name) return <span className="skeleton" style={{ ...style, ...styles.monthSkeleton }} aria-hidden="true" />;
   return <span style={style}>{name.toUpperCase()}</span>;
 }
@@ -162,7 +162,7 @@ function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean 
 function Panel({ title, sub, link = false, isMobile, children }: { title: string; sub?: string; link?: boolean; isMobile: boolean; children: ReactNode }) {
   const theme = getTheme();
   return (
-    <section style={{ ...styles.panel, padding: isMobile ? '14px 0 8px' : '16px 0 10px' }}>
+    <section style={{ padding: isMobile ? '14px 0 8px' : '16px 0 10px' }}>
       <div style={styles.panelHead}>
         <h3 style={{ ...styles.panelTitle, fontSize: isMobile ? '16px' : '17px', color: theme.text.primary }}>{title}</h3>
         {link && (
@@ -376,11 +376,11 @@ const styles = {
     display: 'inline-flex' as const,
     flexDirection: 'column' as const,
     margin: 0,
-    lineHeight: 1,
+    lineHeight: 1.05,
   },
   wordmarkTop: {
     fontWeight: 700 as const,
-    letterSpacing: '3px',
+    letterSpacing: '1px',
     textAlign: 'right' as const,
   },
   monthSkeleton: {
@@ -404,9 +404,6 @@ const styles = {
     fontSize: '14px',
     fontWeight: 600 as const,
     textDecoration: 'none',
-  },
-  panel: {
-    borderTop: '1px solid var(--border)',
   },
   panelHead: {
     display: 'flex' as const,
@@ -432,8 +429,6 @@ const styles = {
     margin: '12px 0 0',
     fontSize: '11px',
     fontWeight: 700 as const,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase' as const,
   },
   scroller: {
     display: 'flex' as const,
@@ -536,7 +531,6 @@ const styles = {
     display: 'flex' as const,
     justifyContent: 'center' as const,
     paddingTop: '14px',
-    borderTop: '1px solid var(--border)',
   },
   moreButton: {
     display: 'inline-flex' as const,
