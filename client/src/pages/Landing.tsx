@@ -112,7 +112,7 @@ export default function Landing() {
       style={{
         ...styles.page,
         minHeight: isMobile ? `calc(100dvh - ${PHONE_HEADER_AND_PADDING})` : `calc(100dvh - ${DESKTOP_PADDING})`,
-        paddingBottom: isMobile ? '187px' : '100px',
+        paddingBottom: isMobile ? '80px' : '100px',
       }}
     >
       <CardWall isMobile={isMobile} />

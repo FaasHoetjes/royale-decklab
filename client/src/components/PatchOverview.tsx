@@ -307,7 +307,7 @@ function MoverRow({ title, empty, movers, cardById, isMobile }: MoverRowProps) {
     <Panel title={title} link isMobile={isMobile}>
       {shown.length === 0 && <p style={{ ...styles.empty, color: theme.text.secondary }}>{empty}</p>}
       {shown.length > 0 && (
-        <div style={styles.scroller}>
+        <div style={{ ...styles.scroller, gap: isMobile ? '20px' : '16px' }}>
           {shown.map(({ mover, card }) => (
             <div key={card.id} style={{ ...styles.tile, flexBasis: isMobile ? '74px' : '86px', width: isMobile ? '74px' : '86px' }}>
               <CardLink name={card.name}>
@@ -337,7 +337,7 @@ function MoverRow({ title, empty, movers, cardById, isMobile }: MoverRowProps) {
 function MoverSkeleton({ title, isMobile }: { title: string; isMobile: boolean }) {
   return (
     <Panel title={title} link isMobile={isMobile}>
-      <div role="status" aria-label={`Loading ${title.toLowerCase()}`} style={styles.scroller}>
+      <div role="status" aria-label={`Loading ${title.toLowerCase()}`} style={{ ...styles.scroller, gap: isMobile ? '20px' : '16px' }}>
         {Array.from({ length: SKELETON_TILES }, (_, i) => (
           <div key={i} aria-hidden="true" style={{ ...styles.tile, flexBasis: isMobile ? '74px' : '86px', width: isMobile ? '74px' : '86px' }}>
             <span className="skeleton" style={styles.skeletonArt} />
