@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getTheme } from '../theme';
 import { useAllCards, useCardStats, usePatch } from '../queries';
@@ -16,6 +16,7 @@ import LoadError from './LoadError';
 import { ChangePill } from './WinRateChange';
 
 const SKELETON_TILES = 10;
+const QUILT_TILE = 66;
 
 const KIND_LABEL: Record<BalanceChangeKind, string> = { buff: 'Buff', nerf: 'Nerf', rework: 'Rework' };
 const KIND_COLOR: Record<BalanceChangeKind, string> = { buff: 'var(--up)', nerf: 'var(--down)', rework: 'var(--text-secondary)' };
@@ -63,7 +64,10 @@ export default function PatchOverview() {
   const name = stats ? (patchName(stats, updates) ?? 'This') : null;
   return (
     <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 12px 16px' : '0 20px 20px' }}>
-      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '170px' : '190px' }}>
+      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '190px' : '210px', margin: isMobile ? '0 -12px' : '0 -20px' }}>
+        <Quilt />
+        <div style={styles.bannerLight} aria-hidden="true" />
+        <div style={styles.bannerFade} aria-hidden="true" />
         <div style={styles.bannerText}>
           <h2 aria-label={name ? `${name} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
             <MonthLine name={name} isMobile={isMobile} />
@@ -138,7 +142,7 @@ export default function PatchOverview() {
       )}
 
       <div style={styles.more}>
-        <Link to="/best-decks" style={{ ...styles.moreLink, color: theme.accent }}>
+        <Link to="/best-decks" style={{ ...styles.moreButton, backgroundColor: theme.accent, color: theme.onAccent }}>
           Best war decks this patch →
         </Link>
       </div>
@@ -152,6 +156,28 @@ const battlesLine = (stats: CardStatsResponse): string => {
   if (!stats.since) return `${battles} over the last 30 days`;
   return battles;
 };
+
+// The diamond quilt of Supercell's patch notes banner, in the theme's neutrals instead of their blue.
+function Quilt() {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const size = QUILT_TILE;
+  return (
+    <svg aria-hidden="true" style={styles.quilt}>
+      <defs>
+        <linearGradient id={`${id}-shade`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" style={{ stopColor: 'var(--quilt-hi)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--quilt-lo)' }} />
+        </linearGradient>
+        <pattern id={`${id}-tile`} width={size} height={size} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width={size} height={size} fill={`url(#${id}-shade)`} />
+          <path d={`M0 .75H${size}M.75 0V${size}`} strokeWidth="1.5" style={{ stroke: 'var(--quilt-edge)' }} />
+          <path d={`M0 ${size - 0.5}H${size}M${size - 0.5} 0V${size}`} strokeWidth="1" style={{ stroke: 'var(--quilt-seam)' }} />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill={`url(#${id}-tile)`} />
+    </svg>
+  );
+}
 
 function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean }) {
   const style = { ...styles.wordmarkTop, fontSize: isMobile ? '18px' : '22px' };
@@ -208,7 +234,7 @@ function BalanceChanges({ updates, cardById, statById, loading, failed, onRetry,
       <Panel title="Balance changes" isMobile={isMobile}>
         <div role="status" aria-label="Loading the balance changes" style={styles.scroller}>
           {Array.from({ length: 3 }, (_, i) => (
-            <span key={i} className="skeleton" style={{ ...styles.changeSkeleton, flexBasis: isMobile ? '232px' : '250px' }} />
+            <span key={i} className="skeleton" style={{ ...styles.changeSkeleton, flexBasis: isMobile ? '150px' : '168px' }} />
           ))}
         </div>
       </Panel>
@@ -239,28 +265,54 @@ function ChangeCard({ change, card, stat, isMobile }: { change: BalanceChange; c
   const theme = getTheme();
   const kindColor = KIND_COLOR[change.kind];
   return (
-    <div style={{ ...styles.changeSlot, width: isMobile ? '232px' : '250px' }}>
+    <div style={{ ...styles.changeSlot, width: isMobile ? '150px' : '168px' }}>
       <CardLink name={card.name}>
-        <div style={{ ...styles.changeCard, gridTemplateColumns: isMobile ? '66px minmax(0, 1fr)' : '74px minmax(0, 1fr)' }}>
-          <div>
-            <CardTile name={card.name} iconUrl={cardIconUrl(card.iconUrls, change.version)} elixirCost={card.elixirCost} showName={false} lazyLoad />
-          </div>
-          <div style={styles.changeBody}>
-            <div style={{ ...styles.changeName, color: theme.text.primary }}>
-              {VERSION_PREFIX[change.version]}
-              {card.name}
-              <span style={{ ...styles.kindPill, color: kindColor, backgroundColor: `color-mix(in srgb, ${kindColor} 16%, transparent)` }}>{KIND_LABEL[change.kind]}</span>
+        <div style={styles.changeCard}>
+          <div style={{ ...styles.changeTop, background: `radial-gradient(circle at 50% 55%, color-mix(in srgb, ${kindColor} 30%, transparent) 0, transparent 46px)` }}>
+            <div style={styles.changeArt}>
+              <CardTile
+                name={card.name}
+                iconUrl={cardIconUrl(card.iconUrls, change.version)}
+                elixirCost={card.elixirCost}
+                showName={false}
+                lazyLoad
+                artStyle={{ boxShadow: `0 0 0 2px color-mix(in srgb, ${kindColor} 60%, transparent), 0 6px 16px color-mix(in srgb, ${kindColor} 30%, transparent)` }}
+              />
             </div>
-            <p style={{ ...styles.changeNote, color: theme.text.secondary }}>{change.summary}</p>
-            {stat && stat.winRateChange != null && (
-              <div style={{ ...styles.changeWinRate, color: theme.text.tertiary }}>
-                War win rate <ChangePill change={stat.winRateChange} isClear={stat.changeIsClear} />
-              </div>
-            )}
           </div>
+          <div style={{ ...styles.changeName, color: theme.text.primary }}>
+            {VERSION_PREFIX[change.version]}
+            {card.name}
+          </div>
+          <div style={styles.changeKind}>
+            <span style={{ ...styles.kindPill, color: kindColor, backgroundColor: `color-mix(in srgb, ${kindColor} 16%, transparent)` }}>{KIND_LABEL[change.kind]}</span>
+          </div>
+          <p style={{ ...styles.changeNote, color: theme.text.secondary }}>
+            {change.summary.split('\n').map((line, i) => (
+              <StatLine key={i} line={line} />
+            ))}
+          </p>
+          {stat && stat.winRateChange != null && (
+            <div style={{ ...styles.changeWinRate, color: theme.text.tertiary }}>
+              War win rate <ChangePill change={stat.winRateChange} isClear={stat.changeIsClear} />
+            </div>
+          )}
         </div>
       </CardLink>
     </div>
+  );
+}
+
+// "Damage: 212 → 202" keeps its numbers together, so a narrow card breaks after the stat name instead of mid-change.
+function StatLine({ line }: { line: string }) {
+  const theme = getTheme();
+  const colon = line.indexOf(': ');
+  if (colon < 0 || !line.includes('→')) return <span style={styles.statLine}>{line}</span>;
+  return (
+    <span style={styles.statLine}>
+      {line.slice(0, colon + 2)}
+      <b style={{ ...styles.statValue, color: theme.text.primary }}>{line.slice(colon + 2)}</b>
+    </span>
   );
 }
 
@@ -340,10 +392,32 @@ const styles = {
     display: 'grid' as const,
     placeItems: 'center' as const,
     textAlign: 'center' as const,
+    borderRadius: '15px 15px 0 0',
+  },
+  quilt: {
+    position: 'absolute' as const,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+  },
+  bannerLight: {
+    position: 'absolute' as const,
+    inset: 0,
+    background:
+      'radial-gradient(ellipse 55% 85% at 50% 45%, var(--quilt-glow), transparent 70%), radial-gradient(ellipse 120% 140% at 50% 50%, transparent 45%, var(--quilt-vignette) 100%)',
+  },
+  bannerFade: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '45%',
+    background: 'linear-gradient(to bottom, transparent, var(--bg-secondary))',
   },
   bannerText: {
     position: 'relative' as const,
     zIndex: 1,
+    marginTop: '-8px',
   },
   wordmark: {
     display: 'inline-flex' as const,
@@ -433,28 +507,34 @@ const styles = {
   },
   changeSlot: {
     flexShrink: 0,
+    display: 'grid' as const,
   },
   changeCard: {
-    display: 'grid' as const,
-    gap: '12px',
-    alignItems: 'start' as const,
-    padding: '10px',
-    borderRadius: '12px',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    height: '100%',
+    boxSizing: 'border-box' as const,
+    borderRadius: '14px',
     backgroundColor: 'var(--bg-primary)',
     border: '1px solid var(--border)',
-    boxSizing: 'border-box' as const,
-    height: '100%',
+    overflow: 'hidden' as const,
+    textAlign: 'center' as const,
   },
-  changeBody: {
-    minWidth: 0,
+  changeTop: {
+    padding: '14px 0 4px',
+  },
+  changeArt: {
+    width: '66px',
+    margin: '0 auto',
   },
   changeName: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    flexWrap: 'wrap' as const,
-    gap: '6px',
-    fontSize: '14px',
+    margin: '8px 8px 0',
+    fontSize: '13.5px',
     fontWeight: 700 as const,
+    lineHeight: 1.2,
+  },
+  changeKind: {
+    marginTop: '5px',
   },
   kindPill: {
     display: 'inline-flex' as const,
@@ -466,24 +546,31 @@ const styles = {
     fontWeight: 700 as const,
   },
   changeNote: {
-    margin: '4px 0 0',
-    whiteSpace: 'pre-line' as const,
-    fontSize: '12.5px',
-    lineHeight: 1.35,
+    margin: '6px 10px 0',
+    fontSize: '12px',
+    lineHeight: 1.4,
+  },
+  statLine: {
+    display: 'block' as const,
+  },
+  statValue: {
+    fontWeight: 600 as const,
+    whiteSpace: 'nowrap' as const,
   },
   changeWinRate: {
     display: 'flex' as const,
+    flexDirection: 'column' as const,
     alignItems: 'center' as const,
-    flexWrap: 'wrap' as const,
-    gap: '6px',
-    marginTop: '6px',
-    fontSize: '11.5px',
+    gap: '3px',
+    marginTop: 'auto',
+    padding: '8px 0 10px',
+    fontSize: '11px',
   },
   changeSkeleton: {
     display: 'block' as const,
     flexShrink: 0,
-    height: '104px',
-    borderRadius: '12px',
+    height: '220px',
+    borderRadius: '14px',
   },
   empty: {
     margin: 0,
@@ -500,9 +587,13 @@ const styles = {
     paddingTop: '14px',
     borderTop: '1px solid var(--border)',
   },
-  moreLink: {
-    fontSize: '14px',
-    fontWeight: 600 as const,
+  moreButton: {
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    padding: '10px 22px',
+    borderRadius: '999px',
+    fontSize: '15px',
+    fontWeight: 700 as const,
     textDecoration: 'none',
   },
   skeletonArt: {
