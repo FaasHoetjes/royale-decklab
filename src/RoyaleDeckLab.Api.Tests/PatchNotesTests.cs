@@ -16,6 +16,7 @@ namespace RoyaleDeckLab.Api.Tests;
 public sealed class PatchNotesTests : IDisposable
 {
     private const string October = "/en/games/clashroyale/blog/release-notes/october-balance-changes-2026";
+    private const string August = "/en/games/clashroyale/blog/news/final-august-balance-changes-826";
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"patchnotes-{Guid.NewGuid():N}.db");
 
@@ -25,6 +26,11 @@ public sealed class PatchNotesTests : IDisposable
         File.Delete(_dbPath);
     }
 
+    private static long Ms(string iso) => DateTimeOffset.Parse(iso).ToUnixTimeMilliseconds();
+
+    private static string Listing(params (string Title, string Path, string Published)[] posts)
+        => Listing(posts.Select(p => (p.Title, p.Path, p.Published, "en")).ToArray());
+
     private static string Listing(params (string Title, string Path, string Published, string Locale)[] posts)
     {
         var data = new
@@ -33,10 +39,7 @@ public sealed class PatchNotesTests : IDisposable
             {
                 pageProps = new
                 {
-                    news = posts.Select(p => new
-                    {
-                        category = "Clash Royale", title = p.Title, linkUrl = p.Path, publishDate = p.Published, locale = p.Locale,
-                    }),
+                    news = posts.Select(p => new { title = p.Title, linkUrl = p.Path, publishDate = p.Published, locale = p.Locale }),
                 },
             },
         };
@@ -44,24 +47,24 @@ public sealed class PatchNotesTests : IDisposable
     }
 
     private static string Article(params string[] headings)
-        => "<html><body><h1>October Balance Changes</h1>"
+        => "<html><body><h1>Balance Changes</h1>"
            + string.Concat(headings.Select(h => $"<h2><strong>{h}</strong></h2><p>Some cards changed.</p>"))
            + "</body></html>";
 
-    private static BlogPost Post(string published = "2026-10-06T06:15:39.011Z")
-        => new("October Balance Changes", October, DateTimeOffset.Parse(published));
+    private static BlogPost Post(string published = "2026-10-06T06:15:39.011Z", string path = October)
+        => new("October Balance Changes", path, DateTimeOffset.Parse(published));
 
     [Fact]
-    public void The_listing_gives_the_English_Clash_Royale_release_notes()
+    public void The_listing_gives_the_English_Clash_Royale_posts_wherever_on_the_blog_they_are()
     {
-        var posts = PatchNotes.ParseListing(Listing(
+        var html = Listing(
             ("October Balance Changes", October, "2026-10-06T06:15:39.011Z", "en"),
+            ("August Balance Changes", August, "2026-08-04T08:00:00Z", "en"),
             ("Octobre", "/fr/games/clashroyale/blog/release-notes/octobre", "2026-10-06T06:15:39.011Z", "fr"),
-            ("Brawl news", "/en/games/brawlstars/blog/news/x", "2026-10-06T06:15:39.011Z", "en")));
+            ("Brawl news", "/en/games/brawlstars/blog/news/x", "2026-10-06T06:15:39.011Z", "en"),
+            ("Archive", "/en/games/clashroyale/blog/", "2026-10-06T06:15:39.011Z", "en"));
 
-        var post = Assert.Single(posts);
-        Assert.Equal(October, post.Path);
-        Assert.Equal(new DateTimeOffset(2026, 10, 6, 6, 15, 39, 11, TimeSpan.Zero), post.PublishDate);
+        Assert.Equal([October, August], PatchNotes.ParseListing(html).Select(p => p.Path));
     }
 
     [Fact]
@@ -77,42 +80,46 @@ public sealed class PatchNotesTests : IDisposable
         => Assert.Equal(expected, PatchNotes.IsBalanceUpdate(new BlogPost(title, October, DateTimeOffset.UnixEpoch)));
 
     [Fact]
-    public void Each_balance_update_heading_is_its_own_update()
+    public void Each_heading_is_an_update_live_from_its_post_on_its_post_day_and_from_its_day_otherwise()
     {
         var notes = PatchNotes.ParseArticle(
-            Article("Balance Update &ndash; October 19th", "Balance Update – October 6th", "Balance Update - October 19th"), Post());
+            Article("Balance Update &ndash; October 19th", "Balance Update – October 6th", "BALANCE UPDATE - October 19th"), Post());
 
         Assert.Equal(
             [
-                new PatchNote("october-balance-changes-2026#2026-10-19", new DateOnly(2026, 10, 19)),
-                new PatchNote("october-balance-changes-2026#2026-10-06", new DateOnly(2026, 10, 6)),
+                new PatchNote("balance-update#2026-10-19", new DateOnly(2026, 10, 19), Ms("2026-10-19T00:00:00Z")),
+                new PatchNote("balance-update#2026-10-06", new DateOnly(2026, 10, 6), Ms("2026-10-06T06:15:39.011Z")),
             ],
             notes);
     }
 
-    [Fact]
-    public void A_January_heading_in_a_December_post_is_next_year()
+    [Theory]
+    [InlineData("2026-12-28T08:00:00Z", "January 4th", "2027-01-04")]
+    [InlineData("2027-01-03T08:00:00Z", "December 30th", "2026-12-30")]
+    [InlineData("2026-09-23T08:00:00Z", "September 8th", "2026-09-08")]
+    public void A_heading_is_in_the_year_that_puts_it_nearest_its_post(string published, string heading, string expected)
         => Assert.Equal(
-            new DateOnly(2027, 1, 4),
-            Assert.Single(PatchNotes.ParseArticle(Article("Balance Update – January 4th"), Post("2026-12-28T08:00:00Z"))).LiveOn);
+            DateOnly.Parse(expected),
+            Assert.Single(PatchNotes.ParseArticle(Article($"Balance Update – {heading}"), Post(published))).Day);
 
     [Fact]
-    public void A_post_without_update_headings_is_one_update_on_its_publish_day()
-        => Assert.Equal(
-            new PatchNote("october-balance-changes-2026#2026-10-06", new DateOnly(2026, 10, 6)),
-            Assert.Single(PatchNotes.ParseArticle(Article(), Post())));
+    public void A_post_without_update_headings_has_no_updates()
+        => Assert.Empty(PatchNotes.ParseArticle(Article(), Post()));
 
-    private sealed class BlogHandler(Func<string> article) : HttpMessageHandler
+    private sealed class Blog : HttpMessageHandler
     {
-        public bool Broken { get; set; }
+        public Dictionary<string, string> Pages { get; } = new();
+
+        // Listing pages a test doesn't set are the back catalogue, too old to recheck.
+        private static readonly string OldPosts = Listing(("Old news", "/en/games/clashroyale/blog/news/old", "2026-01-05T08:00:00Z"));
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            var html = Broken ? "<html></html>"
-                : request.RequestUri!.AbsolutePath == SupercellBlogClient.ListingPath
-                    ? Listing(("October Balance Changes", October, "2026-10-06T06:15:39.011Z", "en"))
-                    : article();
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(html, Encoding.UTF8, "text/html") });
+            var path = request.RequestUri!.AbsolutePath;
+            var html = Pages.GetValueOrDefault(path) ?? (path.StartsWith("/en/games/clashroyale/blog/page/") ? OldPosts : null);
+            return Task.FromResult(html is null
+                ? new HttpResponseMessage(HttpStatusCode.NotFound)
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(html, Encoding.UTF8, "text/html") });
         }
     }
 
@@ -127,17 +134,31 @@ public sealed class PatchNotesTests : IDisposable
     {
         public required ServiceProvider Services { get; init; }
         public required Clock Clock { get; init; }
-        public required BlogHandler Blog { get; init; }
+        public required Blog Blog { get; init; }
         public required PatchNotesWatchService Service { get; init; }
         public MetaCache Cache => Services.GetRequiredService<MetaCache>();
+
+        public Task CheckAsync() => Service.CheckAsync(CancellationToken.None);
+
+        public long StoredEpoch()
+        {
+            using var scope = Services.CreateScope();
+            return scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
+        }
 
         public void Dispose() => Services.Dispose();
     }
 
-    private async Task<Watch> WatchAsync(Func<string> article)
+    private static void ListOctober(Blog blog, params string[] headings)
     {
-        var blog = new BlogHandler(article);
-        var clock = new Clock(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
+        blog.Pages[PatchNotes.ListingPage(1)] = Listing(("October Balance Changes", October, "2026-10-06T06:15:39.011Z"));
+        blog.Pages[October] = Article(headings);
+    }
+
+    private async Task<Watch> WatchAsync(string now = "2026-10-15T12:00:00Z")
+    {
+        var blog = new Blog();
+        var clock = new Clock(DateTimeOffset.Parse(now));
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
@@ -164,46 +185,120 @@ public sealed class PatchNotesTests : IDisposable
     [Fact]
     public async Task The_updates_out_when_the_watch_starts_dont_start_a_patch()
     {
-        using var watch = await WatchAsync(() => Article("Balance Update – October 6th"));
+        using var watch = await WatchAsync();
+        ListOctober(watch.Blog, "Balance Update – October 6th");
 
-        await watch.Service.CheckAsync(CancellationToken.None);
-        await watch.Service.CheckAsync(CancellationToken.None);
+        await watch.CheckAsync();
+        await watch.CheckAsync();
 
-        Assert.Equal(0, watch.Cache.EpochStart);
+        Assert.Equal(0, watch.StoredEpoch());
     }
 
     [Fact]
-    public async Task An_update_added_to_a_post_starts_a_patch_once_its_day_comes()
+    public async Task An_update_added_to_a_post_starts_a_patch_from_the_start_of_its_day_once_that_day_comes()
     {
-        var headings = new List<string> { "Balance Update – October 6th" };
-        using var watch = await WatchAsync(() => Article([.. headings]));
-        await watch.Service.CheckAsync(CancellationToken.None);
+        using var watch = await WatchAsync();
+        ListOctober(watch.Blog, "Balance Update – October 6th");
+        await watch.CheckAsync();
 
-        headings.Insert(0, "Balance Update – October 19th");
-        await watch.Service.CheckAsync(CancellationToken.None);
-        Assert.Equal(0, watch.Cache.EpochStart);
+        ListOctober(watch.Blog, "Balance Update – October 19th", "Balance Update – October 6th");
+        await watch.CheckAsync();
+        Assert.Equal(0, watch.StoredEpoch());
 
-        watch.Clock.Now = new DateTimeOffset(2026, 10, 19, 0, 30, 0, TimeSpan.Zero);
-        await watch.Service.CheckAsync(CancellationToken.None);
-        Assert.Equal(watch.Clock.GetUtcNow().ToUnixTimeMilliseconds(), watch.Cache.EpochStart);
-
-        watch.Clock.Now += TimeSpan.FromDays(2);
-        await watch.Service.CheckAsync(CancellationToken.None);
-        Assert.Equal(new DateTimeOffset(2026, 10, 19, 0, 30, 0, TimeSpan.Zero).ToUnixTimeMilliseconds(), watch.Cache.EpochStart);
+        watch.Clock.Now = DateTimeOffset.Parse("2026-10-19T03:00:00Z");
+        await watch.CheckAsync();
+        Assert.Equal(Ms("2026-10-19T00:00:00Z"), watch.StoredEpoch());
     }
 
     [Fact]
-    public async Task A_blog_it_cant_read_doesnt_start_the_watch()
+    public async Task An_update_announced_before_the_watch_started_still_starts_its_patch()
     {
-        using var watch = await WatchAsync(() => Article("Balance Update – October 6th"));
-        watch.Blog.Broken = true;
-        await watch.Service.CheckAsync(CancellationToken.None);
+        using var watch = await WatchAsync("2026-10-17T12:00:00Z");
+        ListOctober(watch.Blog, "Balance Update – October 19th", "Balance Update – October 6th");
+        await watch.CheckAsync();
 
-        watch.Blog.Broken = false;
-        await watch.Service.CheckAsync(CancellationToken.None);
-        watch.Clock.Now += TimeSpan.FromDays(1);
-        await watch.Service.CheckAsync(CancellationToken.None);
+        watch.Clock.Now = DateTimeOffset.Parse("2026-10-19T03:00:00Z");
+        await watch.CheckAsync();
 
-        Assert.Equal(0, watch.Cache.EpochStart);
+        Assert.Equal(Ms("2026-10-19T00:00:00Z"), watch.StoredEpoch());
+    }
+
+    [Fact]
+    public async Task An_update_found_late_is_dated_back_to_its_day()
+    {
+        using var watch = await WatchAsync("2026-10-12T12:00:00Z");
+        watch.Blog.Pages[PatchNotes.ListingPage(1)] = Listing(("Other news", "/en/games/clashroyale/blog/news/x", "2026-10-10T08:00:00Z"));
+        await watch.CheckAsync();
+
+        watch.Clock.Now = DateTimeOffset.Parse("2026-10-25T12:00:00Z");
+        watch.Blog.Pages[PatchNotes.ListingPage(1)] = Listing(
+            ("September Balance Changes", "/en/games/clashroyale/blog/release-notes/september", "2026-10-23T08:00:00Z"));
+        watch.Blog.Pages["/en/games/clashroyale/blog/release-notes/september"] = Article("Balance Update – October 16th");
+        await watch.CheckAsync();
+
+        Assert.Equal(Ms("2026-10-16T00:00:00Z"), watch.StoredEpoch());
+    }
+
+    [Fact]
+    public async Task An_update_from_before_the_current_patch_doesnt_move_it()
+    {
+        using var watch = await WatchAsync("2026-10-25T12:00:00Z");
+        ListOctober(watch.Blog, "Balance Update – October 6th");
+        await watch.CheckAsync();
+        await watch.Cache.SetEpochAsync(Ms("2026-10-20T00:00:00Z"));
+
+        ListOctober(watch.Blog, "Balance Update – October 13th", "Balance Update – October 6th");
+        await watch.CheckAsync();
+
+        Assert.Equal(Ms("2026-10-20T00:00:00Z"), watch.StoredEpoch());
+    }
+
+    [Fact]
+    public async Task A_balance_post_that_loads_without_its_headings_starts_nothing_and_isnt_marked_read()
+    {
+        using var watch = await WatchAsync();
+        ListOctober(watch.Blog, "Balance Update – October 6th");
+        watch.Blog.Pages[October] = "<html><body>Down for maintenance</body></html>";
+        await watch.CheckAsync();
+        await watch.CheckAsync();
+        Assert.Equal(0, watch.StoredEpoch());
+
+        ListOctober(watch.Blog, "Balance Update – October 6th");
+        await watch.CheckAsync();
+        watch.Clock.Now += TimeSpan.FromDays(10);
+        await watch.CheckAsync();
+
+        Assert.Equal(0, watch.StoredEpoch());
+    }
+
+    [Fact]
+    public async Task A_post_off_the_first_listing_page_is_still_read()
+    {
+        using var watch = await WatchAsync("2026-10-25T12:00:00Z");
+        watch.Blog.Pages[PatchNotes.ListingPage(1)] = Listing(("Other news", "/en/games/clashroyale/blog/news/x", "2026-10-24T08:00:00Z"));
+        watch.Blog.Pages[PatchNotes.ListingPage(2)] = Listing(("October Balance Changes", October, "2026-10-06T06:15:39.011Z"));
+        watch.Blog.Pages[October] = Article("Balance Update – October 6th");
+        await watch.CheckAsync();
+
+        watch.Blog.Pages[October] = Article("Balance Update – October 19th", "Balance Update – October 6th");
+        await watch.CheckAsync();
+
+        Assert.Equal(Ms("2026-10-19T00:00:00Z"), watch.StoredEpoch());
+    }
+
+    [Fact]
+    public async Task A_blog_that_lists_nothing_doesnt_start_the_watch()
+    {
+        using var watch = await WatchAsync();
+        watch.Blog.Pages[PatchNotes.ListingPage(1)] = "<html></html>";
+        watch.Blog.Pages[October] = Article("Balance Update – October 6th");
+        await watch.CheckAsync();
+
+        ListOctober(watch.Blog, "Balance Update – October 6th");
+        await watch.CheckAsync();
+        watch.Clock.Now += TimeSpan.FromDays(10);
+        await watch.CheckAsync();
+
+        Assert.Equal(0, watch.StoredEpoch());
     }
 }

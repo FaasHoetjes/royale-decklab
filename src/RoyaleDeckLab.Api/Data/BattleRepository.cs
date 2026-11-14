@@ -127,6 +127,12 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public long GetPreviousEpochStart() => State().PreviousEpochStartMs;
 
+    public (long Epoch, long Previous) GetEpochs()
+    {
+        var s = State();
+        return (s.EpochStartMs, s.PreviousEpochStartMs);
+    }
+
     /// <summary>Moves the patch boundary; the old one becomes the start of the previous patch, unless the boundary moved back.</summary>
     public async Task SetEpochStartAsync(long ms, CancellationToken ct = default)
     {

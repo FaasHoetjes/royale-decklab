@@ -99,9 +99,11 @@ Two things set the boundary automatically:
 - **Balance updates.** Every 30 minutes (`Meta__PatchCheckIntervalMs`) a watcher
   reads Supercell's Clash Royale blog. Each "Balance Update – October 19th"
   heading in a balance post counts as one update, which also covers sections
-  added to an existing post. A new update sets the boundary once its day has
-  come. If the blog stops listing release notes (for example after a redesign),
-  the watcher logs an error, and you set the boundary by hand.
+  added to an existing post, even weeks later. A new update sets the boundary
+  to the start of its day (or to when it was posted, if that was the same day)
+  once that day has come. If the blog lists no posts, or a balance post has no
+  such headings (for example after a redesign), the watcher logs an error, and
+  you set the boundary by hand.
 - **New cards, Evos and Heroes.** After each crawl, a card version that has
   never been played before sets the boundary to the first battle that used it.
   New versions don't always arrive with the season: the Mirror Evo first
@@ -112,8 +114,8 @@ Two things set the boundary automatically:
 A boundary less than 4 days after the current one, or before it, is ignored. A
 season's Hero (Monday), its balance update (Tuesday) and an event Evo (a few
 days later) all arrive before the Thursday war battles, and four days merges
-them into one patch. The manual endpoint ignores this rule and sets any time. Battles from before the
-boundary aren't deleted; they count at reduced weight (`Meta__PreEpochWeight`,
+them into one patch. The manual endpoint ignores this rule and sets any time.
+Battles from before the boundary aren't deleted; they count at reduced weight (`Meta__PreEpochWeight`,
 default `0.25`) until they age out of the 30-day window, so the meta stays
 populated until the next war battle days.
 

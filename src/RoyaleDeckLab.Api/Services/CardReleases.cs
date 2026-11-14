@@ -75,7 +75,8 @@ public sealed class CardReleases(CardCatalog catalog, ILogger<CardReleases> logg
         {
             yield return new CardVersion(card.Id, CardVersionKind.Evo);
         }
-        if (EvolutionBits.OwnsHero(bits))
+        // A battle records every champion as a Hero (MetaBuilder.FieldedVersion), whatever its bitmask says.
+        if (EvolutionBits.OwnsHero(bits) || RarityExtensions.IsChampion(card.Rarity))
         {
             yield return new CardVersion(card.Id, CardVersionKind.Hero);
         }

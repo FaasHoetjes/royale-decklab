@@ -110,11 +110,13 @@ public sealed class MetaCache(
         }
     }
 
+    // Both boundaries come from one read of the store, which a watcher may have moved since memory was last set.
     private async Task<List<DeckMeta>> AggregateOneAsync(BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
     {
-        var epoch = Interlocked.Read(ref _epochStart);
+        var (epoch, previous) = store.GetEpochs();
+        Interlocked.Exchange(ref _epochStart, epoch);
         var tallier = epoch > 0
-            ? new CardTallier([(store.GetPreviousEpochStart(), epoch), (epoch, long.MaxValue)])
+            ? new CardTallier([(previous, epoch), (epoch, long.MaxValue)])
             : new CardTallier([(0, long.MaxValue)]);
         var battles = 0;
         var decks = builder.AggregateBattles(
