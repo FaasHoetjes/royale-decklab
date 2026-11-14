@@ -23,33 +23,40 @@ function changeColor(isClear: boolean, up: boolean): string {
  * The win rate change since the last patch as a pill: green up, red down, grey when chance alone could explain it.
  * `detailed` adds an info tip to a grey pill saying so.
  */
+/** A change in points as a pill: green up, red down, grey when `isClear` is false. */
+export function ChangePill({ change, isClear = true, large = false }: { change: number; isClear?: boolean; large?: boolean }) {
+  const up = change >= 0;
+  const color = changeColor(isClear, up);
+  return (
+    <span
+      style={{
+        ...styles.pill,
+        ...(large ? styles.pillLarge : {}),
+        color,
+        backgroundColor: `color-mix(in srgb, ${color} ${isClear ? 16 : 14}%, transparent)`,
+      }}
+    >
+      <svg width={large ? 11 : 10} height={large ? 11 : 10} viewBox="0 0 12 12" aria-hidden="true" style={styles.arrow}>
+        <path
+          d={up ? 'M6 10V2M2.5 5.5L6 2l3.5 3.5' : 'M6 2v8M2.5 6.5L6 10l3.5-3.5'}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span style={styles.srOnly}>{up ? 'up' : 'down'} </span>
+      {percent(Math.abs(change))}
+    </span>
+  );
+}
+
 export default function WinRateChange({ stat, large = false, detailed = false }: { stat: CardStat; large?: boolean; detailed?: boolean }) {
   if (stat.winRateChange == null) return null;
-  const up = stat.winRateChange >= 0;
-  const color = changeColor(stat.changeIsClear, up);
   return (
     <span title={detailed ? undefined : explain(stat)} style={styles.wrap}>
-      <span
-        style={{
-          ...styles.pill,
-          ...(large ? styles.pillLarge : {}),
-          color,
-          backgroundColor: `color-mix(in srgb, ${color} ${stat.changeIsClear ? 16 : 14}%, transparent)`,
-        }}
-      >
-        <svg width={large ? 11 : 10} height={large ? 11 : 10} viewBox="0 0 12 12" aria-hidden="true" style={styles.arrow}>
-          <path
-            d={up ? 'M6 10V2M2.5 5.5L6 2l3.5 3.5' : 'M6 2v8M2.5 6.5L6 10l3.5-3.5'}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span style={styles.srOnly}>{up ? 'up' : 'down'} </span>
-        {percent(Math.abs(stat.winRateChange))}
-      </span>
+      <ChangePill change={stat.winRateChange} isClear={stat.changeIsClear} large={large} />
       {detailed && !stat.changeIsClear && (
         <InfoTip ariaLabel="What the grey change means" color="var(--text-secondary)" width={250} placement="bottom">
           {withinChance(stat, stat.winRateChange)}
@@ -67,6 +74,7 @@ const styles = {
     gap: '4px 6px',
   },
   pill: {
+    position: 'relative' as const,
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '3px',

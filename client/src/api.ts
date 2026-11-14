@@ -1,4 +1,4 @@
-import type { CardVersionRef, CardIconUrls } from './lib/cardDisplay';
+import type { CardVersion, CardVersionRef, CardIconUrls } from './lib/cardDisplay';
 import type { ReminderStyle } from './lib/clanWar';
 
 export type PlayerSummary = PlayerResponse['player'];
@@ -369,10 +369,33 @@ export interface CardStatsResponse {
   battles: number;
   isLastPatch: boolean;
   cards: CardStat[];
+  /** When the patch the changes compare against began. */
+  previousSince: string | null;
 }
 
 export function fetchCardStats(signal?: AbortSignal): Promise<CardStatsResponse> {
   return getJson('/api/cards/stats', 'Failed to fetch card stats', signal);
+}
+
+export type BalanceChangeKind = 'buff' | 'nerf' | 'rework';
+
+export interface BalanceChange {
+  cardId: number;
+  version: CardVersion;
+  kind: BalanceChangeKind;
+  summary: string;
+}
+
+export interface BalanceUpdate {
+  /** The day it went live, as yyyy-mm-dd. */
+  liveFrom: string;
+  notesUrl: string;
+  changes: BalanceChange[];
+}
+
+/** The balance updates that went live during the battles the card changes compare, newest first. */
+export function fetchPatch(signal?: AbortSignal): Promise<{ updates: BalanceUpdate[] }> {
+  return getJson('/api/patch', 'Failed to fetch the balance changes', signal);
 }
 
 export function fetchCardDecks(cardId: number, signal?: AbortSignal): Promise<{ decks: BestDeckEntry[] }> {

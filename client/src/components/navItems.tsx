@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon } from './navIcons';
+import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
   /** The page's full name, for the sidebar and the phone's top bar. */
   label: string;
-  /** A shorter label for the phone's tab bar. */
-  tab: string;
   /** The browser tab's and search result's title, worded the way people search; defaults to the label. */
   title?: string;
   /** The page's meta description, for search results. */
@@ -23,13 +21,12 @@ export function homePath(activePlayerTag: string | null): string {
 export const SITE_NAME = 'Royale DeckLab';
 const SITE_DESCRIPTION = 'Generate your best four Clash Royale War Decks tuned to the cards you actually own.';
 
-/** The tools; the sidebar adds FAQ after them, and the phone keeps FAQ in its sheet. */
+/** The tools; the sidebar adds FAQ after them. */
 export function toolItems(activePlayerTag: string | null): NavItem[] {
   return [
     {
       to: homePath(activePlayerTag),
       label: 'War Deck Generator',
-      tab: 'Generator',
       description: SITE_DESCRIPTION,
       end: true,
       icon: <ZapIcon />,
@@ -37,7 +34,6 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
     {
       to: '/best-decks',
       label: 'Best War Decks',
-      tab: 'Best decks',
       title: `Best Clash Royale War Decks (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`,
       description: 'The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.',
       end: false,
@@ -46,7 +42,6 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
     {
       to: '/cards',
       label: 'Cards',
-      tab: 'Cards',
       title: 'Clash Royale Card Win Rates in Clan War',
       description: 'How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.',
       end: false,
@@ -55,7 +50,6 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
     {
       to: '/builder',
       label: 'War Deck Builder',
-      tab: 'Builder',
       title: 'Clash Royale War Deck Builder',
       description: 'Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.',
       end: false,
@@ -64,7 +58,6 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
     {
       to: '/upgrades',
       label: 'Upgrade Advisor',
-      tab: 'Upgrades',
       title: 'What to Upgrade Next in Clash Royale',
       description: 'Find the card upgrade that raises your Clash Royale war lineup the most.',
       end: false,
@@ -73,7 +66,6 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
     {
       to: '/clan',
       label: 'Clan War Planner',
-      tab: 'Clan',
       title: 'Clash Royale Clan War Planner',
       description: 'See who in your Clash Royale clan still has war decks to play today, and give every member their best four war decks.',
       end: false,
@@ -82,10 +74,18 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
   ];
 }
 
+export const PATCH_ITEM: NavItem = {
+  to: '/patch',
+  label: 'Patch Overview',
+  title: `Clash Royale Patch Changes in Clan War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`,
+  description: 'What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.',
+  end: false,
+  icon: <ChangesIcon />,
+};
+
 export const FAQ_ITEM: NavItem = {
   to: '/faq',
   label: 'FAQ',
-  tab: 'FAQ',
   title: 'Clash Royale War Deck FAQ',
   description: 'How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.',
   end: false,
@@ -93,7 +93,7 @@ export const FAQ_ITEM: NavItem = {
 };
 
 function pageItem(pathname: string, items: NavItem[]): NavItem | undefined {
-  return [...items, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
+  return [...items, PATCH_ITEM, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
 }
 
 export function pageTitle(pathname: string, items: NavItem[]): string | undefined {

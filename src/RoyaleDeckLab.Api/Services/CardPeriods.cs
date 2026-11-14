@@ -104,7 +104,8 @@ public static class CardPeriods
             IsLastPatch: false,
             Cards: current.Cards
                 .Select(c => Stat(c, current.Battles, before?.GetValueOrDefault(c.CardId), previous?.Battles ?? 0))
-                .ToList());
+                .ToList(),
+            PreviousSince: previous is null ? null : IsoOrNull(previous.StartMs));
     }
 
     private static CardStat Stat(CardTally card, int battles, CardTally? before, int battlesBefore)

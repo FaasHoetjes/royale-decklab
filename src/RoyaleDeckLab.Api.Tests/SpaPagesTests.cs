@@ -26,6 +26,7 @@ public sealed class SpaPagesTests
     [InlineData("/cards/mega-knight", "/cards/mega-knight")]
     [InlineData("/cards/Mega-Knight", "/cards/mega-knight")]
     [InlineData("/clan", "/clan")]
+    [InlineData("/patch", "/patch")]
     public void KnownPages_AreIndexedUnderTheirOwnPath(string path, string canonical)
     {
         var page = Resolve(path);
@@ -176,7 +177,8 @@ public sealed class SpaPagesTests
         Assert.Contains("<loc>https://royaledecklab.com/best-decks</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/cards/mini-pekka</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/clan</loc>", xml);
-        Assert.Equal(9, Count(xml, "<loc>"));
+        Assert.Contains("<loc>https://royaledecklab.com/patch</loc>", xml);
+        Assert.Equal(10, Count(xml, "<loc>"));
     }
 
     private static int Count(string text, string value) => text.Split(value).Length - 1;

@@ -123,6 +123,10 @@ public static partial class SpaHosting
             case SpaContentKind.Clan: return SpaContent.Clan(heading);
             case SpaContentKind.Faq: return SpaContent.Faq(heading, faqHtml);
         }
+        if (page.Content is SpaContentKind.Patch)
+        {
+            return SpaContent.Patch(await CardsOrEmpty(catalog, requestAborted), meta.CardStats, BalanceUpdates.During(meta.CardStats));
+        }
         if (page.Content is not (SpaContentKind.BestDecks or SpaContentKind.Cards or SpaContentKind.Card))
         {
             return null;

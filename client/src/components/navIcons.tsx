@@ -63,6 +63,17 @@ export function TrendingUpIcon() {
   );
 }
 
+export function ChangesIcon() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M7 20V4" />
+      <path d="m3 8 4-4 4 4" />
+      <path d="M17 4v16" />
+      <path d="m13 16 4 4 4-4" />
+    </svg>
+  );
+}
+
 export function ShieldIcon() {
   return (
     <svg {...iconProps()}>
@@ -136,6 +147,16 @@ export function SmallCloseIcon() {
   return (
     <svg {...iconProps()} width={14} height={14}>
       <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+export function MenuIcon() {
+  return (
+    <svg {...iconProps()} width={22} height={22}>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
     </svg>
   );
 }

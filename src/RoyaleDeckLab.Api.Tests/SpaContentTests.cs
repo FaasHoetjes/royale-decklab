@@ -45,6 +45,34 @@ public sealed class SpaContentTests
     }
 
     [Fact]
+    public void PatchPage_ListsTheBalanceChangesAndTheBiggestMovers()
+    {
+        var steady = new CardStat(1, 5000, 0.51, 0.08, 0, 0, 5000, 0.505, 0.081, 0.005, 0.02, false);
+        var nerfed = new CardStat(2, 5000, 0.46, 0.05, 0, 0, 5000, 0.50, 0.07, -0.04, 0.02, true);
+        var stats = new CardStatsResponse("2026-11-02T09:32:46.298Z", null, 60_000, false, [steady, nerfed], "2026-10-05T09:00:00.000Z");
+        var update = new BalanceUpdate(new DateOnly(2026, 10, 19), "https://supercell.com/x", [new BalanceChange(2, CardVersionKind.Normal, BalanceChangeKind.Nerf, "Damage 212 → 202")]);
+
+        var html = SpaContent.Patch([MegaKnight, MiniPekka], stats, [update]);
+
+        Assert.Contains("<h1>November Patch</h1>", html);
+        Assert.Contains("<h2>Balance changes, October 19</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a> (nerf): Damage 212 → 202</li></ul>", html);
+        Assert.Contains("<h2>Biggest play rate changes</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a>: 7.0% → 5.0%</li><li><a href=\"/cards/mega-knight\">", html);
+        Assert.Contains("<h2>Biggest win rate changes</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a>: 50.0% → 46.0%</li></ul>", html);
+        Assert.Contains("<a href=\"/patch\">Patch Overview</a>", html);
+    }
+
+    [Fact]
+    public void PatchPage_WhileOnlyLastPatchIsIn_IsNamedForTheNewPatch()
+    {
+        var stats = new CardStatsResponse("2026-10-05T09:00:00.000Z", "2026-11-02T09:32:46.298Z", 60_000, true, [MegaKnightStat]);
+
+        var html = SpaContent.Patch([MegaKnight], stats, []);
+
+        Assert.Contains("<h1>November Patch</h1>", html);
+        Assert.DoesNotContain("Biggest", html);
+    }
+
+    [Fact]
     public void CardPage_SaysSoWhenNobodyPlaysIt()
     {
         var html = SpaContent.Card(MiniPekka, null, true, []);

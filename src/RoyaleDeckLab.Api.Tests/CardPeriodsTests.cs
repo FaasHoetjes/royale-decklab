@@ -110,6 +110,18 @@ public sealed class CardPeriodsTests
     }
 
     [Fact]
+    public void Says_when_the_patch_it_compares_against_began()
+    {
+        var lastPatchStart = BattleRepository.ParseBattleTime("20260907T000000.000Z");
+        var stats = CardPeriods.Compare(
+            Period(battles: 50_000, games: 10_000, wins: 5_200, start: Patch),
+            Period(battles: 50_000, games: 10_000, wins: 5_000, start: lastPatchStart, end: Patch));
+
+        Assert.Equal(MetaCache.IsoMs(lastPatchStart), stats.PreviousSince);
+        Assert.Equal(MetaCache.IsoMs(Patch), stats.Since);
+    }
+
+    [Fact]
     public void A_win_rate_change_within_the_noise_is_not_clear()
     {
         // The same 2 points on 400 games a side has a standard error of 3.5 points.

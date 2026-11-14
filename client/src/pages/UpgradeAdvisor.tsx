@@ -274,7 +274,6 @@ const styles = {
     backgroundColor: 'var(--skeleton-base)',
   },
   ghostGain: {
-    fontFamily: "'Baloo 2', system-ui, -apple-system, sans-serif",
     fontWeight: 800 as const,
     fontSize: '15px',
   },

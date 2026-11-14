@@ -5,16 +5,31 @@ import { getTheme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PlayerMenu, { Avatar } from './PlayerMenu';
-import { homePath, toolItems, FAQ_ITEM, type NavItem } from './navItems';
+import { homePath, toolItems, FAQ_ITEM, PATCH_ITEM, type NavItem } from './navItems';
 import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
+const withPatchAfterCards = (tools: NavItem[]): NavItem[] => [
+  ...tools.flatMap((item) => (item.to === '/cards' ? [item, PATCH_ITEM] : [item])),
+  FAQ_ITEM,
+];
+
 export default function Sidebar() {
+  const theme = getTheme();
+  return (
+    <nav aria-label="Main menu" style={{ ...styles.sidebar, backgroundColor: theme.bg.secondary, borderRightColor: theme.border }}>
+      <SidebarContent />
+    </nav>
+  );
+}
+
+/** The logo, every page, the contact and theme buttons and the player: the desktop sidebar and the phone's drawer. */
+export function SidebarContent() {
   const { activePlayerTag } = useApp();
   const { pathname } = useLocation();
   const theme = getTheme();
-  const navRef = useRef<HTMLElement>(null);
-  const glideRef = useGlide(navRef, pathname);
+  const listRef = useRef<HTMLDivElement>(null);
+  const glideRef = useGlide(listRef, pathname);
 
   const renderNavLink = (item: NavItem) => (
     <NavLink
@@ -33,15 +48,7 @@ export default function Sidebar() {
   );
 
   return (
-    <nav
-      ref={navRef}
-      aria-label="Main menu"
-      style={{
-        ...styles.sidebar,
-        backgroundColor: theme.bg.secondary,
-        borderRightColor: theme.border,
-      }}
-    >
+    <div ref={listRef} style={styles.content}>
       <span ref={glideRef} className="nav-glide" style={{ ...styles.glide, boxShadow: `inset 3px 0 0 ${theme.accent}` }} />
 
       <Link
@@ -54,7 +61,7 @@ export default function Sidebar() {
         <div style={styles.brandBottom}>DECKLAB</div>
       </Link>
 
-      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].map(renderNavLink)}</div>
+      <div style={styles.navList}>{withPatchAfterCards(toolItems(activePlayerTag)).map(renderNavLink)}</div>
 
       <div style={styles.footer}>
         <div style={styles.footerIcons}>
@@ -87,7 +94,7 @@ export default function Sidebar() {
 
         <PlayerCard />
       </div>
-    </nav>
+    </div>
   );
 }
 
@@ -216,6 +223,12 @@ const styles = {
     top: 0,
     zIndex: 20,
     alignSelf: 'flex-start' as const,
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+  },
+  content: {
+    position: 'relative' as const,
+    flex: '1 0 auto',
     display: 'flex' as const,
     flexDirection: 'column' as const,
   },
