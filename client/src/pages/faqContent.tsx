@@ -153,8 +153,8 @@ export const faqItems: FaqItem[] = [
           when new Clan War battles are added to the data.
         </p>
         <p style={pLast}>
-          After a new patch begins, older battles count less toward deck win rates and rankings.
-          As new war battles are collected, the recommendations adjust to the latest results.
+          As new war battles are collected and battles older than 30 days drop out, the
+          recommendations adjust to the latest results.
         </p>
       </>
     ),
@@ -508,9 +508,9 @@ export const faqItems: FaqItem[] = [
           30-day data window.
         </p>
         <p style={pStyle}>
-          Draws count as half a win. The displayed deck win rate gives current-patch battles full
-          weight and battles from before the latest patch one-quarter weight. This keeps older
-          results useful while new war battles are collected.
+          Draws count as half a win. Battles from before the latest patch count fully too. In our
+          tests, counting them for less made win rates predict later results worse, as most
+          patches change only a few cards a little.
         </p>
         <p style={pStyle}>
           Rankings use a more cautious estimate. Each deck’s results are combined with a

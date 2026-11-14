@@ -11,8 +11,8 @@ public sealed class AggregateBattlesTests
 {
     // AggregateBattles is pure CPU (no client/logger use), so a null client is safe
     // for this unit under test.
-    private static MetaBuilder NewBuilder()
-        => new(null!, Microsoft.Extensions.Options.Options.Create(new MetaOptions()), NullLogger<MetaBuilder>.Instance);
+    private static MetaBuilder NewBuilder(MetaOptions? options = null)
+        => new(null!, Microsoft.Extensions.Options.Options.Create(options ?? new MetaOptions()), NullLogger<MetaBuilder>.Instance);
 
     private static double Cautious(double wins, double games)
     {
@@ -138,7 +138,7 @@ public sealed class AggregateBattlesTests
     }
 
     [Fact]
-    public void PreEpochBattles_CountAtReducedWeight()
+    public void PreEpochBattles_CountAtTheConfiguredWeight()
     {
         var deck = Build.Eight(1);
         var epoch = BattleRepository.ParseBattleTime("20260115T000000.000Z");
@@ -150,11 +150,28 @@ public sealed class AggregateBattlesTests
             Build.Battle("#P4", deck, BattleResult.Loss, "20260120T130000.000Z"),
         };
 
-        var result = Assert.Single(NewBuilder().AggregateBattles(battles, epoch));
+        var result = Assert.Single(NewBuilder(new MetaOptions { PreEpochWeight = 0.25 }).AggregateBattles(battles, epoch));
 
         Assert.Equal(4, result.Uses);
         Assert.Equal(0.5 / 2.5, result.WinRate, 10);
         Assert.Equal(Cautious(0.5, 2.5), result.Confidence, 10);
+    }
+
+    [Fact]
+    public void PreEpochBattles_CountFullyByDefault()
+    {
+        var deck = Build.Eight(1);
+        var epoch = BattleRepository.ParseBattleTime("20260115T000000.000Z");
+        var battles = new[]
+        {
+            Build.Battle("#P1", deck, BattleResult.Win, "20260110T120000.000Z"),
+            Build.Battle("#P2", deck, BattleResult.Loss, "20260120T120000.000Z"),
+        };
+
+        var result = Assert.Single(NewBuilder().AggregateBattles(battles, epoch));
+
+        Assert.Equal(0.5, result.WinRate, 10);
+        Assert.Equal(Cautious(1, 2), result.Confidence, 10);
     }
 
     [Fact]

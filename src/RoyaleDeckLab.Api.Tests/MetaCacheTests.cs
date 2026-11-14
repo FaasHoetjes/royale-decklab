@@ -33,18 +33,24 @@ public sealed class MetaCacheTests : IDisposable
         File.Delete(_dbPath);
     }
 
-    /// <summary>Answers the crawl's three calls with one clan, one member and one war battle played now.</summary>
+    /// <summary>
+    /// Answers the crawl's three calls with one clan, one member and one war battle played now, and lists cards 1-28:
+    /// card 1 with an Evo and a Hero, card 2 a champion.
+    /// </summary>
     private sealed class CrawlHandler(bool fail) : HttpMessageHandler
     {
+        public bool CatalogFails { get; set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            if (fail)
+            var path = request.RequestUri!.AbsolutePath;
+            if (fail || (CatalogFails && path.EndsWith("/cards")))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden));
             }
 
-            var path = request.RequestUri!.AbsolutePath;
-            var json = path.Contains("/rankings/") ? """{"items":[{"tag":"#CLAN"}]}"""
+            var json = path.EndsWith("/cards") ? """{"items":[""" + string.Join(',', Enumerable.Range(1, 28).Select(Catalogued)) + "]}"
+                : path.Contains("/rankings/") ? """{"items":[{"tag":"#CLAN"}]}"""
                 : path.Contains("/clans/") ? """{"memberList":[{"tag":"#P1"}]}"""
                 : $$"""
                   [{
@@ -61,20 +67,41 @@ public sealed class MetaCacheTests : IDisposable
             });
         }
 
+        private static string Catalogued(int id) => id switch
+        {
+            1 => """{"id":1,"name":"C1","maxLevel":16,"maxEvolutionLevel":3}""",
+            2 => """{"id":2,"name":"C2","maxLevel":16,"rarity":"Champion"}""",
+            _ => $$"""{"id":{{id}},"name":"C{{id}}","maxLevel":16}""",
+        };
+
         private static string Cards(int firstId)
             => "[" + string.Join(',', Enumerable.Range(firstId, 8).Select(id => $$"""{"id":{{id}}}""")) + "]";
     }
 
+    private sealed class Clock : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private CrawlHandler _crawl = null!;
+    private readonly Clock _clock = new();
+
     private ServiceProvider Services(bool crawlFails)
     {
+        _crawl = new CrawlHandler(crawlFails);
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<BattleRepository>();
         services.AddSingleton(new ClashRoyaleClient(
-            new HttpClient(new CrawlHandler(crawlFails)) { BaseAddress = new Uri("https://cr.test/v1/") }));
+            new HttpClient(_crawl) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddScoped<MetaBuilder>();
+        services.AddSingleton<TimeProvider>(_clock);
+        services.AddSingleton<CardCatalog>();
+        services.AddScoped<CardReleases>();
         services.AddSingleton<MetaCache>();
         return services.BuildServiceProvider();
     }
@@ -136,6 +163,146 @@ public sealed class MetaCacheTests : IDisposable
         Assert.True(cache.LastCacheTime > FortyDaysAgo);
     }
 
+    private static HashSet<CardVersion> KnownVersions(ServiceProvider sp)
+    {
+        using var scope = sp.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<BattleRepository>().GetKnownCardVersions();
+    }
+
+    private const long Day = 24L * 60 * 60 * 1000;
+
+    private static BattleRecord Battle(string tag, long ms, params CardVersion[] versions)
+    {
+        var time = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyyMMdd'T'HHmmss") + ".000Z";
+        return new BattleRecord
+        {
+            Key = $"{tag}|{time}",
+            BattleTime = time,
+            BattleTimeMs = BattleRepository.ParseBattleTime(time),
+            PlayerTag = tag,
+            CardIds = [.. versions.Select(v => v.CardId).Concat(Enumerable.Range(3, 8 - versions.Length))],
+            Result = BattleResult.Win,
+            CardVersions = [.. versions.Where(v => v.Version != CardVersionKind.Normal)],
+        };
+    }
+
+    /// <summary>A stored battle from two days ago with card 99, which the catalog doesn't list, played as an Evo.</summary>
+    private static async Task StoreRecentEvoBattleAsync(ServiceProvider sp)
+    {
+        using var scope = sp.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<BattleRepository>().MergeBattlesAsync(
+            [Battle("#RECENT", Now - 2 * Day, new CardVersion(99, CardVersionKind.Evo))]);
+    }
+
+    [Fact]
+    public async Task The_first_crawl_remembers_the_catalog_and_stored_versions_without_starting_a_patch()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        await StoreRecentEvoBattleAsync(sp);
+        var cache = sp.GetRequiredService<MetaCache>();
+
+        await cache.InitializeAsync();
+
+        Assert.Equal(0, cache.EpochStart);
+        var known = KnownVersions(sp);
+        Assert.Contains(new CardVersion(1, CardVersionKind.Evo), known);
+        Assert.Contains(new CardVersion(1, CardVersionKind.Hero), known);
+        Assert.Contains(new CardVersion(2, CardVersionKind.Hero), known);
+        Assert.DoesNotContain(new CardVersion(3, CardVersionKind.Evo), known);
+        Assert.Contains(new CardVersion(99, CardVersionKind.Evo), known);
+    }
+
+    [Fact]
+    public async Task Without_the_catalog_nothing_is_remembered_or_started_until_a_later_crawl_gets_it()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        _crawl.CatalogFails = true;
+        var cache = sp.GetRequiredService<MetaCache>();
+        await cache.InitializeAsync();
+        Assert.Empty(KnownVersions(sp));
+
+        _crawl.CatalogFails = false;
+        _clock.Now += TimeSpan.FromMinutes(5);
+        await cache.RebuildAsync("test");
+
+        Assert.Equal(0, cache.EpochStart);
+        Assert.Contains(new CardVersion(28, CardVersionKind.Normal), KnownVersions(sp));
+    }
+
+    [Fact]
+    public async Task A_card_version_played_for_a_day_starts_a_patch_at_its_first_battle()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using (var scope = sp.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<BattleRepository>().AddKnownCardVersionsAsync(
+                Enumerable.Range(1, 27).Select(id => new CardVersion(id, CardVersionKind.Normal)));
+        }
+        var cache = sp.GetRequiredService<MetaCache>();
+        await cache.InitializeAsync();
+        Assert.Equal(0, cache.EpochStart);
+        Assert.DoesNotContain(new CardVersion(28, CardVersionKind.Normal), KnownVersions(sp));
+
+        _clock.Now += TimeSpan.FromDays(1.5);
+        await cache.RebuildAsync("test");
+
+        Assert.Equal(StoredBattles(sp).Where(b => b.PlayerTag == "#P2").Min(b => b.BattleTimeMs), cache.EpochStart);
+        Assert.Contains(new CardVersion(28, CardVersionKind.Normal), KnownVersions(sp));
+    }
+
+    /// <summary>
+    /// The last three days' 100 decks: <paramref name="newDecks"/> with card 28's Evo, first in the oldest deck,
+    /// then 40 with card 1's Evo and 20 with card 2's Hero, the versions already out.
+    /// </summary>
+    private static async Task<(BattleRepository Store, BattleRecord First)> WeekWithNewEvoAsync(IServiceScope scope, int newDecks)
+    {
+        var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
+        await store.AddKnownCardVersionsAsync(
+        [
+            .. Enumerable.Range(1, 28).Select(id => new CardVersion(id, CardVersionKind.Normal)),
+            new CardVersion(1, CardVersionKind.Evo),
+            new CardVersion(2, CardVersionKind.Hero),
+        ]);
+        var battles = Enumerable.Range(0, 100).Select(i =>
+        {
+            var ms = Now - 3 * Day + i * (3 * Day / 100);
+            return i < newDecks ? Battle($"#NEW{i}", ms, new CardVersion(28, CardVersionKind.Evo))
+                : i < 40 + newDecks ? Battle($"#EVO{i}", ms, new CardVersion(1, CardVersionKind.Evo))
+                : i < 60 + newDecks ? Battle($"#HERO{i}", ms, new CardVersion(2, CardVersionKind.Hero))
+                : Battle($"#PLAIN{i}", ms);
+        }).ToList();
+        await store.MergeBattlesAsync(battles);
+        return (store, battles[0]);
+    }
+
+    [Fact]
+    public async Task A_card_version_in_fewer_decks_than_the_versions_already_out_isnt_released()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using var scope = sp.CreateScope();
+        var (store, first) = await WeekWithNewEvoAsync(scope, newDecks: 10);
+
+        Assert.Null(await scope.ServiceProvider.GetRequiredService<CardReleases>().FindNewAsync(store, [first], default));
+    }
+
+    [Fact]
+    public async Task A_card_version_in_as_many_decks_as_the_versions_already_out_is_released_at_its_first_battle()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using var scope = sp.CreateScope();
+        var (store, first) = await WeekWithNewEvoAsync(scope, newDecks: 20);
+
+        var release = await scope.ServiceProvider.GetRequiredService<CardReleases>().FindNewAsync(store, [first], default);
+
+        Assert.Equal(first.BattleTimeMs, release?.FirstSeenMs);
+        Assert.Equal([new CardVersion(28, CardVersionKind.Evo)], release!.Versions);
+    }
+
     [Fact]
     public async Task A_patch_boundary_update_does_not_prune()
     {
@@ -157,8 +324,7 @@ public sealed class MetaCacheTests : IDisposable
         var cache = sp.GetRequiredService<MetaCache>();
         await cache.InitializeAsync();
 
-        using var scope = sp.CreateScope();
-        var controller = new MetaController(cache, scope.ServiceProvider.GetRequiredService<BattleRepository>());
+        var controller = new MetaController(cache);
         var result = Assert.IsType<ObjectResult>(await controller.Refresh());
 
         Assert.Equal(StatusCodes.Status502BadGateway, result.StatusCode);
@@ -173,8 +339,7 @@ public sealed class MetaCacheTests : IDisposable
         var cache = sp.GetRequiredService<MetaCache>();
         await cache.InitializeAsync();
 
-        using var scope = sp.CreateScope();
-        var controller = new MetaController(cache, scope.ServiceProvider.GetRequiredService<BattleRepository>());
+        var controller = new MetaController(cache);
 
         Assert.IsType<OkObjectResult>(await controller.Refresh());
     }

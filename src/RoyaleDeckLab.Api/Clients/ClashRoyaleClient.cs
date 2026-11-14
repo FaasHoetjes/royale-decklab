@@ -71,23 +71,6 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return data ?? [];
     }
 
-    public async Task<bool> SeasonHasRankingsAsync(int seasonId, CancellationToken ct = default)
-    {
-        using var response = await http.GetAsync(
-            $"locations/global/pathoflegend/{seasonId}/rankings/players?limit=1", ct);
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return false;
-        }
-        response.EnsureSuccessStatusCode();
-
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-        return doc.RootElement.TryGetProperty("items", out var items)
-               && items.ValueKind == JsonValueKind.Array
-               && items.GetArrayLength() > 0;
-    }
-
     public async Task<CrPlayer> GetPlayerDataAsync(string playerTag, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(playerTag))

@@ -127,20 +127,19 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public long GetPreviousEpochStart() => State().PreviousEpochStartMs;
 
-    /// <summary>
-    /// Moves the patch boundary; the old one becomes the start of the previous patch, unless the boundary moved back.
-    /// A <paramref name="knownSeasonId"/> is saved in the same write.
-    /// </summary>
-    public async Task SetEpochStartAsync(long ms, int? knownSeasonId = null, CancellationToken ct = default)
+    public (long Epoch, long Previous) GetEpochs()
+    {
+        var s = State();
+        return (s.EpochStartMs, s.PreviousEpochStartMs);
+    }
+
+    /// <summary>Moves the patch boundary; the old one becomes the start of the previous patch, unless the boundary moved back.</summary>
+    public async Task SetEpochStartAsync(long ms, CancellationToken ct = default)
     {
         await WriteGate.WaitAsync(ct);
         try
         {
             var s = State();
-            if (knownSeasonId is { } seasonId)
-            {
-                s.KnownSeasonId = seasonId;
-            }
             if (ms > s.EpochStartMs)
             {
                 s.PreviousEpochStartMs = s.EpochStartMs;
@@ -158,15 +157,34 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
-    public int GetKnownSeasonId() => State().KnownSeasonId;
+    public HashSet<CardVersion> GetKnownCardVersions()
+        => db.KnownCardVersions.AsNoTracking().AsEnumerable().Select(v => new CardVersion(v.CardId, v.Version)).ToHashSet();
 
-    public async Task SetKnownSeasonIdAsync(int seasonId, CancellationToken ct = default)
+    public Task AddKnownCardVersionsAsync(IEnumerable<CardVersion> versions, CancellationToken ct = default)
+        => AddMissingAsync(
+            db.KnownCardVersions,
+            versions.Distinct().Select(v => new KnownCardVersionEntity { CardId = v.CardId, Version = v.Version }),
+            e => [e.CardId, e.Version],
+            ct);
+
+    public HashSet<string> GetSeenPatchNotes() => db.SeenPatchNotes.AsNoTracking().Select(n => n.Key).ToHashSet();
+
+    public Task AddSeenPatchNotesAsync(IEnumerable<string> keys, CancellationToken ct = default)
+        => AddMissingAsync(db.SeenPatchNotes, keys.Distinct().Select(k => new SeenPatchNoteEntity { Key = k }), e => [e.Key], ct);
+
+    private async Task AddMissingAsync<T>(DbSet<T> set, IEnumerable<T> rows, Func<T, object[]> key, CancellationToken ct)
+        where T : class
     {
         await WriteGate.WaitAsync(ct);
         try
         {
-            var s = State();
-            s.KnownSeasonId = seasonId;
+            foreach (var row in rows)
+            {
+                if (await set.FindAsync(key(row), ct) is null)
+                {
+                    set.Add(row);
+                }
+            }
             await db.SaveChangesAsync(ct);
         }
         finally
@@ -220,7 +238,13 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
+    // Reloaded each time: a long-lived scope, like a rebuild's, would otherwise keep the row from before another
+    // scope moved the patch boundary.
     private MetaStateEntity State()
-        => db.MetaState.Find(1)
-           ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");
+    {
+        var state = db.MetaState.Find(1)
+                    ?? throw new InvalidOperationException("meta_state row missing. Was the DB initialised?");
+        db.Entry(state).Reload();
+        return state;
+    }
 }

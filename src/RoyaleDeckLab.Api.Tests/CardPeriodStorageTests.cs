@@ -118,16 +118,78 @@ public sealed class CardPeriodStorageTests : IDisposable
     }
 
     [Fact]
-    public async Task A_new_season_is_saved_together_with_its_patch_boundary()
+    public async Task A_new_patch_is_saved_and_tallied()
     {
         using var sp = Services();
         var cache = await StartAsync(sp, 3, 2, 1);
 
-        await cache.StartSeasonAsync(150, Now);
+        Assert.True(await cache.StartPatchAsync(Now - Day / 2, "test"));
 
-        Assert.Equal(150, Store(sp, s => s.GetKnownSeasonId()));
-        Assert.Equal(Now, Store(sp, s => s.GetEpochStart()));
-        Assert.Equal(Now, cache.EpochStart);
+        Assert.Equal(Now - Day / 2, Store(sp, s => s.GetEpochStart()));
+        Assert.Equal(Now - Day / 2, cache.EpochStart);
+        Assert.True(cache.CardStats.IsLastPatch);
+        Assert.Equal(3, cache.CardStats.Battles);
+    }
+
+    [Theory]
+    [InlineData(3.9)]
+    [InlineData(-1)]
+    public async Task A_new_patch_less_than_4_days_after_the_boundary_or_before_it_keeps_the_boundary(double daysLater)
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp, 3, 2, 1);
+        await cache.SetEpochAsync(Now - 5 * Day);
+
+        Assert.False(await cache.StartPatchAsync(Now - 5 * Day + (long)(daysLater * Day), "test"));
+
+        Assert.Equal(Now - 5 * Day, cache.EpochStart);
+        Assert.Equal(0, Store(sp, s => s.GetPreviousEpochStart()));
+    }
+
+    [Fact]
+    public async Task The_releases_of_October_and_November_2026_make_four_patches()
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp);
+        var patches = new List<long>();
+
+        foreach (var release in new[]
+                 {
+                     "2026-10-05T09:00:00Z", // Season: Electro Wizard Hero
+                     "2026-10-06T06:30:00Z", // Balance update
+                     "2026-10-08T12:00:00Z", // Electro Giant Evo, from the Album Event
+                     "2026-10-19T00:30:00Z", // Balance update
+                     "2026-11-02T13:12:00Z", // Season: Giant Evo
+                     "2026-11-09T10:52:00Z", // Mirror Evo, were it played enough to count
+                 })
+        {
+            var ms = DateTimeOffset.Parse(release).ToUnixTimeMilliseconds();
+            if (await cache.StartPatchAsync(ms, release))
+            {
+                patches.Add(ms);
+            }
+        }
+
+        Assert.Equal(
+            ["2026-10-05T09:00:00.000Z", "2026-10-19T00:30:00.000Z", "2026-11-02T13:12:00.000Z", "2026-11-09T10:52:00.000Z"],
+            patches.Select(MetaCache.IsoMs));
+        Assert.Equal(DateTimeOffset.Parse("2026-11-02T13:12:00Z").ToUnixTimeMilliseconds(), Store(sp, s => s.GetPreviousEpochStart()));
+    }
+
+    [Fact]
+    public async Task A_store_opened_before_the_boundary_moved_reads_the_moved_boundary()
+    {
+        using var sp = Services();
+        var cache = await StartAsync(sp, 3, 2, 1);
+        await cache.SetEpochAsync(Now - 10 * Day);
+        using var rebuild = sp.CreateScope();
+        var store = rebuild.ServiceProvider.GetRequiredService<BattleRepository>();
+        Assert.Equal(Now - 10 * Day, store.GetEpochStart());
+
+        await cache.StartPatchAsync(Now - Day, "test");
+
+        Assert.Equal(Now - Day, store.GetEpochStart());
+        Assert.Equal(Now - 10 * Day, store.GetPreviousEpochStart());
     }
 
     [Fact]
@@ -138,11 +200,10 @@ public sealed class CardPeriodStorageTests : IDisposable
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.StartSeasonAsync(150, Now, cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.StartPatchAsync(Now, "test", cancelled.Token));
 
         Assert.Equal(0, cache.EpochStart);
         Assert.Equal(0, Store(sp, s => s.GetEpochStart()));
-        Assert.Equal(0, Store(sp, s => s.GetKnownSeasonId()));
     }
 
     [Fact]

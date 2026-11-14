@@ -94,13 +94,37 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json
   -d '{"timestamp":"now"}' http://localhost:3000/api/meta/epoch
 ```
 
-Season rollovers set the boundary automatically: a background watcher probes the
-Path of Legend rankings for the next season id every hour and sets the epoch the
-moment the new season appears. The manual endpoint is only needed for mid-season
-balance hotfixes. Battles from before the boundary aren't deleted; they count at
-reduced weight (`Meta__PreEpochWeight`, default `0.25`) until they age out of the
-30-day window, so the meta stays populated between a Monday rollover and the next
-war battle days.
+Two things set the boundary automatically:
+
+- **Balance updates.** Every 30 minutes (`Meta__PatchCheckIntervalMs`) a watcher
+  reads Supercell's Clash Royale blog. Each "Balance Update – October 19th"
+  heading in a balance post counts as one update, which also covers sections
+  added to an existing post, even weeks later. A new update sets the boundary
+  to the start of its day (or to when it was posted, if that was the same day)
+  once that day has come. If the blog lists no posts, or a balance post has no
+  such headings (for example after a redesign), the watcher logs an error, and
+  you set the boundary by hand.
+- **New cards, Evos and Heroes.** After each crawl, a card version that has
+  never been played before sets the boundary to the first battle that used it,
+  once it has been out a day and is in as many of the last week's decks as all
+  but the least played 5% of the Evos and Heroes already out (about 1.3% of
+  decks in November 2026). Until then it is logged after each crawl but not
+  counted. New versions don't always arrive with the season: the Mirror Evo
+  appeared a week into November 2026, though at about 0.1% of decks it didn't
+  count. On the first run, the versions the
+  catalog lists and the battles already stored are recorded as known, so they
+  don't count as new.
+
+A boundary less than 4 days after the current one, or before it, is ignored. A
+season's Hero (Monday), its balance update (Tuesday) and an event Evo (a few
+days later) all arrive before the Thursday war battles, and four days merges
+them into one patch. The manual endpoint ignores this rule and sets any time.
+The boundary splits the card stats into this patch and the last one. Battles
+from before it aren't deleted, and they count toward deck win rates and
+rankings at `Meta__PreEpochWeight` (default `1`, full weight) until they age
+out of the 30-day window. In a backtest over Oct-Nov 2026, discounting them
+made deck win rates predict the following days worse at every boundary, so
+lower it only for a patch that reworks the cards most decks use.
 
 ### The `meta.db` volume
 

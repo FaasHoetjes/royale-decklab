@@ -11,9 +11,15 @@ public sealed class MetaCache(
     IOptions<MetaOptions> options,
     ILogger<MetaCache> logger)
 {
+    // A season brings its Hero on Monday, its balance update on Tuesday and an event Evo days later, all before the
+    // Thursday war battles; a boundary for each would leave the last patch a day or two of training battles.
+    // Four days keeps the releases of Oct-Nov 2026 apart: the 6th, 19th, 2nd and 9th, a week or more between them.
+    public static readonly TimeSpan MinPatchLength = TimeSpan.FromDays(4);
+
     private readonly MetaOptions _opt = options.Value;
     private readonly object _buildLock = new();
     private readonly SemaphoreSlim _aggregateGate = new(1, 1);
+    private readonly SemaphoreSlim _boundaryGate = new(1, 1);
     private readonly object _indexLock = new();
 
     private volatile List<DeckMeta> _meta = [];
@@ -104,11 +110,13 @@ public sealed class MetaCache(
         }
     }
 
+    // Both boundaries come from one read of the store, which a watcher may have moved since memory was last set.
     private async Task<List<DeckMeta>> AggregateOneAsync(BattleRepository store, MetaBuilder builder, string reason, CancellationToken ct)
     {
-        var epoch = Interlocked.Read(ref _epochStart);
+        var (epoch, previous) = store.GetEpochs();
+        Interlocked.Exchange(ref _epochStart, epoch);
         var tallier = epoch > 0
-            ? new CardTallier([(store.GetPreviousEpochStart(), epoch), (epoch, long.MaxValue)])
+            ? new CardTallier([(previous, epoch), (epoch, long.MaxValue)])
             : new CardTallier([(0, long.MaxValue)]);
         var battles = 0;
         var decks = builder.AggregateBattles(
@@ -162,6 +170,7 @@ public sealed class MetaCache(
             // Old battles go only now that fresh ones have landed, so a failed crawl never empties the store.
             var cutoff = PruneCutoff();
             var pruned = await store.PruneAsync(cutoff, ct);
+            await StartPatchOnNewCardVersionsAsync(scope.ServiceProvider, store, fresh, ct);
             var decks = await AggregateAsync(store, builder, $"rebuild ({reason})", ct);
             logger.LogInformation("  +{Added} new this fetch, {Fetched} fetched, {Pruned} pruned before {Cutoff}, {Kept} kept",
                 added, fresh.Count, pruned, IsoMs(cutoff), store.Count());
@@ -222,26 +231,84 @@ public sealed class MetaCache(
         }
     }
 
-    public Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
-        => MoveEpochAsync(ms, seasonId: null, ct);
-
-    /// <summary>
-    /// Moves the patch boundary to a new season's start. The season is saved together with the boundary: saved only
-    /// after the battles are tallied again, a restart in between would find the same season new once more, and its
-    /// second boundary would make the last patch a few minutes long.
-    /// </summary>
-    public Task<List<DeckMeta>> StartSeasonAsync(int seasonId, long ms, CancellationToken ct = default)
-        => MoveEpochAsync(ms, seasonId, ct);
-
-    private async Task<List<DeckMeta>> MoveEpochAsync(long ms, int? seasonId, CancellationToken ct)
+    /// <summary>Moves the patch boundary to any time, unlike <see cref="StartPatchAsync"/>.</summary>
+    public async Task<List<DeckMeta>> SetEpochAsync(long ms, CancellationToken ct = default)
     {
         using (var scope = scopeFactory.CreateScope())
         {
-            await scope.ServiceProvider.GetRequiredService<BattleRepository>().SetEpochStartAsync(ms, seasonId, ct);
+            var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
+            await _boundaryGate.WaitAsync(ct);
+            try
+            {
+                await SaveEpochAsync(store, ms, ct);
+            }
+            finally
+            {
+                _boundaryGate.Release();
+            }
         }
-        Interlocked.Exchange(ref _epochStart, ms);
         // The boundary is saved by now, so a caller who gives up waiting mustn't leave it unapplied until the next rebuild.
         return await AggregateFromStoreAsync("epoch update", CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Starts a new patch at <paramref name="ms"/>, unless the current one started after it or less than
+    /// <see cref="MinPatchLength"/> before it. Returns whether the boundary moved.
+    /// </summary>
+    public async Task<bool> StartPatchAsync(long ms, string reason, CancellationToken ct = default)
+    {
+        if (!await TryStartPatchAsync(ms, reason, ct))
+        {
+            return false;
+        }
+        await AggregateFromStoreAsync("patch boundary", CancellationToken.None);
+        return true;
+    }
+
+    // Reads the boundary from the store: a watcher can tick before InitializeAsync has loaded it into memory.
+    private async Task<bool> TryStartPatchAsync(long ms, string reason, CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
+        await _boundaryGate.WaitAsync(ct);
+        try
+        {
+            var epoch = store.GetEpochStart();
+            if (ms < epoch + (long)MinPatchLength.TotalMilliseconds)
+            {
+                logger.LogInformation("{Reason} at {At}: within {Days} days of the patch boundary {Epoch} or before it; boundary kept",
+                    reason, IsoMs(ms), MinPatchLength.TotalDays, IsoMs(epoch));
+                return false;
+            }
+            await SaveEpochAsync(store, ms, ct);
+            logger.LogInformation("{Reason}: patch boundary set to {Epoch}", reason, IsoMs(ms));
+            return true;
+        }
+        finally
+        {
+            _boundaryGate.Release();
+        }
+    }
+
+    private async Task SaveEpochAsync(BattleRepository store, long ms, CancellationToken ct)
+    {
+        await store.SetEpochStartAsync(ms, ct);
+        Interlocked.Exchange(ref _epochStart, ms);
+    }
+
+    // Saved after the boundary: a restart in between finds the same release again, and the boundary it saved keeps
+    // the second sighting from moving it.
+    private async Task StartPatchOnNewCardVersionsAsync(
+        IServiceProvider services, BattleRepository store, IReadOnlyList<BattleRecord> fresh, CancellationToken ct)
+    {
+        var releases = services.GetRequiredService<CardReleases>();
+        if (await releases.FindNewAsync(store, fresh, ct) is not { } release)
+        {
+            return;
+        }
+        var names = string.Join(", ", release.Versions.Select(v => $"{v.CardId} {v.Version}"));
+        await TryStartPatchAsync(release.FirstSeenMs, $"New card version first played ({names})", ct);
+        await store.AddKnownCardVersionsAsync(release.Versions, ct);
     }
 
     // The last patch's battles age out of the 30-day window, so its tally is saved and outlives them. A new tally

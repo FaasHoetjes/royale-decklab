@@ -25,7 +25,6 @@ public sealed class MetaStateEntity
     public long EpochStartMs { get; set; }
     public long PreviousEpochStartMs { get; set; }
     public long LastBuildMs { get; set; }
-    public int KnownSeasonId { get; set; }
 }
 
 public sealed class CardPeriodEntity
@@ -37,4 +36,16 @@ public sealed class CardPeriodEntity
     public int Battles { get; set; }
 
     public IReadOnlyList<CardTally> Cards { get; set; } = [];
+}
+
+public sealed class KnownCardVersionEntity
+{
+    public int CardId { get; set; }
+
+    public CardVersionKind Version { get; set; }
+}
+
+public sealed class SeenPatchNoteEntity
+{
+    public string Key { get; set; } = "";
 }

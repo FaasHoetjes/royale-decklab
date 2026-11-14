@@ -15,10 +15,6 @@ public static class MetaSchema
         db.Database.EnsureCreated();
         db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
         db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
-        if (!HasStateColumn(db, "known_season_id"))
-        {
-            db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN known_season_id INTEGER NOT NULL DEFAULT 0;");
-        }
         if (!HasStateColumn(db, "previous_epoch_start_ms"))
         {
             db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN previous_epoch_start_ms INTEGER NOT NULL DEFAULT 0;");
@@ -33,7 +29,21 @@ public static class MetaSchema
             );
             """);
         db.Database.ExecuteSqlRaw(
-            "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms, known_season_id) VALUES (1, 0, 0, 0);");
+            """
+            CREATE TABLE IF NOT EXISTS known_card_versions (
+                card_id INTEGER NOT NULL,
+                version TEXT NOT NULL,
+                CONSTRAINT PK_known_card_versions PRIMARY KEY (card_id, version)
+            );
+            """);
+        db.Database.ExecuteSqlRaw(
+            """
+            CREATE TABLE IF NOT EXISTS seen_patch_notes (
+                key TEXT NOT NULL CONSTRAINT PK_seen_patch_notes PRIMARY KEY
+            );
+            """);
+        db.Database.ExecuteSqlRaw(
+            "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
     }
 
     private static bool HasStateColumn(MetaDbContext db, string name) => db.Database.SqlQuery<int>(
