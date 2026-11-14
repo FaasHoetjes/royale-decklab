@@ -27,9 +27,9 @@ cd client && bun test && bun run typecheck
 dotnet test src/RoyaleDeckLab.Api.Tests
 ```
 
-## Build / deploy
+## Build
 
-Single Docker image serves SPA + API. See [DOCKER.md](DOCKER.md).
+Single Docker image serves SPA + API (see the `Dockerfile`).
 
 ## Environment
 
@@ -53,4 +53,64 @@ ADMIN_TOKEN=<openssl rand -hex 32>
 WEBHOOK_ENCRYPTION_KEY=<openssl rand -base64 32>
 ```
 
-See [DOCKER.md](DOCKER.md) for every setting.
+## How it works
+
+### The meta (`meta.db`)
+
+`meta.db` is derived data aggregated from the Clash Royale API, not a source of
+truth, and it's gitignored. A fresh database starts empty and a background job
+fills it from the battle logs of top war players; until the first rebuild,
+meta-backed endpoints return empty results but the app runs. If the API key
+can't reach the API, the app logs the 403 and keeps serving what's already
+stored.
+
+### Patch boundaries
+
+The card stats are split into this patch and the last one at a boundary, which
+is set automatically by two things:
+
+- **Balance updates.** Every 30 minutes a watcher reads Supercell's Clash Royale
+  blog. Each "Balance Update – October 19th" heading in a balance post counts as
+  one update, which also covers sections added to an existing post, even weeks
+  later. A new update sets the boundary to the start of its day (or to when it
+  was posted, if that was the same day) once that day has come. If the blog
+  lists no posts, or a balance post has no such headings (for example after a
+  redesign), the watcher logs an error and the boundary is set by hand. The
+  same watcher stores each update's card changes for the Patch page, so they
+  need no typing in. A card name in the notes that the card catalog doesn't
+  know is logged as a warning and left off the page.
+- **New cards, Evos and Heroes.** After each crawl, a card version that has
+  never been played before sets the boundary to the first battle that used it,
+  once it has been out a day and is in as many of the last week's decks as all
+  but the least played 5% of the Evos and Heroes already out (about 1.3% of
+  decks in November 2026). Until then it is logged after each crawl but not
+  counted. New versions don't always arrive with the season: the Mirror Evo
+  appeared a week into November 2026, though at about 0.1% of decks it didn't
+  count. On the first run, the versions the catalog lists and the battles
+  already stored are recorded as known, so they don't count as new.
+
+A boundary less than 4 days after the current one, or before it, is ignored. A
+season's Hero (Monday), its balance update (Tuesday) and an event Evo (a few
+days later) all arrive before the Thursday war battles, and four days merges
+them into one patch. Setting it by hand through the admin endpoint ignores this
+rule. Battles from before the boundary aren't deleted, and they count toward
+deck win rates and rankings at full weight until they age out of the 30-day
+window. In a backtest over Oct-Nov 2026, discounting them made deck win rates
+predict the following days worse at every boundary.
+
+### Usage stats (`stats.db`)
+
+Anonymous visitor counts live in `stats.db`, next to `meta.db`. Unlike
+`meta.db` it can't be rebuilt. Nothing in it identifies anyone: visitors and
+player tags are stored only as keyed hashes whose key changes every month and
+is deleted once the month ends, and single visits are deleted after 90 days,
+leaving only daily and monthly totals.
+
+### Generation workload
+
+Generation and upgrade advice share a CPU scheduler (one to four workers based
+on available processors, 32 queued jobs, ten-second deadline). Identical work
+shares a task and results are retained for 60 seconds after completion, with
+512 entries per calculation cache. Collection changes, generator options and
+meta versions produce distinct keys. Saturation returns `503`, `no-store` and
+`Retry-After: 2`; the client retries once without showing the meta-reload notice.

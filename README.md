@@ -34,4 +34,4 @@ right now.
 - **`client/`**: React 19 + Vite SPA (TanStack Query for server state), built and tested with bun.
 - **`src/`**: ASP.NET Core (.NET 10) API. Serves the built SPA and exposes `/api/*`. Data lives in SQLite: a background job aggregates meta win rates into `meta.db`, Discord reminders are stored in `reminders.db`, and anonymous visitor stats in `stats.db`.
 
-See [GUIDE.MD](GUIDE.MD) for how to run it locally, and [DOCKER.md](DOCKER.md) for deployment.
+See [GUIDE.MD](GUIDE.MD) for how to run it locally and how it works.
