@@ -4,13 +4,15 @@ import { cardIconUrl, versionOf } from '../lib/cardDisplay';
 const MAX_ART = 40;
 const CARDS_PER_COLUMN = 12;
 
-// Solid behind the middle of the window and the footer, so the text there stays readable over the art.
+// Solid behind the middle of the window, so the text there stays readable over the art.
+// Just enough at the bottom for the footer, which only shows once the page is scrolled to its end.
+const BOTTOM_FADE = 'linear-gradient(to top, var(--bg-primary) 40px, transparent 110px)';
 const DESKTOP_FADE = [
-  'linear-gradient(to top, var(--bg-primary) 40px, transparent 110px)',
+  BOTTOM_FADE,
   'radial-gradient(ellipse 36% 40% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, color-mix(in srgb, var(--bg-primary) 35%, transparent) 100%)',
 ].join(', ');
 const PHONE_FADE = [
-  'linear-gradient(to top, var(--bg-primary) 150px, transparent 220px)',
+  BOTTOM_FADE,
   'radial-gradient(ellipse 62% 36% at 50% 50%, var(--bg-primary) 50%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, color-mix(in srgb, var(--bg-primary) 40%, transparent) 100%)',
 ].join(', ');
 const LAYOUTS = {
