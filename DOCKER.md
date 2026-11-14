@@ -119,9 +119,12 @@ A boundary less than 4 days after the current one, or before it, is ignored. A
 season's Hero (Monday), its balance update (Tuesday) and an event Evo (a few
 days later) all arrive before the Thursday war battles, and four days merges
 them into one patch. The manual endpoint ignores this rule and sets any time.
-Battles from before the boundary aren't deleted; they count at reduced weight (`Meta__PreEpochWeight`,
-default `0.25`) until they age out of the 30-day window, so the meta stays
-populated until the next war battle days.
+The boundary splits the card stats into this patch and the last one. Battles
+from before it aren't deleted, and they count toward deck win rates and
+rankings at `Meta__PreEpochWeight` (default `1`, full weight) until they age
+out of the 30-day window. In a backtest over Oct-Nov 2026, discounting them
+made deck win rates predict the following days worse at every boundary, so
+lower it only for a patch that reworks the cards most decks use.
 
 ### The `meta.db` volume
 
