@@ -169,22 +169,29 @@ public sealed class MetaCacheTests : IDisposable
         return scope.ServiceProvider.GetRequiredService<BattleRepository>().GetKnownCardVersions();
     }
 
+    private const long Day = 24L * 60 * 60 * 1000;
+
+    private static BattleRecord Battle(string tag, long ms, params CardVersion[] versions)
+    {
+        var time = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyyMMdd'T'HHmmss") + ".000Z";
+        return new BattleRecord
+        {
+            Key = $"{tag}|{time}",
+            BattleTime = time,
+            BattleTimeMs = BattleRepository.ParseBattleTime(time),
+            PlayerTag = tag,
+            CardIds = [.. versions.Select(v => v.CardId).Concat(Enumerable.Range(3, 8 - versions.Length))],
+            Result = BattleResult.Win,
+            CardVersions = [.. versions.Where(v => v.Version != CardVersionKind.Normal)],
+        };
+    }
+
     /// <summary>A stored battle from two days ago with card 99, which the catalog doesn't list, played as an Evo.</summary>
     private static async Task StoreRecentEvoBattleAsync(ServiceProvider sp)
     {
         using var scope = sp.CreateScope();
-        var ms = Now - 2L * 24 * 60 * 60 * 1000;
-        var time = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyyMMdd'T'HHmmss") + ".000Z";
-        await scope.ServiceProvider.GetRequiredService<BattleRepository>().MergeBattlesAsync([new BattleRecord
-        {
-            Key = $"#RECENT|{time}",
-            BattleTime = time,
-            BattleTimeMs = BattleRepository.ParseBattleTime(time),
-            PlayerTag = "#RECENT",
-            CardIds = [99, 3, 4, 5, 6, 7, 8, 9],
-            Result = BattleResult.Win,
-            CardVersions = [new CardVersion(99, CardVersionKind.Evo)],
-        }]);
+        await scope.ServiceProvider.GetRequiredService<BattleRepository>().MergeBattlesAsync(
+            [Battle("#RECENT", Now - 2 * Day, new CardVersion(99, CardVersionKind.Evo))]);
     }
 
     [Fact]
@@ -225,7 +232,7 @@ public sealed class MetaCacheTests : IDisposable
     }
 
     [Fact]
-    public async Task A_card_version_played_for_the_first_time_starts_a_patch_at_that_battle()
+    public async Task A_card_version_played_for_a_day_starts_a_patch_at_its_first_battle()
     {
         using var sp = Services(crawlFails: false);
         await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
@@ -235,11 +242,65 @@ public sealed class MetaCacheTests : IDisposable
                 Enumerable.Range(1, 27).Select(id => new CardVersion(id, CardVersionKind.Normal)));
         }
         var cache = sp.GetRequiredService<MetaCache>();
-
         await cache.InitializeAsync();
+        Assert.Equal(0, cache.EpochStart);
+        Assert.DoesNotContain(new CardVersion(28, CardVersionKind.Normal), KnownVersions(sp));
 
-        Assert.Equal(Assert.Single(StoredBattles(sp), b => b.PlayerTag == "#P2").BattleTimeMs, cache.EpochStart);
+        _clock.Now += TimeSpan.FromDays(1.5);
+        await cache.RebuildAsync("test");
+
+        Assert.Equal(StoredBattles(sp).Where(b => b.PlayerTag == "#P2").Min(b => b.BattleTimeMs), cache.EpochStart);
         Assert.Contains(new CardVersion(28, CardVersionKind.Normal), KnownVersions(sp));
+    }
+
+    /// <summary>
+    /// The last three days' 100 decks: <paramref name="newDecks"/> with card 28's Evo, first in the oldest deck,
+    /// then 40 with card 1's Evo and 20 with card 2's Hero, the versions already out.
+    /// </summary>
+    private static async Task<(BattleRepository Store, BattleRecord First)> WeekWithNewEvoAsync(IServiceScope scope, int newDecks)
+    {
+        var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
+        await store.AddKnownCardVersionsAsync(
+        [
+            .. Enumerable.Range(1, 28).Select(id => new CardVersion(id, CardVersionKind.Normal)),
+            new CardVersion(1, CardVersionKind.Evo),
+            new CardVersion(2, CardVersionKind.Hero),
+        ]);
+        var battles = Enumerable.Range(0, 100).Select(i =>
+        {
+            var ms = Now - 3 * Day + i * (3 * Day / 100);
+            return i < newDecks ? Battle($"#NEW{i}", ms, new CardVersion(28, CardVersionKind.Evo))
+                : i < 40 + newDecks ? Battle($"#EVO{i}", ms, new CardVersion(1, CardVersionKind.Evo))
+                : i < 60 + newDecks ? Battle($"#HERO{i}", ms, new CardVersion(2, CardVersionKind.Hero))
+                : Battle($"#PLAIN{i}", ms);
+        }).ToList();
+        await store.MergeBattlesAsync(battles);
+        return (store, battles[0]);
+    }
+
+    [Fact]
+    public async Task A_card_version_in_fewer_decks_than_the_versions_already_out_isnt_released()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using var scope = sp.CreateScope();
+        var (store, first) = await WeekWithNewEvoAsync(scope, newDecks: 10);
+
+        Assert.Null(await scope.ServiceProvider.GetRequiredService<CardReleases>().FindNewAsync(store, [first], default));
+    }
+
+    [Fact]
+    public async Task A_card_version_in_as_many_decks_as_the_versions_already_out_is_released_at_its_first_battle()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using var scope = sp.CreateScope();
+        var (store, first) = await WeekWithNewEvoAsync(scope, newDecks: 20);
+
+        var release = await scope.ServiceProvider.GetRequiredService<CardReleases>().FindNewAsync(store, [first], default);
+
+        Assert.Equal(first.BattleTimeMs, release?.FirstSeenMs);
+        Assert.Equal([new CardVersion(28, CardVersionKind.Evo)], release!.Versions);
     }
 
     [Fact]

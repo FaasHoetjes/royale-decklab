@@ -105,9 +105,13 @@ Two things set the boundary automatically:
   such headings (for example after a redesign), the watcher logs an error, and
   you set the boundary by hand.
 - **New cards, Evos and Heroes.** After each crawl, a card version that has
-  never been played before sets the boundary to the first battle that used it.
-  New versions don't always arrive with the season: the Mirror Evo first
-  appeared a week into November 2026. On the first run, the versions the
+  never been played before sets the boundary to the first battle that used it,
+  once it has been out a day and is in as many of the last week's decks as all
+  but the least played 5% of the Evos and Heroes already out (about 1.3% of
+  decks in November 2026). Until then it is logged after each crawl but not
+  counted. New versions don't always arrive with the season: the Mirror Evo
+  appeared a week into November 2026, though at about 0.1% of decks it didn't
+  count. On the first run, the versions the
   catalog lists and the battles already stored are recorded as known, so they
   don't count as new.
 

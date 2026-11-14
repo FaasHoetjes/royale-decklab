@@ -160,7 +160,7 @@ public sealed class CardPeriodStorageTests : IDisposable
                      "2026-10-08T12:00:00Z", // Electro Giant Evo, from the Album Event
                      "2026-10-19T00:30:00Z", // Balance update
                      "2026-11-02T13:12:00Z", // Season: Giant Evo
-                     "2026-11-09T10:52:00Z", // Mirror Evo
+                     "2026-11-09T10:52:00Z", // Mirror Evo, were it played enough to count
                  })
         {
             var ms = DateTimeOffset.Parse(release).ToUnixTimeMilliseconds();
