@@ -18,10 +18,6 @@ import { ChangePill } from './WinRateChange';
 
 const SKELETON_TILES = 10;
 
-// Darkens the start page's card wall behind the heading, so it reads over the art.
-const DESKTOP_BANNER_FADE = 'radial-gradient(ellipse 42% 58% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, transparent 100%)';
-const PHONE_BANNER_FADE = 'radial-gradient(ellipse 70% 58% at 50% 50%, var(--bg-primary) 48%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, transparent 100%)';
-
 const KIND_LABEL: Record<BalanceChangeKind, string> = { buff: 'Buff', nerf: 'Nerf', rework: 'Rework' };
 const KIND_COLOR: Record<BalanceChangeKind, string> = { buff: 'var(--up)', nerf: 'var(--down)', rework: 'var(--text-secondary)' };
 const VERSION_PREFIX: Record<CardVersion, string> = { normal: '', evo: 'Evo ', hero: 'Hero ' };
@@ -67,9 +63,8 @@ export default function PatchOverview() {
 
   const name = stats ? (patchName(stats, updates) ?? 'This') : null;
   return (
-    <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 0 4px' : '0 0 20px' }}>
-      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '200px' : '230px' }}>
-        <div aria-hidden="true" style={{ ...styles.bannerFade, background: isMobile ? PHONE_BANNER_FADE : DESKTOP_BANNER_FADE }} />
+    <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 12px 16px' : '0 20px 20px' }}>
+      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '170px' : '190px' }}>
         <div style={styles.bannerText}>
           <h2 aria-label={name ? `${name} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
             <MonthLine name={name} isMobile={isMobile} />
@@ -168,7 +163,7 @@ function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean 
 function Panel({ title, sub, link = false, isMobile, children }: { title: string; sub?: string; link?: boolean; isMobile: boolean; children: ReactNode }) {
   const theme = getTheme();
   return (
-    <section style={{ ...styles.panel, padding: isMobile ? '14px 12px 8px' : '16px 16px 10px' }}>
+    <section style={{ ...styles.panel, padding: isMobile ? '14px 0 8px' : '16px 0 10px' }}>
       <div style={styles.panelHead}>
         <h3 style={{ ...styles.panelTitle, fontSize: isMobile ? '16px' : '17px', color: theme.text.primary }}>{title}</h3>
         {link && (
@@ -335,6 +330,10 @@ const styles = {
   container: {
     maxWidth: '1100px',
     margin: '0 auto',
+    borderRadius: '16px',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--panel-border)',
+    boxShadow: 'var(--panel-shadow)',
   },
   banner: {
     position: 'relative' as const,
@@ -342,11 +341,6 @@ const styles = {
     display: 'grid' as const,
     placeItems: 'center' as const,
     textAlign: 'center' as const,
-    marginBottom: '8px',
-  },
-  bannerFade: {
-    position: 'absolute' as const,
-    inset: 0,
   },
   bannerText: {
     position: 'relative' as const,
@@ -386,11 +380,7 @@ const styles = {
     textDecoration: 'none',
   },
   panel: {
-    marginTop: '14px',
-    borderRadius: '16px',
-    backgroundColor: 'var(--bg-secondary)',
-    border: '1px solid var(--panel-border)',
-    boxShadow: 'var(--panel-shadow)',
+    borderTop: '1px solid var(--border)',
   },
   panelHead: {
     display: 'flex' as const,
@@ -507,7 +497,8 @@ const styles = {
   more: {
     display: 'flex' as const,
     justifyContent: 'center' as const,
-    marginTop: '18px',
+    paddingTop: '14px',
+    borderTop: '1px solid var(--border)',
   },
   moreLink: {
     fontSize: '14px',
