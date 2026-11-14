@@ -23,6 +23,8 @@ internal static class StatsMetrics
         ("share_taps", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'share' AND {Range}"),
         ("previews", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'preview' AND {Range}"),
         ("share_opens", t => $"SELECT COUNT(*) FROM {t} WHERE kind = 'share_open' AND {Range}"),
+        ("patch_seen", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'patch_seen' AND {Range}"),
+        ("patch_openers", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE kind = 'patch_open' AND {Range}"),
         ("deck_copies", t => $"SELECT COALESCE(SUM(occurrences), 0) FROM {t} WHERE kind = 'deck_copy' AND {Range}"),
         ("deck_opens", t => $"SELECT COALESCE(SUM(occurrences), 0) FROM {t} WHERE kind = 'deck_open' AND {Range}"),
         ("deck_exporters", t => $"SELECT COUNT(DISTINCT visitor) FROM {t} WHERE kind IN ('deck_copy', 'deck_open') AND {Range}"),

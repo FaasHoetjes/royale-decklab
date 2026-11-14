@@ -10,6 +10,7 @@ import { Gate, TokenForm } from '../components/adminStats/Gate';
 import { HINTS } from '../components/adminStats/hints';
 import { MonthsTable } from '../components/adminStats/MonthsTable';
 import { SharingFunnel } from '../components/adminStats/SharingFunnel';
+import { PatchSection } from '../components/adminStats/PatchSection';
 import { StatTiles } from '../components/adminStats/StatTiles';
 import { RangeTabs, StatsHeader } from '../components/adminStats/StatsHeader';
 import { statsStyles } from '../components/adminStats/styles';
@@ -169,6 +170,7 @@ export default function AdminStats() {
 
       <DeckExports range={range} />
       <SharingFunnel range={range} />
+      <PatchSection range={range} />
 
       <div style={styles.grid}>
         <Breakdown

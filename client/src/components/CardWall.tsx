@@ -22,7 +22,10 @@ const PHONE_BANNER_FADE = [
   'radial-gradient(ellipse 70% 58% at 50% 50%, var(--bg-primary) 48%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, color-mix(in srgb, var(--bg-primary) 40%, transparent) 100%)',
 ].join(', ');
 
-/** `page` fills the window behind the landing page; `banner` fills its positioned parent, behind a page's heading. */
+/**
+ * `page` fills its positioned parent and the page padding around it, behind the landing page's first screen;
+ * `banner` fills its positioned parent, behind a heading.
+ */
 export type CardWallVariant = 'page' | 'banner';
 
 const LAYOUTS = {
@@ -51,7 +54,8 @@ export default function CardWall({ isMobile, variant = 'page' }: { isMobile: boo
   if (art.length === 0) return null;
 
   const layout = LAYOUTS[variant][isMobile ? 'phone' : 'desktop'];
-  const placement = variant === 'page' ? { ...styles.page, left: isMobile ? 0 : '240px' } : styles.banner;
+  const pagePadding = isMobile ? '-12px' : '-20px';
+  const placement = variant === 'page' ? { ...styles.page, top: pagePadding, left: pagePadding, right: pagePadding } : styles.banner;
 
   return (
     <div className="card-wall" aria-hidden="true" style={{ ...styles.wall, ...placement }}>
@@ -88,9 +92,7 @@ const styles = {
     pointerEvents: 'none' as const,
   },
   page: {
-    position: 'fixed' as const,
-    top: 0,
-    right: 0,
+    position: 'absolute' as const,
     bottom: 0,
   },
   banner: {

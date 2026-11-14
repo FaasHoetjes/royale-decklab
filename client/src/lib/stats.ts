@@ -2,13 +2,13 @@
 // repeats within a page load here and count each visitor once a day per event on the server.
 import { isValidTag } from './playerTag';
 
-export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq';
+export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq' | 'patch';
 type DeckExportTool = Extract<StatsTool, 'generator' | 'builder' | 'upgrades' | 'best-decks'>;
 type DeckExportKind = 'deck_copy' | 'deck_open';
 
 export type StatsEvent =
   | { kind: 'lookup' | 'share_open'; tag: string }
-  | { kind: 'share' }
+  | { kind: 'share' | 'patch_seen' | 'patch_open' }
   | { kind: DeckExportKind; tool: DeckExportTool }
   | { kind: 'tool'; tool: StatsTool };
 
@@ -76,7 +76,7 @@ export function toolForPath(pathname: string): StatsTool | null {
   if (first === 'cards') return second ? 'card' : 'cards';
   if (first === 'clan') return 'clan';
   if (second) return null;
-  if (first === 'builder' || first === 'upgrades' || first === 'best-decks' || first === 'faq') return first;
+  if (first === 'builder' || first === 'upgrades' || first === 'best-decks' || first === 'faq' || first === 'patch') return first;
   return isValidTag(first) ? 'generator' : null;
 }
 

@@ -5,14 +5,9 @@ import { getTheme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PlayerMenu, { Avatar } from './PlayerMenu';
-import { homePath, toolItems, FAQ_ITEM, PATCH_ITEM, type NavItem } from './navItems';
+import { homePath, toolItems, FAQ_ITEM, type NavItem } from './navItems';
 import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
-
-const withPatchAfterCards = (tools: NavItem[]): NavItem[] => [
-  ...tools.flatMap((item) => (item.to === '/cards' ? [item, PATCH_ITEM] : [item])),
-  FAQ_ITEM,
-];
 
 export default function Sidebar() {
   const theme = getTheme();
@@ -61,7 +56,7 @@ export function SidebarContent() {
         <div style={styles.brandBottom}>DECKLAB</div>
       </Link>
 
-      <div style={styles.navList}>{withPatchAfterCards(toolItems(activePlayerTag)).map(renderNavLink)}</div>
+      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].map(renderNavLink)}</div>
 
       <div style={styles.footer}>
         <div style={styles.footerIcons}>

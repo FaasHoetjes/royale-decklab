@@ -32,6 +32,7 @@ const TOOL_LABELS: Record<string, string> = {
   card: 'Card pages',
   clan: 'Clan war planner',
   faq: 'FAQ',
+  patch: 'Patch link',
 };
 
 const DEVICE_LABELS: Record<string, string> = { phone: 'Phone', desktop: 'Desktop' };

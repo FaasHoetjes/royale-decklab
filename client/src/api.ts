@@ -459,6 +459,9 @@ export interface StatsRange {
   previews: number;
   shareOpens: number;
   newFromShare: number;
+  /** Visitors who scrolled the start page's patch section into view, and who pressed its button. */
+  patchSeen: number;
+  patchOpeners: number;
   daily: StatsPoint[];
   /** The period before, day by day, lined up with daily; null where there's no period before to compare. */
   previousDaily: StatsPoint[] | null;

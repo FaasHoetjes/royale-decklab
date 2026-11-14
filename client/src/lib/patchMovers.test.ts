@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { CardStat, CardStatsResponse } from '../api';
-import { PATCH_MOVER_COUNT, patchMonth, playRateMovers, updateDate, winRateMovers } from './patchMovers';
+import { PATCH_MOVER_COUNT, patchMonth, patchName, playRateMovers, updateDate, winRateMovers } from './patchMovers';
 
 function stat(id: number, change: { winRate?: [number, number]; playRate?: [number, number]; clear?: boolean; compared?: boolean }): CardStat {
   const [winBefore, winNow] = change.winRate ?? [0.5, 0.5];
@@ -71,6 +71,19 @@ describe('patchMonth', () => {
 
   test('has no month without a patch boundary', () => {
     expect(patchMonth(response(null, null, false))).toBeNull();
+  });
+});
+
+describe('patchName', () => {
+  const stats: CardStatsResponse = { since: '2026-11-02T09:32:46.298Z', until: null, isLastPatch: false, battles: 0, cards: [], previousSince: '2026-10-05T09:00:00.000Z' };
+  const update = (liveFrom: string) => ({ liveFrom, notesUrl: 'https://supercell.com/x', changes: [] });
+
+  test('names the month of the newest balance update shown', () => {
+    expect(patchName(stats, [update('2026-10-06'), update('2026-10-19')])).toBe('October');
+  });
+
+  test('without an update, names the month the patch began', () => {
+    expect(patchName(stats, [])).toBe('November');
   });
 });
 

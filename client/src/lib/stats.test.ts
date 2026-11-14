@@ -9,6 +9,7 @@ describe('toolForPath', () => {
     ['/upgrades', 'upgrades'],
     ['/best-decks', 'best-decks'],
     ['/faq', 'faq'],
+    ['/patch', 'patch'],
     ['/cards', 'cards'],
     ['/cards/hog-rider', 'card'],
     ['/clan', 'clan'],

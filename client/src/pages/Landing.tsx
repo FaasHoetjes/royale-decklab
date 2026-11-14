@@ -1,20 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../AppContext';
 import { playerWarDecksOptions, useAllCards, useCardStats, useMetaStatus } from '../queries';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { mostPlayedVersion } from '../lib/cardInfo';
-import { winRateMovers } from '../lib/patchMovers';
+import { PATCH_SECTION_ID, winRateMovers } from '../lib/patchMovers';
+import { prefersReducedMotion } from '../lib/motion';
+import { track } from '../lib/stats';
 import CardTile from '../components/CardTile';
 import { parseOptions, toQuery } from '../lib/generatorOptions';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { timeAgo } from '../lib/timeAgo';
-import { preloadGenerator, preloadPage } from '../lib/pageLoaders';
+import { preloadGenerator } from '../lib/pageLoaders';
 import CardWall from '../components/CardWall';
 import SlotNumber from '../components/SlotNumber';
+
+// Below the fold, so the start page doesn't wait for it.
+const PatchOverview = lazy(() => import('../components/PatchOverview'));
+
+const scrollToPatch = (behavior: ScrollBehavior) =>
+  document.getElementById(PATCH_SECTION_ID)?.scrollIntoView({ behavior, block: 'start' });
 
 export default function Landing() {
   const { setActivePlayerTag } = useApp();
@@ -28,6 +36,13 @@ export default function Landing() {
   const [error, setError] = useState('');
 
   const location = useLocation();
+  const opensAtPatch = location.pathname === '/patch';
+  // After the layout's own scroll to the top of a newly opened page.
+  useEffect(() => {
+    if (!opensAtPatch) return;
+    const frame = requestAnimationFrame(() => scrollToPatch('auto'));
+    return () => cancelAnimationFrame(frame);
+  }, [opensAtPatch]);
   const linkState = (location.state ?? null) as { tagError?: string; badTag?: string; returnTo?: string } | null;
   // Pages that need a tag send people here with returnTo, to land back on them once it's in.
   const returnTo = linkState?.returnTo?.startsWith('/') && !linkState.returnTo.startsWith('//') ? linkState.returnTo : null;
@@ -88,6 +103,7 @@ export default function Landing() {
   };
 
   return (
+    <>
     <div style={{ ...styles.page, minHeight: isMobile ? 'calc(100dvh - 260px)' : 'calc(100dvh - 120px)' }}>
       <CardWall isMobile={isMobile} />
       <section style={styles.hero}>
@@ -123,7 +139,7 @@ export default function Landing() {
               onPointerDown={preloadGenerator}
               onBlur={() => setFocused(false)}
               disabled={loading}
-              autoFocus={!isMobile}
+              autoFocus={!isMobile && !opensAtPatch}
               spellCheck={false}
               autoCapitalize="characters"
               style={{ ...styles.input, color: theme.text.primary }}
@@ -179,12 +195,18 @@ export default function Landing() {
         )}
       </section>
     </div>
+    <div id={PATCH_SECTION_ID} style={{ marginTop: isMobile ? '28px' : '40px', scrollMarginTop: isMobile ? '69px' : '16px' }}>
+      <Suspense fallback={<div style={styles.patchPlaceholder} />}>
+        <PatchOverview />
+      </Suspense>
+    </div>
+    </>
   );
 }
 
 const PATCH_THUMBNAILS = 3;
 
-/** Opens the Patch page, showing the cards whose win rate moved the most once the numbers are in. */
+/** Scrolls down to the patch section, showing the cards whose win rate moved the most once the numbers are in. */
 function PatchButton() {
   const theme = getTheme();
   const stats = useCardStats().data;
@@ -196,12 +218,10 @@ function PatchButton() {
 
   return (
     <div style={styles.patchRow}>
-      <Link
-        to="/patch"
+      <a
+        href="/patch"
         className="mobile-touch-target patch-button"
-        onMouseEnter={() => preloadPage('/patch')}
-        onFocus={() => preloadPage('/patch')}
-        onTouchStart={() => preloadPage('/patch')}
+        onClick={openPatch}
         style={{ ...styles.patchButton, color: theme.text.primary }}
       >
         {thumbnails.length > 0 && (
@@ -217,12 +237,23 @@ function PatchButton() {
         <svg className="patch-button-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ ...styles.patchChevron, color: theme.text.tertiary }}>
           <path d="M6 3.5 10.5 8 6 12.5" />
         </svg>
-      </Link>
+      </a>
     </div>
   );
 }
 
+// A link, so it can still be opened in a new tab; a plain click stays on the page and scrolls.
+function openPatch(e: MouseEvent<HTMLAnchorElement>) {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  track({ kind: 'patch_open' });
+  scrollToPatch(prefersReducedMotion() ? 'auto' : 'smooth');
+}
+
 const styles = {
+  patchPlaceholder: {
+    minHeight: '100vh',
+  },
   patchRow: {
     marginTop: '8px',
   },
@@ -258,6 +289,7 @@ const styles = {
     transition: 'transform 0.15s ease, color 0.15s ease',
   },
   page: {
+    position: 'relative' as const,
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,

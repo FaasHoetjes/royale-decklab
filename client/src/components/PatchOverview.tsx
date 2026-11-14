@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getTheme } from '../theme';
 import { useAllCards, useCardStats, usePatch } from '../queries';
@@ -9,12 +9,13 @@ import { cardIconUrl } from '../lib/cardDisplay';
 import { mostPlayedVersion } from '../lib/cardInfo';
 import { percent } from '../lib/cardStats';
 import { shortDate } from '../lib/statsPeriod';
-import { patchMonth, playRateMovers, updateDate, winRateMovers, type Mover } from '../lib/patchMovers';
-import CardWall from '../components/CardWall';
-import CardTile from '../components/CardTile';
-import CardLink from '../components/CardLink';
-import LoadError from '../components/LoadError';
-import { ChangePill } from '../components/WinRateChange';
+import { patchName, playRateMovers, updateDate, winRateMovers, type Mover } from '../lib/patchMovers';
+import { track } from '../lib/stats';
+import CardWall from './CardWall';
+import CardTile from './CardTile';
+import CardLink from './CardLink';
+import LoadError from './LoadError';
+import { ChangePill } from './WinRateChange';
 
 const SKELETON_TILES = 10;
 
@@ -22,12 +23,32 @@ const KIND_LABEL: Record<BalanceChangeKind, string> = { buff: 'Buff', nerf: 'Ner
 const KIND_COLOR: Record<BalanceChangeKind, string> = { buff: 'var(--up)', nerf: 'var(--down)', rework: 'var(--text-secondary)' };
 const VERSION_PREFIX: Record<CardVersion, string> = { normal: '', evo: 'Evo ', hero: 'Hero ' };
 
-export default function Patch() {
+// Most of the banner on screen counts as having seen the section, which on a phone is far taller than the screen.
+const SEEN_SHARE = 0.6;
+
+/** The start page's patch section: this patch's balance changes and the cards that moved the most. */
+export default function PatchOverview() {
   const theme = getTheme();
   const isMobile = useIsMobile();
   const catalog = useAllCards();
   const statsQuery = useCardStats();
   const patch = usePatch();
+  const bannerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const banner = bannerRef.current;
+    if (!banner || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        track({ kind: 'patch_seen' });
+        observer.disconnect();
+      },
+      { threshold: SEEN_SHARE }
+    );
+    observer.observe(banner);
+    return () => observer.disconnect();
+  }, []);
 
   const stats = statsQuery.data;
   const cardById = new Map((catalog.data ?? []).map((card) => [card.id, card]));
@@ -41,15 +62,16 @@ export default function Patch() {
     statsQuery.refetch();
   };
 
+  const name = stats ? (patchName(stats, updates) ?? 'This') : null;
   return (
-    <div style={{ ...styles.container, padding: isMobile ? '0 0 4px' : '0 0 20px' }}>
-      <header style={{ ...styles.banner, height: isMobile ? '200px' : '230px' }}>
+    <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 0 4px' : '0 0 20px' }}>
+      <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '200px' : '230px' }}>
         <CardWall isMobile={isMobile} variant="banner" />
         <div style={styles.bannerText}>
-          <h1 aria-label={stats ? `${patchMonth(stats) ?? 'This'} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
-            <MonthLine stats={stats} isMobile={isMobile} />
+          <h2 aria-label={name ? `${name} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
+            <MonthLine name={name} isMobile={isMobile} />
             <span style={{ ...styles.wordmarkBottom, fontSize: isMobile ? '40px' : '50px' }}>PATCH</span>
-          </h1>
+          </h2>
           {stats && <p style={{ ...styles.bannerSub, color: theme.text.secondary }}>{battlesLine(stats)}</p>}
           {updates[0] && (
             <a href={updates[0].notesUrl} target="_blank" rel="noreferrer" style={{ ...styles.notesLink, color: theme.accent }}>
@@ -123,7 +145,7 @@ export default function Patch() {
           Best war decks this patch →
         </Link>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -134,10 +156,10 @@ const battlesLine = (stats: CardStatsResponse): string => {
   return `${battles} since ${shortDate(stats.since)}`;
 };
 
-function MonthLine({ stats, isMobile }: { stats: CardStatsResponse | undefined; isMobile: boolean }) {
+function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean }) {
   const style = { ...styles.wordmarkTop, fontSize: isMobile ? '18px' : '22px' };
-  if (!stats) return <span className="skeleton" style={{ ...style, ...styles.monthSkeleton }} aria-hidden="true" />;
-  return <span style={style}>{(patchMonth(stats) ?? 'This').toUpperCase()}</span>;
+  if (!name) return <span className="skeleton" style={{ ...style, ...styles.monthSkeleton }} aria-hidden="true" />;
+  return <span style={style}>{name.toUpperCase()}</span>;
 }
 
 function Panel({ title, sub, link = false, isMobile, children }: { title: string; sub?: string; link?: boolean; isMobile: boolean; children: ReactNode }) {
@@ -145,7 +167,7 @@ function Panel({ title, sub, link = false, isMobile, children }: { title: string
   return (
     <section style={{ ...styles.panel, padding: isMobile ? '14px 12px 8px' : '16px 16px 10px' }}>
       <div style={styles.panelHead}>
-        <h2 style={{ ...styles.panelTitle, fontSize: isMobile ? '16px' : '17px', color: theme.text.primary }}>{title}</h2>
+        <h3 style={{ ...styles.panelTitle, fontSize: isMobile ? '16px' : '17px', color: theme.text.primary }}>{title}</h3>
         {link && (
           <Link to="/cards" style={{ ...styles.panelLink, color: theme.accent }}>
             All cards →
@@ -202,7 +224,7 @@ function BalanceChanges({ updates, cardById, statById, loading, failed, onRetry,
     <Panel title="Balance changes" sub="What changed, and each card's war win rate since last patch" isMobile={isMobile}>
       {updates.map((update) => (
         <div key={update.liveFrom}>
-          {showDates && <h3 style={{ ...styles.updateDate, color: theme.text.tertiary }}>{updateDate(update.liveFrom)}</h3>}
+          {showDates && <h4 style={{ ...styles.updateDate, color: theme.text.tertiary }}>{updateDate(update.liveFrom)}</h4>}
           <div style={styles.scroller}>
             {update.changes.flatMap((change) => {
               const card = cardById.get(change.cardId);

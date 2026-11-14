@@ -1,7 +1,10 @@
-import type { CardStat, CardStatsResponse } from '../api';
+import type { BalanceUpdate, CardStat, CardStatsResponse } from '../api';
 import { shortDate } from './statsPeriod';
 
 export const PATCH_MOVER_COUNT = 12;
+
+/** The start page's patch section, which /patch opens at. */
+export const PATCH_SECTION_ID = 'patch';
 
 export interface Mover {
   stat: CardStat;
@@ -44,6 +47,16 @@ export const patchMonth = (stats: CardStatsResponse): string | null => {
   const start = patchStart(stats);
   if (!start) return null;
   return new Date(start).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+};
+
+/**
+ * "October", for a patch whose newest balance update went live in October, as that's whose notes it links to.
+ * Without an update, the month the patch began. Matches SpaContent.PatchHeading on the server.
+ */
+export const patchName = (stats: CardStatsResponse, updates: BalanceUpdate[]): string | null => {
+  const newest = updates.map((u) => u.liveFrom).sort().at(-1);
+  if (newest) return new Date(`${newest}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+  return patchMonth(stats);
 };
 
 export const updateDate = (liveFrom: string): string => shortDate(`${liveFrom}T00:00:00Z`);

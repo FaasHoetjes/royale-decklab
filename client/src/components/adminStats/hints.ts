@@ -17,6 +17,8 @@ export const HINTS = {
   shareTaps: 'Taps on the share button for a lineup, once per visitor per day.',
   previews: 'Link previews fetched by Discord, WhatsApp and the like, which roughly counts links posted.',
   shareOpens: 'Shared lineup opens, counting each player once per visitor per day.',
+  patchSeen: "Visitors who scrolled the start page's patch section into view, once per visitor per day. Opening a /patch link counts too.",
+  patchOpeners: 'Visitors who pressed the patch button at the top of the start page, once per visitor per day.',
   newFromShare: 'Opened a shared lineup, then looked up a different player within 7 days, having looked up no one else before.',
   countries: 'Visitors per country, from Cloudflare. "Looked up" is the share of them who became active users.',
   devices: 'Active users per device type.',

@@ -89,6 +89,39 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
+    public void Patch_section_views_and_button_presses_count_visitors()
+    {
+        _store.Add([
+            Event(StatsStore.Kinds.PatchSeen, 1, Noon),
+            Event(StatsStore.Kinds.PatchSeen, 1, Noon.AddDays(-1)),
+            Event(StatsStore.Kinds.PatchSeen, 2, Noon),
+            Event(StatsStore.Kinds.PatchOpen, 2, Noon),
+        ]);
+
+        Assert.Equal(2, Metric(Today.AddDays(-1), Today, "patch_seen"));
+        Assert.Equal(1, Metric(Today.AddDays(-1), Today, "patch_openers"));
+    }
+
+    [Theory]
+    [InlineData("patch_seen")]
+    [InlineData("patch_open")]
+    public void Controller_records_patch_section_events_without_a_player(string kind)
+    {
+        var clock = new Clock(Noon);
+        var recorder = new StatsRecorder(_store, clock, NullLogger<StatsRecorder>.Instance);
+        var controller = new StatsController(recorder, new LivePresence(clock), _store, clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = Request("84.1.2.3", Phone) },
+        };
+
+        controller.Event(new StatsController.EventBody(kind, "#YPP2RJ92C", null, null, null, null));
+
+        var recorded = Assert.Single(Drain(recorder));
+        Assert.Equal(kind, recorded.Kind);
+        Assert.Empty(recorded.Tag);
+    }
+
+    [Fact]
     public void Pageviews_CountEveryViewWhileVisitorsStayDistinct()
     {
         _store.Add([
@@ -154,6 +187,7 @@ public sealed class StatsTests : IDisposable
     [Theory]
     [InlineData("builder", true)]
     [InlineData("card", true)]
+    [InlineData("patch", true)]
     [InlineData("admin", false)]
     [InlineData(null, false)]
     public void Controller_RecordsPageViewsOnlyForKnownPages(string? tool, bool accepted)

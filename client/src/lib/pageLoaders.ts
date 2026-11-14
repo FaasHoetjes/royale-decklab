@@ -10,7 +10,6 @@ export const pageLoaders = {
   cards: () => import('../pages/Cards'),
   cardPage: () => import('../pages/CardPage'),
   clan: () => import('../pages/ClanWarPlanner'),
-  patch: () => import('../pages/Patch'),
 };
 
 const routes = new Map<string, () => Promise<unknown>>([
@@ -20,7 +19,6 @@ const routes = new Map<string, () => Promise<unknown>>([
   ['upgrades', pageLoaders.upgrades],
   ['cards', pageLoaders.cards],
   ['clan', pageLoaders.clan],
-  ['patch', pageLoaders.patch],
 ]);
 
 export function preloadGenerator(): void {

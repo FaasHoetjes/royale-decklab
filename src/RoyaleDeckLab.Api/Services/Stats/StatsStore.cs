@@ -26,6 +26,8 @@ public sealed class StatsStore
         public const string Preview = "preview";
         public const string DeckCopy = "deck_copy";
         public const string DeckOpen = "deck_open";
+        public const string PatchSeen = "patch_seen";
+        public const string PatchOpen = "patch_open";
     }
 
     private readonly string _connectionString;

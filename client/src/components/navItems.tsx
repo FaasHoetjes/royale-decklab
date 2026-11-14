@@ -74,6 +74,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
   ];
 }
 
+// Not in the menu: /patch opens the start page at its patch section, under its own title for search results.
 export const PATCH_ITEM: NavItem = {
   to: '/patch',
   label: 'Patch Overview',
@@ -92,12 +93,15 @@ export const FAQ_ITEM: NavItem = {
   icon: <HelpIcon />,
 };
 
+const matches = (pathname: string, item: NavItem) => (item.end ? pathname === item.to : pathname.startsWith(item.to));
+
 function pageItem(pathname: string, items: NavItem[]): NavItem | undefined {
-  return [...items, PATCH_ITEM, FAQ_ITEM].find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)));
+  return [...items, PATCH_ITEM, FAQ_ITEM].find((item) => matches(pathname, item));
 }
 
+/** The phone header's title; the start page, /patch included, shows the site's name. */
 export function pageTitle(pathname: string, items: NavItem[]): string | undefined {
-  return pageItem(pathname, items)?.label;
+  return [...items, FAQ_ITEM].find((item) => matches(pathname, item))?.label;
 }
 
 /** The browser tab's title and the search-result description for a page; the landing page gets the site's own. */

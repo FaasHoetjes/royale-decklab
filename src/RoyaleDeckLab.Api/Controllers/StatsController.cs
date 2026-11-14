@@ -30,7 +30,7 @@ public sealed class StatsController(StatsRecorder recorder, LivePresence presenc
             case StatsStore.Kinds.Lookup or StatsStore.Kinds.ShareOpen when tag is not null && recorder.WasServed(tag):
                 recorder.Record(HttpContext, body.Kind, tag, origin: origin);
                 break;
-            case StatsStore.Kinds.ShareTap:
+            case StatsStore.Kinds.ShareTap or StatsStore.Kinds.PatchSeen or StatsStore.Kinds.PatchOpen:
                 recorder.Record(HttpContext, body.Kind, origin: origin);
                 break;
             case StatsStore.Kinds.DeckCopy or StatsStore.Kinds.DeckOpen

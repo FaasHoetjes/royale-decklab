@@ -88,8 +88,16 @@ public static class SpaContent
     /// The Patch page's h1: the month the patch went live. While only last patch's numbers are in, the new patch
     /// began where they end.
     /// </summary>
-    public static string PatchHeading(CardStatsResponse stats)
+    /// <summary>
+    /// Named after the month of the newest balance update shown, as that's whose notes the page links to; without one,
+    /// after the month the patch began. Matches patchName on the client.
+    /// </summary>
+    public static string PatchHeading(CardStatsResponse stats, IReadOnlyList<BalanceUpdate> updates)
     {
+        if (updates.Count > 0)
+        {
+            return updates.Max(u => u.LiveFrom).ToString("MMMM", CultureInfo.InvariantCulture) + " Patch";
+        }
         var start = stats.IsLastPatch ? stats.Until : stats.Since;
         if (start is null)
         {
@@ -100,7 +108,7 @@ public static class SpaContent
 
     public static string Patch(IReadOnlyList<CatalogCard> cards, CardStatsResponse stats, IReadOnlyList<BalanceUpdate> updates)
     {
-        var html = new StringBuilder(H1(PatchHeading(stats)))
+        var html = new StringBuilder(H1(PatchHeading(stats, updates)))
             .Append(P("The latest balance changes, and the cards whose Clan War win rate and play rate moved the most since the last patch."));
         var nameById = cards.ToDictionary(c => c.Id, c => c.Name);
         foreach (var update in updates)

@@ -48,7 +48,9 @@ public static class StatsReport
         IReadOnlyList<Count> SourceUsers,
         IReadOnlyList<Count> Campaigns,
         IReadOnlyList<Count> Tools,
-        DeckExports DeckExports);
+        DeckExports DeckExports,
+        long PatchSeen,
+        long PatchOpeners);
 
     public sealed record MonthReport(
         string Month, bool Partial, long Users, long Visitors, long? Pageviews, long Lookups, long Players, long ShareOpens, long NewFromShare, long? TimeMedian,
@@ -130,7 +132,9 @@ public static class StatsReport
             Group("source_users"),
             Group("campaign"),
             Group("tool"),
-            Exports(totals));
+            Exports(totals),
+            Scalar("patch_seen"),
+            Scalar("patch_openers"));
     }
 
     private static DeckExports Exports(IReadOnlyList<StatsTotal> totals)
