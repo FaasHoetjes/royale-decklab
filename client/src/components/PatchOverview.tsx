@@ -293,8 +293,9 @@ function ChangeCard({ change, card, stat, isMobile }: { change: BalanceChange; c
             ))}
           </p>
           {stat && stat.winRateChange != null && (
-            <div style={{ ...styles.changeWinRate, color: theme.text.tertiary }}>
-              War win rate <ChangePill change={stat.winRateChange} isClear={stat.changeIsClear} />
+            <div style={styles.changeWinRate}>
+              <span className="visually-hidden">War win rate </span>
+              <ChangePill change={stat.winRateChange} isClear={stat.changeIsClear} />
             </div>
           )}
         </div>
@@ -559,17 +560,14 @@ const styles = {
   },
   changeWinRate: {
     display: 'flex' as const,
-    flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-    gap: '3px',
+    justifyContent: 'center' as const,
     marginTop: 'auto',
     padding: '8px 0 10px',
-    fontSize: '11px',
   },
   changeSkeleton: {
     display: 'block' as const,
     flexShrink: 0,
-    height: '220px',
+    height: '200px',
     borderRadius: '14px',
   },
   empty: {
