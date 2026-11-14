@@ -6,7 +6,7 @@ import { playerWarDecksOptions, useAllCards, useCardStats, useMetaStatus } from 
 import { cardIconUrl } from '../lib/cardDisplay';
 import { mostPlayedVersion } from '../lib/cardInfo';
 import { PATCH_SECTION_ID, winRateMovers } from '../lib/patchMovers';
-import { prefersReducedMotion } from '../lib/motion';
+import { scrollToElement } from '../lib/motion';
 import { track } from '../lib/stats';
 import CardTile from '../components/CardTile';
 import { parseOptions, toQuery } from '../lib/generatorOptions';
@@ -26,8 +26,7 @@ const PatchOverview = lazy(() => import('../components/PatchOverview'));
 const PHONE_HEADER_AND_PADDING = '73px';
 const DESKTOP_PADDING = '20px';
 
-const scrollToPatch = (behavior: ScrollBehavior) =>
-  document.getElementById(PATCH_SECTION_ID)?.scrollIntoView({ behavior, block: 'start' });
+const patchSection = () => document.getElementById(PATCH_SECTION_ID);
 
 export default function Landing() {
   const { setActivePlayerTag } = useApp();
@@ -45,7 +44,7 @@ export default function Landing() {
   // After the layout's own scroll to the top of a newly opened page.
   useEffect(() => {
     if (!opensAtPatch) return;
-    const frame = requestAnimationFrame(() => scrollToPatch('auto'));
+    const frame = requestAnimationFrame(() => patchSection()?.scrollIntoView({ block: 'start' }));
     return () => cancelAnimationFrame(frame);
   }, [opensAtPatch]);
   const linkState = (location.state ?? null) as { tagError?: string; badTag?: string; returnTo?: string } | null;
@@ -258,7 +257,8 @@ function openPatch(e: MouseEvent<HTMLAnchorElement>) {
   if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
   track({ kind: 'patch_open' });
-  scrollToPatch(prefersReducedMotion() ? 'auto' : 'smooth');
+  const section = patchSection();
+  if (section) scrollToElement(section);
 }
 
 const styles = {

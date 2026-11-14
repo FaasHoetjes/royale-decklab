@@ -79,3 +79,40 @@ export function slideFold(panel: HTMLElement, open: boolean, render: () => void)
   if (open) flushSync(render);
   slide(panel, open, { onEnd: open ? undefined : () => flushSync(render) });
 }
+
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+/** Longer for a longer way, so a short hop doesn't drag and a long one doesn't jump. */
+export const scrollDuration = (distance: number) => Math.min(800, Math.max(400, 300 + Math.abs(distance) * 0.25));
+
+const USER_SCROLL_EVENTS = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+
+/**
+ * Scrolls the window to `el`, honouring its scroll-margin-top, easing in and out. The browser's own smooth
+ * scroll is quick and abrupt, and differs per browser. Any wheel, touch or key from the user hands control back.
+ */
+export function scrollToElement(el: HTMLElement) {
+  const targetTop = () => el.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
+  if (prefersReducedMotion()) {
+    window.scrollTo(0, targetTop());
+    return;
+  }
+
+  const from = window.scrollY;
+  const duration = scrollDuration(targetTop() - from);
+  const start = performance.now();
+  let frame = 0;
+  const stop = () => {
+    cancelAnimationFrame(frame);
+    USER_SCROLL_EVENTS.forEach((type) => window.removeEventListener(type, stop));
+  };
+  // Measured each frame, so content that loads in above the target doesn't throw the landing off.
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / duration);
+    window.scrollTo(0, from + (targetTop() - from) * easeInOutCubic(t));
+    if (t < 1) frame = requestAnimationFrame(step);
+    else stop();
+  };
+  USER_SCROLL_EVENTS.forEach((type) => window.addEventListener(type, stop, { passive: true }));
+  frame = requestAnimationFrame(step);
+}
