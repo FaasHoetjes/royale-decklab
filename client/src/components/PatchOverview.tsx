@@ -103,8 +103,8 @@ export default function PatchOverview() {
 
       {!failed && !ready && (
         <>
-          <MoverSkeleton title="Biggest play rate changes" isMobile={isMobile} />
-          <MoverSkeleton title="Biggest win rate changes" isMobile={isMobile} />
+          <MoverSkeleton title="Biggest play rate changes since last patch" isMobile={isMobile} />
+          <MoverSkeleton title="Biggest win rate changes since last patch" isMobile={isMobile} />
         </>
       )}
 
@@ -119,16 +119,14 @@ export default function PatchOverview() {
       {stats && catalog.data && !stats.isLastPatch && (
         <>
           <MoverRow
-            title="Biggest play rate changes"
-            sub="Share of war decks with the card, last patch → this patch"
+            title="Biggest play rate changes since last patch"
             empty="No card has enough games in both patches to compare yet."
             movers={playRateMovers(stats.cards)}
             cardById={cardById}
             isMobile={isMobile}
           />
           <MoverRow
-            title="Biggest win rate changes"
-            sub="War win rate, last patch → this patch. Only changes too big to be chance."
+            title="Biggest win rate changes since last patch"
             empty="No card's win rate has moved more than chance alone would explain yet."
             movers={winRateMovers(stats.cards)}
             cardById={cardById}
@@ -293,21 +291,20 @@ function StatLine({ line }: { line: string }) {
 
 interface MoverRowProps {
   title: string;
-  sub: string;
   empty: string;
   movers: Mover[];
   cardById: Map<number, CatalogCard>;
   isMobile: boolean;
 }
 
-function MoverRow({ title, sub, empty, movers, cardById, isMobile }: MoverRowProps) {
+function MoverRow({ title, empty, movers, cardById, isMobile }: MoverRowProps) {
   const theme = getTheme();
   const shown = movers.flatMap((mover) => {
     const card = cardById.get(mover.stat.id);
     return card ? [{ mover, card }] : [];
   });
   return (
-    <Panel title={title} sub={sub} link isMobile={isMobile}>
+    <Panel title={title} link isMobile={isMobile}>
       {shown.length === 0 && <p style={{ ...styles.empty, color: theme.text.secondary }}>{empty}</p>}
       {shown.length > 0 && (
         <div style={styles.scroller}>
