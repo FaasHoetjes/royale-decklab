@@ -8,7 +8,6 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { mostPlayedVersion } from '../lib/cardInfo';
 import { percent } from '../lib/cardStats';
-import { shortDate } from '../lib/statsPeriod';
 import { patchName, playRateMovers, updateDate, winRateMovers, type Mover } from '../lib/patchMovers';
 import { track } from '../lib/stats';
 import CardTile from './CardTile';
@@ -151,7 +150,7 @@ const battlesLine = (stats: CardStatsResponse): string => {
   const battles = `${stats.battles.toLocaleString('en-US')} war battles in the top 100 war clans`;
   if (stats.isLastPatch) return `This patch's war battles aren't in yet. Last patch had ${battles}.`;
   if (!stats.since) return `${battles} over the last 30 days`;
-  return `${battles} since ${shortDate(stats.since)}`;
+  return battles;
 };
 
 function MonthLine({ name, isMobile }: { name: string | null; isMobile: boolean }) {
