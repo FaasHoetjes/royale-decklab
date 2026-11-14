@@ -16,6 +16,7 @@ import { isValidTag, normalizeTag } from '../lib/playerTag';
 import { timeAgo } from '../lib/timeAgo';
 import { preloadGenerator } from '../lib/pageLoaders';
 import CardWall from '../components/CardWall';
+import Footer from '../components/Footer';
 import SlotNumber from '../components/SlotNumber';
 
 // Below the fold, so the start page doesn't wait for it.
@@ -107,7 +108,9 @@ export default function Landing() {
   };
 
   return (
-    <>
+    <div style={styles.wallArea}>
+    <CardWall isMobile={isMobile} />
+    <div style={styles.wallContent}>
     <div
       style={{
         ...styles.page,
@@ -115,7 +118,6 @@ export default function Landing() {
         paddingBottom: isMobile ? '80px' : '100px',
       }}
     >
-      <CardWall isMobile={isMobile} />
       <section style={styles.hero}>
         <h1 aria-label="Royale DeckLab" style={{ ...styles.wordmark, color: theme.text.primary }}>
           <span style={{ ...styles.wordmarkTop, fontSize: isMobile ? '34px' : '46px' }}>ROYALE</span>
@@ -210,7 +212,9 @@ export default function Landing() {
         <PatchOverview />
       </Suspense>
     </div>
-    </>
+    <Footer />
+    </div>
+    </div>
   );
 }
 
@@ -262,6 +266,13 @@ function openPatch(e: MouseEvent<HTMLAnchorElement>) {
 }
 
 const styles = {
+  wallArea: {
+    display: 'grid' as const,
+    gridTemplateColumns: 'minmax(0, 1fr)',
+  },
+  wallContent: {
+    gridArea: '1 / 1',
+  },
   patchPlaceholder: {
     minHeight: '100vh',
   },
@@ -300,6 +311,7 @@ const styles = {
     transition: 'transform 0.15s ease, color 0.15s ease',
   },
   page: {
+    position: 'relative' as const,
     boxSizing: 'border-box' as const,
     display: 'flex' as const,
     alignItems: 'center' as const,

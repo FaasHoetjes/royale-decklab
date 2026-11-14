@@ -42,6 +42,13 @@ interface ClanFinderProps {
 }
 
 /** Finds a clan by name, or opens one by tag, with shortcuts back to your own clan and the clans opened lately. */
+// With the keyboard up, iPhone Safari scrolls the header off screen, so the shield can go near the top. Elsewhere
+// it goes below the 61px header, with the main column's 12px padding.
+const isIPhone = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const shieldTop = () => (isIPhone() ? 10 : 61 + 12);
+// The keyboard's slide and Safari's scroll after it fire a burst of events; this long without one means both are done.
+const KEYBOARD_SETTLE_MS = 150;
+
 const ClanFinder = ({ notice }: ClanFinderProps) => {
   const theme = getTheme();
   const navigate = useNavigate();
@@ -53,7 +60,43 @@ const ClanFinder = ({ notice }: ClanFinderProps) => {
   const isMobile = useIsMobile();
   const [atTop, setAtTop] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
   const glideFrom = useRef<number | null>(null);
+  const stopRevealingTop = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopRevealingTop.current?.(), []);
+
+  // Safari scrolls the field above the keyboard from where it was before the search moved up, and by how much
+  // depends on where the page happened to be scrolled, so the shield lands somewhere different each time. Once the
+  // keyboard and the glide have settled, scroll the shield to the same spot at the top every time. What's below
+  // the field may stay under the keyboard.
+  const revealTopOnceKeyboardIsUp = () => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    stopRevealingTop.current?.();
+    let timer = 0;
+    const settle = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(reveal, KEYBOARD_SETTLE_MS);
+    };
+    const stop = () => {
+      clearTimeout(timer);
+      viewport.removeEventListener('resize', settle);
+      viewport.removeEventListener('scroll', settle);
+      window.removeEventListener('scroll', settle);
+      stopRevealingTop.current = null;
+    };
+    const reveal = async () => {
+      stop();
+      await Promise.allSettled(pageRef.current?.getAnimations().map((a) => a.finished) ?? []);
+      const top = heroRef.current?.getBoundingClientRect().top;
+      if (top !== undefined && Math.abs(top - shieldTop()) > 2) window.scrollBy({ top: top - shieldTop(), behavior: 'smooth' });
+    };
+    viewport.addEventListener('resize', settle);
+    viewport.addEventListener('scroll', settle);
+    window.addEventListener('scroll', settle, { passive: true });
+    stopRevealingTop.current = stop;
+    settle();
+  };
 
   // Centered, the clans found would end up under a phone's keyboard or below the fold, so a search moves it up.
   const moveToTop = (toTop: boolean) => {
@@ -121,7 +164,7 @@ const ClanFinder = ({ notice }: ClanFinderProps) => {
           </Link>
         )}
 
-        <div style={styles.hero}>
+        <div ref={heroRef} style={styles.hero}>
           {best ? <ClanShield badgeId={best.badgeId} size={52} /> : <EmptyShield size={52} mark />}
           <h2 style={{ ...styles.title, color: theme.text.primary }}>Find your clan</h2>
           <p style={notice ? { ...styles.tagline, ...styles.notice, color: theme.text.primary } : { ...styles.tagline, color: theme.text.secondary }}>
@@ -152,10 +195,14 @@ const ClanFinder = ({ notice }: ClanFinderProps) => {
               onFocus={() => {
                 setFocused(true);
                 // The keyboard is coming up anyway; moving now makes it one motion instead of a second one mid-word.
-                if (isMobile) moveToTop(true);
+                if (isMobile) {
+                  moveToTop(true);
+                  revealTopOnceKeyboardIsUp();
+                }
               }}
               onBlur={() => {
                 setFocused(false);
+                stopRevealingTop.current?.();
                 if (!input) moveToTop(false);
               }}
               spellCheck={false}

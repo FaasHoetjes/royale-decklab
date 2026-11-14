@@ -88,13 +88,19 @@ export const scrollDuration = (distance: number) => Math.min(800, Math.max(400, 
 const USER_SCROLL_EVENTS = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
 
 /**
- * Scrolls the window to `el`, honouring its scroll-margin-top, easing in and out. The browser's own smooth
- * scroll is quick and abrupt, and differs per browser. Any wheel, touch or key from the user hands control back.
+ * Scrolls the window to `el`, honouring its scroll-margin-top, easing in and out. On desktop the browser's own
+ * smooth scroll is quick and abrupt, and differs per browser. Any wheel, touch or key from the user hands control back.
  */
 export function scrollToElement(el: HTMLElement) {
   const targetTop = () => el.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
   if (prefersReducedMotion()) {
     window.scrollTo(0, targetTop());
+    return;
+  }
+  // On a phone a scroll driven frame by frame from script stutters, as Safari's toolbars shrink and resize the
+  // page under it; the browser's own smooth scroll runs off the main thread and keeps up.
+  if (window.matchMedia('(pointer: coarse)').matches) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
 

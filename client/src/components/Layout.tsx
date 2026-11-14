@@ -70,6 +70,8 @@ export default function Layout() {
   const { title, description } = documentMeta(pathname, toolItems(activePlayerTag), isPlayerDeepLink);
   // A card page names its card in the title, so it sets its own once the card is known.
   const isCardPage = pathname.startsWith('/cards/');
+  // The landing page draws the footer itself, over the end of its card wall.
+  const isLandingPage = pathname === '/' || pathname === '/patch';
   useEffect(() => {
     if (isCardPage) return;
     document.title = title;
@@ -122,7 +124,7 @@ export default function Layout() {
             <Outlet />
           </Suspense>
         </div>
-        <Footer />
+        {!isLandingPage && <Footer />}
       </main>
     </div>
   );

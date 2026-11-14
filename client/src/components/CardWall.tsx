@@ -21,7 +21,11 @@ const LAYOUTS = {
 } as const;
 
 /**
- * Tilted columns of the meta's cards drifting up and down behind the whole window, faded out toward the middle.
+ * Tilted columns of the meta's cards drifting up and down behind the window, faded out toward the middle.
+ * It sticks to the window inside a grid cell it shares with the page, rather than being fixed, so it ends with the
+ * page's content and moves with it when Safari bounces at either end, instead of showing in the gap.
+ * The layer sticks just below the phone's 61px header plus the main column's padding; the wall inside reaches back
+ * over that padding to the window's edges, and down over the bottom padding to the end of the page.
  * Only content that is itself positioned paints over it.
  */
 export default function CardWall({ isMobile }: { isMobile: boolean }) {
@@ -40,7 +44,8 @@ export default function CardWall({ isMobile }: { isMobile: boolean }) {
   const layout = isMobile ? LAYOUTS.phone : LAYOUTS.desktop;
 
   return (
-    <div className="card-wall" aria-hidden="true" style={{ ...styles.wall, left: isMobile ? 0 : '240px' }}>
+    <div aria-hidden="true" style={{ ...styles.layer, ...(isMobile ? styles.phoneLayer : styles.desktopLayer) }}>
+    <div className="card-wall" style={{ ...styles.wall, ...(isMobile ? styles.phoneWall : styles.desktopWall) }}>
       <div style={{ ...styles.columns, gap: `${layout.gap}px` }}>
         {Array.from({ length: layout.columns }, (_, c) => {
           const cards = Array.from({ length: CARDS_PER_COLUMN }, (_, i) => art[(c * 5 + i) % art.length]);
@@ -65,17 +70,40 @@ export default function CardWall({ isMobile }: { isMobile: boolean }) {
       </div>
       <div style={{ ...styles.fade, background: layout.fade }} />
     </div>
+    </div>
   );
 }
 
 const styles = {
-  wall: {
-    position: 'fixed' as const,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    overflow: 'hidden' as const,
+  layer: {
+    gridArea: '1 / 1',
+    alignSelf: 'start' as const,
+    position: 'sticky' as const,
     pointerEvents: 'none' as const,
+  },
+  phoneLayer: {
+    top: '73px',
+    height: 'calc(100lvh - 73px)',
+  },
+  desktopLayer: {
+    top: '20px',
+    height: 'calc(100lvh - 20px)',
+  },
+  wall: {
+    position: 'absolute' as const,
+    overflow: 'hidden' as const,
+  },
+  phoneWall: {
+    top: '-12px',
+    bottom: 'calc(-12px - env(safe-area-inset-bottom))',
+    left: 'calc(50% - 50vw)',
+    width: '100vw',
+  },
+  desktopWall: {
+    top: '-20px',
+    bottom: '-20px',
+    left: '-20px',
+    right: '-20px',
   },
   columns: {
     position: 'absolute' as const,
