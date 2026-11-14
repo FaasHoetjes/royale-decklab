@@ -198,7 +198,7 @@ function PatchButton() {
     <div style={styles.patchRow}>
       <Link
         to="/patch"
-        className="mobile-touch-target"
+        className="mobile-touch-target patch-button"
         onMouseEnter={() => preloadPage('/patch')}
         onFocus={() => preloadPage('/patch')}
         onTouchStart={() => preloadPage('/patch')}
@@ -214,7 +214,9 @@ function PatchButton() {
           </span>
         )}
         See what changed this patch
-        <span style={{ ...styles.patchArrow, backgroundColor: theme.accent, color: theme.onAccent }} aria-hidden="true">→</span>
+        <svg className="patch-button-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ ...styles.patchChevron, color: theme.text.tertiary }}>
+          <path d="M6 3.5 10.5 8 6 12.5" />
+        </svg>
       </Link>
     </div>
   );
@@ -228,7 +230,7 @@ const styles = {
     display: 'inline-flex' as const,
     alignItems: 'center' as const,
     gap: '8px',
-    padding: '7px 8px 7px 7px',
+    padding: '7px 10px 7px 7px',
     borderRadius: '999px',
     backgroundColor: 'var(--bg-secondary)',
     border: '1px solid var(--border)',
@@ -236,6 +238,7 @@ const styles = {
     fontSize: '13.5px',
     fontWeight: 650 as const,
     textDecoration: 'none',
+    transition: 'border-color 0.15s ease',
   },
   patchThumbs: {
     display: 'flex' as const,
@@ -249,13 +252,10 @@ const styles = {
   patchThumbArt: {
     borderRadius: '6px',
   },
-  patchArrow: {
-    display: 'grid' as const,
-    placeItems: 'center' as const,
-    width: '24px',
-    height: '24px',
-    borderRadius: '50%',
-    fontSize: '13px',
+  patchChevron: {
+    flexShrink: 0,
+    marginLeft: '-2px',
+    transition: 'transform 0.15s ease, color 0.15s ease',
   },
   page: {
     display: 'flex' as const,

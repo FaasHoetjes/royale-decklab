@@ -306,6 +306,13 @@ input:disabled {
   .faq-page-link:hover .faq-page-link-arrow {
     transform: translateX(3px);
   }
+  .patch-button:hover {
+    border-color: var(--border-strong) !important;
+  }
+  .patch-button:hover .patch-button-chevron {
+    transform: translateX(2px);
+    color: var(--text-secondary) !important;
+  }
 }
 
 .skip-link {
