@@ -170,8 +170,9 @@ can register at https://developer.clashroyale.com:
 
 ## Public API caching in Cloudflare
 
-The app caches successful public card/catalog and best-deck responses for five
-minutes, separately by path, response encoding and meta version. Personalized
+The app caches successful public card/catalog, best-deck, patch and per-card deck
+responses for five minutes, separately by path, response encoding and meta
+version. Personalized
 player, clan and admin endpoints do not use this output cache. Upstream errors
 and startup responses are not stored in it.
 
@@ -180,22 +181,28 @@ After deploying the code, select `royaledecklab.com` in Cloudflare, open
 **Custom filter expression > Edit expression**. Paste:
 
 ```text
-(http.host eq "royaledecklab.com" and http.request.method eq "GET" and http.request.uri.path in {"/api/cards" "/api/cards/stats" "/api/best-decks"})
+(http.host eq "royaledecklab.com" and http.request.method eq "GET" and (http.request.uri.path in {"/api/cards" "/api/cards/stats" "/api/best-decks" "/api/patch"} or (starts_with(http.request.uri.path, "/api/cards/") and ends_with(http.request.uri.path, "/decks"))))
 ```
+
+If the rule already exists with the older expression, edit it and replace the
+expression with this one.
 
 Set **Cache eligibility** to **Eligible for cache**. For **Edge TTL**, select
 **Use cache-control header if present, bypass cache if not**. Leave **Browser TTL**
 respecting existing headers, then deploy the rule. The API sends `public,
 max-age=300`; do not override missing headers or error responses with a fixed TTL.
-Leave the default cache key. These three routes ignore query parameters.
+Leave the default cache key. These routes ignore query parameters.
 
 Request `https://royaledecklab.com/api/best-decks` twice with an ordinary GET
 (not a browser hard refresh). The second response should show
-`CF-Cache-Status: HIT` and an `Age` header. Check `/api/cards` and
-`/api/cards/stats` the same way. A first request can show `MISS` at each edge
-location. Meta refresh invalidates the origin cache immediately; edge copies
-can remain for up to five minutes. Purge these three URLs to make a refresh
-visible at the edge immediately.
+`CF-Cache-Status: HIT` and an `Age` header. Check `/api/cards`,
+`/api/cards/stats`, `/api/patch` and a card's decks (such as
+`/api/cards/26000000/decks`) the same way. A first request can show `MISS` at
+each edge location. Meta refresh invalidates the origin cache immediately; edge
+copies can remain for up to five minutes. Purge `/api/cards`,
+`/api/cards/stats`, `/api/best-decks` and `/api/patch`, plus the prefix
+`/api/cards/` for the per-card decks, to make a refresh visible at the edge
+immediately.
 
 Generation and upgrade advice share a CPU scheduler (one to four workers based
 on available processors, 32 queued jobs, ten-second deadline). Identical work
