@@ -47,7 +47,7 @@ export function slide(panel: HTMLElement, open: boolean, { box, onEnd }: { box?:
     return el.animate({ transform: open ? [shifted, 'none'] : ['none', shifted] }, timing);
   };
   const fade = panel.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);
-  const animations = [fade, ...below(box?.outer ?? panel, height).map((el) => shift(el, -height))];
+  const animations = [fade, ...below(panel, height).map((el) => shift(el, -height))];
   if (box) {
     box.outer.style.clipPath = `inset(0 round ${getComputedStyle(box.inner).borderRadius})`;
     animations.push(shift(box.outer, -height), shift(box.inner, height));
@@ -70,14 +70,14 @@ export function slide(panel: HTMLElement, open: boolean, { box, onEnd }: { box?:
  * Folds `panel` open or shut with `slide`. `render` shows the new state: right away when opening, so the panel
  * can be measured, and once the slide ends when closing.
  */
-export function slideFold(panel: HTMLElement, open: boolean, render: () => void) {
+export function slideFold(panel: HTMLElement, open: boolean, render: () => void, box?: SlideBox) {
   inFlight?.();
   if (prefersReducedMotion()) {
     render();
     return;
   }
   if (open) flushSync(render);
-  slide(panel, open, { onEnd: open ? undefined : () => flushSync(render) });
+  slide(panel, open, { box, onEnd: open ? undefined : () => flushSync(render) });
 }
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);

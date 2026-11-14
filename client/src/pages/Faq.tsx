@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { CardsIcon, GridIcon, SearchIcon, ShieldIcon, TrendingUpIcon, TrophyIcon, ZapIcon } from '../components/navIcons';
-import Fold from '../components/Fold';
 import { MOBILE_HEADER_HEIGHT } from '../lib/layout';
+import { slideFold } from '../lib/motion';
 import { faqItems, type FaqPage } from './faqContent';
 
 // A few px of air between the header and the question an anchor link lands on.
@@ -34,6 +34,32 @@ export default function Faq() {
     const linked = faqItems.findIndex((item) => item.id === hash.slice(1));
     return linked >= 0 ? linked : 0;
   });
+  // Lags `openIndex` while an answer slides shut, so the chevron turns right away but the answer stays until covered.
+  const [shownIndex, setShownIndex] = useState(openIndex);
+  const outerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Where the tapped question sat before the answer above it shut at once, to keep it there on screen.
+  const anchor = useRef<{ index: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const pinned = anchor.current;
+    const button = pinned && buttonRefs.current[pinned.index];
+    if (!pinned || !button) return;
+    anchor.current = null;
+    window.scrollBy(0, button.getBoundingClientRect().top - pinned.top);
+  }, [shownIndex]);
+
+  const toggle = (i: number) => {
+    const opening = openIndex !== i;
+    const box = { outer: outerRef.current!, inner: listRef.current! };
+    setOpenIndex(opening ? i : null);
+    if (opening && shownIndex !== null) {
+      anchor.current = { index: i, top: buttonRefs.current[i]!.getBoundingClientRect().top };
+    }
+    slideFold(panelRefs.current[i]!, opening, () => setShownIndex(opening ? i : null), box);
+  };
 
   useEffect(() => {
     const id = hash.slice(1);
@@ -41,6 +67,7 @@ export default function Faq() {
     const idx = faqItems.findIndex((item) => item.id === id);
     if (idx < 0) return;
     setOpenIndex(idx);
+    setShownIndex(idx);
     const offset = isMobile ? FAQ_ANCHOR_OFFSET_MOBILE : FAQ_ANCHOR_OFFSET_DESKTOP;
     requestAnimationFrame(() => {
       const el = document.getElementById(id);
@@ -64,69 +91,83 @@ export default function Faq() {
         </div>
       )}
 
-      <div style={{ ...styles.list, backgroundColor: theme.bg.secondary, borderColor: theme.border }}>
-        {faqItems.map((item, i) => {
-          const isOpen = openIndex === i;
-          const panelId = `faq-panel-${i}`;
-          const buttonId = `faq-button-${i}`;
-          const link = item.link ? pageLink(item.link, activePlayerTag) : null;
-          return (
-            <div
-              key={item.question}
-              id={item.id}
-              style={{
-                ...styles.item,
-                borderBottom: i === faqItems.length - 1 ? 'none' : `1px solid ${theme.border}`,
-                boxShadow: isOpen ? `inset 3px 0 0 ${theme.accent}` : 'none',
-              }}
-            >
-              <h3 style={styles.questionHeading}>
-                <button
-                  id={buttonId}
-                  type="button"
-                  aria-expanded={isOpen}
-                  aria-controls={panelId}
-                  onClick={() => setOpenIndex(isOpen ? null : i)}
-                  style={{
-                    ...styles.trigger,
-                    padding: isMobile ? '15px 16px' : '18px 22px',
-                    color: isOpen ? theme.accent : theme.text.primary,
+      <div ref={outerRef}>
+        <div ref={listRef} style={{ ...styles.list, backgroundColor: theme.bg.secondary, borderColor: theme.border }}>
+          {faqItems.map((item, i) => {
+            const isOpen = openIndex === i;
+            const panelId = `faq-panel-${i}`;
+            const buttonId = `faq-button-${i}`;
+            const link = item.link ? pageLink(item.link, activePlayerTag) : null;
+            return (
+              <div
+                key={item.question}
+                id={item.id}
+                style={{
+                  ...styles.item,
+                  backgroundColor: theme.bg.secondary,
+                  borderBottom: i === faqItems.length - 1 ? 'none' : `1px solid ${theme.border}`,
+                  boxShadow: isOpen ? `inset 3px 0 0 ${theme.accent}` : 'none',
+                }}
+              >
+                <h3 style={styles.questionHeading}>
+                  <button
+                    ref={(el) => {
+                      buttonRefs.current[i] = el;
+                    }}
+                    id={buttonId}
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    onClick={() => toggle(i)}
+                    style={{
+                      ...styles.trigger,
+                      padding: isMobile ? '15px 16px' : '18px 22px',
+                      color: isOpen ? theme.accent : theme.text.primary,
+                    }}
+                  >
+                    <span>{item.question}</span>
+                    <Chevron open={isOpen} color={isOpen ? theme.accent : theme.text.secondary} />
+                  </button>
+                </h3>
+                <div
+                  ref={(el) => {
+                    panelRefs.current[i] = el;
                   }}
+                  id={panelId}
+                  role="region"
+                  aria-labelledby={buttonId}
+                  style={{ display: shownIndex === i ? 'block' : 'none' }}
                 >
-                  <span>{item.question}</span>
-                  <Chevron open={isOpen} color={isOpen ? theme.accent : theme.text.secondary} />
-                </button>
-              </h3>
-              <Fold id={panelId} role="region" aria-labelledby={buttonId} open={isOpen}>
-                <div style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}>
-                  {item.answer}
-                  {link && (
-                    <Link to={link.to} className="faq-page-link" style={{ ...styles.pageLink, color: theme.accent }}>
-                      <span style={styles.pageLinkIcon} aria-hidden="true">
-                        {link.icon}
-                      </span>
-                      <span className="faq-page-link-label">{link.label}</span>
-                      <svg
-                        className="faq-page-link-arrow"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2.2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                        style={styles.pageLinkArrow}
-                      >
-                        <path d="M5 12h14" />
-                        <path d="m13 6 6 6-6 6" />
-                      </svg>
-                    </Link>
-                  )}
+                  <div style={{ padding: isMobile ? '0 16px 18px' : '0 22px 20px', color: theme.text.secondary }}>
+                    {item.answer}
+                    {link && (
+                      <Link to={link.to} className="faq-page-link" style={{ ...styles.pageLink, color: theme.accent }}>
+                        <span style={styles.pageLinkIcon} aria-hidden="true">
+                          {link.icon}
+                        </span>
+                        <span className="faq-page-link-label">{link.label}</span>
+                        <svg
+                          className="faq-page-link-arrow"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          style={styles.pageLinkArrow}
+                        >
+                          <path d="M5 12h14" />
+                          <path d="m13 6 6 6-6 6" />
+                        </svg>
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              </Fold>
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

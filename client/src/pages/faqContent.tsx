@@ -43,48 +43,15 @@ const scoreSample: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const stepGrid: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-  gap: '8px',
-};
-
-const stepBox: React.CSSProperties = {
-  backgroundColor: 'var(--bg-tertiary)',
-  border: '1px solid var(--border)',
-  borderRadius: '9px',
-  padding: '10px 12px',
-};
-
-function WorkedStep({ label, value, note, highlight }: { label: string; value: string; note: string; highlight?: boolean }) {
-  return (
-    <div style={stepBox}>
-      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)' }}>{label}</div>
-      <div
-        style={{
-          fontSize: '19px',
-          fontWeight: 700,
-          fontVariantNumeric: 'tabular-nums',
-          color: highlight ? 'var(--accent)' : 'var(--text-primary)',
-        }}
-      >
-        {value}
-      </div>
-      <div style={{ fontSize: '12.5px', lineHeight: 1.4 }}>{note}</div>
-    </div>
-  );
-}
-
 export const faqItems: FaqItem[] = [
   {
     question: 'What is Royale DeckLab?',
     answer: (
       <>
         <p style={pStyle}>
-          Royale DeckLab is a free tool for Clash Royale Clan Wars. It recommends four decks based
-          on your card collection, helps you decide which cards to upgrade, and lets you build and
-          score your own war decks. You can also explore card statistics and use the Clan War
-          Planner to track your clan’s participation and find decks for each member.
+          Royale DeckLab is a free Clash Royale Clan War tool. Generate decks for your card
+          collection, build your own lineup, find useful upgrades, explore card statistics, and
+          track your clan’s participation.
         </p>
         <p style={pLast}>It is an independent fan project and is not affiliated with Supercell.</p>
       </>
@@ -94,9 +61,9 @@ export const faqItems: FaqItem[] = [
     question: 'How does the War Deck Generator work?',
     answer: (
       <p style={pLast}>
-        Enter your player tag to get four recommended war decks with no cards shared between them.
-        The generator starts with decks used by top Clan War players, then takes your card levels
-        and unlocked Evolutions and Heroes into account.
+        Enter your player tag to get four war decks with no shared cards. Recommendations use decks
+        played by top Clan War players, adjusted for your card levels and unlocked Evolutions and
+        Heroes.
       </p>
     ),
     link: 'generator',
@@ -107,20 +74,17 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          Yes. Above your decks you can choose how many decks to generate (one to four), set a
-          minimum card level, include cards you want to play, and exclude cards you don’t. Every
-          option is applied to the search itself, so you get the best decks that meet all of them,
-          with no cards shared between them.
+          Yes. Use the controls above your lineup to choose one to four decks, set a minimum card
+          level, and include or exclude cards.
         </p>
         <p style={pStyle}>
-          The padlock on a deck locks it: the deck stays when you change options, and the other
-          decks are chosen around its cards. To build around a favourite deck, swap it in first,
-          then lock it.
+          Use a deck’s padlock to keep it while the generator chooses the other decks. To build
+          around a favourite deck, swap it in, then lock it.
         </p>
         <p style={pLast}>
-          Your choices are saved in the page address, so you can bookmark or share a setup. The
-          number of decks and minimum level are also remembered for your next search. If no lineup
-          fits, try a lower minimum level or fewer included cards.
+          Settings are saved in the page address for bookmarking or sharing. Deck count and minimum
+          level are also remembered for future searches. If no lineup fits, lower the minimum level
+          or include fewer cards.
         </p>
       </>
     ),
@@ -128,64 +92,69 @@ export const faqItems: FaqItem[] = [
   },
   {
     id: 'remaining-decks',
-    question: 'Can I generate decks after I’ve already played some war battles today?',
+    question: 'Can I plan my remaining war decks for today?',
     answer: (
       <>
         <p style={pStyle}>
-          Yes. When your recent war battles are available, the generator shows the decks you have
-          already played today. Use the “Plan my last…” button to generate only the remaining
-          number of decks, excluding the cards you have already used.
+          Yes. When recent war battles are available, the generator shows today’s used decks.
+          Choose “Plan my last…” to generate the remaining decks without reusing those cards.
         </p>
         <p style={pLast}>
-          These cards are used up until the daily reset. Planning the rest of today does not change
-          the number of decks remembered for your next search.
+          This applies until the daily reset and leaves your saved deck count unchanged.
         </p>
       </>
     ),
     link: 'generator',
   },
   {
-    question: 'Why have my recommended decks changed?',
+    id: 'sharing-decks',
+    question: 'How do I copy or share my decks?',
     answer: (
       <>
         <p style={pStyle}>
-          Your recommendations can change when you upgrade cards, unlock Evolutions or Heroes, or
-          when new Clan War battles are added to the data.
+          Use “Open in game” on a phone to open a deck in Clash Royale. On desktop, use “Copy deck
+          link” and send the link to your phone.
         </p>
         <p style={pLast}>
-          As new war battles are collected and battles older than 30 days drop out, the
-          recommendations adjust to the latest results.
+          Use “Share” above the generator to share the lineup on screen, including swaps. The link
+          uses the original player’s collection; recipients can choose “Get my decks” for their own
+          recommendations.
         </p>
       </>
     ),
   },
   {
-    question: 'Why does a recommended deck include a card that isn’t maxed out?',
-    answer: (
-      <p style={pLast}>
-        The generator considers both your card levels and each deck’s proven performance. A strong
-        deck can still be your best option even if one card is at a lower level. Upgrading that
-        card will improve the deck’s score.
-      </p>
-    ),
-  },
-  {
-    id: 'sharing-decks',
-    question: 'How do I copy a deck into Clash Royale or share my lineup?',
+    id: 'player-score',
+    question: 'What does a deck’s player score mean?',
     answer: (
       <>
         <p style={pStyle}>
-          On a phone, use “Open in game” on an individual deck to open it in Clash Royale. On
-          desktop, use “Copy deck link” to copy a link you can send to your phone.
-        </p>
-        <p style={pStyle}>
-          To share your complete generated lineup, use “Share” above the decks. This shares the
-          decks currently on screen, including any swaps you have made. On supported phones it
-          opens the share menu; otherwise it copies the link.
+          The player score estimates a deck’s win rate with your collection. It adjusts the deck’s
+          recorded results for your card levels, expected opponents, and missing Evolutions or
+          Heroes. Cards far below the rest of the deck receive an extra penalty; decks with fewer
+          games receive more cautious scores.
         </p>
         <p style={pLast}>
-          A shared lineup uses the original player’s card collection. Readers can choose “Get my
-          decks” to see recommendations for their own cards.
+          The generator aims for the highest combined score across your lineup. A strong deck can
+          still be worth using with a lower-level card. For four decks, the total score estimates
+          your wins per war day.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: 'Where do deck win rates come from?',
+    answer: (
+      <>
+        <p style={pStyle}>
+          Win rates come from Clan War battles played by the top 100 war clans and their opponents
+          over the last 30 days. Results are grouped by eight-card deck, with draws counting as half
+          a win. Battles from before the latest patch still count.
+        </p>
+        <p style={pLast}>
+          Rankings account for uncertainty, so a few lucky wins do not outweigh consistent results
+          over hundreds of games. A deck’s ranking score can therefore be lower than its displayed
+          win rate.
         </p>
       </>
     ),
@@ -193,16 +162,10 @@ export const faqItems: FaqItem[] = [
   {
     question: 'What does the Best War Decks page show?',
     answer: (
-      <>
-        <p style={pStyle}>
-          The Best War Decks page ranks the strongest sets of four war decks in the current meta.
-          The rankings assume a complete, fully maxed card collection, so they show the overall
-          meta rather than recommendations tailored to your account.
-        </p>
-        <p style={pLast}>
-          You can open any set in the War Deck Builder to see how it scores with your own cards.
-        </p>
-      </>
+      <p style={pLast}>
+        It ranks sets of four war decks using a fully maxed collection with all Evolutions and
+        Heroes unlocked. Open a set in the War Deck Builder to see its score with your own cards.
+      </p>
     ),
     link: 'best-decks',
   },
@@ -212,15 +175,13 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          The Cards page shows how each card performs in recorded Clan War battles. Win rate is
-          the share of wins in battles using that card, with draws counting as half a win. Play
-          rate is the share of recorded decks that include it. Change compares its win rate with
-          the previous patch, in percentage points.
+          It shows each card’s Clan War win rate, play rate, and win-rate change since the previous
+          patch. Draws count as half a win; play rate is the share of recorded decks using the card.
+          Changes are shown in percentage points.
         </p>
         <p style={pLast}>
-          You can search, filter, and sort the cards. Open a card to see more statistics, how often
-          its Evolution or Hero version is played where available, and its best war decks. You
-          can also generate your own lineup that includes that card.
+          Search, filter, or sort cards, then open one for detailed statistics and its best war
+          decks. You can also generate a lineup that includes it.
         </p>
       </>
     ),
@@ -228,58 +189,36 @@ export const faqItems: FaqItem[] = [
   },
   {
     id: 'card-stats-samples',
-    question: 'Why are some card statistics greyed out or missing a change?',
+    question: 'Why are some card stats greyed out or missing a change?',
     answer: (
       <>
         <p style={pStyle}>
-          Cards with too few recorded games have less reliable win rates. They appear greyed out
-          and below cards with enough games when sorting, so a few lucky wins do not put a rarely
-          played card at the top.
+          Cards with too few games have less reliable win rates, so they appear greyed out and sort
+          below cards with enough data.
         </p>
         <p style={pLast}>
-          A win-rate change is shown only when the card has enough games in both the current and
-          previous patch. If either patch has too little data, there is no change to display yet.
+          A win-rate change appears only when both the current and previous patch have enough games.
         </p>
       </>
     ),
     link: 'cards',
   },
   {
+    id: 'builder-score-symbols',
     question: 'How does the War Deck Builder score decks?',
     answer: (
       <>
         <p style={pStyle}>
-          Known meta decks are scored in the same way as recommendations from the War Deck
-          Generator, using their proven performance and your card collection. Other decks receive a
-          heavily reduced score to reflect the lack of recorded results.
+          The Builder scores decks using your collection or a fully maxed one. Without a player tag,
+          it uses the maxed collection. Your total is the sum of the four deck scores.
         </p>
-        <p style={pStyle}>
-          Without a player tag, the Builder uses a maxed collection: every card at level 16 with
-          every Evolution and Hero. With a player tag, you can switch between your own cards and the
-          maxed collection.
-        </p>
-        <p style={pLast}>
-          Your total score is the sum of your four deck scores. Each card can only be used once
-          across the four decks, and the usual Evolution and Hero slot restrictions apply.
-        </p>
-      </>
-    ),
-    link: 'builder',
-  },
-  {
-    id: 'builder-score-symbols',
-    question: 'What do the ★ and ~ symbols next to a deck’s score mean?',
-    answer: (
-      <>
         <div style={symbolRow}>
           <span style={{ ...scoreSample, color: 'var(--accent)' }}>★ 0.548</span>
           <div>
             <p style={symbolTitle}>Known deck</p>
             <p style={pLast}>
-              Your deck exactly matches a deck used by top Clan War players. Its Evolutions and
-              Heroes also have to be in the slots that deck plays them in. It is scored in the
-              same way as a generated recommendation, using the deck’s recorded performance, your
-              card levels, and your unlocked Evolution and Hero versions.
+              Matches a recorded deck, including its Evolution and Hero setup. Scored like a
+              generated recommendation, using its results and your collection.
             </p>
           </div>
         </div>
@@ -288,10 +227,9 @@ export const faqItems: FaqItem[] = [
           <div>
             <p style={symbolTitle}>Known cards, different setup</p>
             <p style={pLast}>
-              Your deck has the cards of a known deck, but not with its Evolutions and Heroes in
-              place. It is still scored from that deck’s recorded results. Each Evolution or Hero
-              slot left without one costs about 6%, while putting a different Evolution or Hero there
-              costs nothing, because battles show it wins about as often.
+              Uses a known deck’s cards with different Evolution or Hero choices or placement. Its
+              score uses that deck’s results, with a penalty for missing Evolutions or Heroes that
+              have no substitute.
             </p>
           </div>
         </div>
@@ -300,11 +238,8 @@ export const faqItems: FaqItem[] = [
           <div>
             <p style={symbolTitle}>Unproven deck</p>
             <p style={pLast}>
-              Your deck does not match a known deck in the data, so there is no recorded win rate
-              to base its score on. The Builder starts with a 50% win-rate baseline, adjusts for
-              your card levels, then divides the result by nine because the deck is unproven.
-              This makes its score much lower; the ~ score is a ranking estimate rather than a
-              predicted win rate.
+              Has no matching deck in the data. It receives a heavily reduced estimate to reflect
+              the lack of results. This score is not a predicted win rate.
             </p>
           </div>
         </div>
@@ -315,47 +250,29 @@ export const faqItems: FaqItem[] = [
           <div>
             <p style={symbolTitle}>Not scored</p>
             <p style={pLast}>
-              Your deck has a card you don’t own, so there is no score for it. Switch to the maxed
-              collection to see how it would do.
+              Contains a card you don’t own. Switch to the maxed collection to score it.
             </p>
           </div>
         </div>
         <p style={{ ...pLast, marginTop: '12px' }}>
-          This is why changing even one card in a meta deck can cause a sharp drop in its score: it
-          no longer matches a known deck, so the Builder switches to the cautious estimate. Moving
-          cards between slots keeps the match.
+          Replacing one card can make a deck unproven and sharply lower its score. If a card has
+          both Evolution and Hero versions unlocked, you can choose either.
         </p>
       </>
     ),
+    link: 'builder',
   },
   {
-    question: 'Why does the War Deck Builder show both an Evolution and a Hero version of my card?',
+    question: 'How does the Upgrade Advisor rank upgrades?',
     answer: (
       <>
         <p style={pStyle}>
-          Some cards have both an Evolution version and a Hero version. You can unlock either
-          version independently.
+          It simulates each card level upgrade and Evolution or Hero unlock, then recalculates your
+          best four decks. Upgrades rank by how much they improve the combined score, including
+          improvements that make a different deck worth using.
         </p>
         <p style={pLast}>
-          If you have unlocked both, the War Deck Builder shows both options. Choose the version
-          you want to use in your deck.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: 'How does the Upgrade Advisor choose which cards to recommend?',
-    answer: (
-      <>
-        <p style={pStyle}>
-          The Upgrade Advisor simulates card level upgrades and Evolution and Hero unlocks
-          individually. For each upgrade, it recalculates your best four decks and measures the
-          change in their combined score. It uses your default recommended lineup as the starting
-          point.
-        </p>
-        <p style={pLast}>
-          Upgrades are ranked by how much they improve that score. This includes upgrades that make
-          a different deck worth using.
+          Each upgrade is tested separately against your default recommended lineup.
         </p>
       </>
     ),
@@ -367,18 +284,16 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          Search for a clan by name or paste its clan tag. The Planner shows its river race,
-          members’ war participation, and results from previous weeks where available.
+          Search by clan name or tag to see its river race, member participation, and available
+          results from previous weeks.
         </p>
         <p style={pStyle}>
-          On battle days, members are grouped into “Not started”, “Started”, and “Done” according
-          to how many of their four daily decks they have played. Select a group to focus on who
-          still has decks left. Choose “Decks” or “Best decks” next to a member to generate a
-          lineup using that member’s own card collection.
+          On battle days, filter by “Not started”, “Started”, or “Done” to see who still needs to
+          play. Choose “Decks” or “Best decks” beside a member to generate a lineup for their cards.
         </p>
         <p style={pLast}>
-          During training days or when a clan is not racing, the Planner shows past participation
-          where available. You can still generate decks for its members.
+          On training days or outside a race, you can still view past participation and generate
+          members’ decks.
         </p>
       </>
     ),
@@ -386,19 +301,18 @@ export const faqItems: FaqItem[] = [
   },
   {
     id: 'clan-reliability',
-    question: 'What do the Clan War Planner’s reliability badges mean?',
+    question: 'What do the clan reliability badges mean?',
     answer: (
       <>
         <p style={pStyle}>
-          The badges describe participation in the available past weeks, counting only weeks when
-          the member was in the clan:
+          Badges use recorded weeks when the member was in the clan:
         </p>
         <ul style={{ ...pLast, paddingLeft: '20px' }}>
-          <li><strong>New:</strong> Fewer than two recorded weeks in the clan.</li>
-          <li><strong>Reliable:</strong> At least two recorded weeks, with all 16 war decks played in every one.</li>
-          <li><strong>Ghost:</strong> No decks played in the two most recent recorded weeks.</li>
-          <li><strong>Slipping:</strong> Fewer than 12 decks played in the latest recorded week, unless marked Ghost.</li>
-          <li><strong>Steady:</strong> At least 12 decks played in the latest recorded week, with some missed decks in the available history.</li>
+          <li><strong>New:</strong> Fewer than two recorded weeks.</li>
+          <li><strong>Reliable:</strong> All 16 decks played every recorded week, for at least two weeks.</li>
+          <li><strong>Ghost:</strong> No decks played in the two latest recorded weeks.</li>
+          <li><strong>Slipping:</strong> Under 12 decks in the latest recorded week, unless marked Ghost.</li>
+          <li><strong>Steady:</strong> At least 12 decks in the latest recorded week, but not all 16 every week.</li>
         </ul>
       </>
     ),
@@ -406,44 +320,34 @@ export const faqItems: FaqItem[] = [
   },
   {
     id: 'clan-reminders',
-    question: 'Can I remind clan members who still have decks to play?',
+    question: 'How do I remind clan members to play?',
     answer: (
-      <>
-        <p style={pStyle}>
-          On battle days, while members still have decks left, use the chat icon beside today’s
-          participation summary to open “Remind your clan”. Choose a short message, a message with
-          names, or the full list of members who still need to play.
-        </p>
-        <p style={pLast}>
-          Copy the message and paste it into clan chat, or use “Share” where available to send it
-          through another app. The message includes a link to your clan’s Planner page so members
-          can check their status and find their best decks.
-        </p>
-      </>
+      <p style={pLast}>
+        On battle days, use the chat icon beside today’s participation summary while members still
+        have decks left. Choose a message format, then copy it into clan chat or share it through
+        another app. Each message links to your clan’s Planner page.
+      </p>
     ),
     link: 'clan',
   },
   {
     id: 'clan-discord-reminders',
-    question: 'How do Discord reminders work, and what do you store?',
+    question: 'How do I set up Discord reminders?',
     answer: (
       <>
         <p style={pStyle}>
-          Use the “Discord reminders” row on your clan’s Planner page. In Discord, create a webhook
-          for the channel you want (Server Settings, then Integrations, then Webhooks) and paste its
-          URL. Before each war day ends, at the time you choose, the site posts who still has decks
-          to play. You can send a test first, and optionally ping @here.
+          Open “Discord reminders” on your clan’s Planner page. Create a channel webhook in Discord
+          under Server Settings → Integrations → Webhooks, then paste its URL. Choose when to post
+          who still has decks left, send a test, and save. You can also enable @here pings.
         </p>
         <p style={pStyle}>
-          We store the webhook URL, with its secret part (the token) encrypted, and use it only to
-          post these reminders. Next to it we store your clan tag, the settings you chose and the id
-          of your Discord server, which aren’t encrypted. Only someone who pastes the webhook URL
-          sees its settings, and nobody can see the webhook or the channel it posts to.
+          We store the webhook with its secret token encrypted, alongside your clan tag, settings,
+          and Discord server ID. These other details are not encrypted. The webhook is used only
+          for reminders; its URL and destination channel are not shown to visitors.
         </p>
         <p style={pLast}>
-          Treat the webhook URL like a password: whoever has it can post to your channel, and change
-          or turn off its reminders here. Anyone can post any clan’s reminders to their own
-          channel, so a reminder for your clan isn’t necessarily set up by your clan.
+          Keep the URL private: anyone with it can post to the channel or manage its reminders.
+          Anyone can set up reminders for any clan in their own channel.
         </p>
       </>
     ),
@@ -451,100 +355,37 @@ export const faqItems: FaqItem[] = [
   },
   {
     id: 'clan-discord-change',
-    question: 'How do I change or turn off a Discord reminder?',
+    question: 'How do I change or stop Discord reminders?',
     answer: (
       <>
         <p style={pStyle}>
-          Open the “Discord reminders” row on your clan’s Planner page and paste the same webhook
-          URL. Its saved settings load, with a green “On for this channel” card. Change what you
-          want and press “Save”, or press “Turn off reminders” to stop them.
-        </p>
-        <p style={pStyle}>
-          Lost the URL? In Discord, open Server Settings, then Integrations, then Webhooks, pick the
-          webhook and press “Copy Webhook URL”.
+          Open “Discord reminders” on your clan’s Planner page and paste the same webhook URL to
+          load its settings. Make your changes and save, or choose “Turn off reminders”. You can
+          recover the URL in Discord under Server Settings → Integrations → Webhooks.
         </p>
         <p style={pLast}>
-          You can also delete the webhook in Discord. The reminders stop right away, and we remove
-          it from our side the next time a reminder would have been sent.
+          Deleting the webhook in Discord also stops reminders. We remove the saved reminder when
+          the next delivery detects the deletion.
         </p>
       </>
     ),
     link: 'clan',
   },
   {
-    id: 'player-score',
-    question: 'How is a deck’s player score calculated?',
-    answer: (
-      <>
-        <p style={pStyle}>
-          The player score estimates a deck’s win rate for you. It starts with the deck’s results
-          among top Clan War players, then adjusts for your card levels and whether you have the
-          required Evolution or Hero versions.
-        </p>
-        <p style={pStyle}>
-          Your card levels are compared with those of the opponents you typically face in Clan
-          Wars. A card that is much lower in level than the rest of your deck receives an
-          additional penalty. Both adjustments are based on real Clan War battles. Missing required
-          Evolution or Hero versions also reduces the score.
-        </p>
-        <p style={pStyle}>
-          Decks with fewer recorded games are scored more cautiously to reduce the effect of
-          lucky streaks.
-        </p>
-        <p style={pLast}>
-          The generator searches for the highest-scoring set of four decks with no shared cards.
-          Their combined score gives a cautious estimate of your wins per war day.
-        </p>
-      </>
-    ),
-  },
-  {
-    question: 'How is a deck’s win rate calculated?',
-    answer: (
-      <>
-        <p style={pStyle}>
-          Win rates are calculated from real Clan War battles collected from the top 100 war
-          clans and their opponents. Results are grouped by exact eight-card deck over a rolling
-          30-day data window.
-        </p>
-        <p style={pStyle}>
-          Draws count as half a win. Battles from before the latest patch count fully too. In our
-          tests, counting them for less made win rates predict later results worse, as most
-          patches change only a few cards a little.
-        </p>
-        <p style={pStyle}>
-          Rankings use a more cautious estimate. Each deck’s results are combined with a
-          baseline equivalent to 80 games at a 52% win rate, based on real Clan War data.
-          The ranking also accounts for uncertainty, reducing the influence of small samples and
-          lucky streaks.
-        </p>
-        <p style={pStyle}>
-          For example, a deck with six wins from six current-patch games is rated at about 52%,
-          while a deck with a 60% win rate over hundreds of games retains most of that rating.
-        </p>
-        <div style={stepGrid}>
-          <WorkedStep label="Record" value="6–0" note="100% raw win rate" />
-          <WorkedStep label="Ranked as" value="51.8%" note="after accounting for uncertainty" highlight />
-        </div>
-      </>
-    ),
-  },
-  {
     question: 'How often is the data updated?',
     answer: (
       <>
         <p style={pStyle}>
-          Battle data is refreshed every two hours and retained for 30 days, covering roughly four
-          war weekends.
+          Battle data refreshes every two hours and covers the last 30 days. Recommendations can
+          change as new results arrive, older battles drop out, or you upgrade your collection.
         </p>
         <p style={pStyle}>
-          Clan War Planner results are cached for up to 60 seconds. Opening the Planner or returning
-          to its browser tab requests the latest available results, and on battle days so does
-          pressing “Refresh”.
+          Clan War Planner results are cached for up to 60 seconds. Open the page, return to its
+          browser tab, or press “Refresh” on battle days to request the latest available results.
         </p>
         <p style={pLast}>
-          Card statistics show the current patch. Until its first war battles are available, the
-          Cards page shows the previous patch’s statistics with a note explaining the period.
+          Card statistics cover the current patch. Until new war data arrives, the Cards page shows
+          the previous patch with a note.
         </p>
       </>
     ),
