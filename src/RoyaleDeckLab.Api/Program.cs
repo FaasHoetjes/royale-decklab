@@ -91,7 +91,7 @@ builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
-builder.Services.AddScoped<CardReleases>();
+builder.Services.AddSingleton<CardReleases>();
 builder.Services.AddHttpClient<SupercellBlogClient>(http =>
     {
         http.BaseAddress = new Uri("https://supercell.com/");

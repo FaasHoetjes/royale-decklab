@@ -101,7 +101,7 @@ public sealed class MetaCacheTests : IDisposable
         services.AddScoped<MetaBuilder>();
         services.AddSingleton<TimeProvider>(_clock);
         services.AddSingleton<CardCatalog>();
-        services.AddScoped<CardReleases>();
+        services.AddSingleton<CardReleases>();
         services.AddSingleton<MetaCache>();
         return services.BuildServiceProvider();
     }
@@ -287,6 +287,24 @@ public sealed class MetaCacheTests : IDisposable
         var (store, first) = await WeekWithNewEvoAsync(scope, newDecks: 10);
 
         Assert.Null(await scope.ServiceProvider.GetRequiredService<CardReleases>().FindNewAsync(store, [first], default));
+    }
+
+    [Fact]
+    public async Task A_card_version_under_the_bar_is_measured_again_only_after_twelve_hours()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+        using var scope = sp.CreateScope();
+        var (store, first) = await WeekWithNewEvoAsync(scope, newDecks: 10);
+        var releases = scope.ServiceProvider.GetRequiredService<CardReleases>();
+        Assert.Null(await releases.FindNewAsync(store, [first], default));
+
+        await store.MergeBattlesAsync([.. Enumerable.Range(0, 20).Select(i =>
+            Battle($"#LATE{i}", Now - Day + i * 1000, new CardVersion(28, CardVersionKind.Evo)))]);
+
+        Assert.Null(await releases.FindNewAsync(store, [first], default));
+        _clock.Now += TimeSpan.FromHours(12);
+        Assert.Equal(first.BattleTimeMs, (await releases.FindNewAsync(store, [first], default))?.FirstSeenMs);
     }
 
     [Fact]

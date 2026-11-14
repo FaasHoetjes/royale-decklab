@@ -21,6 +21,13 @@ public sealed class CardReleases(CardCatalog catalog, TimeProvider clock, ILogge
     // near 0.14%, and treating either as a new patch made the deck win rates predict the following days worse.
     private const double ShareQuantile = 0.05;
 
+    // Measuring scans every stored battle, so a version still under the bar waits this long before it's measured
+    // again. Its first battle sets the boundary, so finding the release later doesn't move it.
+    private const long RemeasureAfter = 12 * 60 * 60 * 1000L;
+
+    private IReadOnlySet<CardVersion> _belowBar = new HashSet<CardVersion>();
+    private long _remeasureAtMs;
+
     /// <summary>
     /// The versions in <paramref name="fresh"/> that haven't been seen before and are now played enough to count,
     /// with the first battle that used one. The first call only remembers what exists, so that the versions already
@@ -34,12 +41,14 @@ public sealed class CardReleases(CardCatalog catalog, TimeProvider clock, ILogge
             await SeedAsync(store, ct);
             return null;
         }
-        if (!fresh.SelectMany(Played).Any(v => !known.Contains(v)))
+        var unknown = fresh.SelectMany(Played).Where(v => !known.Contains(v)).ToHashSet();
+        var now = clock.GetUtcNow().ToUnixTimeMilliseconds();
+        if (unknown.Count == 0 || (now < _remeasureAtMs && unknown.IsSubsetOf(_belowBar)))
         {
             return null;
         }
 
-        var usage = Usage.Measure(store.AllBattles(), known, clock.GetUtcNow().ToUnixTimeMilliseconds());
+        var usage = Usage.Measure(store.AllBattles(), known, now);
         var bar = usage.Bar();
         var released = new List<CardVersion>();
         foreach (var (version, firstSeen) in usage.FirstSeen)
@@ -53,6 +62,8 @@ public sealed class CardReleases(CardCatalog catalog, TimeProvider clock, ILogge
             logger.LogInformation("Card version {CardId} {Version}, first played {FirstSeen:O}, is in {Share:P2} of decks; it counts from {Bar:P2}",
                 version.CardId, version.Version, DateTimeOffset.FromUnixTimeMilliseconds(firstSeen), share ?? 0, bar);
         }
+        _belowBar = usage.FirstSeen.Keys.Except(released).ToHashSet();
+        _remeasureAtMs = now + RemeasureAfter;
         return released.Count == 0
             ? null
             : new CardRelease(released.Min(v => usage.FirstSeen[v]), released);

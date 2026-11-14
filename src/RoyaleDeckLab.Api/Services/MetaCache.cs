@@ -302,7 +302,17 @@ public sealed class MetaCache(
         IServiceProvider services, BattleRepository store, IReadOnlyList<BattleRecord> fresh, CancellationToken ct)
     {
         var releases = services.GetRequiredService<CardReleases>();
-        if (await releases.FindNewAsync(store, fresh, ct) is not { } release)
+        CardRelease? release;
+        try
+        {
+            release = await releases.FindNewAsync(store, fresh, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Card release check failed; the meta is rebuilt without it");
+            return;
+        }
+        if (release is null)
         {
             return;
         }
