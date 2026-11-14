@@ -76,7 +76,7 @@ public sealed class BalanceUpdatesTests
     }
 
     [Theory]
-    [InlineData(26000054, "Damage 212 → 202 · Mass 3 → 6")]
+    [InlineData(26000054, "Damage 212 → 202\nMass 3 → 6")]
     [InlineData(26000042, "Removed Attack Delay after Ability")]
     [InlineData(28000023, "2–4 Target Damage 296 → 307")]
     public void A_summary_is_the_stat_lines_without_their_share(int cardId, string summary)
@@ -108,7 +108,7 @@ public sealed class BalanceUpdatesTests
 
         var change = Assert.Single(Assert.Single(PatchNotes.ParseUpdates(page, AugustPost)).Changes);
 
-        Assert.Equal("Spear Damage 284 → 220 · Rage Duration 3.5sec → 2.5sec", change.Summary);
+        Assert.Equal("Spear Damage 284 → 220\nRage Duration 3.5sec → 2.5sec", change.Summary);
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public sealed class BalanceUpdatesTests
             new PostedChange("Royal Ghost", Nerf, "Hitpoints 1210 → 1152"),
             new PostedChange("Royal Ghost", Buff, "Damage 261 → 263"))]));
 
-        Assert.Equal(new BalanceChange(26000050, Normal, Nerf, "Hitpoints 1210 → 1152 · Damage 261 → 263"), Assert.Single(update.Changes));
+        Assert.Equal(new BalanceChange(26000050, Normal, Nerf, "Hitpoints 1210 → 1152\nDamage 261 → 263"), Assert.Single(update.Changes));
     }
 
     [Fact]

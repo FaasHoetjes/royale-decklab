@@ -41,7 +41,7 @@ public static partial class BalanceUpdates
     /// <summary>
     /// Each change matched to the cards its title names. A title naming a card the catalog doesn't have is passed to
     /// <paramref name="onUnmatched"/> and left out, as is an update left with no changes. A card changed twice in one
-    /// update gets one change saying both.
+    /// update gets one change saying both, a line each.
     /// </summary>
     public static IReadOnlyList<BalanceUpdate> Resolve(
         IEnumerable<PostedUpdate> posted, IReadOnlyList<CatalogCard> cards, Action<string> onUnmatched)
@@ -62,7 +62,7 @@ public static partial class BalanceUpdates
                     var earlier = changes.FindIndex(c => c.CardId == version.CardId && c.Version == version.Version);
                     if (earlier >= 0)
                     {
-                        changes[earlier] = changes[earlier] with { Summary = $"{changes[earlier].Summary} · {change.Summary}" };
+                        changes[earlier] = changes[earlier] with { Summary = $"{changes[earlier].Summary}\n{change.Summary}" };
                     }
                     else
                     {

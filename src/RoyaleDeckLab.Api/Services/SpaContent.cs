@@ -123,7 +123,7 @@ public static class SpaContent
                     CardVersionKind.Hero => " Hero",
                     _ => "",
                 };
-                html.Append("<li>").Append(CardLink(nameById[change.CardId])).Append(Encode($"{version} ({kind}): {change.Summary}")).Append("</li>");
+                html.Append("<li>").Append(CardLink(nameById[change.CardId])).Append(Encode($"{version} ({kind}): {change.Summary.Replace("\n", "; ")}")).Append("</li>");
             }
             html.Append("</ul>");
         }

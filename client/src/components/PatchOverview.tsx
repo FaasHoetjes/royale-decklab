@@ -467,6 +467,7 @@ const styles = {
   },
   changeNote: {
     margin: '4px 0 0',
+    whiteSpace: 'pre-line' as const,
     fontSize: '12.5px',
     lineHeight: 1.35,
   },

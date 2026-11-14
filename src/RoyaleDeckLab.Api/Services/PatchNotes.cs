@@ -201,7 +201,7 @@ public static partial class PatchNotes
         }
         var lines = new List<string>();
         CollectLines(doc, lines);
-        return string.Join(" · ", lines
+        return string.Join('\n', lines
             .Select(line => StatNameRegex().Replace(ShareRegex().Replace(line, ""), "$1 ").Trim())
             .Where(line => line.Length > 0)
             .Take(MaxSummaryLines));
