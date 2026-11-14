@@ -1,4 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Controllers;
 using RoyaleDeckLab.Api.Dtos;
@@ -10,17 +13,49 @@ public static partial class SpaHosting
 {
     private static readonly TimeSpan PageDataTimeout = TimeSpan.FromSeconds(2);
 
-    public static void UseSpaStaticFiles(this WebApplication app) => app.UseStaticFiles(new StaticFileOptions
+    public static void UseSpaStaticFiles(this WebApplication app)
     {
-        OnPrepareResponse = ctx =>
+        var files = app.Environment.WebRootFileProvider;
+        app.Use((ctx, next) =>
         {
-            var path = ctx.Context.Request.Path;
-            ctx.Context.Response.Headers.CacheControl =
-                path.StartsWithSegments("/assets") ? "public, max-age=31536000, immutable"
-                : path.StartsWithSegments("/badges") ? "public, max-age=604800"
-                : "no-cache";
-        },
-    });
+            ServePrecompressed(ctx, files);
+            return next(ctx);
+        });
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            ContentTypeProvider = new PrecompressedContentTypes(),
+            OnPrepareResponse = ctx =>
+            {
+                var request = ctx.Context.Request;
+                // The build puts a content hash in the head scripts' ?v=, so a new version always has a new URL.
+                ctx.Context.Response.Headers.CacheControl =
+                    request.Path.StartsWithSegments("/assets") || request.Query.ContainsKey("v") ? "public, max-age=31536000, immutable"
+                    : request.Path.StartsWithSegments("/badges") ? "public, max-age=604800"
+                    : "no-cache";
+            },
+        });
+    }
+
+    // The build writes a top-quality .br beside each bundle, smaller than the on-the-fly compression and free to send.
+    public static void ServePrecompressed(HttpContext ctx, IFileProvider files)
+    {
+        var request = ctx.Request;
+        if (!(HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method)) || !request.Path.StartsWithSegments("/assets")) return;
+        if (!request.GetTypedHeaders().AcceptEncoding.Any(e => e.Value == "br" && (e.Quality ?? 1) > 0)) return;
+        var compressed = request.Path + ".br";
+        if (!files.GetFileInfo(compressed).Exists) return;
+        request.Path = compressed;
+        ctx.Response.Headers.ContentEncoding = "br";
+        ctx.Response.Headers.Vary = "Accept-Encoding";
+    }
+
+    private sealed class PrecompressedContentTypes : IContentTypeProvider
+    {
+        private readonly FileExtensionContentTypeProvider types = new();
+
+        public bool TryGetContentType(string subpath, [MaybeNullWhen(false)] out string contentType)
+            => types.TryGetContentType(subpath.EndsWith(".br", StringComparison.Ordinal) ? subpath[..^3] : subpath, out contentType);
+    }
 
     public static void MapSiteFiles(this WebApplication app)
     {
@@ -165,8 +200,8 @@ public static partial class SpaHosting
         var links = new List<string>();
         var css = CssAssetRegex().Match(html);
         if (css.Success) links.Add($"<{css.Value}>; rel=preload; as=style");
-        var js = JsAssetRegex().Match(html);
-        if (js.Success) links.Add($"<{js.Value}>; rel=modulepreload");
+        // The entry script and the framework chunk it imports, so neither waits for the HTML to be parsed.
+        links.AddRange(JsAssetRegex().Matches(html).Select(js => js.Value).Distinct().Select(js => $"<{js}>; rel=modulepreload"));
         return string.Join(", ", links);
     }
 

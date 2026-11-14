@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && bun scripts/prerender-faq.tsx",
+    "build": "vite build && bun scripts/prerender-faq.tsx && bun scripts/compress-assets.ts",
     "typecheck": "tsc",
     "test": "bun test",
     "preview": "vite preview"
