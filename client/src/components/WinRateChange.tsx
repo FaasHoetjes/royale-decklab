@@ -19,10 +19,6 @@ function changeColor(isClear: boolean, up: boolean): string {
   return up ? 'var(--up)' : 'var(--down)';
 }
 
-/**
- * The win rate change since the last patch as a pill: green up, red down, grey when chance alone could explain it.
- * `detailed` adds an info tip to a grey pill saying so.
- */
 /** A change in points as a pill: green up, red down, grey when `isClear` is false. */
 export function ChangePill({ change, isClear = true, large = false }: { change: number; isClear?: boolean; large?: boolean }) {
   const up = change >= 0;
@@ -52,6 +48,10 @@ export function ChangePill({ change, isClear = true, large = false }: { change: 
   );
 }
 
+/**
+ * The win rate change since the last patch as a pill: green up, red down, grey when chance alone could explain it.
+ * `detailed` adds an info tip to a grey pill saying so.
+ */
 export default function WinRateChange({ stat, large = false, detailed = false }: { stat: CardStat; large?: boolean; detailed?: boolean }) {
   if (stat.winRateChange == null) return null;
   return (

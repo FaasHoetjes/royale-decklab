@@ -20,6 +20,8 @@ interface Drag {
   lastTime: number;
   speed: number;
   isSliding: boolean;
+  /** Measured once as the finger goes down: reading it on every move would force a layout per frame. */
+  width: number;
 }
 
 /**
@@ -40,8 +42,10 @@ export default function MobileDrawer({ onClose }: { onClose: () => void }) {
     const panel = panelRef.current;
     const backdrop = backdropRef.current;
     if (!panel || !backdrop) return;
-    const from = panel.style.transform || CLOSED;
-    const fromOpacity = backdrop.style.opacity || '0';
+    // From wherever it is now, mid-slide included, so closing while it opens doesn't snap open first.
+    const from = getComputedStyle(panel).transform;
+    const fromOpacity = getComputedStyle(backdrop).opacity;
+    stopSliding();
     const to = open ? 'none' : CLOSED;
     const toOpacity = open ? '1' : '0';
     panel.style.transform = to;
@@ -54,6 +58,11 @@ export default function MobileDrawer({ onClose }: { onClose: () => void }) {
     const slide = panel.animate({ transform: [from, to] }, timing);
     backdrop.animate({ opacity: [fromOpacity, toOpacity] }, timing);
     if (!open) slide.finished.then(() => onCloseRef.current(), () => {});
+  };
+
+  const stopSliding = () => {
+    panelRef.current?.getAnimations().forEach((a) => a.cancel());
+    backdropRef.current?.getAnimations().forEach((a) => a.cancel());
   };
 
   const close = () => {
@@ -76,17 +85,17 @@ export default function MobileDrawer({ onClose }: { onClose: () => void }) {
     if (e.target instanceof Element && e.target.closest('a[href]')) close();
   };
 
-  const follow = (offset: number) => {
+  const follow = (offset: number, width: number) => {
     const panel = panelRef.current;
     const backdrop = backdropRef.current;
     if (!panel || !backdrop) return;
     panel.style.transform = `translateX(${offset}px)`;
-    backdrop.style.opacity = String(Math.max(0, 1 + offset / panel.offsetWidth));
+    backdrop.style.opacity = String(Math.max(0, 1 + offset / width));
   };
 
   const startDrag = (e: PointerEvent<HTMLDivElement>) => {
     if (!e.isPrimary || isClosing.current) return;
-    drag.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastTime: e.timeStamp, speed: 0, isSliding: false };
+    drag.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastTime: e.timeStamp, speed: 0, isSliding: false, width: e.currentTarget.offsetWidth };
   };
 
   const moveDrag = (e: PointerEvent<HTMLDivElement>) => {
@@ -103,24 +112,22 @@ export default function MobileDrawer({ onClose }: { onClose: () => void }) {
       // Captured only once it's a swipe, so a tap still reaches the link under the finger.
       current.isSliding = true;
       e.currentTarget.setPointerCapture(e.pointerId);
-      panelRef.current?.getAnimations().forEach((a) => a.cancel());
-      backdropRef.current?.getAnimations().forEach((a) => a.cancel());
+      stopSliding();
     }
     const elapsed = e.timeStamp - current.lastTime;
     if (elapsed > 0) current.speed = (e.clientX - current.lastX) / elapsed;
     current.lastX = e.clientX;
     current.lastTime = e.timeStamp;
-    follow(Math.min(0, dx));
+    follow(Math.min(0, dx), current.width);
   };
 
   const endDrag = (e: PointerEvent<HTMLDivElement>) => {
     const current = drag.current;
     if (!current || current.pointerId !== e.pointerId) return;
     drag.current = null;
-    const panel = panelRef.current;
-    if (!current.isSliding || !panel) return;
+    if (!current.isSliding) return;
     const offset = Math.min(0, current.lastX - current.startX);
-    const isFarEnough = -offset > panel.offsetWidth * DISMISS_SHARE;
+    const isFarEnough = -offset > current.width * DISMISS_SHARE;
     const isStillMoving = e.timeStamp - current.lastTime < STALE_MOVE_MS;
     const isFlung = offset < 0 && isStillMoving && current.speed < -FLING_SPEED_PX_PER_MS;
     if (e.type === 'pointerup' && (isFarEnough || isFlung)) close();

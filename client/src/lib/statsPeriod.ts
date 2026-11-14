@@ -9,7 +9,7 @@ const sincePhrase = (stats: CardStatsResponse) => (stats.since ? `since the ${sh
 /** Which battles the numbers come from, in a sentence. */
 export function periodNote(stats: CardStatsResponse): string {
   if (stats.isLastPatch && stats.until) {
-    return `How every card did in Clan War last patch, from ${battlesIn(stats)} (${patchSpan(stats.since, stats.until)}). The new season's war battles aren't in yet.`;
+    return `How every card did in Clan War last patch, from ${battlesIn(stats)} (${patchSpan(stats.since, stats.until)}). This patch's war battles aren't in yet.`;
   }
   return `How every card does in Clan War, from ${battlesIn(stats)} ${sincePhrase(stats)}.`;
 }

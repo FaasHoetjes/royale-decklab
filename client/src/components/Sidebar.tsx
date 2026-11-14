@@ -113,14 +113,16 @@ function PlayerCard() {
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      // Caught on the way down, before the phone drawer's own Escape on window closes the whole menu.
+      e.stopPropagation();
       setOpen(false);
       buttonRef.current?.focus();
     };
     document.addEventListener('pointerdown', onPointer);
-    window.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     return () => {
       document.removeEventListener('pointerdown', onPointer);
-      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
     };
   }, [open]);
 

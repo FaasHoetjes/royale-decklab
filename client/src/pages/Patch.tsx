@@ -92,7 +92,7 @@ export default function Patch() {
       {stats && catalog.data && stats.isLastPatch && (
         <Panel title="Biggest changes" isMobile={isMobile}>
           <p style={{ ...styles.empty, color: theme.text.secondary }}>
-            The new season's war battles aren't in yet, so there's nothing to compare. Check back in a day or two.
+            This patch's war battles aren't in yet, so there's nothing to compare. Check back in a day or two.
           </p>
         </Panel>
       )}
@@ -129,7 +129,7 @@ export default function Patch() {
 
 const battlesLine = (stats: CardStatsResponse): string => {
   const battles = `${stats.battles.toLocaleString('en-US')} war battles in the top 100 war clans`;
-  if (stats.isLastPatch) return `The new season's war battles aren't in yet. Last patch had ${battles}.`;
+  if (stats.isLastPatch) return `This patch's war battles aren't in yet. Last patch had ${battles}.`;
   if (!stats.since) return `${battles} over the last 30 days`;
   return `${battles} since ${shortDate(stats.since)}`;
 };
