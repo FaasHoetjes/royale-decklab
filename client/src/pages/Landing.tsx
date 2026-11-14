@@ -195,7 +195,7 @@ export default function Landing() {
         )}
       </section>
     </div>
-    <div id={PATCH_SECTION_ID} style={{ marginTop: isMobile ? '28px' : '40px', scrollMarginTop: isMobile ? '69px' : '16px' }}>
+    <div id={PATCH_SECTION_ID} style={{ position: 'relative', marginTop: isMobile ? '28px' : '40px', scrollMarginTop: isMobile ? '69px' : '16px' }}>
       <Suspense fallback={<div style={styles.patchPlaceholder} />}>
         <PatchOverview />
       </Suspense>
@@ -289,7 +289,6 @@ const styles = {
     transition: 'transform 0.15s ease, color 0.15s ease',
   },
   page: {
-    position: 'relative' as const,
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,

@@ -11,13 +11,16 @@ import { percent } from '../lib/cardStats';
 import { shortDate } from '../lib/statsPeriod';
 import { patchName, playRateMovers, updateDate, winRateMovers, type Mover } from '../lib/patchMovers';
 import { track } from '../lib/stats';
-import CardWall from './CardWall';
 import CardTile from './CardTile';
 import CardLink from './CardLink';
 import LoadError from './LoadError';
 import { ChangePill } from './WinRateChange';
 
 const SKELETON_TILES = 10;
+
+// Darkens the start page's card wall behind the heading, so it reads over the art.
+const DESKTOP_BANNER_FADE = 'radial-gradient(ellipse 42% 58% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, transparent 100%)';
+const PHONE_BANNER_FADE = 'radial-gradient(ellipse 70% 58% at 50% 50%, var(--bg-primary) 48%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, transparent 100%)';
 
 const KIND_LABEL: Record<BalanceChangeKind, string> = { buff: 'Buff', nerf: 'Nerf', rework: 'Rework' };
 const KIND_COLOR: Record<BalanceChangeKind, string> = { buff: 'var(--up)', nerf: 'var(--down)', rework: 'var(--text-secondary)' };
@@ -66,7 +69,7 @@ export default function PatchOverview() {
   return (
     <section aria-label="This patch" style={{ ...styles.container, padding: isMobile ? '0 0 4px' : '0 0 20px' }}>
       <header ref={bannerRef} style={{ ...styles.banner, height: isMobile ? '200px' : '230px' }}>
-        <CardWall isMobile={isMobile} variant="banner" />
+        <div aria-hidden="true" style={{ ...styles.bannerFade, background: isMobile ? PHONE_BANNER_FADE : DESKTOP_BANNER_FADE }} />
         <div style={styles.bannerText}>
           <h2 aria-label={name ? `${name} Patch` : 'Patch'} style={{ ...styles.wordmark, color: theme.text.primary }}>
             <MonthLine name={name} isMobile={isMobile} />
@@ -340,6 +343,10 @@ const styles = {
     placeItems: 'center' as const,
     textAlign: 'center' as const,
     marginBottom: '8px',
+  },
+  bannerFade: {
+    position: 'absolute' as const,
+    inset: 0,
   },
   bannerText: {
     position: 'relative' as const,

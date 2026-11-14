@@ -4,7 +4,7 @@ import { cardIconUrl, versionOf } from '../lib/cardDisplay';
 const MAX_ART = 40;
 const CARDS_PER_COLUMN = 12;
 
-// Solid behind the hero and the footer, so the text stays readable over the art.
+// Solid behind the middle of the window and the footer, so the text there stays readable over the art.
 const DESKTOP_FADE = [
   'linear-gradient(to top, var(--bg-primary) 40px, transparent 110px)',
   'radial-gradient(ellipse 36% 40% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, color-mix(in srgb, var(--bg-primary) 35%, transparent) 100%)',
@@ -13,34 +13,16 @@ const PHONE_FADE = [
   'linear-gradient(to top, var(--bg-primary) 150px, transparent 220px)',
   'radial-gradient(ellipse 62% 36% at 50% 50%, var(--bg-primary) 50%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, color-mix(in srgb, var(--bg-primary) 40%, transparent) 100%)',
 ].join(', ');
-const DESKTOP_BANNER_FADE = [
-  'linear-gradient(to top, var(--bg-primary) 6px, transparent 70px)',
-  'radial-gradient(ellipse 42% 58% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, color-mix(in srgb, var(--bg-primary) 35%, transparent) 100%)',
-].join(', ');
-const PHONE_BANNER_FADE = [
-  'linear-gradient(to top, var(--bg-primary) 6px, transparent 60px)',
-  'radial-gradient(ellipse 70% 58% at 50% 50%, var(--bg-primary) 48%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, color-mix(in srgb, var(--bg-primary) 40%, transparent) 100%)',
-].join(', ');
-
-/**
- * `page` fills its positioned parent and the page padding around it, behind the landing page's first screen;
- * `banner` fills its positioned parent, behind a heading.
- */
-export type CardWallVariant = 'page' | 'banner';
-
 const LAYOUTS = {
-  page: {
-    desktop: { columns: 18, width: 118, gap: 18, fade: DESKTOP_FADE },
-    phone: { columns: 9, width: 86, gap: 12, fade: PHONE_FADE },
-  },
-  banner: {
-    desktop: { columns: 16, width: 84, gap: 14, fade: DESKTOP_BANNER_FADE },
-    phone: { columns: 8, width: 66, gap: 10, fade: PHONE_BANNER_FADE },
-  },
+  desktop: { columns: 18, width: 118, gap: 18, fade: DESKTOP_FADE },
+  phone: { columns: 9, width: 86, gap: 12, fade: PHONE_FADE },
 } as const;
 
-/** Tilted columns of the meta's cards drifting up and down, faded out toward the middle. */
-export default function CardWall({ isMobile, variant = 'page' }: { isMobile: boolean; variant?: CardWallVariant }) {
+/**
+ * Tilted columns of the meta's cards drifting up and down behind the whole window, faded out toward the middle.
+ * Only content that is itself positioned paints over it.
+ */
+export default function CardWall({ isMobile }: { isMobile: boolean }) {
   const sets = useBestDecks().data?.sets ?? [];
   const art = [
     ...new Set(
@@ -53,12 +35,10 @@ export default function CardWall({ isMobile, variant = 'page' }: { isMobile: boo
     .slice(0, MAX_ART);
   if (art.length === 0) return null;
 
-  const layout = LAYOUTS[variant][isMobile ? 'phone' : 'desktop'];
-  const pagePadding = isMobile ? '-12px' : '-20px';
-  const placement = variant === 'page' ? { ...styles.page, top: pagePadding, left: pagePadding, right: pagePadding } : styles.banner;
+  const layout = isMobile ? LAYOUTS.phone : LAYOUTS.desktop;
 
   return (
-    <div className="card-wall" aria-hidden="true" style={{ ...styles.wall, ...placement }}>
+    <div className="card-wall" aria-hidden="true" style={{ ...styles.wall, left: isMobile ? 0 : '240px' }}>
       <div style={{ ...styles.columns, gap: `${layout.gap}px` }}>
         {Array.from({ length: layout.columns }, (_, c) => {
           const cards = Array.from({ length: CARDS_PER_COLUMN }, (_, i) => art[(c * 5 + i) % art.length]);
@@ -88,18 +68,12 @@ export default function CardWall({ isMobile, variant = 'page' }: { isMobile: boo
 
 const styles = {
   wall: {
+    position: 'fixed' as const,
+    top: 0,
+    right: 0,
+    bottom: 0,
     overflow: 'hidden' as const,
     pointerEvents: 'none' as const,
-  },
-  page: {
-    position: 'absolute' as const,
-    bottom: 0,
-  },
-  banner: {
-    position: 'absolute' as const,
-    inset: 0,
-    maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)',
-    WebkitMaskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)',
   },
   columns: {
     position: 'absolute' as const,
