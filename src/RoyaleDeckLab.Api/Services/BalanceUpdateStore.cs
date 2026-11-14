@@ -18,8 +18,9 @@ public sealed class BalanceUpdateStore(IServiceScopeFactory scopeFactory, ILogge
     /// <summary>Goes up whenever the stored updates change, so cached responses showing them are dropped.</summary>
     public long Version => Interlocked.Read(ref _version);
 
+    /// <summary>Nothing while the catalog isn't in, rather than every name reported as one no card goes by.</summary>
     public IReadOnlyList<BalanceUpdate> During(CardStatsResponse stats, IReadOnlyList<CatalogCard> cards)
-        => BalanceUpdates.During(BalanceUpdates.Resolve(Posted(), cards, ReportUnmatched), stats);
+        => cards.Count == 0 ? [] : BalanceUpdates.During(BalanceUpdates.Resolve(Posted(), cards, ReportUnmatched), stats);
 
     public async Task SaveAsync(IReadOnlyList<PostedUpdate> found, CancellationToken ct)
     {

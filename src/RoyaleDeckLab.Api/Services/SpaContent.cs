@@ -109,7 +109,13 @@ public static class SpaContent
             foreach (var change in update.Changes.Where(c => nameById.ContainsKey(c.CardId)))
             {
                 var kind = change.Kind.ToString().ToLowerInvariant();
-                html.Append("<li>").Append(CardLink(nameById[change.CardId])).Append(Encode($" ({kind}): {change.Summary}")).Append("</li>");
+                var version = change.Version switch
+                {
+                    CardVersionKind.Evo => " Evolution",
+                    CardVersionKind.Hero => " Hero",
+                    _ => "",
+                };
+                html.Append("<li>").Append(CardLink(nameById[change.CardId])).Append(Encode($"{version} ({kind}): {change.Summary}")).Append("</li>");
             }
             html.Append("</ul>");
         }
