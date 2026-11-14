@@ -511,6 +511,7 @@ const styles = {
     display: 'grid' as const,
   },
   changeCard: {
+    position: 'relative' as const,
     display: 'flex' as const,
     flexDirection: 'column' as const,
     height: '100%',
