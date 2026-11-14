@@ -21,6 +21,11 @@ import SlotNumber from '../components/SlotNumber';
 // Below the fold, so the start page doesn't wait for it.
 const PatchOverview = lazy(() => import('../components/PatchOverview'));
 
+// The first screen fills the window, so the patch section starts just below it; the bottom padding keeps the hero
+// where it sat before, above the window's middle.
+const PHONE_HEADER_AND_PADDING = '73px';
+const DESKTOP_PADDING = '20px';
+
 const scrollToPatch = (behavior: ScrollBehavior) =>
   document.getElementById(PATCH_SECTION_ID)?.scrollIntoView({ behavior, block: 'start' });
 
@@ -104,7 +109,13 @@ export default function Landing() {
 
   return (
     <>
-    <div style={{ ...styles.page, minHeight: isMobile ? 'calc(100dvh - 260px)' : 'calc(100dvh - 120px)' }}>
+    <div
+      style={{
+        ...styles.page,
+        minHeight: isMobile ? `calc(100dvh - ${PHONE_HEADER_AND_PADDING})` : `calc(100dvh - ${DESKTOP_PADDING})`,
+        paddingBottom: isMobile ? '187px' : '100px',
+      }}
+    >
       <CardWall isMobile={isMobile} />
       <section style={styles.hero}>
         <h1 aria-label="Royale DeckLab" style={{ ...styles.wordmark, color: theme.text.primary }}>
@@ -289,6 +300,7 @@ const styles = {
     transition: 'transform 0.15s ease, color 0.15s ease',
   },
   page: {
+    boxSizing: 'border-box' as const,
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
