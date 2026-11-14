@@ -76,9 +76,9 @@ public sealed class BalanceUpdatesTests
     }
 
     [Theory]
-    [InlineData(26000054, "Damage 212 → 202\nMass 3 → 6")]
+    [InlineData(26000054, "Damage: 212 → 202\nMass: 3 → 6")]
     [InlineData(26000042, "Removed Attack Delay after Ability")]
-    [InlineData(28000023, "2–4 Target Damage 296 → 307")]
+    [InlineData(28000023, "2–4 Target Damage: 296 → 307")]
     public void A_summary_is_the_stat_lines_without_their_share(int cardId, string summary)
         => Assert.Equal(summary, Resolve(ReadOctober())[0].Changes.First(c => c.CardId == cardId).Summary);
 
@@ -108,7 +108,7 @@ public sealed class BalanceUpdatesTests
 
         var change = Assert.Single(Assert.Single(PatchNotes.ParseUpdates(page, AugustPost)).Changes);
 
-        Assert.Equal("Spear Damage 284 → 220\nRage Duration 3.5sec → 2.5sec", change.Summary);
+        Assert.Equal("Spear Damage: 284 → 220\nRage Duration: 3.5sec → 2.5sec", change.Summary);
     }
 
     [Fact]

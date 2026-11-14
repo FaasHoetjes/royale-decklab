@@ -37,7 +37,8 @@ public static partial class PatchNotes
     [GeneratedRegex(@"\s*\([+\-−–]?\d+(?:[.,]\d+)?\s*%\)")]
     private static partial Regex ShareRegex();
 
-    [GeneratedRegex(@"^([^:→]+):\s*")]
+    // A stat name, as in "Damage:  212", spaced the same whatever the notes did.
+    [GeneratedRegex(@"^([^:→]+?)\s*:\s*")]
     private static partial Regex StatNameRegex();
 
     private const int MaxSummaryLines = 3;
@@ -202,7 +203,7 @@ public static partial class PatchNotes
         var lines = new List<string>();
         CollectLines(doc, lines);
         return string.Join('\n', lines
-            .Select(line => StatNameRegex().Replace(ShareRegex().Replace(line, ""), "$1 ").Trim())
+            .Select(line => StatNameRegex().Replace(ShareRegex().Replace(line, ""), "$1: ").Trim())
             .Where(line => line.Length > 0)
             .Take(MaxSummaryLines));
     }
