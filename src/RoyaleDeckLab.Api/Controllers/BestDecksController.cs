@@ -16,15 +16,15 @@ public sealed class BestDecksController(
     [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     [OutputCache(PolicyName = "public-json")]
-    public async Task<IActionResult> Get(CancellationToken ct)
+    public async Task<IActionResult> Get()
     {
         try
         {
-            var cards = await catalog.GetAsync(ct);
+            var cards = await catalog.GetAsync();
             var sets = builder.BuildCached(cache.Version, cache.Meta, cards);
             return Ok(new { sets });
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (Exception ex)
         {
             logger.LogError(ex, "Error generating best decks");
             Response.Headers.CacheControl = "no-store";

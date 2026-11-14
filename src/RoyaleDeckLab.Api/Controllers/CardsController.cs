@@ -17,14 +17,14 @@ public sealed class CardsController(
     [HttpGet]
     [OutputCache(PolicyName = "public-json")]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
-    public async Task<IActionResult> Get(CancellationToken ct)
+    public async Task<IActionResult> Get()
     {
         try
         {
-            var cards = await catalog.GetAsync(ct);
+            var cards = await catalog.GetAsync();
             return Ok(new { cards });
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching card catalog");
             Response.Headers.CacheControl = "no-store";
@@ -42,18 +42,18 @@ public sealed class CardsController(
     [OutputCache(PolicyName = "public-json")]
     [RequireMetaLoaded]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
-    public async Task<IActionResult> Decks(int id, CancellationToken ct)
+    public async Task<IActionResult> Decks(int id)
     {
         try
         {
-            var cards = await catalog.GetAsync(ct);
+            var cards = await catalog.GetAsync();
             if (!cards.Any(c => c.Id == id))
             {
                 return NotFound(new { error = "Unknown card" });
             }
             return Ok(new { decks = decks.TopDecksWithCached(id, cache.Version, cache.Meta, cards, DecksPerCard) });
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (Exception ex)
         {
             logger.LogError(ex, "Error finding decks for card {CardId}", id);
             Response.Headers.CacheControl = "no-store";

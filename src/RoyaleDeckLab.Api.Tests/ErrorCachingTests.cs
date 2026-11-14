@@ -58,7 +58,7 @@ public sealed class ErrorCachingTests : IDisposable
     {
         var controller = WithFilterCaching(new CardsController(_catalog, _meta, new BestDecksBuilder(), NullLogger<CardsController>.Instance));
 
-        var result = Assert.IsType<ObjectResult>(await controller.Get(CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(await controller.Get());
 
         Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
         Assert.Equal("no-store", controller.Response.Headers.CacheControl.ToString());
@@ -69,7 +69,7 @@ public sealed class ErrorCachingTests : IDisposable
     {
         var controller = WithFilterCaching(new CardsController(_catalog, _meta, new BestDecksBuilder(), NullLogger<CardsController>.Instance));
 
-        var result = Assert.IsType<ObjectResult>(await controller.Decks(26_000_000, CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(await controller.Decks(26_000_000));
 
         Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
         Assert.Equal("no-store", controller.Response.Headers.CacheControl.ToString());
@@ -80,7 +80,7 @@ public sealed class ErrorCachingTests : IDisposable
     {
         var controller = WithFilterCaching(new BestDecksController(_meta, _catalog, new BestDecksBuilder(), NullLogger<BestDecksController>.Instance));
 
-        var result = Assert.IsType<ObjectResult>(await controller.Get(CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(await controller.Get());
 
         Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
         Assert.Equal("no-store", controller.Response.Headers.CacheControl.ToString());
