@@ -33,7 +33,7 @@ export function parseOptions(params: URLSearchParams): GeneratorOptions {
   const decks = decksRaw != null ? Number(decksRaw) : stored.decks;
   const minLevel = minRaw != null ? Number(minRaw) : stored.minLevel;
   const boostsRaw = params.get('boosts');
-  const boosts = boostsRaw != null ? boostsRaw !== 'false' : stored.boosts;
+  const boosts = boostsRaw !== 'false';
 
   const ban = parseIdList(params.get('ban'));
   const require = parseIdList(params.get('require')).filter((id) => !ban.includes(id));
@@ -73,25 +73,25 @@ export function toQuery(options: GeneratorOptions): string {
 export const hasActiveOptions = (o: GeneratorOptions) =>
   o.decks !== MAX_DECKS || o.minLevel != null || o.ban.length > 0 || o.require.length > 0 || o.lock.length > 0 || !o.boosts;
 
-type RememberedOptions = Pick<GeneratorOptions, 'decks' | 'minLevel' | 'boosts'>;
+type RememberedOptions = Pick<GeneratorOptions, 'decks' | 'minLevel'>;
 
-// Number of decks, minimum level and boosts are personal preferences, so they carry over to the next search.
+// Number of decks and minimum level are personal preferences, so they carry over to the next search. Boosts aren't:
+// the switch is hidden for players without boosted cards, and a remembered "off" would leave them a Reset for nothing.
 function loadDefaults(): RememberedOptions {
   try {
     const saved = JSON.parse(localStorage.getItem(DEFAULTS_KEY) ?? 'null');
     return {
       decks: typeof saved?.decks === 'number' ? saved.decks : MAX_DECKS,
       minLevel: typeof saved?.minLevel === 'number' ? saved.minLevel : null,
-      boosts: typeof saved?.boosts === 'boolean' ? saved.boosts : true,
     };
   } catch {
-    return { decks: MAX_DECKS, minLevel: null, boosts: true };
+    return { decks: MAX_DECKS, minLevel: null };
   }
 }
 
 export function saveDefaults(options: GeneratorOptions): void {
   try {
-    const remembered: RememberedOptions = { decks: options.decks, minLevel: options.minLevel, boosts: options.boosts };
+    const remembered: RememberedOptions = { decks: options.decks, minLevel: options.minLevel };
     localStorage.setItem(DEFAULTS_KEY, JSON.stringify(remembered));
   } catch {
     // Storage blocked (private mode): the options still work through the URL.
