@@ -50,6 +50,11 @@ public sealed class SeenPatchNoteEntity
     public string Key { get; set; } = "";
 }
 
+public sealed class SeasonBoostEntity
+{
+    public int CardId { get; set; }
+}
+
 public sealed class BalanceUpdateEntity
 {
     /// <summary>The day it went live, as yyyy-MM-dd.</summary>

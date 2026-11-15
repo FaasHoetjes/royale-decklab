@@ -37,4 +37,9 @@ public sealed class MetaOptions
     public double RankingQuantile { get; set; } = 0.25;
 
     public long PatchCheckIntervalMs { get; set; } = 30L * 60 * 1000;
+
+    public long SeasonBoostCheckIntervalMs { get; set; } = 3L * 60 * 60 * 1000;
+
+    // 200 players from the top war clans gave every boosted card of Nov 2026 at least 11 users below King Tower level.
+    public int SeasonBoostSamplePlayers { get; set; } = 200;
 }

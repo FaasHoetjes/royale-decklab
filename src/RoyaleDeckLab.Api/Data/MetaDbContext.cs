@@ -14,6 +14,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
     public DbSet<KnownCardVersionEntity> KnownCardVersions => Set<KnownCardVersionEntity>();
     public DbSet<SeenPatchNoteEntity> SeenPatchNotes => Set<SeenPatchNoteEntity>();
     public DbSet<BalanceUpdateEntity> BalanceUpdates => Set<BalanceUpdateEntity>();
+    public DbSet<SeasonBoostEntity> SeasonBoosts => Set<SeasonBoostEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +95,13 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             u.Property(x => x.Day).HasColumnName("day");
             u.Property(x => x.NotesUrl).HasColumnName("notes_url");
             u.Property(x => x.Changes).HasColumnName("changes");
+        });
+
+        modelBuilder.Entity<SeasonBoostEntity>(b =>
+        {
+            b.ToTable("season_boosts");
+            b.HasKey(x => x.CardId);
+            b.Property(x => x.CardId).HasColumnName("card_id").ValueGeneratedNever();
         });
 
         modelBuilder.Entity<CardPeriodEntity>(c =>

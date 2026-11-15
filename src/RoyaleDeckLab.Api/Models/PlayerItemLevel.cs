@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using RoyaleDeckLab.Api.Dtos;
 
 namespace RoyaleDeckLab.Api.Models;
@@ -12,6 +13,19 @@ public sealed record PlayerItemLevel
     public int? ElixirCost { get; init; }
     public Rarity Rarity { get; init; }
     public CardIconUrls? IconUrls { get; init; }
+
+    /// <summary>The player's own level when a season boost has raised <see cref="Level"/> for this season.</summary>
+    public int? BoostedFromLevel { get; init; }
+
+    /// <summary>The level the player has upgraded the card to, whatever a boost lends it for the season.</summary>
+    [JsonIgnore]
+    public int OwnedLevel => BoostedFromLevel ?? Level;
+
+    public PlayerItemLevel BoostedTo(int displayLevel) => this with
+    {
+        Level = displayLevel - (LevelModel.MaxDisplayLevel - MaxLevel),
+        BoostedFromLevel = OwnedLevel,
+    };
 }
 
 public static class PlayerItemLevelMapping

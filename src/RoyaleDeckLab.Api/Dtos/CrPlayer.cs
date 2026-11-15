@@ -6,7 +6,8 @@ public sealed record CrPlayer(
     string Tag,
     string Name,
     List<CrPlayerCard>? Cards,
-    ClanRef? Clan)
+    ClanRef? Clan,
+    int KingTowerLevel)
 {
     public CrPlayer WithDisplayNames() => this with { Name = DisplayName.Clean(Name, Tag), Clan = Clan?.WithDisplayName() };
 }

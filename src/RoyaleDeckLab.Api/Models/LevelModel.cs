@@ -18,12 +18,18 @@ public static class LevelModel
     public const double OpponentSlope = 0.43;
     public const int LineupCards = 32;
 
-    public static int DisplayLevel(PlayerItemLevel card)
-        => MaxDisplayLevel - Math.Max(0, card.MaxLevel - card.Level);
+    public static int DisplayLevel(PlayerItemLevel card) => DisplayLevel(card.Level, card.MaxLevel);
 
+    public static int DisplayLevel(int level, int maxLevel) => MaxDisplayLevel - Math.Max(0, maxLevel - level);
+
+    // Fitted on the levels players own, and the matchmaking it stands for doesn't look at boosts.
     public static double OpponentLevel(IEnumerable<PlayerItemLevel> collection)
     {
-        var best = collection.Select(DisplayLevel).OrderDescending().Take(LineupCards).ToList();
+        var best = collection
+            .Select(card => DisplayLevel(card.OwnedLevel, card.MaxLevel))
+            .OrderDescending()
+            .Take(LineupCards)
+            .ToList();
         var typical = best.Count > 0 ? best.Average() : MaxDisplayLevel;
         return OpponentIntercept + OpponentSlope * typical;
     }
