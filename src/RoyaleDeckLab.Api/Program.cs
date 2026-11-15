@@ -25,6 +25,7 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 
 builder.Services.Configure<MetaOptions>(builder.Configuration.GetSection(MetaOptions.SectionName));
 builder.Services.Configure<ClashRoyaleOptions>(builder.Configuration.GetSection(ClashRoyaleOptions.SectionName));
+builder.Services.Configure<CrownSeriesOptions>(builder.Configuration.GetSection(CrownSeriesOptions.SectionName));
 builder.Services.PostConfigure<ClashRoyaleOptions>(o =>
 {
     var key = Environment.GetEnvironmentVariable("CLASH_ROYALE_API_KEY");
@@ -50,6 +51,7 @@ builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
     opt.UseSqlite($"Data Source={dbPath}");
 });
 builder.Services.AddScoped<BattleRepository>();
+builder.Services.AddScoped<CrownSeriesRepository>();
 
 builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
     {
@@ -91,6 +93,8 @@ builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
+builder.Services.AddScoped<CrownSeriesCollector>();
+builder.Services.AddHostedService<CrownSeriesRefreshService>();
 builder.Services.AddSingleton<CardReleases>();
 builder.Services.AddHttpClient<SupercellBlogClient>(http =>
     {

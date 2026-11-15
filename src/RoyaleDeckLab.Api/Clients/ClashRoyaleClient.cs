@@ -22,6 +22,17 @@ public sealed class ClashRoyaleClient(HttpClient http)
         return data?.Items?.Select(c => c.Tag).Where(t => !string.IsNullOrEmpty(t)).Cast<string>().ToList() ?? [];
     }
 
+    public async Task<IReadOnlyList<string>> GetTopRankedPlayerTagsAsync(int limit, CancellationToken ct = default)
+    {
+        var data = await http.GetFromJsonAsync<RankedPlayersResponse>(
+            $"locations/global/pathoflegend/players?limit={limit}", Json, ct);
+        var tags = data?.Items?.Select(p => p.Tag) ?? [];
+        return tags
+            .OfType<string>()
+            .Where(t => t.Length > 0)
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<string>> GetClanMemberTagsAsync(string clanTag, CancellationToken ct = default)
     {
         var encoded = Uri.EscapeDataString(clanTag);

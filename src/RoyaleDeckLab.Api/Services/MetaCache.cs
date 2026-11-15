@@ -157,7 +157,9 @@ public sealed class MetaCache(
             var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
             var builder = scope.ServiceProvider.GetRequiredService<MetaBuilder>();
 
-            var fresh = await builder.CollectWarBattleRecordsAsync(ct);
+            var crawl = await builder.CrawlTopWarClansAsync(ct);
+            await scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().MergeRoundsAsync(crawl.CrownSeriesRounds, ct);
+            var fresh = crawl.WarBattles;
 
             if (fresh.Count == 0)
             {

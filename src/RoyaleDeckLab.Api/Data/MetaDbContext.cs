@@ -9,6 +9,7 @@ namespace RoyaleDeckLab.Api.Data;
 public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbContext(options)
 {
     public DbSet<BattleEntity> Battles => Set<BattleEntity>();
+    public DbSet<CrownSeriesRoundEntity> CrownSeriesRounds => Set<CrownSeriesRoundEntity>();
     public DbSet<MetaStateEntity> MetaState => Set<MetaStateEntity>();
     public DbSet<CardPeriodEntity> CardPeriods => Set<CardPeriodEntity>();
     public DbSet<KnownCardVersionEntity> KnownCardVersions => Set<KnownCardVersionEntity>();
@@ -44,6 +45,15 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
             v => v.ToList());
 
+        var levelsConverter = new ValueConverter<IReadOnlyList<CardLevel>, string>(
+            v => JsonSerializer.Serialize(v, StorageJson.Options),
+            v => JsonSerializer.Deserialize<List<CardLevel>>(v, StorageJson.Options) ?? new List<CardLevel>());
+
+        var levelsComparer = new ValueComparer<IReadOnlyList<CardLevel>>(
+            (a, b) => a!.SequenceEqual(b!),
+            v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
+            v => v.ToList());
+
         var resultConverter = new ValueConverter<BattleResult, string>(
             v => v.ToString().ToLowerInvariant(),
             v => Enum.Parse<BattleResult>(v, ignoreCase: true));
@@ -60,6 +70,26 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             b.Property(x => x.Result).HasColumnName("result").HasConversion(resultConverter).IsRequired();
             b.Property(x => x.CardVersions).HasColumnName("card_versions").HasConversion(versionsConverter, versionsComparer).IsRequired();
             b.HasIndex(x => x.BattleTimeMs).HasDatabaseName("idx_battles_time");
+        });
+
+        modelBuilder.Entity<CrownSeriesRoundEntity>(r =>
+        {
+            r.ToTable("crown_series_rounds");
+            r.HasKey(x => x.Key);
+            r.Property(x => x.Key).HasColumnName("key");
+            r.Property(x => x.MatchKey).HasColumnName("match_key").IsRequired();
+            r.Property(x => x.PlayerTag).HasColumnName("player_tag").IsRequired();
+            r.Property(x => x.BattleTime).HasColumnName("battle_time").IsRequired();
+            r.Property(x => x.BattleTimeMs).HasColumnName("battle_time_ms").IsRequired();
+            r.Property(x => x.Round).HasColumnName("round").IsRequired();
+            r.Property(x => x.Result).HasColumnName("result").HasConversion(resultConverter).IsRequired();
+            r.Property(x => x.CardIds).HasColumnName("card_ids").HasConversion(cardIdsConverter, cardIdsComparer).IsRequired();
+            r.Property(x => x.CardLevels).HasColumnName("card_levels").HasConversion(levelsConverter, levelsComparer).IsRequired();
+            r.Property(x => x.CardVersions).HasColumnName("card_versions").HasConversion(versionsConverter, versionsComparer).IsRequired();
+            r.Property(x => x.League).HasColumnName("league").IsRequired();
+            r.Property(x => x.EventTag).HasColumnName("event_tag").IsRequired();
+            r.Property(x => x.GameModeId).HasColumnName("game_mode_id").IsRequired();
+            r.HasIndex(x => x.BattleTimeMs).HasDatabaseName("idx_crown_series_rounds_time");
         });
 
         modelBuilder.Entity<MetaStateEntity>(m =>

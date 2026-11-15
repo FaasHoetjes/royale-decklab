@@ -6,4 +6,6 @@ public sealed record CrBattle(
     CrGameMode? GameMode,
     string? DeckSelection,
     List<CrBattleSide>? Team,
-    List<CrBattleSide>? Opponent);
+    List<CrBattleSide>? Opponent,
+    string? EventTag = null,
+    int? LeagueNumber = null);

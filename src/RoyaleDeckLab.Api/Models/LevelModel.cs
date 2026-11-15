@@ -18,8 +18,9 @@ public static class LevelModel
     public const double OpponentSlope = 0.43;
     public const int LineupCards = 32;
 
-    public static int DisplayLevel(PlayerItemLevel card)
-        => MaxDisplayLevel - Math.Max(0, card.MaxLevel - card.Level);
+    public static int DisplayLevel(PlayerItemLevel card) => DisplayLevel(card.Level, card.MaxLevel);
+
+    public static int DisplayLevel(int level, int maxLevel) => MaxDisplayLevel - Math.Max(0, maxLevel - level);
 
     public static double OpponentLevel(IEnumerable<PlayerItemLevel> collection)
     {

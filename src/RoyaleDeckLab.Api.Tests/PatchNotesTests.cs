@@ -165,6 +165,7 @@ public sealed class PatchNotesTests : IDisposable
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<BattleRepository>();
+        services.AddScoped<CrownSeriesRepository>();
         services.AddScoped<MetaBuilder>();
         services.AddSingleton(new ClashRoyaleClient(new HttpClient(blog) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddSingleton(new SupercellBlogClient(new HttpClient(blog) { BaseAddress = new Uri("https://blog.test/") }));

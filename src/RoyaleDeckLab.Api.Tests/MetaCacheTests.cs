@@ -96,6 +96,7 @@ public sealed class MetaCacheTests : IDisposable
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<BattleRepository>();
+        services.AddScoped<CrownSeriesRepository>();
         services.AddSingleton(new ClashRoyaleClient(
             new HttpClient(_crawl) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddScoped<MetaBuilder>();
