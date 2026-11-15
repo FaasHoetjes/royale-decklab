@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
@@ -157,7 +158,9 @@ public sealed class MetaCache(
             var store = scope.ServiceProvider.GetRequiredService<BattleRepository>();
             var builder = scope.ServiceProvider.GetRequiredService<MetaBuilder>();
 
-            var fresh = await builder.CollectWarBattleRecordsAsync(ct);
+            var crawl = await builder.CrawlTopWarClansAsync(ct);
+            var fresh = crawl.WarBattles;
+            await MergeCrownSeriesRoundsAsync(scope.ServiceProvider, crawl.CrownSeriesRounds, ct);
 
             if (fresh.Count == 0)
             {
@@ -192,6 +195,21 @@ public sealed class MetaCache(
             {
                 _isBuilding = false;
             }
+        }
+    }
+
+    // The war meta is what a rebuild is for; failing to store the Duels the crawl came across shouldn't undo it.
+    private async Task MergeCrownSeriesRoundsAsync(IServiceProvider services, List<CrownSeriesRound> found, CancellationToken ct)
+    {
+        var cutoff = PruneCutoff();
+        var rounds = found.Where(r => r.BattleTimeMs >= cutoff).ToList();
+        try
+        {
+            await services.GetRequiredService<CrownSeriesRepository>().MergeRoundsAsync(rounds, ct);
+        }
+        catch (SqliteException ex)
+        {
+            logger.LogError(ex, "Couldn't store the {Count} Crown Series rounds found by the war crawl", rounds.Count);
         }
     }
 

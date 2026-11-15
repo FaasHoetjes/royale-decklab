@@ -11,7 +11,7 @@ namespace RoyaleDeckLab.Api.Data;
 
 public sealed partial class BattleRepository(MetaDbContext db)
 {
-    private static readonly SemaphoreSlim WriteGate = new(1, 1);
+    private static SemaphoreSlim WriteGate => MetaWriteGate.Instance;
 
     [GeneratedRegex(@"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})")]
     private static partial Regex BattleTimeRegex();

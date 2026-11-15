@@ -25,6 +25,7 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 
 builder.Services.Configure<MetaOptions>(builder.Configuration.GetSection(MetaOptions.SectionName));
 builder.Services.Configure<ClashRoyaleOptions>(builder.Configuration.GetSection(ClashRoyaleOptions.SectionName));
+builder.Services.Configure<CrownSeriesOptions>(builder.Configuration.GetSection(CrownSeriesOptions.SectionName));
 builder.Services.PostConfigure<ClashRoyaleOptions>(o =>
 {
     var key = Environment.GetEnvironmentVariable("CLASH_ROYALE_API_KEY");
@@ -50,18 +51,14 @@ builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
     opt.UseSqlite($"Data Source={dbPath}");
 });
 builder.Services.AddScoped<BattleRepository>();
+builder.Services.AddScoped<CrownSeriesRepository>();
 
-builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
-    {
-        var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
-        http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
-        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
-        http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-    })
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-    {
-        AutomaticDecompression = System.Net.DecompressionMethods.All,
-    })
+builder.Services.AddHttpClient<ClashRoyaleClient>(ConfigureClashRoyaleApi)
+    .ConfigurePrimaryHttpMessageHandler(CreateClashRoyaleHandler)
+    .AddStandardResilienceHandler();
+builder.Services.AddSingleton<CrawlConcurrency>();
+builder.Services.AddHttpClient<ClashRoyaleCrawlClient>(ConfigureClashRoyaleApi)
+    .ConfigurePrimaryHttpMessageHandler(CreateClashRoyaleHandler)
     .AddStandardResilienceHandler();
 
 builder.Services.AddSingleton(TimeProvider.System);
@@ -91,6 +88,9 @@ builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
+builder.Services.AddSingleton<CrownSeriesSchedule>();
+builder.Services.AddScoped<CrownSeriesCollector>();
+builder.Services.AddHostedService<CrownSeriesRefreshService>();
 builder.Services.AddSingleton<CardReleases>();
 builder.Services.AddHttpClient<SupercellBlogClient>(http =>
     {
@@ -172,3 +172,16 @@ app.MapSpaFallback();
 await app.Services.GetRequiredService<CardArtCache>().LoadVersionsFromDiskAsync();
 app.Logger.LogInformation("Royale DeckLab API running on http://localhost:3000");
 app.Run();
+
+static void ConfigureClashRoyaleApi(IServiceProvider sp, HttpClient http)
+{
+    var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
+    http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
+    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
+    http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+}
+
+static HttpMessageHandler CreateClashRoyaleHandler() => new SocketsHttpHandler
+{
+    AutomaticDecompression = System.Net.DecompressionMethods.All,
+};

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
@@ -8,7 +9,7 @@ using RoyaleDeckLab.Api.Options;
 namespace RoyaleDeckLab.Api.Services;
 
 public sealed class MetaBuilder(
-    ClashRoyaleClient client,
+    ClashRoyaleCrawlClient client,
     IOptions<MetaOptions> options,
     ILogger<MetaBuilder> logger)
 {
@@ -16,7 +17,7 @@ public sealed class MetaBuilder(
 
     private const string WarBattleMode = "CW_Battle_1v1";
 
-    public async Task<List<BattleRecord>> CollectWarBattleRecordsAsync(CancellationToken ct = default)
+    public async Task<WarClanCrawl> CrawlTopWarClansAsync(CancellationToken ct = default)
     {
         logger.LogInformation("Collecting WAR battle records...");
         var start = DateTime.UtcNow;
@@ -26,14 +27,15 @@ public sealed class MetaBuilder(
         if (clanTags.Count == 0)
         {
             logger.LogWarning("No war clans found.");
-            return [];
+            return new WarClanCrawl();
         }
 
-        var records = await ProcessWarClansAsync(clanTags, _opt.WarRecordTarget, ct);
+        var crawl = await ProcessWarClansAsync(clanTags, _opt.WarRecordTarget, ct);
 
         var elapsed = (DateTime.UtcNow - start).TotalSeconds;
-        logger.LogInformation("Collected {Count} war battle records in {Elapsed:F2}s", records.Count, elapsed);
-        return records;
+        logger.LogInformation("Collected {Count} war battle records and {Rounds} Crown Series rounds in {Elapsed:F2}s",
+            crawl.WarBattles.Count, crawl.CrownSeriesRounds.Count, elapsed);
+        return crawl;
     }
 
     private async Task<List<string>> FetchTopWarClansAsync(CancellationToken ct)
@@ -50,67 +52,76 @@ public sealed class MetaBuilder(
         }
     }
 
-    private async Task<List<BattleRecord>> ProcessWarClansAsync(List<string> clanTags, int target, CancellationToken ct)
+    private async Task<WarClanCrawl> ProcessWarClansAsync(List<string> clanTags, int target, CancellationToken ct)
     {
-        var records = new List<BattleRecord>();
+        var crawl = new WarClanCrawl();
         var seenPlayers = new HashSet<string>();
         const int clanBatchSize = 10;
 
         var done = 0;
         foreach (var clanBatch in clanTags.Chunk(clanBatchSize))
         {
-            var rosters = await Task.WhenAll(clanBatch.Select(async tag =>
+            try
             {
-                try
-                {
-                    return await client.GetClanMemberTagsAsync(tag, ct);
-                }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
-                {
-                    logger.LogWarning(ex, "Couldn't fetch the members of clan {ClanTag}; skipping it", tag);
-                    return (IReadOnlyList<string>)[];
-                }
-            }));
-
-            var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
-
-            records.AddRange(await ProcessWarPlayersAsync(members, ct));
+                var rosters = await Task.WhenAll(clanBatch.Select(tag => FetchMembersAsync(tag, ct)));
+                var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
+                await ProcessWarPlayersAsync(members, crawl, ct);
+            }
+            catch (BrokenCircuitException)
+            {
+                logger.LogWarning("The CR API is refusing crawl requests; war crawl stopped after {Clans} clans", done);
+                break;
+            }
             done += clanBatch.Length;
             logger.LogInformation("Processed {Done}/{Total} clans ({Players} players, {Records} records)",
-                done, clanTags.Count, seenPlayers.Count, records.Count);
+                done, clanTags.Count, seenPlayers.Count, crawl.WarBattles.Count);
 
-            if (records.Count >= target)
+            if (crawl.WarBattles.Count >= target)
             {
                 logger.LogInformation("Reached war record target ({Target}); stopping early.", target);
                 break;
             }
         }
-        return records;
+        return crawl;
     }
 
-    private async Task<List<BattleRecord>> ProcessWarPlayersAsync(List<string> tags, CancellationToken ct)
+    private async Task<IReadOnlyList<string>> FetchMembersAsync(string clanTag, CancellationToken ct)
     {
-        var records = new List<BattleRecord>();
-        const int batchSize = 10;
-        foreach (var batch in tags.Chunk(batchSize))
+        try
         {
-            var results = await Task.WhenAll(batch.Select(tag => ProcessWarBattleLogAsync(tag, ct)));
-            foreach (var playerRecords in results)
-            {
-                records.AddRange(playerRecords);
-            }
+            return await client.GetClanMemberTagsAsync(clanTag, ct);
         }
-        return records;
+        catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Couldn't fetch the members of clan {ClanTag}; skipping it", clanTag);
+            return [];
+        }
     }
 
-    private async Task<List<BattleRecord>> ProcessWarBattleLogAsync(string playerTag, CancellationToken ct)
+    // Each player's log is added as soon as it's read, so a crawl stopped by the circuit breaker keeps what it has.
+    private async Task ProcessWarPlayersAsync(List<string> tags, WarClanCrawl crawl, CancellationToken ct)
     {
-        var records = new List<BattleRecord>();
+        var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
+        await Parallel.ForEachAsync(tags, parallel, async (tag, token) =>
+        {
+            var playerCrawl = await ProcessWarBattleLogAsync(tag, token);
+            lock (crawl)
+            {
+                crawl.Add(playerCrawl);
+            }
+        });
+    }
+
+    private async Task<WarClanCrawl> ProcessWarBattleLogAsync(string playerTag, CancellationToken ct)
+    {
+        var crawl = new WarClanCrawl();
+        var records = crawl.WarBattles;
         try
         {
             var battles = await client.GetPlayerBattlelogAsync(playerTag, ct);
             foreach (var battle in battles)
             {
+                crawl.CrownSeriesRounds.AddRange(CrownSeriesRounds.From(battle));
                 var team = battle.Team?.FirstOrDefault();
                 var opponent = battle.Opponent?.FirstOrDefault();
                 if (team is null || opponent is null)
@@ -136,11 +147,11 @@ public sealed class MetaBuilder(
                 }
             }
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error processing a war battle log");
         }
-        return records;
+        return crawl;
     }
 
     private static void RecordWarPair(
@@ -170,15 +181,7 @@ public sealed class MetaBuilder(
     }
 
     private static (BattleResult player, BattleResult opponent) ResultsFor(int teamCrowns, int oppCrowns)
-    {
-        if (teamCrowns == oppCrowns)
-        {
-            return (BattleResult.Draw, BattleResult.Draw);
-        }
-        return teamCrowns > oppCrowns
-            ? (BattleResult.Win, BattleResult.Loss)
-            : (BattleResult.Loss, BattleResult.Win);
-    }
+        => (BattleResultExtensions.FromCrowns(teamCrowns, oppCrowns), BattleResultExtensions.FromCrowns(oppCrowns, teamCrowns));
 
     private static BattleRecord? ToBattleRecord(
         string tag, string battleTime, List<CrBattleCard>? cards, BattleResult result, string keySuffix = "")

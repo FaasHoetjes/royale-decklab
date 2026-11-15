@@ -9,6 +9,7 @@ namespace RoyaleDeckLab.Api.Data;
 public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbContext(options)
 {
     public DbSet<BattleEntity> Battles => Set<BattleEntity>();
+    public DbSet<CrownSeriesRoundEntity> CrownSeriesRounds => Set<CrownSeriesRoundEntity>();
     public DbSet<MetaStateEntity> MetaState => Set<MetaStateEntity>();
     public DbSet<CardPeriodEntity> CardPeriods => Set<CardPeriodEntity>();
     public DbSet<KnownCardVersionEntity> KnownCardVersions => Set<KnownCardVersionEntity>();
@@ -44,6 +45,15 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
             v => v.ToList());
 
+        var crownSeriesCardsConverter = new ValueConverter<IReadOnlyList<CrownSeriesCard>, string>(
+            v => CrownSeriesCardStorage.Serialize(v),
+            v => CrownSeriesCardStorage.Deserialize(v));
+
+        var crownSeriesCardsComparer = new ValueComparer<IReadOnlyList<CrownSeriesCard>>(
+            (a, b) => a!.SequenceEqual(b!),
+            v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
+            v => v.ToList());
+
         var resultConverter = new ValueConverter<BattleResult, string>(
             v => v.ToString().ToLowerInvariant(),
             v => Enum.Parse<BattleResult>(v, ignoreCase: true));
@@ -62,6 +72,22 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             b.HasIndex(x => x.BattleTimeMs).HasDatabaseName("idx_battles_time");
         });
 
+        modelBuilder.Entity<CrownSeriesRoundEntity>(r =>
+        {
+            r.ToTable("crown_series_rounds");
+            r.HasKey(x => new { x.PlayerTag, x.BattleTimeMs, x.Round });
+            r.Property(x => x.PlayerTag).HasColumnName("player_tag");
+            r.Property(x => x.BattleTimeMs).HasColumnName("battle_time_ms");
+            r.Property(x => x.Round).HasColumnName("round");
+            r.Property(x => x.OpponentTag).HasColumnName("opponent_tag").IsRequired();
+            r.Property(x => x.Result).HasColumnName("result").HasConversion(resultConverter).IsRequired();
+            r.Property(x => x.Cards).HasColumnName("cards").HasConversion(crownSeriesCardsConverter, crownSeriesCardsComparer).IsRequired();
+            r.Property(x => x.League).HasColumnName("league").IsRequired();
+            r.Property(x => x.EventTag).HasColumnName("event_tag").IsRequired();
+            r.Property(x => x.GameModeId).HasColumnName("game_mode_id").IsRequired();
+            r.HasIndex(x => x.BattleTimeMs).HasDatabaseName("idx_crown_series_rounds_time");
+        });
+
         modelBuilder.Entity<MetaStateEntity>(m =>
         {
             m.ToTable("meta_state");
@@ -69,6 +95,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             m.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             m.Property(x => x.EpochStartMs).HasColumnName("epoch_start_ms").IsRequired();
             m.Property(x => x.PreviousEpochStartMs).HasColumnName("previous_epoch_start_ms").IsRequired().HasDefaultValue(0L);
+            m.Property(x => x.LastCrownSeriesPollMs).HasColumnName("last_crown_series_poll_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastBuildMs).HasColumnName("last_build_ms").IsRequired();
         });
 
