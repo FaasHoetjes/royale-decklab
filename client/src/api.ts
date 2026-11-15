@@ -42,6 +42,8 @@ export interface DeckCardData {
   maxLevel: number;
   elixirCost?: number;
   iconUrls?: CardIconUrls;
+  /** The player's own level when this season's boost raises `level`. */
+  boostedFromLevel?: number | null;
 }
 
 export interface ScoredDeck {
@@ -64,6 +66,13 @@ export interface PlayerResponse {
     totalScore: number;
     alternatives: ScoredDeck[];
   };
+  seasonBoosts: SeasonBoosts;
+}
+
+/** This season's boosted cards the player owns below `level`, their King Tower level, which the boost lifts them to. */
+export interface SeasonBoosts {
+  level: number;
+  cardIds: number[];
 }
 
 export interface CatalogCard {

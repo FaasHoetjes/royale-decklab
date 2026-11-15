@@ -27,6 +27,12 @@ interface DeckCardProps {
   onToggleLock?: () => void;
 }
 
+const cardTitle = (card: DeckCardData) => {
+  const level = `${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`;
+  if (card.boostedFromLevel == null) return level;
+  return `${level}, boosted this season from your level ${displayLevel(card.boostedFromLevel, card.maxLevel)}`;
+};
+
 export default function DeckCard({
   cards,
   metaWinRate,
@@ -79,13 +85,14 @@ export default function DeckCard({
       <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 24px 18px' }}>
         <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '14px 22px' }}>
           {orderedCards.map((card, index) => (
-            <CardLink key={card.id} name={card.name} title={`${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`}>
+            <CardLink key={card.id} name={card.name} title={cardTitle(card)}>
               <CardTile
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, versionOf(cardVersions, card.id))}
                 slotIndex={index}
                 elixirCost={card.elixirCost}
                 level={displayLevel(card.level, card.maxLevel)}
+                boosted={card.boostedFromLevel != null}
                 nameColor={theme.cardText}
                 nameSize={isMobile ? '11.5px' : '12px'}
                 nameLines={isMobile ? 2 : 1}

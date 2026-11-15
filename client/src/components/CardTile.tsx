@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { slotKind, slotBorderStyle, CARD_FRAME } from '../lib/slotStyles';
+import BoltIcon from './BoltIcon';
 import ElixirBadge from './ElixirBadge';
 import LockIcon from './LockIcon';
 
@@ -10,6 +11,8 @@ interface CardTileProps {
   slotIndex?: number;
   elixirCost?: number;
   level?: number | null;
+  /** The level is this season's boost, not the player's own. */
+  boosted?: boolean;
   showName?: boolean;
   nameColor?: string;
   /** Overrides the shared card-name size, for places with roomier tiles. */
@@ -29,6 +32,7 @@ export default function CardTile({
   slotIndex,
   elixirCost,
   level,
+  boosted = false,
   showName = true,
   nameColor,
   nameSize,
@@ -70,7 +74,13 @@ export default function CardTile({
           </div>
         )}
         {elixirCost != null && <ElixirBadge cost={elixirCost} />}
-        {level != null && <div style={styles.level}>Level {level}</div>}
+        {level != null && !boosted && <div style={styles.level}>Level {level}</div>}
+        {level != null && boosted && (
+          <div style={{ ...styles.level, ...styles.boostedLevel }}>
+            <BoltIcon size="1em" />
+            Level {level}
+          </div>
+        )}
         {locked && (
           <span style={styles.lock} title="You don't own this card">
             <LockIcon size="62%" />
@@ -158,6 +168,14 @@ const styles = {
     textAlign: 'center' as const,
     padding: '12px 0 4px',
     textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
+  },
+  boostedLevel: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: '2px',
+    background: 'linear-gradient(to top, rgba(124, 58, 237, 0.95), rgba(124, 58, 237, 0.6) 70%, transparent)',
+    color: '#fde047',
   },
   name: {
     fontSize: 'var(--card-name-font-size)',

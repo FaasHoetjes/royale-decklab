@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import type { ScoredDeck } from '../api';
+import type { ScoredDeck, SeasonBoosts } from '../api';
 import type { BuilderCard } from '../lib/builderCards';
 import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, type GeneratorOptions } from '../lib/generatorOptions';
 import DeckCard from './DeckCard';
@@ -12,6 +12,8 @@ import Shortfall from './warDeck/Shortfall';
 import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { encodeShare } from '../lib/shareLink';
+import { listNames } from '../lib/seasonBoosts';
+import BoltIcon from './BoltIcon';
 
 interface WarDeckResultProps {
   playerName: string;
@@ -23,6 +25,7 @@ interface WarDeckResultProps {
   onOptionsChange: (options: GeneratorOptions) => void;
   /** Catalog marked with the player's collection, for the ban / must-include pickers. */
   cards: BuilderCard[];
+  seasonBoosts: SeasonBoosts;
   isUpdating: boolean;
   /** The last options change failed; the decks shown are from before it. */
   updateFailed?: boolean;
@@ -57,6 +60,7 @@ export default function WarDeckResult({
   options,
   onOptionsChange,
   cards,
+  seasonBoosts,
   isUpdating,
   updateFailed,
   onRetry,
@@ -177,6 +181,13 @@ export default function WarDeckResult({
   // deck count would flash a false "only n of m decks fit" notice.
   const shortBy = isUpdating ? 0 : options.decks - decks.length;
 
+  const boostedInLineup = [...new Map(
+    slots
+      .flatMap((master) => deckAt(master).cards)
+      .filter((card) => card.boostedFromLevel != null)
+      .map((card) => [card.id, card.name])
+  ).values()];
+
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
       {shared && (
@@ -207,9 +218,20 @@ export default function WarDeckResult({
           canReset={customized || swapped}
           onReset={resetLineup}
           cards={cards}
+          seasonBoosts={seasonBoosts}
           isUpdating={isUpdating}
           isMobile={isMobile}
         />
+      )}
+
+      {boostedInLineup.length > 0 && (
+        <p style={styles.boostNote}>
+          <BoltIcon style={styles.boostBolt} />
+          <span>
+            {listNames(boostedInLineup)} {boostedInLineup.length === 1 ? 'is' : 'are'} boosted to level {seasonBoosts.level} this
+            season, so {boostedInLineup.length === 1 ? 'it counts' : 'they count'} at that level until the season ends.
+          </span>
+        </p>
       )}
 
       {updateFailed && (
@@ -357,5 +379,18 @@ const styles = {
     backgroundColor: 'var(--chip-bg)',
     border: '1px solid var(--chip-border)',
     color: 'var(--text-primary)',
+  },
+  boostNote: {
+    display: 'flex' as const,
+    alignItems: 'flex-start' as const,
+    gap: '8px',
+    margin: '0 0 20px',
+    fontSize: '13px',
+    lineHeight: 1.5,
+    color: 'var(--text-secondary)',
+  },
+  boostBolt: {
+    color: '#7c3aed',
+    marginTop: '3px',
   },
 };
