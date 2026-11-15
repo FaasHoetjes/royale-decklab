@@ -1,23 +1,29 @@
 import { useState } from 'react';
 import type { GeneratorOptions } from '../../lib/generatorOptions';
 import Sheet from '../Sheet';
+import Switch from '../Switch';
 import { BanIcon, PlusIcon } from './icons';
 import { decksLabel, type PickerKind } from './labels';
 import { DeckSegment, KeptCount, LevelSegment } from './SegmentedChoice';
 
-/** Phone: decks and level are batched here and applied with one button, so each tap isn't a request. */
-export default function OptionsSheet({ options, levels, cardsLoaded, canReset, onApply, onPickCards, onReset, onClose }: {
+export type SheetPatch = Pick<GeneratorOptions, 'decks' | 'minLevel' | 'boosts'>;
+
+/** Phone: decks, level and boosts are batched here and applied with one button, so each tap isn't a request. */
+export default function OptionsSheet({ options, levels, cardsLoaded, canReset, hasBoosts, onApply, onPickCards, onReset, onClose }: {
   options: GeneratorOptions;
   levels: number[];
   cardsLoaded: boolean;
   canReset: boolean;
-  onApply: (patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => void;
-  onPickCards: (kind: PickerKind, patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => void;
+  /** Whether any of the player's cards is boosted this season; the switch changes nothing otherwise. */
+  hasBoosts: boolean;
+  onApply: (patch: SheetPatch) => void;
+  onPickCards: (kind: PickerKind, patch: SheetPatch) => void;
   onReset: () => void;
   onClose: () => void;
 }) {
   const [decks, setDecks] = useState(options.decks);
   const [minLevel, setMinLevel] = useState(options.minLevel);
+  const [boosts, setBoosts] = useState(options.boosts);
 
   const footer = (
     <div style={styles.sheetFooter}>
@@ -26,7 +32,7 @@ export default function OptionsSheet({ options, levels, cardsLoaded, canReset, o
           Reset all
         </button>
       )}
-      <button type="button" onClick={() => onApply({ decks, minLevel })} className="sheet-btn sheet-btn-primary">
+      <button type="button" onClick={() => onApply({ decks, minLevel, boosts })} className="sheet-btn sheet-btn-primary">
         Show {decksLabel(decks)}
       </button>
     </div>
@@ -43,13 +49,20 @@ export default function OptionsSheet({ options, levels, cardsLoaded, canReset, o
       </div>
       <LevelSegment levels={levels} value={minLevel} onPick={setMinLevel} />
 
+      {hasBoosts && (
+        <label style={styles.switchRow}>
+          <span style={styles.label}>Season boosts</span>
+          <Switch isOn={boosts} onChange={setBoosts} />
+        </label>
+      )}
+
       <div style={{ ...styles.label, marginTop: '18px' }}>Cards</div>
       <div style={styles.cardButtons}>
-        <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('require', { decks, minLevel })} style={styles.cardButton}>
+        <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('require', { decks, minLevel, boosts })} style={styles.cardButton}>
           <PlusIcon />
           Include…
         </button>
-        <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('ban', { decks, minLevel })} style={styles.cardButton}>
+        <button type="button" disabled={!cardsLoaded} onClick={() => onPickCards('ban', { decks, minLevel, boosts })} style={styles.cardButton}>
           <BanIcon />
           Exclude…
         </button>
@@ -77,6 +90,14 @@ const styles = {
     color: 'var(--text-primary)',
     fontSize: '14px',
     fontWeight: 600 as const,
+    cursor: 'pointer',
+  },
+  switchRow: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: '12px',
+    marginTop: '18px',
     cursor: 'pointer',
   },
   sheetFooter: {

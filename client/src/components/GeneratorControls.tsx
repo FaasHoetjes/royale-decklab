@@ -8,7 +8,7 @@ import { listNames } from '../lib/seasonBoosts';
 import CardPicker from './CardPicker';
 import Switch from './Switch';
 import CardAvatar from './generator/CardAvatar';
-import OptionsSheet from './generator/OptionsSheet';
+import OptionsSheet, { type SheetPatch } from './generator/OptionsSheet';
 import PickedCards from './generator/PickedCards';
 import { DeckSegment, KeptCount, LevelSegment } from './generator/SegmentedChoice';
 import { BanIcon, ChevronIcon, PlusIcon, SlidersIcon } from './generator/icons';
@@ -127,8 +127,8 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
     setPicker(null);
   };
   const cardName = (id: number) => cardById.get(id)?.name ?? `Card ${id}`;
-  const applySheetPatch = (patch: Pick<GeneratorOptions, 'decks' | 'minLevel'>) => {
-    if (patch.decks !== options.decks || patch.minLevel !== options.minLevel) {
+  const applySheetPatch = (patch: SheetPatch) => {
+    if (patch.decks !== options.decks || patch.minLevel !== options.minLevel || patch.boosts !== options.boosts) {
       set({ ...patch, lock: options.lock.slice(0, patch.decks) });
     }
   };
@@ -283,6 +283,7 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
           levels={ownedLevels}
           cardsLoaded={cardsLoaded}
           canReset={canReset}
+          hasBoosts={seasonBoosts.cardIds.length > 0}
           onApply={(patch) => {
             applySheetPatch(patch);
             setSheetOpen(false);
