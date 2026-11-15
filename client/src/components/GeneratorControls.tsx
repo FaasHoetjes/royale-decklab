@@ -5,7 +5,6 @@ import { displayLevel } from '../lib/cardDisplay';
 import { MAX_DECKS, type GeneratorOptions } from '../lib/generatorOptions';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import { listNames } from '../lib/seasonBoosts';
-import BoltIcon from './BoltIcon';
 import CardPicker from './CardPicker';
 import Switch from './Switch';
 import CardAvatar from './generator/CardAvatar';
@@ -183,7 +182,6 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
       title={`${listNames(boostedNames)} ${boostedNames.length === 1 ? 'is' : 'are'} boosted to level ${seasonBoosts.level} this season`}
       style={{ ...pill('plain', isMobile), gap: '8px', paddingRight: '10px' }}
     >
-      <BoltIcon style={styles.bolt} />
       Season boosts
       <Switch isOn={options.boosts} onChange={(boosts) => set({ boosts })} />
     </label>
@@ -432,9 +430,6 @@ const styles = {
   },
   stack: {
     display: 'inline-flex' as const,
-  },
-  bolt: {
-    color: '#7c3aed',
   },
   stacked: {
     marginLeft: '-10px',

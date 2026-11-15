@@ -757,7 +757,18 @@ input:disabled {
   to { box-shadow: 0 0 0 14px transparent; }
 }
 
+@keyframes boost-clock-tick {
+  to { transform: rotate(360deg); }
+}
+
+.boost-clock-hand {
+  transform-box: view-box;
+  transform-origin: 12px 19px;
+  animation: boost-clock-tick 4s steps(4, end) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .boost-clock-hand,
   .clan-refreshing,
   .nav-glide,
   .gc-pill,

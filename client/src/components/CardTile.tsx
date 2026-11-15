@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { slotKind, slotBorderStyle, CARD_FRAME } from '../lib/slotStyles';
-import BoltIcon from './BoltIcon';
+import BoostClockIcon from './BoostClockIcon';
 import ElixirBadge from './ElixirBadge';
 import LockIcon from './LockIcon';
 
@@ -49,45 +49,52 @@ export default function CardTile({
   useEffect(() => setBroken(false), [iconUrl]);
   const showImage = !!iconUrl && !broken;
 
+  const art = (
+    <div
+      style={{
+        ...styles.art,
+        ...(kind ? slotBorderStyle(kind) : CARD_FRAME),
+        ...artStyle,
+      }}
+    >
+      {showImage ? (
+        <img
+          src={iconUrl}
+          alt={name}
+          loading={lazyLoad ? 'lazy' : undefined}
+          decoding={lazyLoad ? 'async' : undefined}
+          fetchPriority={fetchPriority}
+          style={locked ? { ...styles.image, ...styles.lockedImage } : styles.image}
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <div style={styles.placeholder} aria-hidden="true">
+          {placeholderInitials(name)}
+        </div>
+      )}
+      {elixirCost != null && <ElixirBadge cost={elixirCost} />}
+      {level != null && <div style={boosted ? { ...styles.level, ...styles.boostedLevel } : styles.level}>Level {level}</div>}
+      {locked && (
+        <span style={styles.lock} title="You don't own this card">
+          <LockIcon size="62%" />
+        </span>
+      )}
+      {children}
+    </div>
+  );
+
   return (
     <>
-      <div
-        style={{
-          ...styles.art,
-          ...(kind ? slotBorderStyle(kind) : CARD_FRAME),
-          ...artStyle,
-        }}
-      >
-        {showImage ? (
-          <img
-            src={iconUrl}
-            alt={name}
-            loading={lazyLoad ? 'lazy' : undefined}
-            decoding={lazyLoad ? 'async' : undefined}
-            fetchPriority={fetchPriority}
-            style={locked ? { ...styles.image, ...styles.lockedImage } : styles.image}
-            onError={() => setBroken(true)}
-          />
-        ) : (
-          <div style={styles.placeholder} aria-hidden="true">
-            {placeholderInitials(name)}
-          </div>
-        )}
-        {elixirCost != null && <ElixirBadge cost={elixirCost} />}
-        {level != null && !boosted && <div style={styles.level}>Level {level}</div>}
-        {level != null && boosted && (
-          <div style={{ ...styles.level, ...styles.boostedLevel }}>
-            <BoltIcon size="1em" />
-            Level {level}
-          </div>
-        )}
-        {locked && (
-          <span style={styles.lock} title="You don't own this card">
-            <LockIcon size="62%" />
+      {boosted ? (
+        <div style={styles.boostedFrame}>
+          {art}
+          <span style={styles.boostBadge}>
+            <BoostClockIcon />
           </span>
-        )}
-        {children}
-      </div>
+        </div>
+      ) : (
+        art
+      )}
       {showName && <div style={{ ...styles.name, color: nameColor, ...(nameSize && { fontSize: nameSize }), ...(nameLines > 1 && wrappedName(nameLines)) }}>{name}</div>}
     </>
   );
@@ -169,11 +176,19 @@ const styles = {
     padding: '12px 0 4px',
     textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
   },
+  boostedFrame: {
+    position: 'relative' as const,
+  },
+  boostBadge: {
+    position: 'absolute' as const,
+    top: 0,
+    right: 0,
+    width: '32%',
+    transform: 'translate(18%, -24%)',
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))',
+    pointerEvents: 'none' as const,
+  },
   boostedLevel: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: '2px',
     background: 'linear-gradient(to top, rgba(124, 58, 237, 0.95), rgba(124, 58, 237, 0.6) 70%, transparent)',
     color: '#fde047',
   },

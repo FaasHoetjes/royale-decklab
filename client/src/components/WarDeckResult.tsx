@@ -12,8 +12,6 @@ import Shortfall from './warDeck/Shortfall';
 import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { encodeShare } from '../lib/shareLink';
-import { listNames } from '../lib/seasonBoosts';
-import BoltIcon from './BoltIcon';
 
 interface WarDeckResultProps {
   playerName: string;
@@ -181,13 +179,6 @@ export default function WarDeckResult({
   // deck count would flash a false "only n of m decks fit" notice.
   const shortBy = isUpdating ? 0 : options.decks - decks.length;
 
-  const boostedInLineup = [...new Map(
-    slots
-      .flatMap((master) => deckAt(master).cards)
-      .filter((card) => card.boostedFromLevel != null)
-      .map((card) => [card.id, card.name])
-  ).values()];
-
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '40px 20px' }}>
       {shared && (
@@ -222,16 +213,6 @@ export default function WarDeckResult({
           isUpdating={isUpdating}
           isMobile={isMobile}
         />
-      )}
-
-      {boostedInLineup.length > 0 && (
-        <p style={styles.boostNote}>
-          <BoltIcon style={styles.boostBolt} />
-          <span>
-            {listNames(boostedInLineup)} {boostedInLineup.length === 1 ? 'is' : 'are'} boosted to level {seasonBoosts.level} this
-            season, so {boostedInLineup.length === 1 ? 'it counts' : 'they count'} at that level.
-          </span>
-        </p>
       )}
 
       {updateFailed && (
@@ -379,18 +360,5 @@ const styles = {
     backgroundColor: 'var(--chip-bg)',
     border: '1px solid var(--chip-border)',
     color: 'var(--text-primary)',
-  },
-  boostNote: {
-    display: 'flex' as const,
-    alignItems: 'flex-start' as const,
-    gap: '8px',
-    margin: '0 0 20px',
-    fontSize: '13px',
-    lineHeight: 1.5,
-    color: 'var(--text-secondary)',
-  },
-  boostBolt: {
-    color: '#7c3aed',
-    marginTop: '3px',
   },
 };
