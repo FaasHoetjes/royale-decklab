@@ -50,12 +50,17 @@ export const startPresence = (): (() => void) => {
     }, Math.max(0, remaining));
   };
 
-  const onActivity = () => {
+  /** True when the tab was idle until now. */
+  const markActive = () => {
     lastActivity = Date.now();
-    if (!idle) return;
+    if (!idle) return false;
     idle = false;
-    sendState();
     scheduleIdleCheck();
+    return true;
+  };
+
+  const onActivity = () => {
+    if (markActive()) sendState();
   };
 
   const connect = () => {
@@ -81,7 +86,7 @@ export const startPresence = (): (() => void) => {
   };
 
   const onVisibilityChange = () => {
-    if (isInView()) onActivity();
+    if (isInView()) markActive();
     if (socket) {
       sendState();
       return;
