@@ -38,7 +38,7 @@ public sealed class MetaOptions
 
     public long PatchCheckIntervalMs { get; set; } = 30L * 60 * 1000;
 
-    public long SeasonBoostCheckIntervalMs { get; set; } = 3L * 60 * 60 * 1000;
+    public long SeasonBoostCheckIntervalMs { get; set; } = 12L * 60 * 60 * 1000;
 
     // Leaves the first check after a deploy clear of the startup meta load and the Crown Series poll.
     public long SeasonBoostStartupDelayMs { get; set; } = 5L * 60 * 1000;
