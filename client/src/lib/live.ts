@@ -7,6 +7,9 @@ const LONGEST_RETRY_MS = 30_000;
 const RETRY_JITTER_MS = 1_000;
 const IN_VIEW = 'v';
 const HIDDEN = 'h';
+// A tab left open on a second screen would otherwise count as someone looking for hours.
+const IDLE_AFTER_MS = 10 * 60_000;
+const ACTIVITY_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'] as const;
 
 export const liveSocketUrl = (path: string) =>
   `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${path}`;
@@ -25,9 +28,34 @@ export const startPresence = (): (() => void) => {
   let attempts = 0;
   let retry: number | undefined;
   let stopped = false;
+  let lastActivity = Date.now();
+  let idle = false;
+  let idleCheck: number | undefined;
 
   const sendState = () => {
-    if (socket?.readyState === WebSocket.OPEN) socket.send(isInView() ? IN_VIEW : HIDDEN);
+    if (socket?.readyState === WebSocket.OPEN) socket.send(isInView() && !idle ? IN_VIEW : HIDDEN);
+  };
+
+  // Rescheduled from the last activity when it fires, so moving the mouse doesn't reset a timer on every event.
+  const scheduleIdleCheck = () => {
+    window.clearTimeout(idleCheck);
+    const remaining = IDLE_AFTER_MS - (Date.now() - lastActivity);
+    idleCheck = window.setTimeout(() => {
+      if (Date.now() - lastActivity < IDLE_AFTER_MS) {
+        scheduleIdleCheck();
+        return;
+      }
+      idle = true;
+      sendState();
+    }, Math.max(0, remaining));
+  };
+
+  const onActivity = () => {
+    lastActivity = Date.now();
+    if (!idle) return;
+    idle = false;
+    sendState();
+    scheduleIdleCheck();
   };
 
   const connect = () => {
@@ -53,6 +81,7 @@ export const startPresence = (): (() => void) => {
   };
 
   const onVisibilityChange = () => {
+    if (isInView()) onActivity();
     if (socket) {
       sendState();
       return;
@@ -61,12 +90,16 @@ export const startPresence = (): (() => void) => {
   };
 
   document.addEventListener('visibilitychange', onVisibilityChange);
+  for (const event of ACTIVITY_EVENTS) window.addEventListener(event, onActivity, { capture: true, passive: true });
+  scheduleIdleCheck();
   connect();
 
   return () => {
     stopped = true;
     window.clearTimeout(retry);
+    window.clearTimeout(idleCheck);
     document.removeEventListener('visibilitychange', onVisibilityChange);
+    for (const event of ACTIVITY_EVENTS) window.removeEventListener(event, onActivity, { capture: true });
     socket?.close();
   };
 };
