@@ -4,7 +4,7 @@ using RoyaleDeckLab.Api.Options;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>Samples players from the top war clans and keeps <see cref="SeasonBoostStore"/> on the boosted cards they play.</summary>
+/// <summary>Samples players from war clans and keeps <see cref="SeasonBoostStore"/> on the boosted cards they play.</summary>
 public sealed class SeasonBoostWatchService(
     IServiceScopeFactory scopeFactory,
     SeasonBoostStore store,
@@ -12,8 +12,11 @@ public sealed class SeasonBoostWatchService(
     IOptions<MetaOptions> options,
     ILogger<SeasonBoostWatchService> logger) : BackgroundService
 {
-    private const int ClansToSample = 10;
+    // The top war clans have nearly every card at King Tower level, where a boost doesn't show.
+    private const int FirstClanRank = 100;
+    private const int MaxClansToSample = 40;
     private const int BatchSize = 10;
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(15);
 
     private readonly MetaOptions _opt = options.Value;
 
@@ -23,26 +26,26 @@ public sealed class SeasonBoostWatchService(
         logger.LogInformation("Season boost watch scheduled every {Minutes} min", interval.TotalMinutes);
         try
         {
-            using var timer = new PeriodicTimer(interval);
-            do
+            while (!stoppingToken.IsCancellationRequested)
             {
+                var checkedBoosts = false;
                 try
                 {
-                    await CheckAsync(stoppingToken);
+                    checkedBoosts = await CheckAsync(stoppingToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    logger.LogError(ex, "Season boost check failed; retrying on the next tick");
+                    logger.LogError(ex, "Season boost check failed; retrying in {Minutes} min", RetryDelay.TotalMinutes);
                 }
+                await Task.Delay(checkedBoosts ? interval : RetryDelay, clock, stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException)
         {
         }
     }
 
-    private async Task CheckAsync(CancellationToken ct)
+    private async Task<bool> CheckAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<ClashRoyaleClient>();
@@ -61,16 +64,19 @@ public sealed class SeasonBoostWatchService(
         {
             logger.LogWarning("Only {Read} of {Wanted} players could be read; keeping the season boosts as they are",
                 samples.Count, players.Count);
-            return;
+            return false;
         }
 
-        await store.SaveAsync(SeasonBoostDetection.BoostedCards(samples, clock.GetUtcNow()), ct);
+        var known = store.Current.CardIds;
+        await store.SaveAsync(SeasonBoostDetection.BoostedCards(samples, clock.GetUtcNow(), known), ct);
+        return true;
     }
 
     private async Task<List<string>> SamplePlayerTagsAsync(ClashRoyaleClient client, CancellationToken ct)
     {
         var tags = new List<string>();
-        foreach (var clan in await client.GetTopWarClansAsync(ClansToSample, ct))
+        var clans = await client.GetTopWarClansAsync(FirstClanRank + MaxClansToSample, ct);
+        foreach (var clan in clans.Skip(FirstClanRank))
         {
             tags.AddRange(await client.GetClanMemberTagsAsync(clan, ct));
             if (tags.Count >= _opt.SeasonBoostSamplePlayers)

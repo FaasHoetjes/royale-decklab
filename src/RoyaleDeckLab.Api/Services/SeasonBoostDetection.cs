@@ -31,7 +31,11 @@ public static class SeasonBoostDetection
 
     public sealed record Sample(CrPlayer Player, IReadOnlyList<CrBattle> Battles);
 
-    public static IReadOnlySet<int> BoostedCards(IEnumerable<Sample> samples, DateTimeOffset now)
+    /// <summary>
+    /// The cards boosted now. A card in <paramref name="known"/> stays until enough players show it unboosted: some
+    /// boosted cards are maxed by most players, so a quiet sample says little about them.
+    /// </summary>
+    public static IReadOnlySet<int> BoostedCards(IEnumerable<Sample> samples, DateTimeOffset now, IReadOnlySet<int> known)
     {
         var cutoffMs = (now - Window).ToUnixTimeMilliseconds();
         var tallies = new Dictionary<int, Tally>();
@@ -52,11 +56,9 @@ public static class SeasonBoostDetection
             }
         }
 
-        return tallies
-            .Where(t => t.Value.Players >= MinPlayers)
-            .Where(t => (double)t.Value.Boosted / t.Value.Players >= MinBoostedShare)
-            .Select(t => t.Key)
-            .ToHashSet();
+        var boosted = tallies.Where(t => t.Value.IsEnough && t.Value.IsBoosted).Select(t => t.Key).ToHashSet();
+        boosted.UnionWith(known.Where(id => !tallies.TryGetValue(id, out var tally) || !tally.IsEnough));
+        return boosted;
     }
 
     /// <summary>
@@ -113,5 +115,9 @@ public static class SeasonBoostDetection
     {
         public int Players;
         public int Boosted;
+
+        public bool IsEnough => Players >= MinPlayers;
+
+        public bool IsBoosted => (double)Boosted / Players >= MinBoostedShare;
     }
 }

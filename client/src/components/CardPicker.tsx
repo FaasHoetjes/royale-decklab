@@ -241,6 +241,7 @@ const CardCell = memo(({ card, filters, isUsed, championBlocked, isSelected, pre
           iconUrl={pickerIconUrl(card, filters)}
           elixirCost={card.elixirCost}
           level={level >= 0 ? level : undefined}
+          boosted={card.isBoosted}
           nameColor={textPrimary}
           lazyLoad
         />

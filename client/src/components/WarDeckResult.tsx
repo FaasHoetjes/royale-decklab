@@ -229,7 +229,7 @@ export default function WarDeckResult({
           <BoltIcon style={styles.boostBolt} />
           <span>
             {listNames(boostedInLineup)} {boostedInLineup.length === 1 ? 'is' : 'are'} boosted to level {seasonBoosts.level} this
-            season, so {boostedInLineup.length === 1 ? 'it counts' : 'they count'} at that level until the season ends.
+            season, so {boostedInLineup.length === 1 ? 'it counts' : 'they count'} at that level.
           </span>
         </p>
       )}

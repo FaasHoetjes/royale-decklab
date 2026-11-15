@@ -24,6 +24,7 @@ describe('season boosts on the picker cards', () => {
     const lifted = withSeasonBoosts(cards, { level: 15, cardIds: [1, 2] });
 
     expect(lifted.map((c) => displayLevel(c.level ?? 0, c.maxLevel ?? 16))).toEqual([15, 15, 12]);
+    expect(lifted.map((c) => !!c.isBoosted)).toEqual([true, true, false]);
     expect(lifted[2]).toBe(cards[2]);
   });
 

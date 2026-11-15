@@ -9,7 +9,7 @@ export const withSeasonBoosts = (cards: BuilderCard[], boosts: SeasonBoosts): Bu
     const { maxLevel } = card;
     const isLifted = card.owned && boosted.has(card.id) && maxLevel != null;
     if (!isLifted) return card;
-    return { ...card, level: boosts.level - (MAX_DISPLAY_LEVEL - maxLevel) };
+    return { ...card, level: boosts.level - (MAX_DISPLAY_LEVEL - maxLevel), isBoosted: true };
   });
 };
 
