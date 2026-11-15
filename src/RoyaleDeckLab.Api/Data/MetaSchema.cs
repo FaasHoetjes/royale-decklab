@@ -23,6 +23,10 @@ public static class MetaSchema
         {
             db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN last_crown_series_poll_ms INTEGER NOT NULL DEFAULT 0;");
         }
+        if (!HasStateColumn(db, "last_season_boost_check_ms"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN last_season_boost_check_ms INTEGER NOT NULL DEFAULT 0;");
+        }
         db.Database.ExecuteSqlRaw(
             """
             CREATE TABLE IF NOT EXISTS card_periods (
