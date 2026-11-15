@@ -1,7 +1,5 @@
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
-using Polly.Timeout;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
@@ -47,8 +45,14 @@ public sealed class CrownSeriesCollector(
         harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
         await store.SetLastPollMsAsync(now, ct);
         logger.LogInformation(
-            "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned",
-            harvest.PlayersRead, harvest.FailedReads, harvest.RoundsFound, harvest.Added, pruned);
+            "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned, "
+            + "{Incomplete} incomplete Duels skipped, {Tracked} players tracked",
+            harvest.PlayersRead, harvest.FailedReads, harvest.RoundsFound, harvest.Added, pruned, harvest.IncompleteDuels,
+            schedule.KnownPlayers);
+        if (harvest.FailureKinds.Count > 0)
+        {
+            logger.LogWarning("Some battle logs couldn't be read: {@Errors}", harvest.FailureKinds);
+        }
         if (harvest.UnknownModes.Count > 0)
         {
             logger.LogWarning("Skipped multi-deck battles of modes that aren't the Crown Series Duel: {@Modes}",
@@ -59,6 +63,7 @@ public sealed class CrownSeriesCollector(
     private async Task PollAsync(Harvest harvest, long now, CancellationToken ct)
     {
         var ranked = await client.GetTopRankedPlayerTagsAsync(_opt.RankedPlayers, ct);
+        schedule.ForgetInactive(ranked, now);
         if (!await IsDuelWeekendOnAsync(ranked, harvest, now, ct))
         {
             logger.LogInformation("No Crown Series Duel weekend on: no Duels in the last {Hours} h", _opt.LiveDuelWindowMs / 3_600_000.0);
@@ -103,12 +108,21 @@ public sealed class CrownSeriesCollector(
         var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
         foreach (var chunk in tags.Chunk(PlayersPerFlush))
         {
-            await Parallel.ForEachAsync(chunk, parallel, async (tag, token) => await ReadLogAsync(tag, harvest, now, token));
-            harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
+            try
+            {
+                await Parallel.ForEachAsync(chunk, parallel, async (tag, token) => await ReadLogAsync(tag, harvest, now, token));
+            }
+            finally
+            {
+                harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
+            }
         }
     }
 
-    /// <summary>One player's log that can't be read leaves the poll to the others: the CR API fails single requests now and then.</summary>
+    /// <summary>
+    /// One player's log that can't be read leaves the poll to the others: the CR API fails single requests now and
+    /// then, in more ways than a timeout or a bad status. Only a refusing API or a shutdown stops the poll.
+    /// </summary>
     private async Task ReadLogAsync(string tag, Harvest harvest, long now, CancellationToken ct)
     {
         harvest.MarkRead(tag);
@@ -118,9 +132,9 @@ public sealed class CrownSeriesCollector(
             schedule.RecordRead(tag, log, now);
             harvest.Add(log);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException or JsonException)
+        catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
         {
-            harvest.AddFailedRead();
+            harvest.AddFailedRead(ex.GetType().Name);
         }
     }
 
@@ -135,6 +149,7 @@ public sealed class CrownSeriesCollector(
         private long _latestDuelMs;
         private int _failedReads;
         private int _roundsFound;
+        private int _incompleteDuels;
 
         public int Added { get; set; }
         public HashSet<string> UnknownModes { get; } = new(StringComparer.Ordinal);
@@ -151,6 +166,19 @@ public sealed class CrownSeriesCollector(
         }
 
         public int FailedReads => Volatile.Read(ref _failedReads);
+
+        public HashSet<string> FailureKinds { get; } = new(StringComparer.Ordinal);
+
+        public int IncompleteDuels
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _incompleteDuels;
+                }
+            }
+        }
 
         public int RoundsFound
         {
@@ -179,7 +207,14 @@ public sealed class CrownSeriesCollector(
             }
         }
 
-        public void AddFailedRead() => Interlocked.Increment(ref _failedReads);
+        public void AddFailedRead(string kind)
+        {
+            Interlocked.Increment(ref _failedReads);
+            lock (_lock)
+            {
+                FailureKinds.Add(kind);
+            }
+        }
 
         public bool HasDuelSince(long ms)
         {
@@ -224,7 +259,12 @@ public sealed class CrownSeriesCollector(
             {
                 UnknownModes.Add(mode);
             }
-            foreach (var round in CrownSeriesRounds.From(battle))
+            var rounds = CrownSeriesRounds.From(battle);
+            if (CrownSeriesRounds.IsCrownSeries(battle) && rounds.Count == 0)
+            {
+                _incompleteDuels++;
+            }
+            foreach (var round in rounds)
             {
                 if (round.BattleTimeMs < cutoffMs)
                 {

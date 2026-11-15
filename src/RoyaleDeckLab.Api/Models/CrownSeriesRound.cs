@@ -23,11 +23,4 @@ public sealed record CrownSeriesRound
     public required int GameModeId { get; init; }
 
     public string Key => $"{PlayerTag}|{BattleTimeMs}|r{Round}";
-
-    /// <summary>The same for both players and every round of one Duel.</summary>
-    public string MatchKey => string.CompareOrdinal(PlayerTag, OpponentTag) <= 0
-        ? $"{BattleTimeMs}|{PlayerTag}|{OpponentTag}"
-        : $"{BattleTimeMs}|{OpponentTag}|{PlayerTag}";
-
-    public int[] CardIds => Cards.Select(c => c.Id).ToArray();
 }

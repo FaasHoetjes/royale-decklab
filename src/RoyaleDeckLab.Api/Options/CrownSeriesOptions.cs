@@ -12,7 +12,7 @@ public sealed class CrownSeriesOptions
     // The global Ranked leaderboard lists at most 1000 players.
     public int RankedPlayers { get; set; } = 1000;
 
-    // Ranked players plus the Duel opponents found in their logs.
+    // Every tracked player: the Ranked ones plus the Duel opponents found in their logs.
     public int MaxPlayers { get; set; } = 3000;
 
     // How many players are read to see whether a Duel weekend is on, when no stored Duel says so.
@@ -23,4 +23,8 @@ public sealed class CrownSeriesOptions
 
     // A log holds about 30 battles; one that took days to fill needn't be read every hour.
     public long MaxRereadIntervalMs { get; set; } = 8L * 60 * 60 * 1000;
+
+    // A player who left the Ranked list and hasn't played a Duel in this long is no longer read; Duel weekends are
+    // a week or two apart.
+    public long ForgetAfterMs { get; set; } = 21L * 24 * 60 * 60 * 1000;
 }

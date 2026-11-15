@@ -160,6 +160,7 @@ public sealed class MetaCache(
 
             var crawl = await builder.CrawlTopWarClansAsync(ct);
             var fresh = crawl.WarBattles;
+            await MergeCrownSeriesRoundsAsync(scope.ServiceProvider, crawl.CrownSeriesRounds, ct);
 
             if (fresh.Count == 0)
             {
@@ -168,7 +169,6 @@ public sealed class MetaCache(
             }
 
             var added = await store.MergeBattlesAsync(fresh, ct);
-            await MergeCrownSeriesRoundsAsync(scope.ServiceProvider, crawl.CrownSeriesRounds, ct);
             await store.SetLastBuildAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct);
             // Old battles go only now that fresh ones have landed, so a failed crawl never empties the store.
             var cutoff = PruneCutoff();
@@ -199,8 +199,10 @@ public sealed class MetaCache(
     }
 
     // The war meta is what a rebuild is for; failing to store the Duels the crawl came across shouldn't undo it.
-    private async Task MergeCrownSeriesRoundsAsync(IServiceProvider services, List<CrownSeriesRound> rounds, CancellationToken ct)
+    private async Task MergeCrownSeriesRoundsAsync(IServiceProvider services, List<CrownSeriesRound> found, CancellationToken ct)
     {
+        var cutoff = PruneCutoff();
+        var rounds = found.Where(r => r.BattleTimeMs >= cutoff).ToList();
         try
         {
             await services.GetRequiredService<CrownSeriesRepository>().MergeRoundsAsync(rounds, ct);

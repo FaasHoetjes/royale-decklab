@@ -33,11 +33,11 @@ public sealed class CrownSeriesRoundsTests
         Assert.Equal(6, rounds.Count);
         var a = rounds.Where(r => r.PlayerTag == "#A").OrderBy(r => r.Round).ToList();
         Assert.Equal([BattleResult.Win, BattleResult.Loss, BattleResult.Win], a.Select(r => r.Result));
-        Assert.Equal([11, 12, 13, 14, 15, 16, 17, 18], a[1].CardIds);
+        Assert.Equal([11, 12, 13, 14, 15, 16, 17, 18], a[1].Cards.Select(c => c.Id));
         Assert.Equal("#B", a[1].OpponentTag);
         var b = rounds.Single(r => r.PlayerTag == "#B" && r.Round == 1);
         Assert.Equal(BattleResult.Win, b.Result);
-        Assert.Equal([41, 42, 43, 44, 45, 46, 47, 48], b.CardIds);
+        Assert.Equal([41, 42, 43, 44, 45, 46, 47, 48], b.Cards.Select(c => c.Id));
         Assert.All(rounds, r => Assert.Equal((1, "#EVENT", 72000513), (r.League, r.EventTag, r.GameModeId)));
     }
 
@@ -50,8 +50,7 @@ public sealed class CrownSeriesRoundsTests
         var fromA = CrownSeriesRounds.From(Duel(a, b));
         var fromB = CrownSeriesRounds.From(Duel(b, a));
 
-        Assert.Equal(fromA.Select(r => (r.Key, r.MatchKey, r.Result)).Order(), fromB.Select(r => (r.Key, r.MatchKey, r.Result)).Order());
-        Assert.Single(fromA.Select(r => r.MatchKey).Distinct());
+        Assert.Equal(fromA.Select(r => (r.Key, r.OpponentTag, r.Result)).Order(), fromB.Select(r => (r.Key, r.OpponentTag, r.Result)).Order());
     }
 
     [Fact]
@@ -76,6 +75,7 @@ public sealed class CrownSeriesRoundsTests
         Assert.Empty(CrownSeriesRounds.From(Duel(a, b, mode: "CW_Duel_1v1")));
         Assert.Empty(CrownSeriesRounds.From(Duel(a, b, league: null)));
         Assert.Empty(CrownSeriesRounds.From(Duel(a, unlevelled)));
+        Assert.Empty(CrownSeriesRounds.From(Duel(a, Side("#B", new CrBattleRound(0, Cards(31)), new CrBattleRound(1, Cards(41))))));
     }
 
     [Fact]

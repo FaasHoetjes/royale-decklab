@@ -95,25 +95,6 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
             .Take(count)
             .ToList();
 
-    public IReadOnlyList<CrownSeriesRound> RoundsSince(long sinceMs)
-        => db.CrownSeriesRounds
-            .AsNoTracking()
-            .Where(r => r.BattleTimeMs >= sinceMs)
-            .AsEnumerable()
-            .Select(r => new CrownSeriesRound
-            {
-                PlayerTag = r.PlayerTag,
-                OpponentTag = r.OpponentTag,
-                BattleTimeMs = r.BattleTimeMs,
-                Round = r.Round,
-                Result = r.Result,
-                Cards = r.Cards,
-                League = r.League,
-                EventTag = r.EventTag,
-                GameModeId = r.GameModeId,
-            })
-            .ToList();
-
     public long GetLastPollMs()
         => db.MetaState
             .AsNoTracking()

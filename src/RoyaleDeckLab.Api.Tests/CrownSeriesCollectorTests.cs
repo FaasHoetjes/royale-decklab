@@ -64,6 +64,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         public List<string> Ranked { get; } = [];
         public Dictionary<string, List<object>> Logs { get; } = [];
         public HashSet<string> Refused { get; } = [];
+        public HashSet<string> Garbled { get; } = [];
         public ConcurrentBag<string> LogsRead { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -78,6 +79,13 @@ public sealed class CrownSeriesCollectorTests : IDisposable
                     throw new BrokenCircuitException();
                 }
                 LogsRead.Add(tag);
+                if (Garbled.Contains(tag))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("<html>Service unavailable</html>", Encoding.UTF8, "text/html"),
+                    });
+                }
                 body = Logs.GetValueOrDefault(tag) ?? [];
             }
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -117,7 +125,22 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     private List<CrownSeriesRound> Stored()
     {
         using var scope = _services.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().RoundsSince(0).ToList();
+        return scope.ServiceProvider.GetRequiredService<MetaDbContext>().CrownSeriesRounds
+            .AsNoTracking()
+            .AsEnumerable()
+            .Select(r => new CrownSeriesRound
+            {
+                PlayerTag = r.PlayerTag,
+                OpponentTag = r.OpponentTag,
+                BattleTimeMs = r.BattleTimeMs,
+                Round = r.Round,
+                Result = r.Result,
+                Cards = r.Cards,
+                League = r.League,
+                EventTag = r.EventTag,
+                GameModeId = r.GameModeId,
+            })
+            .ToList();
     }
 
     private long LastPollMs()
@@ -211,6 +234,20 @@ public sealed class CrownSeriesCollectorTests : IDisposable
 
         Assert.Equal(4, Stored().Count);
         Assert.DoesNotContain("#OPP", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_log_that_comes_back_garbled_leaves_the_poll_to_the_others()
+    {
+        _api.Ranked.AddRange(["#R1", "#R2"]);
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        _api.Garbled.Add("#R2");
+
+        await CollectAsync();
+
+        Assert.Equal(4, Stored().Count);
+        Assert.Contains("#OPP", _api.LogsRead);
+        Assert.Equal(Now.ToUnixTimeMilliseconds(), LastPollMs());
     }
 
     [Fact]

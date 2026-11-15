@@ -59,7 +59,11 @@ public static class CrownSeriesRounds
             gameModeId);
         var teamRounds = team.Rounds ?? [];
         var opponentRounds = opponent.Rounds ?? [];
-        var roundCount = Math.Min(teamRounds.Count, opponentRounds.Count);
+        if (teamRounds.Count == 0 || teamRounds.Count != opponentRounds.Count)
+        {
+            return [];
+        }
+        var roundCount = teamRounds.Count;
 
         var rounds = new List<CrownSeriesRound>(roundCount * 2);
         for (var r = 0; r < roundCount; r++)
