@@ -166,6 +166,8 @@ public sealed class PatchNotesTests : IDisposable
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<BattleRepository>();
         services.AddScoped<CrownSeriesRepository>();
+        services.AddSingleton(new ClashRoyaleCrawlClient(
+            new HttpClient(blog) { BaseAddress = new Uri("https://cr.test/v1/") }, new CrawlConcurrency()));
         services.AddScoped<MetaBuilder>();
         services.AddSingleton(new ClashRoyaleClient(new HttpClient(blog) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddSingleton(new SupercellBlogClient(new HttpClient(blog) { BaseAddress = new Uri("https://blog.test/") }));

@@ -38,6 +38,8 @@ public sealed class CardPeriodStorageTests : IDisposable
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<BattleRepository>();
         services.AddScoped<CrownSeriesRepository>();
+        services.AddSingleton(new ClashRoyaleCrawlClient(
+            new HttpClient(new NoApi()) { BaseAddress = new Uri("https://cr.test/v1/") }, new CrawlConcurrency()));
         services.AddSingleton(new ClashRoyaleClient(new HttpClient(new NoApi()) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddScoped<MetaBuilder>();
         services.AddSingleton<MetaCache>();

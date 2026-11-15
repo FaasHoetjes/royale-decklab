@@ -1,3 +1,4 @@
+using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Services;
@@ -33,7 +34,7 @@ public sealed class CrownSeriesRoundsTests
         var a = rounds.Where(r => r.PlayerTag == "#A").OrderBy(r => r.Round).ToList();
         Assert.Equal([BattleResult.Win, BattleResult.Loss, BattleResult.Win], a.Select(r => r.Result));
         Assert.Equal([11, 12, 13, 14, 15, 16, 17, 18], a[1].CardIds);
-        Assert.Equal($"#A|{Time}|r1", a[1].Key);
+        Assert.Equal("#B", a[1].OpponentTag);
         var b = rounds.Single(r => r.PlayerTag == "#B" && r.Round == 1);
         Assert.Equal(BattleResult.Win, b.Result);
         Assert.Equal([41, 42, 43, 44, 45, 46, 47, 48], b.CardIds);
@@ -61,8 +62,8 @@ public sealed class CrownSeriesRoundsTests
 
         var rounds = CrownSeriesRounds.From(battle);
 
-        Assert.All(rounds.Single(r => r.PlayerTag == "#A").CardLevels, c => Assert.Equal(14, c.Level));
-        Assert.All(rounds.Single(r => r.PlayerTag == "#B").CardLevels, c => Assert.Equal(16, c.Level));
+        Assert.All(rounds.Single(r => r.PlayerTag == "#A").Cards, c => Assert.Equal(14, c.Level));
+        Assert.All(rounds.Single(r => r.PlayerTag == "#B").Cards, c => Assert.Equal(16, c.Level));
     }
 
     [Fact]
@@ -78,12 +79,25 @@ public sealed class CrownSeriesRoundsTests
     }
 
     [Fact]
-    public void A_multi_deck_battle_of_another_mode_is_told_apart()
+    public void Only_a_multi_deck_mode_nobody_knows_is_reported()
     {
         var a = Side("#A", new CrBattleRound(1, Cards(1)));
         var b = Side("#B", new CrBattleRound(0, Cards(31)));
 
-        Assert.True(CrownSeriesRounds.IsOtherMultiDeckBattle(Duel(a, b, mode: "Competitive_Multideck_Grand")));
-        Assert.False(CrownSeriesRounds.IsOtherMultiDeckBattle(Duel(a, b)));
+        Assert.Equal("Competitive_Multideck_Grand", CrownSeriesRounds.UnknownMultiDeckMode(Duel(a, b, mode: "Competitive_Multideck_Grand")));
+        Assert.Null(CrownSeriesRounds.UnknownMultiDeckMode(Duel(a, b)));
+        Assert.Null(CrownSeriesRounds.UnknownMultiDeckMode(Duel(a, b, mode: "Duel_1v1_Friendly")));
+    }
+
+    [Fact]
+    public void Cards_survive_storage()
+    {
+        List<CrBattleCard> played = [.. Cards(1).Skip(1), new CrBattleCard(100, 1, "Rare", 13, 14)];
+        var battle = Duel(Side("#A", new CrBattleRound(1, played)), Side("#B", new CrBattleRound(0, Cards(31))));
+        var cards = CrownSeriesRounds.From(battle).Single(r => r.PlayerTag == "#A").Cards;
+
+        Assert.Contains(new CrownSeriesCard(100, 15, CardVersionKind.Evo), cards);
+
+        Assert.Equal(cards, CrownSeriesCardStorage.Deserialize(CrownSeriesCardStorage.Serialize(cards)));
     }
 }

@@ -45,11 +45,11 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
             v => v.ToList());
 
-        var levelsConverter = new ValueConverter<IReadOnlyList<CardLevel>, string>(
-            v => JsonSerializer.Serialize(v, StorageJson.Options),
-            v => JsonSerializer.Deserialize<List<CardLevel>>(v, StorageJson.Options) ?? new List<CardLevel>());
+        var crownSeriesCardsConverter = new ValueConverter<IReadOnlyList<CrownSeriesCard>, string>(
+            v => CrownSeriesCardStorage.Serialize(v),
+            v => CrownSeriesCardStorage.Deserialize(v));
 
-        var levelsComparer = new ValueComparer<IReadOnlyList<CardLevel>>(
+        var crownSeriesCardsComparer = new ValueComparer<IReadOnlyList<CrownSeriesCard>>(
             (a, b) => a!.SequenceEqual(b!),
             v => v.Aggregate(17, (h, x) => HashCode.Combine(h, x.GetHashCode())),
             v => v.ToList());
@@ -75,17 +75,13 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
         modelBuilder.Entity<CrownSeriesRoundEntity>(r =>
         {
             r.ToTable("crown_series_rounds");
-            r.HasKey(x => x.Key);
-            r.Property(x => x.Key).HasColumnName("key");
-            r.Property(x => x.MatchKey).HasColumnName("match_key").IsRequired();
-            r.Property(x => x.PlayerTag).HasColumnName("player_tag").IsRequired();
-            r.Property(x => x.BattleTime).HasColumnName("battle_time").IsRequired();
-            r.Property(x => x.BattleTimeMs).HasColumnName("battle_time_ms").IsRequired();
-            r.Property(x => x.Round).HasColumnName("round").IsRequired();
+            r.HasKey(x => new { x.PlayerTag, x.BattleTimeMs, x.Round });
+            r.Property(x => x.PlayerTag).HasColumnName("player_tag");
+            r.Property(x => x.BattleTimeMs).HasColumnName("battle_time_ms");
+            r.Property(x => x.Round).HasColumnName("round");
+            r.Property(x => x.OpponentTag).HasColumnName("opponent_tag").IsRequired();
             r.Property(x => x.Result).HasColumnName("result").HasConversion(resultConverter).IsRequired();
-            r.Property(x => x.CardIds).HasColumnName("card_ids").HasConversion(cardIdsConverter, cardIdsComparer).IsRequired();
-            r.Property(x => x.CardLevels).HasColumnName("card_levels").HasConversion(levelsConverter, levelsComparer).IsRequired();
-            r.Property(x => x.CardVersions).HasColumnName("card_versions").HasConversion(versionsConverter, versionsComparer).IsRequired();
+            r.Property(x => x.Cards).HasColumnName("cards").HasConversion(crownSeriesCardsConverter, crownSeriesCardsComparer).IsRequired();
             r.Property(x => x.League).HasColumnName("league").IsRequired();
             r.Property(x => x.EventTag).HasColumnName("event_tag").IsRequired();
             r.Property(x => x.GameModeId).HasColumnName("game_mode_id").IsRequired();
@@ -99,6 +95,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             m.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
             m.Property(x => x.EpochStartMs).HasColumnName("epoch_start_ms").IsRequired();
             m.Property(x => x.PreviousEpochStartMs).HasColumnName("previous_epoch_start_ms").IsRequired().HasDefaultValue(0L);
+            m.Property(x => x.LastCrownSeriesPollMs).HasColumnName("last_crown_series_poll_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastBuildMs).HasColumnName("last_build_ms").IsRequired();
         });
 

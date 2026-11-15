@@ -21,25 +21,17 @@ public sealed class BattleEntity
 
 public sealed class CrownSeriesRoundEntity
 {
-    public string Key { get; set; } = "";
-
-    public string MatchKey { get; set; } = "";
-
     public string PlayerTag { get; set; } = "";
-
-    public string BattleTime { get; set; } = "";
 
     public long BattleTimeMs { get; set; }
 
     public int Round { get; set; }
 
+    public string OpponentTag { get; set; } = "";
+
     public BattleResult Result { get; set; }
 
-    public int[] CardIds { get; set; } = [];
-
-    public IReadOnlyList<CardLevel> CardLevels { get; set; } = [];
-
-    public IReadOnlyList<CardVersion> CardVersions { get; set; } = [];
+    public IReadOnlyList<CrownSeriesCard> Cards { get; set; } = [];
 
     public int League { get; set; }
 
@@ -52,6 +44,7 @@ public sealed class MetaStateEntity
 {
     public int Id { get; set; } = 1;
     public long EpochStartMs { get; set; }
+    public long LastCrownSeriesPollMs { get; set; }
     public long PreviousEpochStartMs { get; set; }
     public long LastBuildMs { get; set; }
 }

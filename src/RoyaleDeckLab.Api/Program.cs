@@ -53,17 +53,12 @@ builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
 builder.Services.AddScoped<BattleRepository>();
 builder.Services.AddScoped<CrownSeriesRepository>();
 
-builder.Services.AddHttpClient<ClashRoyaleClient>((sp, http) =>
-    {
-        var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
-        http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
-        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
-        http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-    })
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-    {
-        AutomaticDecompression = System.Net.DecompressionMethods.All,
-    })
+builder.Services.AddHttpClient<ClashRoyaleClient>(ConfigureClashRoyaleApi)
+    .ConfigurePrimaryHttpMessageHandler(CreateClashRoyaleHandler)
+    .AddStandardResilienceHandler();
+builder.Services.AddSingleton<CrawlConcurrency>();
+builder.Services.AddHttpClient<ClashRoyaleCrawlClient>(ConfigureClashRoyaleApi)
+    .ConfigurePrimaryHttpMessageHandler(CreateClashRoyaleHandler)
     .AddStandardResilienceHandler();
 
 builder.Services.AddSingleton(TimeProvider.System);
@@ -93,6 +88,7 @@ builder.Services.AddSingleton<LivePresence>();
 builder.Services.AddHostedService<StatsWriter>();
 builder.Services.AddSingleton<MetaCache>();
 builder.Services.AddHostedService<MetaRefreshService>();
+builder.Services.AddSingleton<CrownSeriesSchedule>();
 builder.Services.AddScoped<CrownSeriesCollector>();
 builder.Services.AddHostedService<CrownSeriesRefreshService>();
 builder.Services.AddSingleton<CardReleases>();
@@ -176,3 +172,16 @@ app.MapSpaFallback();
 await app.Services.GetRequiredService<CardArtCache>().LoadVersionsFromDiskAsync();
 app.Logger.LogInformation("Royale DeckLab API running on http://localhost:3000");
 app.Run();
+
+static void ConfigureClashRoyaleApi(IServiceProvider sp, HttpClient http)
+{
+    var opt = sp.GetRequiredService<IOptions<ClashRoyaleOptions>>().Value;
+    http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
+    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
+    http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+}
+
+static HttpMessageHandler CreateClashRoyaleHandler() => new SocketsHttpHandler
+{
+    AutomaticDecompression = System.Net.DecompressionMethods.All,
+};

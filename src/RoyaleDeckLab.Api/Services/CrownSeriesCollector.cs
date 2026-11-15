@@ -15,118 +15,229 @@ namespace RoyaleDeckLab.Api.Services;
 /// league.
 /// </summary>
 public sealed class CrownSeriesCollector(
-    ClashRoyaleClient client,
+    ClashRoyaleCrawlClient client,
     CrownSeriesRepository store,
+    CrownSeriesSchedule schedule,
     TimeProvider time,
     IOptions<CrownSeriesOptions> options,
     IOptions<MetaOptions> metaOptions,
     ILogger<CrownSeriesCollector> logger)
 {
-    private const int BatchSize = 10;
+    // Rounds are stored this many players at a time, so a poll cut short keeps what it read.
+    private const int PlayersPerFlush = 500;
 
     private readonly CrownSeriesOptions _opt = options.Value;
 
     public async Task CollectAsync(CancellationToken ct = default)
     {
-        var ranked = await client.GetTopRankedPlayerTagsAsync(_opt.RankedPlayers, ct);
-        var harvest = new Harvest();
-
-        await ReadLogsAsync(ranked.Take(_opt.ProbePlayers), harvest, ct);
         var now = time.GetUtcNow().ToUnixTimeMilliseconds();
-        if (!harvest.HasDuelSince(now - _opt.LiveDuelWindowMs))
+        var cutoff = now - metaOptions.Value.BattleWindowMs;
+        var pruned = await store.PruneAsync(cutoff, ct);
+        var harvest = new Harvest(cutoff);
+        try
         {
-            logger.LogInformation("No Crown Series Duel weekend on: no recent Duels among the top {Players} Ranked players",
+            await PollAsync(harvest, now, ct);
+        }
+        catch (BrokenCircuitException)
+        {
+            logger.LogWarning("The CR API is refusing crawl requests; Crown Series poll stopped after {Players} players",
                 harvest.PlayersRead);
-            return;
         }
 
-        await ReadLogsAsync(ranked.Skip(_opt.ProbePlayers), harvest, ct);
-        var opponentsToRead = harvest.UnreadOpponents()
-            .Take(Math.Max(0, _opt.MaxPlayers - harvest.PlayersRead))
-            .ToList();
-        await ReadLogsAsync(opponentsToRead, harvest, ct);
-
-        var added = await store.MergeRoundsAsync(harvest.Rounds, ct);
-        var pruned = await store.PruneAsync(now - metaOptions.Value.BattleWindowMs, ct);
+        harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
+        await store.SetLastPollMsAsync(now, ct);
         logger.LogInformation(
             "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned",
-            harvest.PlayersRead, harvest.FailedReads, harvest.Rounds.Count, added, pruned);
-        if (harvest.OtherMultiDeckBattles > 0)
+            harvest.PlayersRead, harvest.FailedReads, harvest.RoundsFound, harvest.Added, pruned);
+        if (harvest.UnknownModes.Count > 0)
         {
-            logger.LogWarning("Skipped {Count} multi-deck battles of a mode that isn't the Crown Series Duel",
-                harvest.OtherMultiDeckBattles);
+            logger.LogWarning("Skipped multi-deck battles of modes that aren't the Crown Series Duel: {@Modes}",
+                harvest.UnknownModes);
         }
     }
 
-    private async Task ReadLogsAsync(IEnumerable<string> tags, Harvest harvest, CancellationToken ct)
+    private async Task PollAsync(Harvest harvest, long now, CancellationToken ct)
     {
-        foreach (var batch in tags.Where(harvest.MarkRead).Chunk(BatchSize))
+        var ranked = await client.GetTopRankedPlayerTagsAsync(_opt.RankedPlayers, ct);
+        if (!await IsDuelWeekendOnAsync(ranked, harvest, now, ct))
         {
-            var logs = await Task.WhenAll(batch.Select(tag => ReadLogAsync(tag, ct)));
-            foreach (var log in logs)
-            {
-                harvest.Add(log);
-            }
+            logger.LogInformation("No Crown Series Duel weekend on: no Duels in the last {Hours} h", _opt.LiveDuelWindowMs / 3_600_000.0);
+            return;
+        }
+
+        var due = ranked
+            .Concat(schedule.KnownTags())
+            .Distinct(StringComparer.Ordinal)
+            .Where(tag => !harvest.WasRead(tag))
+            .Where(tag => schedule.IsDue(tag, now))
+            .ToList();
+        await ReadAsync(due, harvest, now, ct);
+
+        var room = Math.Max(0, _opt.MaxPlayers - schedule.KnownPlayers);
+        var newOpponents = harvest.Opponents()
+            .Where(tag => !schedule.IsKnown(tag))
+            .Take(room)
+            .ToList();
+        await ReadAsync(newOpponents, harvest, now, ct);
+    }
+
+    private async Task<bool> IsDuelWeekendOnAsync(IReadOnlyList<string> ranked, Harvest harvest, long now, CancellationToken ct)
+    {
+        var since = now - _opt.LiveDuelWindowMs;
+        if (store.LatestBattleTimeMs() >= since)
+        {
+            return true;
+        }
+
+        var probe = store.MostActivePlayers(_opt.ProbePlayers);
+        if (probe.Count == 0)
+        {
+            probe = ranked.Take(_opt.ProbePlayers).ToList();
+        }
+        await ReadAsync(probe, harvest, now, ct);
+        return harvest.HasDuelSince(since);
+    }
+
+    private async Task ReadAsync(IReadOnlyList<string> tags, Harvest harvest, long now, CancellationToken ct)
+    {
+        var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
+        foreach (var chunk in tags.Chunk(PlayersPerFlush))
+        {
+            await Parallel.ForEachAsync(chunk, parallel, async (tag, token) => await ReadLogAsync(tag, harvest, now, token));
+            harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
         }
     }
 
     /// <summary>One player's log that can't be read leaves the poll to the others: the CR API fails single requests now and then.</summary>
-    private async Task<LogRead> ReadLogAsync(string tag, CancellationToken ct)
+    private async Task ReadLogAsync(string tag, Harvest harvest, long now, CancellationToken ct)
     {
+        harvest.MarkRead(tag);
         try
         {
-            return new LogRead.Read(await client.GetPlayerBattlelogAsync(tag, ct));
+            var log = await client.GetPlayerBattlelogAsync(tag, ct);
+            schedule.RecordRead(tag, log, now);
+            harvest.Add(log);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException or BrokenCircuitException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException or JsonException)
         {
-            return new LogRead.Failed();
+            harvest.AddFailedRead();
         }
     }
 
-    private abstract record LogRead
+    /// <summary>The Duels read in one poll, newer than <paramref name="cutoffMs"/>: older ones are past the window the store keeps.</summary>
+    private sealed class Harvest(long cutoffMs)
     {
-        public sealed record Read(IReadOnlyList<CrBattle> Battles) : LogRead;
-
-        public sealed record Failed : LogRead;
-    }
-
-    private sealed class Harvest
-    {
+        private readonly object _lock = new();
         private readonly HashSet<string> _read = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, CrownSeriesRound> _rounds = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _seenRounds = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _opponents = new(StringComparer.Ordinal);
+        private List<CrownSeriesRound> _pending = [];
+        private long _latestDuelMs;
+        private int _failedReads;
+        private int _roundsFound;
 
-        public int PlayersRead => _read.Count;
-        public int FailedReads { get; private set; }
-        public int OtherMultiDeckBattles { get; private set; }
-        public IReadOnlyCollection<CrownSeriesRound> Rounds => _rounds.Values;
+        public int Added { get; set; }
+        public HashSet<string> UnknownModes { get; } = new(StringComparer.Ordinal);
 
-        public bool MarkRead(string tag) => _read.Add(tag);
-
-        public bool HasDuelSince(long ms) => _rounds.Values.Any(r => r.BattleTimeMs >= ms);
-
-        public IEnumerable<string> UnreadOpponents()
-            => _rounds.Values
-                .Select(r => r.PlayerTag)
-                .Where(tag => !_read.Contains(tag))
-                .Distinct(StringComparer.Ordinal);
-
-        public void Add(LogRead log)
+        public int PlayersRead
         {
-            if (log is not LogRead.Read read)
+            get
             {
-                FailedReads++;
-                return;
+                lock (_lock)
+                {
+                    return _read.Count;
+                }
             }
-            foreach (var battle in read.Battles)
+        }
+
+        public int FailedReads => Volatile.Read(ref _failedReads);
+
+        public int RoundsFound
+        {
+            get
             {
-                if (CrownSeriesRounds.IsOtherMultiDeckBattle(battle))
+                lock (_lock)
                 {
-                    OtherMultiDeckBattles++;
+                    return _roundsFound;
                 }
-                foreach (var round in CrownSeriesRounds.From(battle))
+            }
+        }
+
+        public void MarkRead(string tag)
+        {
+            lock (_lock)
+            {
+                _read.Add(tag);
+            }
+        }
+
+        public bool WasRead(string tag)
+        {
+            lock (_lock)
+            {
+                return _read.Contains(tag);
+            }
+        }
+
+        public void AddFailedRead() => Interlocked.Increment(ref _failedReads);
+
+        public bool HasDuelSince(long ms)
+        {
+            lock (_lock)
+            {
+                return _latestDuelMs >= ms;
+            }
+        }
+
+        public IReadOnlyList<string> Opponents()
+        {
+            lock (_lock)
+            {
+                return _opponents.Where(tag => !_read.Contains(tag)).ToList();
+            }
+        }
+
+        public List<CrownSeriesRound> TakePending()
+        {
+            lock (_lock)
+            {
+                var pending = _pending;
+                _pending = [];
+                return pending;
+            }
+        }
+
+        public void Add(IReadOnlyList<CrBattle> log)
+        {
+            lock (_lock)
+            {
+                foreach (var battle in log)
                 {
-                    _rounds.TryAdd(round.Key, round);
+                    AddBattle(battle);
                 }
+            }
+        }
+
+        private void AddBattle(CrBattle battle)
+        {
+            if (CrownSeriesRounds.UnknownMultiDeckMode(battle) is { } mode)
+            {
+                UnknownModes.Add(mode);
+            }
+            foreach (var round in CrownSeriesRounds.From(battle))
+            {
+                if (round.BattleTimeMs < cutoffMs)
+                {
+                    continue;
+                }
+                _opponents.Add(round.PlayerTag);
+                if (!_seenRounds.Add(round.Key))
+                {
+                    continue;
+                }
+                _pending.Add(round);
+                _roundsFound++;
+                _latestDuelMs = Math.Max(_latestDuelMs, round.BattleTimeMs);
             }
         }
     }

@@ -12,11 +12,25 @@ public static class CrownSeriesRounds
 
     private const string MultiDeckSelection = "quadDeckPick";
 
+    private static readonly HashSet<string> OtherKnownMultiDeckModes = new(StringComparer.Ordinal)
+    {
+        "Duel_1v1_Friendly",
+        "Duel_1v1_Tournament",
+    };
+
     public static bool IsCrownSeries(CrBattle battle) => battle.GameMode?.Name == GameModeName;
 
-    /// <summary>A battle played with a multi-deck lineup that isn't a Crown Series Duel, such as a mode Supercell added later.</summary>
-    public static bool IsOtherMultiDeckBattle(CrBattle battle)
-        => battle.DeckSelection == MultiDeckSelection && !IsCrownSeries(battle);
+    /// <summary>
+    /// The mode of a battle played with a multi-deck lineup that is neither a Crown Series Duel nor a known friendly or
+    /// tournament Duel, such as a Crown Series mode Supercell added later; null for any other battle.
+    /// </summary>
+    public static string? UnknownMultiDeckMode(CrBattle battle)
+    {
+        var isMultiDeck = battle.DeckSelection == MultiDeckSelection;
+        var mode = battle.GameMode?.Name ?? "";
+        var isKnown = IsCrownSeries(battle) || OtherKnownMultiDeckModes.Contains(mode);
+        return isMultiDeck && !isKnown ? mode : null;
+    }
 
     /// <summary>Both players' decks for every round, or none when the battle isn't a complete Crown Series Duel.</summary>
     public static IReadOnlyList<CrownSeriesRound> From(CrBattle battle)
@@ -38,9 +52,7 @@ public static class CrownSeriesRounds
             return [];
         }
 
-        var match = new Match(
-            MatchKey(battle.BattleTime, teamTag, opponentTag),
-            battle.BattleTime,
+        var duel = new Duel(
             BattleRepository.ParseBattleTime(battle.BattleTime),
             league,
             eventTag,
@@ -52,8 +64,8 @@ public static class CrownSeriesRounds
         var rounds = new List<CrownSeriesRound>(roundCount * 2);
         for (var r = 0; r < roundCount; r++)
         {
-            var teamRound = ToRound(match, teamTag, r, teamRounds[r], opponentRounds[r].Crowns);
-            var opponentRound = ToRound(match, opponentTag, r, opponentRounds[r], teamRounds[r].Crowns);
+            var teamRound = ToRound(duel, teamTag, opponentTag, r, teamRounds[r], opponentRounds[r].Crowns);
+            var opponentRound = ToRound(duel, opponentTag, teamTag, r, opponentRounds[r], teamRounds[r].Crowns);
             if (teamRound is null || opponentRound is null)
             {
                 return [];
@@ -64,56 +76,40 @@ public static class CrownSeriesRounds
         return rounds;
     }
 
-    private sealed record Match(string Key, string BattleTime, long BattleTimeMs, int League, string EventTag, int GameModeId);
+    private sealed record Duel(long BattleTimeMs, int League, string EventTag, int GameModeId);
 
-    private static string MatchKey(string battleTime, string tag, string otherTag)
+    private static CrownSeriesRound? ToRound(
+        Duel duel, string playerTag, string opponentTag, int round, CrBattleRound played, int opponentCrowns)
     {
-        var isTagFirst = string.CompareOrdinal(tag, otherTag) <= 0;
-        return isTagFirst
-            ? $"{battleTime}|{tag}|{otherTag}"
-            : $"{battleTime}|{otherTag}|{tag}";
-    }
-
-    private static CrownSeriesRound? ToRound(Match match, string playerTag, int round, CrBattleRound played, int opponentCrowns)
-    {
-        var cards = played.Cards ?? [];
-        if (cards.Count == 0)
+        var playedCards = played.Cards ?? [];
+        if (playedCards.Count == 0)
         {
             return null;
         }
 
-        var levels = new List<CardLevel>(cards.Count);
-        foreach (var card in cards)
+        var cards = new List<CrownSeriesCard>(playedCards.Count);
+        foreach (var card in playedCards)
         {
             if (card is not { Level: int level, MaxLevel: int maxLevel })
             {
                 return null;
             }
-            levels.Add(new CardLevel(card.Id, LevelModel.DisplayLevel(level, maxLevel)));
+            cards.Add(new CrownSeriesCard(card.Id, LevelModel.DisplayLevel(level, maxLevel), MetaBuilder.FieldedVersion(card)));
         }
 
         return new CrownSeriesRound
         {
-            Key = $"{playerTag}|{match.BattleTime}|r{round}",
-            MatchKey = match.Key,
             PlayerTag = playerTag,
-            BattleTime = match.BattleTime,
-            BattleTimeMs = match.BattleTimeMs,
+            OpponentTag = opponentTag,
+            BattleTimeMs = duel.BattleTimeMs,
             Round = round,
             Result = BattleResultExtensions.FromCrowns(played.Crowns, opponentCrowns),
-            CardIds = cards
-                .Select(c => c.Id)
-                .Order()
-                .ToArray(),
-            CardLevels = levels
-                .OrderBy(c => c.CardId)
+            Cards = cards
+                .OrderBy(c => c.Id)
                 .ToList(),
-            CardVersions = cards
-                .Select(c => new CardVersion(c.Id, MetaBuilder.FieldedVersion(c)))
-                .ToList(),
-            League = match.League,
-            EventTag = match.EventTag,
-            GameModeId = match.GameModeId,
+            League = duel.League,
+            EventTag = duel.EventTag,
+            GameModeId = duel.GameModeId,
         };
     }
 }

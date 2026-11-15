@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Models;
@@ -19,6 +20,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"crownseries-{Guid.NewGuid():N}.db");
     private readonly FakeApi _api = new();
+    private readonly FakeClock _clock = new();
     private readonly ServiceProvider _services;
 
     public CrownSeriesCollectorTests()
@@ -29,13 +31,18 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new CrownSeriesOptions { ProbePlayers = 1 }));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<CrownSeriesRepository>();
-        services.AddSingleton(new ClashRoyaleClient(new HttpClient(_api) { BaseAddress = new Uri("https://cr.test/v1/") }));
-        services.AddSingleton<TimeProvider>(new FixedClock(Now));
+        services.AddSingleton(new ClashRoyaleCrawlClient(
+            new HttpClient(_api) { BaseAddress = new Uri("https://cr.test/v1/") }, new CrawlConcurrency()));
+        services.AddSingleton<TimeProvider>(_clock);
+        services.AddSingleton<CrownSeriesSchedule>();
         services.AddScoped<CrownSeriesCollector>();
         _services = services.BuildServiceProvider();
 
         using var scope = _services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<MetaDbContext>().Database.EnsureCreated();
+        var db = scope.ServiceProvider.GetRequiredService<MetaDbContext>();
+        db.Database.EnsureCreated();
+        db.MetaState.Add(new MetaStateEntity { Id = 1 });
+        db.SaveChanges();
     }
 
     public void Dispose()
@@ -45,15 +52,18 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         File.Delete(_dbPath);
     }
 
-    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
+    private sealed class FakeClock : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => now;
+        public DateTimeOffset Now { get; set; } = CrownSeriesCollectorTests.Now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
     }
 
     private sealed class FakeApi : HttpMessageHandler
     {
         public List<string> Ranked { get; } = [];
         public Dictionary<string, List<object>> Logs { get; } = [];
+        public HashSet<string> Refused { get; } = [];
         public ConcurrentBag<string> LogsRead { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -63,6 +73,10 @@ public sealed class CrownSeriesCollectorTests : IDisposable
             if (path.EndsWith("/battlelog"))
             {
                 var tag = path.Split('/')[^2];
+                if (Refused.Contains(tag))
+                {
+                    throw new BrokenCircuitException();
+                }
                 LogsRead.Add(tag);
                 body = Logs.GetValueOrDefault(tag) ?? [];
             }
@@ -103,7 +117,13 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     private List<CrownSeriesRound> Stored()
     {
         using var scope = _services.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().AllRounds().ToList();
+        return scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().RoundsSince(0).ToList();
+    }
+
+    private long LastPollMs()
+    {
+        using var scope = _services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().GetLastPollMs();
     }
 
     [Fact]
@@ -119,6 +139,23 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         Assert.Equal(8, stored.Count);
         Assert.Equal(["#DEEP", "#OPP", "#R1"], stored.Select(r => r.PlayerTag).Distinct().Order());
         Assert.Equal(["#OPP", "#R1", "#R2"], _api.LogsRead.Order());
+        Assert.Equal(Now.ToUnixTimeMilliseconds(), LastPollMs());
+    }
+
+    [Fact]
+    public async Task A_log_that_fills_slowly_is_not_read_again_next_hour()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1)), Duel("#R1", "#OPP", TimeSpan.FromHours(30))];
+        _api.Logs["#FAST"] = [Duel("#FAST", "#R1", TimeSpan.FromHours(1)), Duel("#FAST", "#R1", TimeSpan.FromHours(2))];
+        _api.Logs["#R1"].Add(Duel("#R1", "#FAST", TimeSpan.FromHours(1.5)));
+
+        await CollectAsync();
+        _clock.Now = Now.AddHours(1);
+        _api.LogsRead.Clear();
+        await CollectAsync();
+
+        Assert.Equal(["#FAST"], _api.LogsRead);
     }
 
     [Fact]
@@ -129,6 +166,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         _api.Logs["#OPP"] = [Duel("#OPP", "#R1", TimeSpan.FromHours(1))];
 
         await CollectAsync();
+        _clock.Now = Now.AddHours(9);
         await CollectAsync();
 
         Assert.Equal(4, Stored().Count);
@@ -142,8 +180,37 @@ public sealed class CrownSeriesCollectorTests : IDisposable
 
         await CollectAsync();
 
-        Assert.Empty(Stored());
         Assert.Equal(["#R1"], _api.LogsRead);
+        Assert.Equal(Now.ToUnixTimeMilliseconds(), LastPollMs());
+    }
+
+    [Fact]
+    public async Task The_probe_reads_the_players_who_played_most_duels()
+    {
+        _api.Ranked.AddRange(["#R1", "#R2"]);
+        _api.Logs["#R1"] = [Duel("#R1", "#ACTIVE", TimeSpan.FromDays(3))];
+        _api.Logs["#ACTIVE"] = [Duel("#ACTIVE", "#R2", TimeSpan.FromDays(3.1)), Duel("#ACTIVE", "#R1", TimeSpan.FromDays(3.5))];
+        _clock.Now = Now.AddDays(-3).AddHours(1);
+        await CollectAsync();
+        _clock.Now = Now;
+        _api.LogsRead.Clear();
+
+        await CollectAsync();
+
+        Assert.Equal(["#ACTIVE"], _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_refusing_api_stops_the_poll_and_keeps_what_was_read()
+    {
+        _api.Ranked.AddRange(["#R1", "#R2"]);
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        _api.Refused.Add("#R2");
+
+        await CollectAsync();
+
+        Assert.Equal(4, Stored().Count);
+        Assert.DoesNotContain("#OPP", _api.LogsRead);
     }
 
     [Fact]
@@ -151,6 +218,8 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     {
         _api.Ranked.Add("#R1");
         _api.Logs["#R1"] = [Duel("#R1", "#OLD", TimeSpan.FromDays(40)), Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        await CollectAsync();
+        _clock.Now = Now.AddHours(9);
 
         await CollectAsync();
 

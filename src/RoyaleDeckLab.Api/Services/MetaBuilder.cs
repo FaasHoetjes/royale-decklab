@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
@@ -8,7 +9,7 @@ using RoyaleDeckLab.Api.Options;
 namespace RoyaleDeckLab.Api.Services;
 
 public sealed class MetaBuilder(
-    ClashRoyaleClient client,
+    ClashRoyaleCrawlClient client,
     IOptions<MetaOptions> options,
     ILogger<MetaBuilder> logger)
 {
@@ -60,22 +61,17 @@ public sealed class MetaBuilder(
         var done = 0;
         foreach (var clanBatch in clanTags.Chunk(clanBatchSize))
         {
-            var rosters = await Task.WhenAll(clanBatch.Select(async tag =>
+            try
             {
-                try
-                {
-                    return await client.GetClanMemberTagsAsync(tag, ct);
-                }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
-                {
-                    logger.LogWarning(ex, "Couldn't fetch the members of clan {ClanTag}; skipping it", tag);
-                    return (IReadOnlyList<string>)[];
-                }
-            }));
-
-            var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
-
-            crawl.Add(await ProcessWarPlayersAsync(members, ct));
+                var rosters = await Task.WhenAll(clanBatch.Select(tag => FetchMembersAsync(tag, ct)));
+                var members = rosters.SelectMany(r => r).Where(seenPlayers.Add).ToList();
+                await ProcessWarPlayersAsync(members, crawl, ct);
+            }
+            catch (BrokenCircuitException)
+            {
+                logger.LogWarning("The CR API is refusing crawl requests; war crawl stopped after {Clans} clans", done);
+                break;
+            }
             done += clanBatch.Length;
             logger.LogInformation("Processed {Done}/{Total} clans ({Players} players, {Records} records)",
                 done, clanTags.Count, seenPlayers.Count, crawl.WarBattles.Count);
@@ -89,19 +85,31 @@ public sealed class MetaBuilder(
         return crawl;
     }
 
-    private async Task<WarClanCrawl> ProcessWarPlayersAsync(List<string> tags, CancellationToken ct)
+    private async Task<IReadOnlyList<string>> FetchMembersAsync(string clanTag, CancellationToken ct)
     {
-        var crawl = new WarClanCrawl();
-        const int batchSize = 10;
-        foreach (var batch in tags.Chunk(batchSize))
+        try
         {
-            var results = await Task.WhenAll(batch.Select(tag => ProcessWarBattleLogAsync(tag, ct)));
-            foreach (var playerCrawl in results)
+            return await client.GetClanMemberTagsAsync(clanTag, ct);
+        }
+        catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Couldn't fetch the members of clan {ClanTag}; skipping it", clanTag);
+            return [];
+        }
+    }
+
+    // Each player's log is added as soon as it's read, so a crawl stopped by the circuit breaker keeps what it has.
+    private async Task ProcessWarPlayersAsync(List<string> tags, WarClanCrawl crawl, CancellationToken ct)
+    {
+        var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
+        await Parallel.ForEachAsync(tags, parallel, async (tag, token) =>
+        {
+            var playerCrawl = await ProcessWarBattleLogAsync(tag, token);
+            lock (crawl)
             {
                 crawl.Add(playerCrawl);
             }
-        }
-        return crawl;
+        });
     }
 
     private async Task<WarClanCrawl> ProcessWarBattleLogAsync(string playerTag, CancellationToken ct)
@@ -139,7 +147,7 @@ public sealed class MetaBuilder(
                 }
             }
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error processing a war battle log");
         }

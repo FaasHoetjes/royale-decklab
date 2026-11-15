@@ -19,6 +19,10 @@ public static class MetaSchema
         {
             db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN previous_epoch_start_ms INTEGER NOT NULL DEFAULT 0;");
         }
+        if (!HasStateColumn(db, "last_crown_series_poll_ms"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN last_crown_series_poll_ms INTEGER NOT NULL DEFAULT 0;");
+        }
         db.Database.ExecuteSqlRaw(
             """
             CREATE TABLE IF NOT EXISTS card_periods (
@@ -53,19 +57,16 @@ public static class MetaSchema
         db.Database.ExecuteSqlRaw(
             """
             CREATE TABLE IF NOT EXISTS crown_series_rounds (
-                key TEXT NOT NULL CONSTRAINT PK_crown_series_rounds PRIMARY KEY,
-                match_key TEXT NOT NULL,
                 player_tag TEXT NOT NULL,
-                battle_time TEXT NOT NULL,
                 battle_time_ms INTEGER NOT NULL,
                 round INTEGER NOT NULL,
+                opponent_tag TEXT NOT NULL,
                 result TEXT NOT NULL,
-                card_ids TEXT NOT NULL,
-                card_levels TEXT NOT NULL,
-                card_versions TEXT NOT NULL,
+                cards TEXT NOT NULL,
                 league INTEGER NOT NULL,
                 event_tag TEXT NOT NULL,
-                game_mode_id INTEGER NOT NULL
+                game_mode_id INTEGER NOT NULL,
+                CONSTRAINT PK_crown_series_rounds PRIMARY KEY (player_tag, battle_time_ms, round)
             );
             """);
         db.Database.ExecuteSqlRaw(
