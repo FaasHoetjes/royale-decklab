@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_OPTIONS, hasActiveOptions, isPlannedAround, parseOptions, planRestOfToday, toQuery } from './generatorOptions';
+import { DEFAULT_OPTIONS, hasActiveOptions, isPlannedAround, parseOptions, planRestOfToday, saveDefaults, toQuery } from './generatorOptions';
 
 const deck = (from: number) => Array.from({ length: 8 }, (_, i) => from + i);
 
@@ -54,5 +54,23 @@ describe('season boosts option', () => {
     expect(options.boosts).toBe(false);
     expect(toQuery(options)).toBe('boosts=false');
     expect(hasActiveOptions(options)).toBe(true);
+  });
+
+  test('turned off, it is not carried over to the next search like the deck count is', () => {
+    const store = new Map<string, string>();
+    globalThis.localStorage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+      clear: () => store.clear(),
+      key: () => null,
+      length: 0,
+    } as Storage;
+
+    saveDefaults({ ...DEFAULT_OPTIONS, decks: 2, boosts: false });
+    const next = parseOptions(new URLSearchParams(''));
+
+    expect(next.decks).toBe(2);
+    expect(next.boosts).toBe(true);
   });
 });

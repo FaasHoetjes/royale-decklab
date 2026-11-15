@@ -45,6 +45,7 @@ public sealed class MetaStateEntity
     public int Id { get; set; } = 1;
     public long EpochStartMs { get; set; }
     public long LastCrownSeriesPollMs { get; set; }
+    public long LastSeasonBoostCheckMs { get; set; }
     public long PreviousEpochStartMs { get; set; }
     public long LastBuildMs { get; set; }
 }

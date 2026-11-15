@@ -32,8 +32,8 @@ export default function UpgradeAdvisor() {
   useEffect(() => setSelected(0), [activePlayerTag]);
 
   const advice = useUpgradeAdvice(activePlayerTag);
-  // The advice is measured against the default lineup, so the deck indexes point into it.
-  const warDecks = usePlayerWarDecks(activePlayerTag);
+  // The advice is measured against the default lineup at the player's own levels, so the deck indexes point into it.
+  const warDecks = usePlayerWarDecks(activePlayerTag, 'boosts=false');
   const data = advice.data;
   const suggestions = data?.suggestions ?? [];
   const visible = expanded ? suggestions : suggestions.slice(0, INITIAL_ROWS);

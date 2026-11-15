@@ -40,6 +40,9 @@ public sealed class MetaOptions
 
     public long SeasonBoostCheckIntervalMs { get; set; } = 3L * 60 * 60 * 1000;
 
+    // Leaves the first check after a deploy clear of the startup meta load and the Crown Series poll.
+    public long SeasonBoostStartupDelayMs { get; set; } = 5L * 60 * 1000;
+
     // On Nov 15, 2026, 600 players from war clans ranked 100 and below played each of the 7 boosted cards below King
     // Tower level at least 8 times in 3 days; 200 players found only 5 of the 7.
     public int SeasonBoostSamplePlayers { get; set; } = 600;

@@ -220,6 +220,24 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public HashSet<int> GetSeasonBoosts() => db.SeasonBoosts.AsNoTracking().Select(b => b.CardId).ToHashSet();
 
+    public long GetLastSeasonBoostCheckMs()
+        => db.MetaState.AsNoTracking().Select(s => s.LastSeasonBoostCheckMs).FirstOrDefault();
+
+    public async Task SetLastSeasonBoostCheckMsAsync(long ms, CancellationToken ct = default)
+    {
+        await WriteGate.WaitAsync(ct);
+        try
+        {
+            await db.MetaState
+                .Where(s => s.Id == 1)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.LastSeasonBoostCheckMs, ms), ct);
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
+
     public async Task ReplaceSeasonBoostsAsync(IReadOnlySet<int> cardIds, CancellationToken ct = default)
     {
         await WriteGate.WaitAsync(ct);
