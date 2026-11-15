@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import type { SeasonBoosts } from '../api';
 import type { BuilderCard } from '../lib/builderCards';
 import { displayLevel } from '../lib/cardDisplay';
 import { MAX_DECKS, type GeneratorOptions } from '../lib/generatorOptions';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
+import { listNames } from '../lib/seasonBoosts';
 import CardPicker from './CardPicker';
+import Switch from './Switch';
 import CardAvatar from './generator/CardAvatar';
 import OptionsSheet from './generator/OptionsSheet';
 import PickedCards from './generator/PickedCards';
@@ -16,6 +19,7 @@ interface GeneratorControlsProps {
   onChange: (options: GeneratorOptions) => void;
   /** Catalog marked with the player's collection; empty while it loads. */
   cards: BuilderCard[];
+  seasonBoosts: SeasonBoosts;
   isUpdating: boolean;
   isMobile: boolean;
   /** Options are set or decks were swapped, so there is something to reset. */
@@ -47,7 +51,7 @@ function ruleIcon(kind: PickerKind) {
   return kind === 'require' ? <PlusIcon /> : <BanIcon />;
 }
 
-export default function GeneratorControls({ options, onChange, cards, isUpdating, isMobile, canReset, onReset }: GeneratorControlsProps) {
+export default function GeneratorControls({ options, onChange, cards, seasonBoosts, isUpdating, isMobile, canReset, onReset }: GeneratorControlsProps) {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [picker, setPicker] = useState<PickerKind | null>(null);
@@ -170,6 +174,19 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
   };
   const rulePills = [rulePill('require'), rulePill('ban')];
 
+  // Hidden when no card of the player's is boosted: the switch would change nothing.
+  const boostedNames = seasonBoosts.cardIds.map(cardName);
+  const boostsPill = seasonBoosts.cardIds.length > 0 && (
+    <label
+      className="gc-pill"
+      title={`${listNames(boostedNames)} ${boostedNames.length === 1 ? 'is' : 'are'} boosted to level ${seasonBoosts.level} this season`}
+      style={{ ...pill('plain', isMobile), gap: '8px', paddingRight: '10px' }}
+    >
+      Season boosts
+      <Switch isOn={options.boosts} onChange={(boosts) => set({ boosts })} />
+    </label>
+  );
+
   const menuPill = (key: Menu, label: ReactNode, tone: Tone, content: ReactNode, width: number) => (
     <span ref={(el) => { anchors.current[key] = el; }} style={styles.anchor}>
       <button
@@ -212,6 +229,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
           <button type="button" className="gc-pill" onClick={() => setSheetOpen(true)} style={pill(options.minLevel != null ? 'active' : 'plain', true)}>
             {levelLabel(options.minLevel)}
           </button>
+          {boostsPill}
           {rulePills}
           {reset}
         </div>
@@ -242,6 +260,7 @@ export default function GeneratorControls({ options, onChange, cards, isUpdating
             </>,
             LEVEL_MENU_WIDTH
           )}
+          {boostsPill}
           {rulePills}
           <span style={styles.status}>
             {isUpdating && <span style={styles.updating}>Updating…</span>}

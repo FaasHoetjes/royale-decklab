@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import WarDeckResult from '../components/WarDeckResult';
 import { useAllCards, usePlayerCollection, usePlayerWarDecks } from '../queries';
-import { ApiError } from '../api';
+import { ApiError, type SeasonBoosts } from '../api';
 import { toBuilderCards } from '../lib/builderCards';
+import { withSeasonBoosts } from '../lib/seasonBoosts';
 import { deckKey, hasActiveOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
 import { playerLinkOptions } from '../lib/shareLink';
 import { track } from '../lib/stats';
@@ -65,10 +66,13 @@ export default function WarDeckGenerator() {
 
   const catalog = useAllCards();
   const collection = usePlayerCollection(playerData && !shared ? tag : null);
-  const pickerCards = useMemo(
-    () => (catalog.data && collection.data ? toBuilderCards(catalog.data, collection.data) : []),
-    [catalog.data, collection.data]
-  );
+  const seasonBoosts = playerData?.seasonBoosts ?? NO_BOOSTS;
+  // At the levels the decks are scored at, so the minimum level and its warnings agree with the decks shown.
+  const pickerCards = useMemo(() => {
+    if (!catalog.data || !collection.data) return [];
+    const owned = toBuilderCards(catalog.data, collection.data);
+    return options.boosts ? withSeasonBoosts(owned, seasonBoosts) : owned;
+  }, [catalog.data, collection.data, options.boosts, seasonBoosts]);
 
   // Once a tag's decks load successfully, make that player active app-wide (used by the Builder + Best
   // Decks); someone else's shared lineup leaves the reader's own player alone.
@@ -139,6 +143,7 @@ export default function WarDeckGenerator() {
       options={options}
       onOptionsChange={handleOptionsChange}
       cards={pickerCards}
+      seasonBoosts={seasonBoosts}
       isUpdating={!optionsFailed && warDecks.isPlaceholderData}
       updateFailed={optionsFailed}
       onRetry={() => warDecks.refetch()}
@@ -155,8 +160,16 @@ export default function WarDeckGenerator() {
   );
 }
 
+const NO_BOOSTS: SeasonBoosts = { level: 0, cardIds: [] };
+
 const sameIds = (a: number[], b: number[]) => a.length === b.length && a.every((id, i) => id === b[i]);
 
 function onlyLocksChanged(a: GeneratorOptions, b: GeneratorOptions): boolean {
-  return a.decks === b.decks && a.minLevel === b.minLevel && sameIds(a.ban, b.ban) && sameIds(a.require, b.require);
+  return (
+    a.decks === b.decks &&
+    a.minLevel === b.minLevel &&
+    a.boosts === b.boosts &&
+    sameIds(a.ban, b.ban) &&
+    sameIds(a.require, b.require)
+  );
 }

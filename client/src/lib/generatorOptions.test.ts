@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_OPTIONS, isPlannedAround, planRestOfToday } from './generatorOptions';
+import { DEFAULT_OPTIONS, hasActiveOptions, isPlannedAround, parseOptions, planRestOfToday, toQuery } from './generatorOptions';
 
 const deck = (from: number) => Array.from({ length: 8 }, (_, i) => from + i);
 
@@ -36,5 +36,23 @@ describe('planning the rest of today', () => {
 
     expect(plan && isPlannedAround(plan, 1, deck(1))).toBe(true);
     expect(isPlannedAround(DEFAULT_OPTIONS, 1, deck(1))).toBe(false);
+  });
+});
+
+describe('season boosts option', () => {
+  test('is on by default and leaves the query alone', () => {
+    const options = parseOptions(new URLSearchParams(''));
+
+    expect(options.boosts).toBe(true);
+    expect(toQuery(options)).toBe('');
+    expect(hasActiveOptions(options)).toBe(false);
+  });
+
+  test('turned off, it travels in the query and counts as an option to reset', () => {
+    const options = parseOptions(new URLSearchParams('boosts=false'));
+
+    expect(options.boosts).toBe(false);
+    expect(toQuery(options)).toBe('boosts=false');
+    expect(hasActiveOptions(options)).toBe(true);
   });
 });

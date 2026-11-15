@@ -83,7 +83,8 @@ public sealed class PlayerController(
         [FromQuery] string? ban,
         [FromQuery] string? require,
         [FromQuery(Name = "lock")] string[]? locks,
-        CancellationToken ct)
+        CancellationToken ct,
+        [FromQuery] bool boosts = true)
     {
         if (!PlayerTag.IsValid(tag))
         {
@@ -93,6 +94,7 @@ public sealed class PlayerController(
         {
             return BadRequest(new { error = optionsError });
         }
+        options = options with { IncludeSeasonBoosts = boosts };
 
         try
         {
@@ -102,7 +104,7 @@ public sealed class PlayerController(
                 return BadRequest(new { error = "Player cards data not found in API response" });
             }
 
-            var warDecks = await deckCache.GetAsync(player, cache.Version, cache.Meta, options, ct);
+            var lineup = await deckCache.GetAsync(player, cache.Version, cache.Meta, options, ct);
             stats.NoteServed(tag);
 
             return Ok(new
@@ -115,7 +117,8 @@ public sealed class PlayerController(
                     clanName = player.Clan?.Name,
                     clanBadgeId = player.Clan?.BadgeId,
                 },
-                warDecks,
+                warDecks = lineup.Lineup,
+                lineup.SeasonBoosts,
             });
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)

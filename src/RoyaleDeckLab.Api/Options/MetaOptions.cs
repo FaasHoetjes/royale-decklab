@@ -37,4 +37,10 @@ public sealed class MetaOptions
     public double RankingQuantile { get; set; } = 0.25;
 
     public long PatchCheckIntervalMs { get; set; } = 30L * 60 * 1000;
+
+    public long SeasonBoostCheckIntervalMs { get; set; } = 3L * 60 * 60 * 1000;
+
+    // On Nov 15, 2026, 600 players from war clans ranked 100 and below played each of the 7 boosted cards below King
+    // Tower level at least 8 times in 3 days; 200 players found only 5 of the 7.
+    public int SeasonBoostSamplePlayers { get; set; } = 600;
 }

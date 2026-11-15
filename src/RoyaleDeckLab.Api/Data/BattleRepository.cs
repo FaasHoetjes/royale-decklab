@@ -218,6 +218,23 @@ public sealed partial class BattleRepository(MetaDbContext db)
         }
     }
 
+    public HashSet<int> GetSeasonBoosts() => db.SeasonBoosts.AsNoTracking().Select(b => b.CardId).ToHashSet();
+
+    public async Task ReplaceSeasonBoostsAsync(IReadOnlySet<int> cardIds, CancellationToken ct = default)
+    {
+        await WriteGate.WaitAsync(ct);
+        try
+        {
+            db.SeasonBoosts.RemoveRange(db.SeasonBoosts);
+            db.SeasonBoosts.AddRange(cardIds.Select(id => new SeasonBoostEntity { CardId = id }));
+            await db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            WriteGate.Release();
+        }
+    }
+
     private async Task AddMissingAsync<T>(DbSet<T> set, IEnumerable<T> rows, Func<T, object[]> key, CancellationToken ct)
         where T : class
     {

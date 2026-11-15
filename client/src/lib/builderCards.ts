@@ -15,6 +15,7 @@ export interface BuilderCard {
   hasEvo?: boolean;
   ownsHero?: boolean;
   iconUrls?: CardIconUrls;
+  isBoosted?: boolean;
 }
 
 export function availableVersions(card: BuilderCard, kind: SlotKind | null): SpecialVersion[] {

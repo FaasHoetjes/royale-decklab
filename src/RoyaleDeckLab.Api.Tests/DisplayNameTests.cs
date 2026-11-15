@@ -25,7 +25,7 @@ public sealed class DisplayNameTests
     [Fact]
     public void APlayerAndTheirClan_AreNamedWithoutMarkup()
     {
-        var player = new CrPlayer("#2QGG92L9", "<c6>Ace", null, new ClanRef("#L9VRJ", "<c2>Red</c> Team"));
+        var player = new CrPlayer("#2QGG92L9", "<c6>Ace", null, new ClanRef("#L9VRJ", "<c2>Red</c> Team"), KingTowerLevel: 15);
 
         var shown = player.WithDisplayNames();
 

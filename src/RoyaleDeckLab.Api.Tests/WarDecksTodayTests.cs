@@ -7,7 +7,7 @@ namespace RoyaleDeckLab.Api.Tests;
 public sealed class WarDecksTodayTests
 {
     private static List<CrBattleCard> Deck(int first)
-        => Enumerable.Range(first, 8).Select(id => new CrBattleCard(id, 0, "common")).ToList();
+        => Enumerable.Range(first, 8).Select(id => new CrBattleCard(id, 0, "common", Level: 14, MaxLevel: 14)).ToList();
 
     private static CrBattle Battle(string type, List<CrBattleCard> cards)
         => new(type, "20261106T153815.000Z", null, null, [new CrBattleSide("#ME", "Me", cards, 1, null)], []);
@@ -57,8 +57,8 @@ public sealed class WarDecksTodayTests
     public void KeepsTheVersionEachCardWasPlayedAs()
     {
         var cards = Deck(100);
-        cards[0] = new CrBattleCard(100, 1, "common");
-        cards[1] = new CrBattleCard(101, 0, "champion");
+        cards[0] = new CrBattleCard(100, 1, "common", Level: 14, MaxLevel: 14);
+        cards[1] = new CrBattleCard(101, 0, "champion", Level: 14, MaxLevel: 14);
 
         var deck = Assert.Single(WarDecksToday.From(1, [Battle("riverRacePvP", cards)]).Decks);
 

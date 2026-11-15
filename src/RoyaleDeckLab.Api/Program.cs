@@ -100,6 +100,8 @@ builder.Services.AddHttpClient<SupercellBlogClient>(http =>
     .AddStandardResilienceHandler();
 builder.Services.AddSingleton<BalanceUpdateStore>();
 builder.Services.AddHostedService<PatchNotesWatchService>();
+builder.Services.AddSingleton<SeasonBoostStore>();
+builder.Services.AddHostedService<SeasonBoostWatchService>();
 builder.Services.AddDiscordReminders(dataDirectory);
 
 builder.Services.AddSingleton<DeckAnalyzer>();

@@ -14,12 +14,12 @@ public sealed class FieldedVersionTests
     [InlineData(3, CardVersionKind.Normal)]
     public void ReadsTheLevelAsTheVersionPlayed(int? evolutionLevel, CardVersionKind expected)
     {
-        Assert.Equal(expected, MetaBuilder.FieldedVersion(new CrBattleCard(26000000, evolutionLevel, "common")));
+        Assert.Equal(expected, MetaBuilder.FieldedVersion(new CrBattleCard(26000000, evolutionLevel, "common", Level: 14, MaxLevel: 14)));
     }
 
     [Fact]
     public void ChampionsAreAlwaysHeroes()
     {
-        Assert.Equal(CardVersionKind.Hero, MetaBuilder.FieldedVersion(new CrBattleCard(26000072, null, "champion")));
+        Assert.Equal(CardVersionKind.Hero, MetaBuilder.FieldedVersion(new CrBattleCard(26000072, null, "champion", Level: 14, MaxLevel: 14)));
     }
 }

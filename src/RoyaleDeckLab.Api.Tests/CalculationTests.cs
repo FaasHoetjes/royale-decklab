@@ -98,7 +98,7 @@ public sealed class CalculationTests
     [Fact]
     public void KeysNormalizeOptions_AndChangeWithCollectionOrMeta()
     {
-        var player = new CrPlayer("#PLAYER", "Player", [], null);
+        var player = new CrPlayer("#PLAYER", "Player", [], null, KingTowerLevel: 15);
         var a = new LineupOptions { BannedCards = new HashSet<int> { 3, 2 }, RequiredCards = new HashSet<int> { 7, 1 } };
         var b = new LineupOptions { BannedCards = new HashSet<int> { 2, 3 }, RequiredCards = new HashSet<int> { 1, 7 } };
         Assert.Equal(PlayerCalculationKey.Create(player, 1, a), PlayerCalculationKey.Create(player, 1, b));

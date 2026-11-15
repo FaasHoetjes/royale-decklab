@@ -22,6 +22,9 @@ public sealed record LineupOptions
     /// <summary>Decks kept as-is; the remaining slots are optimized around their cards.</summary>
     public IReadOnlyList<int[]> LockedDecks { get; init; } = [];
 
+    /// <summary>Score the season's boosted cards at the level they're played at this season rather than the one owned.</summary>
+    public bool IncludeSeasonBoosts { get; init; } = true;
+
     /// <summary>Parses the generator's query string: decks=3, minLevel=14, ban=1,2, require=3, lock=8 ids (repeatable).</summary>
     public static bool TryParse(
         string? decks, string? minLevel, string? ban, string? require, IReadOnlyList<string>? locks,

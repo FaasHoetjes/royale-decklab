@@ -72,6 +72,12 @@ public static class MetaSchema
         db.Database.ExecuteSqlRaw(
             "CREATE INDEX IF NOT EXISTS idx_crown_series_rounds_time ON crown_series_rounds (battle_time_ms);");
         db.Database.ExecuteSqlRaw(
+            """
+            CREATE TABLE IF NOT EXISTS season_boosts (
+                card_id INTEGER NOT NULL CONSTRAINT PK_season_boosts PRIMARY KEY
+            );
+            """);
+        db.Database.ExecuteSqlRaw(
             "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
     }
 

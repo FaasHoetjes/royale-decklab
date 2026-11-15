@@ -1,4 +1,4 @@
-// Generator options (number of decks, minimum card level, banned / required cards, locked decks).
+// Generator options (number of decks, minimum card level, banned / required cards, locked decks, season boosts).
 // They live in the URL, so a link reproduces the same lineup; the API takes the same query parameters.
 
 export const MAX_DECKS = 4;
@@ -14,9 +14,11 @@ export interface GeneratorOptions {
   ban: number[];
   require: number[];
   lock: number[][];
+  /** Score this season's boosted cards at the level they're played at. */
+  boosts: boolean;
 }
 
-export const DEFAULT_OPTIONS: GeneratorOptions = { decks: MAX_DECKS, minLevel: null, ban: [], require: [], lock: [] };
+export const DEFAULT_OPTIONS: GeneratorOptions = { decks: MAX_DECKS, minLevel: null, ban: [], require: [], lock: [], boosts: true };
 
 export const deckKey = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',');
 
@@ -30,6 +32,8 @@ export function parseOptions(params: URLSearchParams): GeneratorOptions {
   const minRaw = params.get('minLevel');
   const decks = decksRaw != null ? Number(decksRaw) : stored.decks;
   const minLevel = minRaw != null ? Number(minRaw) : stored.minLevel;
+  const boostsRaw = params.get('boosts');
+  const boosts = boostsRaw != null ? boostsRaw !== 'false' : stored.boosts;
 
   const ban = parseIdList(params.get('ban'));
   const require = parseIdList(params.get('require')).filter((id) => !ban.includes(id));
@@ -49,6 +53,7 @@ export function parseOptions(params: URLSearchParams): GeneratorOptions {
     ban,
     require,
     lock: lock.slice(0, validDecks),
+    boosts,
   };
 }
 
@@ -60,29 +65,34 @@ export function toQuery(options: GeneratorOptions): string {
   if (options.ban.length) params.set('ban', options.ban.join(','));
   if (options.require.length) params.set('require', options.require.join(','));
   options.lock.forEach((deck) => params.append('lock', deck.join(',')));
+  if (!options.boosts) params.set('boosts', 'false');
   // Commas are legal in a query string and keep the URL readable.
   return params.toString().replace(/%2C/g, ',');
 }
 
 export const hasActiveOptions = (o: GeneratorOptions) =>
-  o.decks !== MAX_DECKS || o.minLevel != null || o.ban.length > 0 || o.require.length > 0 || o.lock.length > 0;
+  o.decks !== MAX_DECKS || o.minLevel != null || o.ban.length > 0 || o.require.length > 0 || o.lock.length > 0 || !o.boosts;
 
-// Number of decks and minimum level are personal preferences, so they carry over to the next search.
-function loadDefaults(): Pick<GeneratorOptions, 'decks' | 'minLevel'> {
+type RememberedOptions = Pick<GeneratorOptions, 'decks' | 'minLevel' | 'boosts'>;
+
+// Number of decks, minimum level and boosts are personal preferences, so they carry over to the next search.
+function loadDefaults(): RememberedOptions {
   try {
     const saved = JSON.parse(localStorage.getItem(DEFAULTS_KEY) ?? 'null');
     return {
       decks: typeof saved?.decks === 'number' ? saved.decks : MAX_DECKS,
       minLevel: typeof saved?.minLevel === 'number' ? saved.minLevel : null,
+      boosts: typeof saved?.boosts === 'boolean' ? saved.boosts : true,
     };
   } catch {
-    return { decks: MAX_DECKS, minLevel: null };
+    return { decks: MAX_DECKS, minLevel: null, boosts: true };
   }
 }
 
 export function saveDefaults(options: GeneratorOptions): void {
   try {
-    localStorage.setItem(DEFAULTS_KEY, JSON.stringify({ decks: options.decks, minLevel: options.minLevel }));
+    const remembered: RememberedOptions = { decks: options.decks, minLevel: options.minLevel, boosts: options.boosts };
+    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(remembered));
   } catch {
     // Storage blocked (private mode): the options still work through the URL.
   }

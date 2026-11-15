@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import type { ScoredDeck } from '../api';
+import type { ScoredDeck, SeasonBoosts } from '../api';
 import type { BuilderCard } from '../lib/builderCards';
 import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, type GeneratorOptions } from '../lib/generatorOptions';
 import DeckCard from './DeckCard';
@@ -23,6 +23,7 @@ interface WarDeckResultProps {
   onOptionsChange: (options: GeneratorOptions) => void;
   /** Catalog marked with the player's collection, for the ban / must-include pickers. */
   cards: BuilderCard[];
+  seasonBoosts: SeasonBoosts;
   isUpdating: boolean;
   /** The last options change failed; the decks shown are from before it. */
   updateFailed?: boolean;
@@ -57,6 +58,7 @@ export default function WarDeckResult({
   options,
   onOptionsChange,
   cards,
+  seasonBoosts,
   isUpdating,
   updateFailed,
   onRetry,
@@ -207,6 +209,7 @@ export default function WarDeckResult({
           canReset={customized || swapped}
           onReset={resetLineup}
           cards={cards}
+          seasonBoosts={seasonBoosts}
           isUpdating={isUpdating}
           isMobile={isMobile}
         />
