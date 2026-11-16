@@ -32,12 +32,13 @@ public static class SeasonBoostDetection
     public sealed record Sample(CrPlayer Player, IReadOnlyList<CrBattle> Battles);
 
     /// <summary>
-    /// The cards boosted now. A card in <paramref name="known"/> stays until enough players show it unboosted: some
-    /// boosted cards are maxed by most players, so a quiet sample says little about them.
+    /// The cards boosted now, judged by battles since the patch started. A card in <paramref name="known"/> stays until
+    /// enough players show it unboosted: some boosted cards are maxed by most players, so a quiet sample says little
+    /// about them.
     /// </summary>
-    public static IReadOnlySet<int> BoostedCards(IEnumerable<Sample> samples, DateTimeOffset now, IReadOnlySet<int> known)
+    public static IReadOnlySet<int> BoostedCards(IEnumerable<Sample> samples, DateTimeOffset now, long patchStartMs, IReadOnlySet<int> known)
     {
-        var cutoffMs = (now - Window).ToUnixTimeMilliseconds();
+        var cutoffMs = Math.Max((now - Window).ToUnixTimeMilliseconds(), patchStartMs);
         var tallies = new Dictionary<int, Tally>();
         foreach (var sample in samples)
         {

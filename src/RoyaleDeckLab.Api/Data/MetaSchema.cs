@@ -27,6 +27,12 @@ public static class MetaSchema
         {
             db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN last_season_boost_check_ms INTEGER NOT NULL DEFAULT 0;");
         }
+        if (!HasStateColumn(db, "season_boosts_patch_start_ms"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN season_boosts_patch_start_ms INTEGER NOT NULL DEFAULT 0;");
+            // The boosts already stored were found in the current patch; without this the deploy would clear them.
+            db.Database.ExecuteSqlRaw("UPDATE meta_state SET season_boosts_patch_start_ms = epoch_start_ms;");
+        }
         db.Database.ExecuteSqlRaw(
             """
             CREATE TABLE IF NOT EXISTS card_periods (

@@ -24,7 +24,7 @@ public sealed class SeasonBoostDetectionTests
     private static SeasonBoostDetection.Sample Played(CrPlayer player, params CrBattle[] battles) => new(player, battles);
 
     private static IReadOnlySet<int> Detect(IEnumerable<SeasonBoostDetection.Sample> samples, params int[] known)
-        => SeasonBoostDetection.BoostedCards(samples, Now, known.ToHashSet());
+        => SeasonBoostDetection.BoostedCards(samples, Now, patchStartMs: 0, known.ToHashSet());
 
     [Fact]
     public void ACardBoostedForEveryoneBelowKingLevel_IsASeasonBoost()
@@ -57,6 +57,15 @@ public sealed class SeasonBoostDetectionTests
         var samples = Enumerable.Range(0, 5).Select(i => Player(i)).Select(p => Played(p, Battle(p, LastWeek, Boosted, 16)));
 
         Assert.Empty(Detect(samples));
+    }
+
+    [Fact]
+    public void BattlesBeforeThePatchStarted_AreIgnored()
+    {
+        var patchStartMs = new DateTimeOffset(2026, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds();
+        var samples = Enumerable.Range(0, 5).Select(i => Player(i)).Select(p => Played(p, Battle(p, Yesterday, Boosted, 16)));
+
+        Assert.Empty(SeasonBoostDetection.BoostedCards(samples, Now, patchStartMs, new HashSet<int>()));
     }
 
     [Fact]
