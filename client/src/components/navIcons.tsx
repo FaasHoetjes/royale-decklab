@@ -21,6 +21,14 @@ export function ZapIcon() {
   );
 }
 
+export function CrownIcon() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z" />
+    </svg>
+  );
+}
+
 export function GridIcon() {
   return (
     <svg {...iconProps()}>

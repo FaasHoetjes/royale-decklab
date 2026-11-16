@@ -44,6 +44,8 @@ export interface DeckCardData {
   iconUrls?: CardIconUrls;
   /** The player's own level when this season's boost raises `level`. */
   boostedFromLevel?: number | null;
+  /** The player's own level when a Crown Series league cap lowers `level`. */
+  cappedFromLevel?: number | null;
 }
 
 export interface ScoredDeck {
@@ -161,6 +163,35 @@ export interface UpgradeAdviceResponse {
 export function fetchPlayerWarDecks(playerTag: string, options = '', signal?: AbortSignal): Promise<PlayerResponse> {
   const query = options ? `?${options}` : '';
   return getJson(`/api/player/${encodeURIComponent(playerTag)}${query}`, 'Failed to fetch player data', signal);
+}
+
+export type CrownSeriesLeagueId =
+  | 'dagger' | 'pancake' | 'mustache' | 'magic' | 'hammer' | 'armor' | 'phantom' | 'queens' | 'kings';
+
+export interface CrownSeriesResponse {
+  player: PlayerResponse['player'];
+  league: CrownSeriesLeagueId;
+  levelCap: number;
+  duelRounds: number;
+  duelDecks: PlayerResponse['warDecks'];
+}
+
+/** The server answers 503 with this code until it has collected any Crown Series Duels. */
+export function isNoDuelData(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 503 && error.code === 'no_duel_data';
+}
+
+export function fetchCrownSeriesDecks(
+  playerTag: string,
+  league: CrownSeriesLeagueId,
+  decks: number,
+  signal?: AbortSignal
+): Promise<CrownSeriesResponse> {
+  return getJson(
+    `/api/player/${encodeURIComponent(playerTag)}/crown-series?league=${league}&decks=${decks}`,
+    'Failed to fetch Crown Series decks',
+    signal
+  );
 }
 
 export function fetchPlayerCollection(

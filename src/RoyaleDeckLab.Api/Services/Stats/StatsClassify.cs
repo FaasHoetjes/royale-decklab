@@ -8,7 +8,7 @@ public static partial class StatsClassify
 {
     public static readonly IReadOnlySet<string> Tools = new HashSet<string>
     {
-        "home", "generator", "builder", "upgrades", "best-decks", "cards", "card", "clan", "faq", "patch",
+        "home", "generator", "builder", "upgrades", "best-decks", "cards", "card", "clan", "faq", "patch", "crown-series",
     };
 
     public static readonly IReadOnlySet<string> Sources = new HashSet<string>
@@ -18,7 +18,7 @@ public static partial class StatsClassify
 
     public static readonly IReadOnlySet<string> DeckExportTools = new HashSet<string>
     {
-        "generator", "builder", "upgrades", "best-decks",
+        "generator", "builder", "upgrades", "best-decks", "crown-series",
     };
 
     public static bool IsBot(string? userAgent) => string.IsNullOrWhiteSpace(userAgent) || BotRegex().IsMatch(userAgent);

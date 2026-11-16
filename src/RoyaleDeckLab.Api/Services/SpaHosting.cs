@@ -159,6 +159,7 @@ public static partial class SpaHosting
             case SpaContentKind.Home: return SpaContent.Home(heading);
             case SpaContentKind.Builder: return SpaContent.Builder(heading);
             case SpaContentKind.Upgrades: return SpaContent.Upgrades(heading);
+            case SpaContentKind.CrownSeries: return SpaContent.CrownSeries(heading);
             case SpaContentKind.Clan: return SpaContent.Clan(heading);
             case SpaContentKind.Faq: return SpaContent.Faq(heading, faqHtml);
         }

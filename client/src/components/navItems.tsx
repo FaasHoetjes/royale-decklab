@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
+import { ZapIcon, CrownIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
@@ -30,6 +30,14 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       description: SITE_DESCRIPTION,
       end: true,
       icon: <ZapIcon />,
+    },
+    {
+      to: '/crown-series',
+      label: 'Crown Series Decks',
+      title: 'Best Clash Royale Crown Series Duel Decks',
+      description: 'Your best three or four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.',
+      end: false,
+      icon: <CrownIcon />,
     },
     {
       to: '/best-decks',

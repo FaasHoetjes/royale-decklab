@@ -23,6 +23,8 @@ import {
   fetchWarDecksToday,
   scoreBuilderDecks,
   isMetaLoading,
+  fetchCrownSeriesDecks,
+  type CrownSeriesLeagueId,
   type ScoreDeckCard,
 } from './api';
 
@@ -41,6 +43,8 @@ export const queryKeys = {
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
+  playerCrownSeries: (tag: string, league: CrownSeriesLeagueId, decks: number) =>
+    ['player', tag, 'crown-series', league, decks] as const,
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
   clanReminders: (clanTag: string) => ['clan', clanTag, 'discord-reminders'] as const,
   clanSearch: (name: string) => ['clan-search', name] as const,
@@ -260,3 +264,13 @@ export const useWarDecksToday = (playerTag: string | null) =>
     ...warDecksTodayOptions(playerTag ?? ''),
     enabled: !!playerTag,
   });
+
+export function useCrownSeriesDecks(tag: string | null, league: CrownSeriesLeagueId, decks: number) {
+  return useQuery({
+    queryKey: queryKeys.playerCrownSeries(tag ?? '', league, decks),
+    queryFn: ({ signal }) => fetchCrownSeriesDecks(tag ?? '', league, decks, signal),
+    enabled: !!tag,
+    // Keep this player's decks on screen while another league or deck count loads.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === tag ? previous : undefined),
+  });
+}

@@ -13,6 +13,8 @@ interface CardTileProps {
   level?: number | null;
   /** The level is this season's boost, not the player's own. */
   boosted?: boolean;
+  /** Crown Series: the card plays below the league's level cap. */
+  belowCap?: boolean;
   showName?: boolean;
   nameColor?: string;
   /** Overrides the shared card-name size, for places with roomier tiles. */
@@ -33,6 +35,7 @@ export default function CardTile({
   elixirCost,
   level,
   boosted = false,
+  belowCap = false,
   showName = true,
   nameColor,
   nameSize,
@@ -73,7 +76,7 @@ export default function CardTile({
         </div>
       )}
       {elixirCost != null && <ElixirBadge cost={elixirCost} />}
-      {level != null && <div style={boosted ? { ...styles.level, ...styles.boostedLevel } : styles.level}>Level {level}</div>}
+      {level != null && <div style={levelStyle(boosted, belowCap)}>Level {level}</div>}
       {locked && (
         <span style={styles.lock} title="You don't own this card">
           <LockIcon size="62%" />
@@ -98,6 +101,12 @@ export default function CardTile({
       {showName && <div style={{ ...styles.name, color: nameColor, ...(nameSize && { fontSize: nameSize }), ...(nameLines > 1 && wrappedName(nameLines)) }}>{name}</div>}
     </>
   );
+}
+
+function levelStyle(boosted: boolean, belowCap: boolean): CSSProperties {
+  if (boosted) return { ...styles.level, ...styles.boostedLevel };
+  if (belowCap) return { ...styles.level, ...styles.belowCapLevel };
+  return styles.level;
 }
 
 function wrappedName(lines: number): CSSProperties {
@@ -191,6 +200,9 @@ const styles = {
   boostedLevel: {
     background: 'linear-gradient(to top, rgba(124, 58, 237, 0.95), rgba(124, 58, 237, 0.6) 70%, transparent)',
     color: '#fde047',
+  },
+  belowCapLevel: {
+    background: 'linear-gradient(to top, rgba(220, 38, 38, 0.95), rgba(220, 38, 38, 0.6) 70%, transparent)',
   },
   name: {
     fontSize: 'var(--card-name-font-size)',

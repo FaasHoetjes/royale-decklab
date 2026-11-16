@@ -196,7 +196,8 @@ public sealed class SpaPagesTests
         Assert.Contains("<loc>https://royaledecklab.com/cards/mini-pekka</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/clan</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/patch</loc>", xml);
-        Assert.Equal(10, Count(xml, "<loc>"));
+        Assert.Contains("<loc>https://royaledecklab.com/crown-series</loc>", xml);
+        Assert.Equal(11, Count(xml, "<loc>"));
     }
 
     private static int Count(string text, string value) => text.Split(value).Length - 1;

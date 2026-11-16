@@ -16,6 +16,7 @@ public static class SpaContent
     private static readonly (string Path, string Label)[] Nav =
     [
         ("/", "War Deck Generator"),
+        ("/crown-series", "Crown Series Decks"),
         ("/best-decks", "Best War Decks"),
         ("/cards", "Cards"),
         ("/patch", "Patch Overview"),
@@ -33,6 +34,9 @@ public static class SpaContent
 
     public static string Upgrades(string heading)
         => Page($"{H1(heading)}{P("Which card upgrade raises your war lineup the most.")}");
+
+    public static string CrownSeries(string heading)
+        => Page($"{H1(heading)}{P("Your best Crown Series Duel decks from the cards you own, at your league's level cap.")}");
 
     public static string Clan(string heading)
         => Page($"{H1(heading)}{P("Who in your clan still has war decks to play today, and each member's best four war decks.")}");

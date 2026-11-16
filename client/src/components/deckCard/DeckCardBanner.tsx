@@ -13,7 +13,11 @@ interface DeckCardBannerProps {
   uses: number;
   players: number;
   pickRate: number;
+  /** Where the win rate was measured: Clan War battles, or Crown Series Duel rounds. */
+  source?: WinRateSource;
 }
+
+export type WinRateSource = 'war' | 'duel';
 
 const theme = {
   bannerMuted: 'var(--hero-muted)',
@@ -30,7 +34,10 @@ export default function DeckCardBanner({
   uses,
   players,
   pickRate,
+  source = 'war',
 }: DeckCardBannerProps) {
+  const games = source === 'duel' ? (uses === 1 ? 'round' : 'rounds') : uses === 1 ? 'game' : 'games';
+  const playedBy = source === 'duel' ? "King's League players in Crown Series Duels" : 'top war players';
   return (
     <div style={{ ...styles.banner, padding: isMobile ? '16px 16px 18px' : '18px 24px' }}>
       {/* Art layers are clipped on their own, so the stat tooltips can still overflow the banner. */}
@@ -68,7 +75,7 @@ export default function DeckCardBanner({
             <b style={styles.restValue}>{(metaWinRate * 100).toFixed(1)}%</b> win rate
             {!isMobile && (
               <InfoTip ariaLabel="Win rate details" color={theme.bannerMuted} placement="bottom">
-                <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
+                <strong>Win rate</strong> across {uses} {games} played by {playedBy}.
                 <br />
                 Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
                 <br />
