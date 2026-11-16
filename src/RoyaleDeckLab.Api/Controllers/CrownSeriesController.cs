@@ -40,7 +40,7 @@ public sealed class CrownSeriesController(
             return BadRequest(new { error = "A Duel Deck has 3 or 4 decks" });
         }
         var current = meta.Current;
-        if (current.Decks.Count == 0)
+        if (current.Rounds == 0)
         {
             Response.Headers.CacheControl = "no-store";
             return StatusCode(503, new { error = "No Crown Series Duels have been collected yet", code = "no_duel_data" });
@@ -69,7 +69,8 @@ public sealed class CrownSeriesController(
                 },
                 league = parsedLeague,
                 levelCap = parsedLeague.LevelCap(),
-                duelRounds = current.Rounds,
+                duelRounds = current.ForCap(parsedLeague.LevelCap()).Rounds,
+                allDuelRounds = current.Rounds,
                 duelDecks = lineup,
             });
         }

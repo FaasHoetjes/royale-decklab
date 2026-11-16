@@ -31,6 +31,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new CrownSeriesOptions { ProbePlayers = 1 }));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<CrownSeriesRepository>();
+        services.AddScoped<BattleRepository>();
         services.AddSingleton(new ClashRoyaleCrawlClient(
             new HttpClient(_api) { BaseAddress = new Uri("https://cr.test/v1/") }, new CrawlConcurrency()));
         services.AddSingleton<TimeProvider>(_clock);
@@ -95,12 +96,13 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         }
     }
 
-    private static object Duel(string tag, string opponentTag, TimeSpan ago)
+    // Rare cards top out at 14, which shows as 16.
+    private static object Duel(string tag, string opponentTag, TimeSpan ago, int cap = 16)
     {
-        static object Round(int crowns, int firstId) => new
+        object Round(int crowns, int firstId) => new
         {
             crowns,
-            cards = Enumerable.Range(firstId, 8).Select(id => new { id, level = 14, maxLevel = 14, rarity = "Rare" }),
+            cards = Enumerable.Range(firstId, 8).Select(id => new { id, level = cap - 2, maxLevel = 14, rarity = "Rare" }),
         };
 
         return new
@@ -142,6 +144,24 @@ public sealed class CrownSeriesCollectorTests : IDisposable
             })
             .ToList();
     }
+
+    private void StoreWarPlayers(params string[] tags)
+    {
+        using var scope = _services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MetaDbContext>();
+        db.Battles.AddRange(tags.Select(tag => new BattleEntity
+        {
+            Key = tag,
+            BattleTime = "20261110T120000.000Z",
+            BattleTimeMs = Now.AddDays(-5).ToUnixTimeMilliseconds(),
+            PlayerTag = tag,
+            CardIds = [.. Enumerable.Range(1, 8)],
+            Result = BattleResult.Win,
+        }));
+        db.SaveChanges();
+    }
+
+    private CrownSeriesSchedule Schedule() => _services.GetRequiredService<CrownSeriesSchedule>();
 
     private long LastPollMs()
     {
@@ -262,5 +282,37 @@ public sealed class CrownSeriesCollectorTests : IDisposable
 
         Assert.DoesNotContain(Stored(), r => r.PlayerTag == "#OLD");
         Assert.Contains(Stored(), r => r.PlayerTag == "#OPP");
+    }
+
+    [Fact]
+    public async Task War_players_seed_the_lower_leagues_and_bring_in_their_opponents()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        StoreWarPlayers("#SEED", "#IDLE");
+        _api.Logs["#SEED"] = [Duel("#SEED", "#LOW", TimeSpan.FromHours(1), cap: 13)];
+        _api.Logs["#LOW"] = [Duel("#LOW", "#SEED", TimeSpan.FromHours(1), cap: 13)];
+
+        await CollectAsync();
+
+        Assert.Contains("#LOW", _api.LogsRead);
+        Assert.Contains(Stored(), r => r.PlayerTag == "#LOW");
+        Assert.Equal(2, Schedule().PlayersAt(13));
+        Assert.False(Schedule().IsKnown("#IDLE"));
+    }
+
+    [Fact]
+    public async Task A_seed_tried_this_weekend_is_not_read_again()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        StoreWarPlayers("#IDLE");
+
+        await CollectAsync();
+        _clock.Now = Now.AddHours(1);
+        _api.LogsRead.Clear();
+        await CollectAsync();
+
+        Assert.DoesNotContain("#IDLE", _api.LogsRead);
     }
 }

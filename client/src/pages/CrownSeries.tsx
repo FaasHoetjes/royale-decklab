@@ -108,6 +108,8 @@ export default function CrownSeries() {
     );
   }
 
+  const shownRounds = decks.reduce((sum, d) => sum + d.uses, 0);
+  const leagueShare = shownRounds === 0 ? 1 : decks.reduce((sum, d) => sum + (d.leagueUses ?? 0), 0) / shownRounds;
   const belowCap = decks.flatMap((d) => d.cards).filter((c) => displayLevel(c.level, c.maxLevel) < data.levelCap).length;
 
   return (
@@ -123,14 +125,23 @@ export default function CrownSeries() {
           <>
             <strong>Rounds you'd win playing each deck once.</strong>
             <br />
-            The sum of your decks' win chances. Each starts from the deck's win rate in{' '}
-            {data.duelRounds.toLocaleString()} Crown Series Duel rounds, then factors in your card levels at the league's
-            cap. Your opponents have about your levels, so a card below the cap costs a lot.
+            The sum of your decks' win chances. Each starts from the deck's win rate in Crown Series Duels:{' '}
+            {data.duelRounds.toLocaleString()} rounds played at level {data.levelCap}, and{' '}
+            {(data.allDuelRounds - data.duelRounds).toLocaleString()} from other leagues, which count for less. Then it
+            factors in your card levels at the league's cap. Your opponents have about your levels, so a card below the
+            cap costs a lot.
           </>
         }
         isMobile={isMobile}
       />
       {controls}
+      {leagueShare < MIN_LEAGUE_SHARE && (
+        <p style={styles.thinNote} role="note">
+          {data.duelRounds === 0
+            ? `No Duels at level ${data.levelCap} collected yet, so these picks come from Duels in other leagues.`
+            : `Most rounds behind these picks were played in other leagues, since few Duels at level ${data.levelCap} have been collected so far.`}
+        </p>
+      )}
       {belowCap > 0 && (
         <p style={styles.notice} role="note">
           {belowCap} of these cards {belowCap === 1 ? 'is' : 'are'} below level {data.levelCap}, the cap in your league.
@@ -146,6 +157,7 @@ export default function CrownSeries() {
             uses={deck.uses}
             players={deck.players}
             pickRate={deck.pickRate}
+            leagueUses={deck.leagueUses}
             cardVersions={deck.cardVersions}
             metaCardVersions={deck.metaCardVersions}
             playerScore={deck.playerScore}
@@ -159,6 +171,9 @@ export default function CrownSeries() {
     </div>
   );
 }
+
+// Below this share of their rounds played in the league itself, the picks mostly reflect other leagues.
+const MIN_LEAGUE_SHARE = 0.5;
 
 const styles = {
   container: {
@@ -201,6 +216,11 @@ const styles = {
     fontSize: '15px',
     fontWeight: 600 as const,
     minWidth: 0,
+  },
+  thinNote: {
+    margin: '0 0 12px',
+    color: 'var(--text-secondary)',
+    fontSize: '14px',
   },
   notice: {
     margin: '0 0 20px',

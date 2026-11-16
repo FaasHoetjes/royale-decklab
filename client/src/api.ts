@@ -53,6 +53,8 @@ export interface ScoredDeck {
   metaWinRate: number;
   confidence: number;
   uses: number;
+  /** Crown Series: of `uses`, the rounds played at the league's own cap. */
+  leagueUses?: number | null;
   players: number;
   pickRate: number;
   playerScore: number;
@@ -172,7 +174,9 @@ export interface CrownSeriesResponse {
   player: PlayerResponse['player'];
   league: CrownSeriesLeagueId;
   levelCap: number;
+  /** Rounds played at the league's cap. */
   duelRounds: number;
+  allDuelRounds: number;
   duelDecks: PlayerResponse['warDecks'];
 }
 

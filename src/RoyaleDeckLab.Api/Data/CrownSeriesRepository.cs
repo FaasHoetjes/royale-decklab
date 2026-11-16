@@ -82,26 +82,44 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
         }
     }
 
-    /// <summary>Every stored round as one player's battle with one deck, for the Crown Series meta.</summary>
-    public IEnumerable<BattleRecord> StreamRoundsAsBattles()
+    /// <summary>
+    /// Every stored round as one player's battle with one deck, with the cap its Duel was played at: the highest
+    /// card either player fielded in any of its rounds.
+    /// </summary>
+    public IReadOnlyList<CappedBattle> ReadRoundsWithCaps()
     {
+        var rounds = new List<(string Duel, BattleRecord Record, int HighestLevel)>();
+        var highestByDuel = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var r in db.CrownSeriesRounds.AsNoTracking())
         {
-            yield return new BattleRecord
-            {
-                Key = $"{r.PlayerTag}|{r.BattleTimeMs}|{r.Round}",
-                BattleTime = r.BattleTimeMs.ToString("D15", CultureInfo.InvariantCulture),
-                BattleTimeMs = r.BattleTimeMs,
-                PlayerTag = r.PlayerTag,
-                CardIds = r.Cards.Select(c => c.Id).Order().ToArray(),
-                Result = r.Result,
-                CardVersions = r.Cards
-                    .OrderBy(c => c.Id)
-                    .Select(c => new CardVersion(c.Id, c.Version))
-                    .ToList(),
-            };
+            var duel = DuelKey(r.PlayerTag, r.OpponentTag, r.BattleTimeMs);
+            var highest = r.Cards.Count == 0 ? 0 : r.Cards.Max(c => c.Level);
+            highestByDuel[duel] = Math.Max(highestByDuel.GetValueOrDefault(duel), highest);
+            rounds.Add((duel, ToBattle(r), highest));
         }
+        return rounds
+            .Select(r => new CappedBattle(r.Record, CrownSeriesCaps.FromHighestLevel(highestByDuel[r.Duel])))
+            .ToList();
     }
+
+    private static string DuelKey(string playerTag, string opponentTag, long battleTimeMs)
+        => string.CompareOrdinal(playerTag, opponentTag) < 0
+            ? $"{playerTag}|{opponentTag}|{battleTimeMs}"
+            : $"{opponentTag}|{playerTag}|{battleTimeMs}";
+
+    private static BattleRecord ToBattle(CrownSeriesRoundEntity r) => new()
+    {
+        Key = $"{r.PlayerTag}|{r.BattleTimeMs}|{r.Round}",
+        BattleTime = r.BattleTimeMs.ToString("D15", CultureInfo.InvariantCulture),
+        BattleTimeMs = r.BattleTimeMs,
+        PlayerTag = r.PlayerTag,
+        CardIds = r.Cards.Select(c => c.Id).Order().ToArray(),
+        Result = r.Result,
+        CardVersions = r.Cards
+            .OrderBy(c => c.Id)
+            .Select(c => new CardVersion(c.Id, c.Version))
+            .ToList(),
+    };
 
     public long LatestBattleTimeMs()
         => db.CrownSeriesRounds
@@ -138,3 +156,5 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
         }
     }
 }
+
+public readonly record struct CappedBattle(BattleRecord Record, int Cap);

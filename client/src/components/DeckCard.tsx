@@ -12,6 +12,7 @@ interface DeckCardProps {
   cards: DeckCardData[];
   metaWinRate: number;
   uses: number;
+  leagueUses?: number | null;
   players: number;
   pickRate: number;
   cardVersions?: CardVersionRef[];
@@ -47,6 +48,7 @@ export default function DeckCard({
   cards,
   metaWinRate,
   uses,
+  leagueUses,
   players,
   pickRate,
   cardVersions,
@@ -90,6 +92,7 @@ export default function DeckCard({
         playerScore={playerScore}
         metaWinRate={metaWinRate}
         uses={uses}
+        leagueUses={leagueUses}
         players={players}
         pickRate={pickRate}
         source={source}

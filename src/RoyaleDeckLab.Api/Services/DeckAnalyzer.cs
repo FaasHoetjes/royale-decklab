@@ -168,6 +168,7 @@ public sealed class DeckAnalyzer
             MetaWinRate = deck.WinRate,
             Confidence = deck.Confidence,
             Uses = deck.Uses,
+            LeagueUses = deck.LeagueUses,
             Players = deck.Players ?? 0,
             PickRate = deck.PickRate ?? 0,
             PlayerScore = score,

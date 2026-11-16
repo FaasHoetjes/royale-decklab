@@ -117,25 +117,85 @@ public sealed class CrownSeriesDecksTests : IDisposable
         {
             await scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().MergeRoundsAsync(rounds);
         }
-        var meta = new CrownSeriesMeta(_services.GetRequiredService<IServiceScopeFactory>(), NullLogger<CrownSeriesMeta>.Instance);
+        var meta = Meta();
 
         await meta.RebuildAsync();
 
+        var kings = meta.Current.ForCap(16);
         Assert.Equal(60, meta.Current.Rounds);
-        Assert.Equal(strong, meta.Current.Decks[0].CardIds);
-        Assert.Equal(1.0, meta.Current.Decks[0].WinRate);
-        Assert.Equal(0.0, meta.Current.Decks[1].WinRate);
-        Assert.Equal(30, meta.Current.Decks[0].Players);
+        Assert.Equal(60, kings.Rounds);
+        Assert.Equal(strong, kings.Decks[0].CardIds);
+        Assert.Equal(1.0, kings.Decks[0].WinRate);
+        Assert.Equal(0.0, kings.Decks[1].WinRate);
+        Assert.Equal(30, kings.Decks[0].Players);
+        Assert.Equal(30, kings.Decks[0].LeagueUses);
     }
 
-    private static CrownSeriesRound Round(string player, string opponent, int minute, int[] cards, BattleResult result) => new()
+    [Fact]
+    public async Task A_duel_counts_at_the_cap_shown_by_the_highest_card_either_player_fielded()
+    {
+        var capped = Build.Eight(1);
+        var opponent = Build.Eight(9);
+        await StoreAsync(
+            Round("#A", "#B", 0, capped, BattleResult.Win, level: 12),
+            Round("#B", "#A", 0, opponent, BattleResult.Loss, level: 13));
+
+        var meta = Meta();
+        await meta.RebuildAsync();
+
+        Assert.Equal(2, meta.Current.ForCap(13).Rounds);
+        Assert.Equal(0, meta.Current.ForCap(12).Rounds);
+    }
+
+    [Fact]
+    public async Task A_league_ranks_by_its_own_rounds_and_leans_on_other_caps_less()
+    {
+        var hammerWinner = Build.Eight(1);
+        var kingsWinner = Build.Eight(9);
+        var filler = Build.Eight(17);
+        var rounds = new List<CrownSeriesRound>();
+        for (var i = 0; i < 30; i++)
+        {
+            rounds.Add(Round($"#H{i}", $"#HO{i}", i, hammerWinner, BattleResult.Win, level: 13));
+            rounds.Add(Round($"#HO{i}", $"#H{i}", i, kingsWinner, BattleResult.Loss, level: 13));
+            rounds.Add(Round($"#K{i}", $"#KO{i}", i, kingsWinner, BattleResult.Win));
+            rounds.Add(Round($"#KO{i}", $"#K{i}", i, filler, BattleResult.Loss));
+        }
+        await StoreAsync([.. rounds]);
+
+        var meta = Meta();
+        await meta.RebuildAsync();
+
+        var hammer = meta.Current.ForCap(13);
+        var kings = meta.Current.ForCap(16);
+        Assert.Equal(hammerWinner, hammer.Decks[0].CardIds);
+        Assert.Equal(kingsWinner, kings.Decks[0].CardIds);
+        Assert.Equal(60, hammer.Rounds);
+        var borrowed = hammer.Decks.Single(d => d.CardIds.SequenceEqual(filler));
+        Assert.Equal(0, borrowed.LeagueUses);
+        Assert.Equal(30, borrowed.Uses);
+    }
+
+    private CrownSeriesMeta Meta() => new(
+        _services.GetRequiredService<IServiceScopeFactory>(),
+        Microsoft.Extensions.Options.Options.Create(new CrownSeriesOptions()),
+        NullLogger<CrownSeriesMeta>.Instance);
+
+    private async Task StoreAsync(params CrownSeriesRound[] rounds)
+    {
+        using var scope = _services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().MergeRoundsAsync(rounds);
+    }
+
+    private static CrownSeriesRound Round(
+        string player, string opponent, int minute, int[] cards, BattleResult result, int level = 16) => new()
     {
         PlayerTag = player,
         OpponentTag = opponent,
         BattleTimeMs = 1_763_024_400_000 + minute * 60_000L,
         Round = 0,
         Result = result,
-        Cards = cards.Select(id => new CrownSeriesCard(id, 16, CardVersionKind.Normal)).ToList(),
+        Cards = cards.Select(id => new CrownSeriesCard(id, level, CardVersionKind.Normal)).ToList(),
         League = 1,
         EventTag = "#2UR9289L",
         GameModeId = 72000513,

@@ -10,11 +10,13 @@ namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
 /// Stores the Crown Series Duels of the top Ranked players and of the opponents they met there, who play in the same
-/// league.
+/// league. The Ranked players are nearly all in King's League, so war crawl players are tried as seeds for the leagues
+/// below it, and each league cap follows its own opponents up to its share of the reads.
 /// </summary>
 public sealed class CrownSeriesCollector(
     ClashRoyaleCrawlClient client,
     CrownSeriesRepository store,
+    BattleRepository battles,
     CrownSeriesSchedule schedule,
     TimeProvider time,
     IOptions<CrownSeriesOptions> options,
@@ -46,9 +48,10 @@ public sealed class CrownSeriesCollector(
         await store.SetLastPollMsAsync(now, ct);
         logger.LogInformation(
             "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned, "
-            + "{Incomplete} incomplete Duels skipped, {Tracked} players tracked",
+            + "{Incomplete} incomplete Duels skipped, {Seeds} seeds tried, {Tracked} players tracked; "
+            + "rounds found per cap: {@RoundsPerCap}, players tracked per cap: {@PlayersPerCap}",
             harvest.PlayersRead, harvest.FailedReads, harvest.RoundsFound, harvest.Added, pruned, harvest.IncompleteDuels,
-            schedule.KnownPlayers);
+            harvest.SeedsTried, schedule.KnownPlayers, harvest.RoundsPerCap(), schedule.PlayersPerCap());
         if (harvest.FailureKinds.Count > 0)
         {
             logger.LogWarning("Some battle logs couldn't be read: {@Errors}", harvest.FailureKinds);
@@ -77,13 +80,40 @@ public sealed class CrownSeriesCollector(
             .Where(tag => schedule.IsDue(tag, now))
             .ToList();
         await ReadAsync(due, harvest, now, ct);
+        await ReadSeedsAsync(harvest, now, ct);
+        schedule.Trim(ranked);
 
-        var room = Math.Max(0, _opt.MaxPlayers - schedule.KnownPlayers);
         var newOpponents = harvest.Opponents()
-            .Where(tag => !schedule.IsKnown(tag))
-            .Take(room)
+            .Where(o => !schedule.IsKnown(o.Tag))
+            .GroupBy(o => o.Cap)
+            .SelectMany(atCap => atCap.Take(schedule.RoomAt(atCap.Key)).Select(o => o.Tag))
             .ToList();
         await ReadAsync(newOpponents, harvest, now, ct);
+        schedule.Trim(ranked);
+    }
+
+    /// <summary>
+    /// Tries war crawl players while a cap below King's has room; the ones who play Duels there bring in their league's
+    /// opponents from then on.
+    /// </summary>
+    private async Task ReadSeedsAsync(Harvest harvest, long now, CancellationToken ct)
+    {
+        if (CrownSeriesCaps.All.Where(cap => cap < LevelModel.MaxDisplayLevel).All(cap => schedule.RoomAt(cap) == 0))
+        {
+            return;
+        }
+
+        var candidates = battles.PlayerTags()
+            .Where(tag => !harvest.WasRead(tag) && schedule.IsSeedDue(tag, now))
+            .ToArray();
+        Random.Shared.Shuffle(candidates);
+        var seeds = candidates.Take(_opt.SeedsPerPoll).ToList();
+        foreach (var tag in seeds)
+        {
+            schedule.RecordSeedTried(tag, now);
+        }
+        harvest.SeedsTried += seeds.Count;
+        await ReadAsync(seeds, harvest, now, ct);
     }
 
     private async Task<bool> IsDuelWeekendOnAsync(IReadOnlyList<string> ranked, Harvest harvest, long now, CancellationToken ct)
@@ -144,7 +174,8 @@ public sealed class CrownSeriesCollector(
         private readonly object _lock = new();
         private readonly HashSet<string> _read = new(StringComparer.Ordinal);
         private readonly HashSet<string> _seenRounds = new(StringComparer.Ordinal);
-        private readonly HashSet<string> _opponents = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _opponentCaps = new(StringComparer.Ordinal);
+        private readonly Dictionary<int, int> _roundsPerCap = [];
         private List<CrownSeriesRound> _pending = [];
         private long _latestDuelMs;
         private int _failedReads;
@@ -152,6 +183,7 @@ public sealed class CrownSeriesCollector(
         private int _incompleteDuels;
 
         public int Added { get; set; }
+        public int SeedsTried { get; set; }
         public HashSet<string> UnknownModes { get; } = new(StringComparer.Ordinal);
 
         public int PlayersRead
@@ -224,11 +256,23 @@ public sealed class CrownSeriesCollector(
             }
         }
 
-        public IReadOnlyList<string> Opponents()
+        /// <summary>The players met in the Duels read and not read themselves yet, with the cap they met at.</summary>
+        public IReadOnlyList<(string Tag, int Cap)> Opponents()
         {
             lock (_lock)
             {
-                return _opponents.Where(tag => !_read.Contains(tag)).ToList();
+                return _opponentCaps
+                    .Where(o => !_read.Contains(o.Key))
+                    .Select(o => (o.Key, o.Value))
+                    .ToList();
+            }
+        }
+
+        public IReadOnlyDictionary<int, int> RoundsPerCap()
+        {
+            lock (_lock)
+            {
+                return _roundsPerCap.OrderBy(c => c.Key).ToDictionary(c => c.Key, c => c.Value);
             }
         }
 
@@ -264,19 +308,24 @@ public sealed class CrownSeriesCollector(
             {
                 _incompleteDuels++;
             }
+            if (CrownSeriesRounds.CapOf(rounds) is not { } cap)
+            {
+                return;
+            }
             foreach (var round in rounds)
             {
                 if (round.BattleTimeMs < cutoffMs)
                 {
                     continue;
                 }
-                _opponents.Add(round.PlayerTag);
+                _opponentCaps[round.PlayerTag] = cap;
                 if (!_seenRounds.Add(round.Key))
                 {
                     continue;
                 }
                 _pending.Add(round);
                 _roundsFound++;
+                _roundsPerCap[cap] = _roundsPerCap.GetValueOrDefault(cap) + 1;
                 _latestDuelMs = Math.Max(_latestDuelMs, round.BattleTimeMs);
             }
         }

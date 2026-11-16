@@ -17,6 +17,6 @@ public sealed class CrownSeriesDeckCache(
         var current = meta.Current;
         var key = $"{league}|{PlayerCalculationKey.Create(player, current.Version, new LineupOptions { DeckCount = deckCount })}";
         return _results.GetAsync(key,
-            () => scheduler.RunAsync(token => analyzer.FindBestCrownSeriesDecks(current.Decks, cards, league, deckCount, token)), ct);
+            () => scheduler.RunAsync(token => analyzer.FindBestCrownSeriesDecks(current.ForCap(league.LevelCap()).Decks, cards, league, deckCount, token)), ct);
     }
 }

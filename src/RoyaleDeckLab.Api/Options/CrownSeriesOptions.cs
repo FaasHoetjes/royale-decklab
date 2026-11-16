@@ -12,8 +12,18 @@ public sealed class CrownSeriesOptions
     // The global Ranked leaderboard lists at most 1000 players.
     public int RankedPlayers { get; set; } = 1000;
 
-    // Every tracked player: the Ranked ones plus the Duel opponents found in their logs.
-    public int MaxPlayers { get; set; } = 3000;
+    // Tracked players per league cap: the Ranked ones plus the Duel opponents and seeds found there. Opponents play in
+    // the same league, so each cap fills from its own players.
+    public int MaxPlayersPerCap { get; set; } = 2000;
+
+    // War crawl players read per poll while a cap below King's still has room, to find players in the lower leagues.
+    public int SeedsPerPoll { get; set; } = 1000;
+
+    // A seed without Duels may play next weekend.
+    public long SeedRetryMs { get; set; } = 5L * 24 * 60 * 60 * 1000;
+
+    // How much a round at a neighbouring cap counts in a league's decks, compounding per cap further away.
+    public double OtherCapWeight { get; set; } = 0.5;
 
     // How many players are read to see whether a Duel weekend is on, when no stored Duel says so.
     public int ProbePlayers { get; set; } = 100;

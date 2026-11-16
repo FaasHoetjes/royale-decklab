@@ -226,12 +226,17 @@ public sealed class MetaBuilder(
     /// <param name="priorWinRate">Where an unproven deck's win rate starts; the war fit by default.</param>
     public List<DeckMeta> AggregateBattles(
         IEnumerable<BattleRecord> records, long epochStartMs = 0, double? priorWinRate = null)
+        => AggregateWeightedBattles(records.Select(r => (r, 1.0)), epochStartMs, priorWinRate);
+
+    /// <param name="records">Each battle with how much it counts next to a full one.</param>
+    public List<DeckMeta> AggregateWeightedBattles(
+        IEnumerable<(BattleRecord Record, double Weight)> records, long epochStartMs = 0, double? priorWinRate = null)
     {
         var prior = priorWinRate ?? _opt.PriorWinRate;
         var sampledPlayers = new HashSet<string>();
 
         var byDeck = new Dictionary<int[], DeckAgg>(SameCards.Instance);
-        foreach (var record in records)
+        foreach (var (record, recordWeight) in records)
         {
             sampledPlayers.Add(record.PlayerTag);
             if (!byDeck.TryGetValue(record.CardIds, out var agg))
@@ -241,7 +246,7 @@ public sealed class MetaBuilder(
             }
 
             var isPreEpoch = epochStartMs > 0 && record.BattleTimeMs < epochStartMs;
-            var weight = isPreEpoch ? _opt.PreEpochWeight : 1.0;
+            var weight = (isPreEpoch ? _opt.PreEpochWeight : 1.0) * recordWeight;
             agg.Games++;
             agg.WeightedGames += weight;
             agg.WeightedWins += weight * record.Result.WinShare();

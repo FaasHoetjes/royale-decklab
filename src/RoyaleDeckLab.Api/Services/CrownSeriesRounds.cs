@@ -80,6 +80,10 @@ public static class CrownSeriesRounds
         return rounds;
     }
 
+    /// <summary>The cap a Duel was played at, from all its rounds; null when it has none.</summary>
+    public static int? CapOf(IReadOnlyList<CrownSeriesRound> rounds)
+        => rounds.Count == 0 ? null : CrownSeriesCaps.FromHighestLevel(rounds.Max(r => r.Cards.Max(c => c.Level)));
+
     private sealed record Duel(long BattleTimeMs, int League, string EventTag, int GameModeId);
 
     private static CrownSeriesRound? ToRound(

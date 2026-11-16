@@ -64,4 +64,49 @@ public sealed class CrownSeriesScheduleTests
 
         Assert.Equal(["#PLAYING", "#RANKED"], schedule.KnownTags().Order());
     }
+
+    private static CrBattle Duel(TimeSpan ago, int cap)
+    {
+        static CrBattleRound Round(int crowns, int firstId, int level)
+            => new(crowns, [.. Enumerable.Range(firstId, 8).Select(id => new CrBattleCard(id, null, "Rare", level, 14))]);
+
+        return Battle(ago) with
+        {
+            EventTag = "#EVENT",
+            LeagueNumber = 1,
+            Team = [new CrBattleSide("#A", null, null, 1, [Round(1, 1, cap - 2)])],
+            Opponent = [new CrBattleSide("#B", null, null, 0, [Round(0, 11, cap - 2)])],
+        };
+    }
+
+    [Fact]
+    public void Each_cap_keeps_its_share_and_drops_its_longest_idle_players_first()
+    {
+        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerCap = 2 });
+        schedule.RecordRead("#OLD", [Duel(TimeSpan.FromHours(5), cap: 13)], NowMs);
+        schedule.RecordRead("#MID", [Duel(TimeSpan.FromHours(3), cap: 13)], NowMs);
+        schedule.RecordRead("#NEW", [Duel(TimeSpan.FromHours(1), cap: 13)], NowMs);
+        schedule.RecordRead("#RANKED", [Duel(TimeSpan.FromHours(9), cap: 16)], NowMs);
+        schedule.RecordRead("#NODUEL", [Battle(TimeSpan.FromHours(1), "Ladder")], NowMs);
+
+        Assert.Equal(0, schedule.RoomAt(13));
+        schedule.Trim(["#RANKED"]);
+
+        Assert.False(schedule.IsKnown("#OLD"));
+        Assert.True(schedule.IsKnown("#MID"));
+        Assert.True(schedule.IsKnown("#NEW"));
+        Assert.True(schedule.IsKnown("#RANKED"));
+        Assert.False(schedule.IsKnown("#NODUEL"));
+        Assert.Equal(1, schedule.RoomAt(16));
+    }
+
+    [Fact]
+    public void A_player_counts_toward_the_cap_of_their_latest_duel()
+    {
+        var schedule = Schedule();
+        schedule.RecordRead("#A", [Duel(TimeSpan.FromDays(7), cap: 13), Duel(TimeSpan.FromHours(1), cap: 14)], NowMs);
+
+        Assert.Equal(0, schedule.PlayersAt(13));
+        Assert.Equal(1, schedule.PlayersAt(14));
+    }
 }
