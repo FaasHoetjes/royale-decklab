@@ -118,13 +118,14 @@ export default function CrownSeries() {
         eyebrow={`Crown Series · ${league.name} League`}
         decks={decks}
         totalScore={data.duelDecks.totalScore}
+        total={{ value: `${data.duelDecks.totalScore.toFixed(1)} of ${decks.length}`, label: 'expected round wins' }}
         scoreTip={
           <>
-            <strong>The sum of your decks' scores.</strong>
+            <strong>Rounds you'd win playing each deck once.</strong>
             <br />
-            Each starts from the deck's win rate in {data.duelRounds.toLocaleString()} Crown Series Duel rounds, then
-            factors in your card levels at the league's cap. Your opponents have about your levels, so a card below the
-            cap costs a lot.
+            The sum of your decks' win chances. Each starts from the deck's win rate in{' '}
+            {data.duelRounds.toLocaleString()} Crown Series Duel rounds, then factors in your card levels at the league's
+            cap. Your opponents have about your levels, so a card below the cap costs a lot.
           </>
         }
         isMobile={isMobile}
