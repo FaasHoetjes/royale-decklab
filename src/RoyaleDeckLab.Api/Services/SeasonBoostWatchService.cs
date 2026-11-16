@@ -20,30 +20,52 @@ public sealed class SeasonBoostWatchService(
     private const int BatchSize = 10;
     private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(15);
 
+    // Often enough that a new patch clears last season's boosts within the quarter hour.
+    private static readonly TimeSpan Tick = TimeSpan.FromMinutes(15);
+
+    // Gives players time to battle in the new patch, so the first check has enough of them to find the boosts.
+    public static readonly TimeSpan FirstCheckAfterPatch = TimeSpan.FromHours(3);
+
     private readonly MetaOptions _opt = options.Value;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var interval = TimeSpan.FromMilliseconds(_opt.SeasonBoostCheckIntervalMs);
+        var startedMs = clock.GetUtcNow().ToUnixTimeMilliseconds();
+        var retryAtMs = 0L;
+        logger.LogInformation("Season boost watch scheduled every {Minutes} min, and {FirstHours} h after a new patch",
+            TimeSpan.FromMilliseconds(_opt.SeasonBoostCheckIntervalMs).TotalMinutes, FirstCheckAfterPatch.TotalHours);
         try
         {
-            var firstCheck = FirstCheckDelay();
-            logger.LogInformation("Season boost watch scheduled every {Minutes} min, first in {FirstMinutes:F0} min",
-                interval.TotalMinutes, firstCheck.TotalMinutes);
-            await Task.Delay(firstCheck, clock, stoppingToken);
-
             while (true)
             {
-                var checkedBoosts = false;
+                var patchStartMs = 0L;
                 try
                 {
-                    checkedBoosts = await CheckAsync(stoppingToken);
+                    patchStartMs = await ClearOnNewPatchAsync(stoppingToken);
+                }
+                catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+                {
+                    logger.LogError(ex, "Couldn't check for a new patch; trying again in {Minutes} min", Tick.TotalMinutes);
+                    await Task.Delay(Tick, clock, stoppingToken);
+                    continue;
+                }
+
+                try
+                {
+                    var nowMs = clock.GetUtcNow().ToUnixTimeMilliseconds();
+                    var dueMs = Math.Max(NextCheckMs(LastCheckMs(), patchStartMs, _opt.SeasonBoostCheckIntervalMs),
+                        Math.Max(startedMs + _opt.SeasonBoostStartupDelayMs, retryAtMs));
+                    if (nowMs >= dueMs && !await CheckAsync(patchStartMs, stoppingToken))
+                    {
+                        retryAtMs = nowMs + (long)RetryDelay.TotalMilliseconds;
+                    }
                 }
                 catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
                 {
                     logger.LogError(ex, "Season boost check failed; retrying in {Minutes} min", RetryDelay.TotalMinutes);
+                    retryAtMs = clock.GetUtcNow().ToUnixTimeMilliseconds() + (long)RetryDelay.TotalMilliseconds;
                 }
-                await Task.Delay(checkedBoosts ? interval : RetryDelay, clock, stoppingToken);
+                await Task.Delay(Tick, clock, stoppingToken);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -51,16 +73,37 @@ public sealed class SeasonBoostWatchService(
         }
     }
 
-    /// <summary>A deploy waits out the rest of the interval since the last check, rather than sampling again at once.</summary>
-    private TimeSpan FirstCheckDelay()
+    /// <summary>
+    /// When the next check is due: a few hours into a new patch, then once per interval. A deploy waits out the rest
+    /// of the interval rather than sampling again at once.
+    /// </summary>
+    public static long NextCheckMs(long lastCheckMs, long patchStartMs, long intervalMs)
     {
-        using var scope = scopeFactory.CreateScope();
-        var lastCheckMs = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetLastSeasonBoostCheckMs();
-        var untilDueMs = lastCheckMs + _opt.SeasonBoostCheckIntervalMs - clock.GetUtcNow().ToUnixTimeMilliseconds();
-        return TimeSpan.FromMilliseconds(Math.Max(_opt.SeasonBoostStartupDelayMs, untilDueMs));
+        var firstAfterPatchMs = patchStartMs + (long)FirstCheckAfterPatch.TotalMilliseconds;
+        var hasCheckedThisPatch = lastCheckMs >= firstAfterPatchMs;
+        return hasCheckedThisPatch ? lastCheckMs + intervalMs : firstAfterPatchMs;
     }
 
-    private async Task<bool> CheckAsync(CancellationToken ct)
+    private long LastCheckMs()
+    {
+        using var scope = scopeFactory.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<BattleRepository>().GetLastSeasonBoostCheckMs();
+    }
+
+    /// <summary>The patch the boosts belong to, clearing them first when a new one started since they were found.</summary>
+    private async Task<long> ClearOnNewPatchAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<BattleRepository>();
+        var patchStartMs = repository.GetEpochStart();
+        if (patchStartMs != repository.GetSeasonBoostsPatchStartMs())
+        {
+            await store.ClearForPatchAsync(patchStartMs, ct);
+        }
+        return patchStartMs;
+    }
+
+    private async Task<bool> CheckAsync(long patchStartMs, CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<ClashRoyaleCrawlClient>();
@@ -83,7 +126,7 @@ public sealed class SeasonBoostWatchService(
         }
 
         var known = store.Current.CardIds;
-        await store.SaveAsync(SeasonBoostDetection.BoostedCards(samples, clock.GetUtcNow(), known), ct);
+        await store.SaveAsync(SeasonBoostDetection.BoostedCards(samples, clock.GetUtcNow(), patchStartMs, known), ct);
         await scope.ServiceProvider.GetRequiredService<BattleRepository>()
             .SetLastSeasonBoostCheckMsAsync(clock.GetUtcNow().ToUnixTimeMilliseconds(), ct);
         return true;

@@ -98,6 +98,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             m.Property(x => x.PreviousEpochStartMs).HasColumnName("previous_epoch_start_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastCrownSeriesPollMs).HasColumnName("last_crown_series_poll_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastSeasonBoostCheckMs).HasColumnName("last_season_boost_check_ms").IsRequired().HasDefaultValue(0L);
+            m.Property(x => x.SeasonBoostsPatchStartMs).HasColumnName("season_boosts_patch_start_ms").IsRequired().HasDefaultValue(0L);
             m.Property(x => x.LastBuildMs).HasColumnName("last_build_ms").IsRequired();
         });
 

@@ -34,4 +34,14 @@ public sealed class SeasonBoostStore(IServiceScopeFactory scopeFactory, ILogger<
         Volatile.Write(ref _current, new SeasonBoosts(cardIds));
         logger.LogInformation("Season boosts are now cards {@CardIds}", cardIds.Order());
     }
+
+    /// <summary>Forgets the boosts at a patch boundary: a new season brings new ones, and showing none beats showing old ones.</summary>
+    public async Task ClearForPatchAsync(long patchStartMs, CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<BattleRepository>().ClearSeasonBoostsForPatchAsync(patchStartMs, ct);
+        Volatile.Write(ref _current, SeasonBoosts.None);
+        logger.LogInformation("New patch from {PatchStart}: season boosts cleared until they are found again",
+            DateTimeOffset.FromUnixTimeMilliseconds(patchStartMs));
+    }
 }
