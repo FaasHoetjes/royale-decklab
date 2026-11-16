@@ -183,7 +183,7 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
       style={{ ...pill('plain', isMobile), gap: '8px', paddingRight: '10px' }}
     >
       Season boosts
-      <Switch isOn={options.boosts} onChange={(boosts) => set({ boosts })} />
+      <Switch quiet isOn={options.boosts} onChange={(boosts) => set({ boosts })} />
     </label>
   );
 

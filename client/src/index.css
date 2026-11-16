@@ -700,6 +700,21 @@ input:disabled {
 .switch[aria-checked='true']::after {
   transform: translateX(20px);
 }
+.switch-quiet {
+  width: 36px;
+  height: 22px;
+}
+.switch-quiet::after {
+  width: 16px;
+  height: 16px;
+}
+.switch-quiet[aria-checked='true'] {
+  background-color: var(--text-primary);
+}
+.switch-quiet[aria-checked='true']::after {
+  background-color: var(--bg-primary);
+  transform: translateX(14px);
+}
 
 @keyframes sheet-up {
   from { transform: translateY(100%); }
