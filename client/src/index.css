@@ -470,13 +470,6 @@ input:disabled {
 .gc-menu {
   animation: gc-menu-in 0.16s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
-.gc-scroll {
-  scrollbar-width: none;
-}
-.gc-scroll::-webkit-scrollbar {
-  display: none;
-}
-
 .gc-thumb {
   transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
@@ -699,6 +692,21 @@ input:disabled {
 }
 .switch[aria-checked='true']::after {
   transform: translateX(20px);
+}
+.switch-quiet {
+  width: 36px;
+  height: 22px;
+}
+.switch-quiet::after {
+  width: 16px;
+  height: 16px;
+}
+.switch-quiet[aria-checked='true'] {
+  background-color: var(--text-primary);
+}
+.switch-quiet[aria-checked='true']::after {
+  background-color: var(--bg-primary);
+  transform: translateX(14px);
 }
 
 @keyframes sheet-up {
