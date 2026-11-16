@@ -6,6 +6,7 @@ namespace RoyaleDeckLab.Api.Services;
 
 public sealed class CrownSeriesRefreshService(
     IServiceScopeFactory scopeFactory,
+    CrownSeriesMeta meta,
     TimeProvider time,
     IOptions<CrownSeriesOptions> options,
     ILogger<CrownSeriesRefreshService> logger) : BackgroundService
@@ -17,6 +18,7 @@ public sealed class CrownSeriesRefreshService(
         var interval = TimeSpan.FromMilliseconds(_opt.PollIntervalMs);
         try
         {
+            await RebuildMetaAsync(stoppingToken);
             var firstPoll = FirstPollDelay();
             logger.LogInformation("Crown Series poll scheduled every {Minutes} min, first in {FirstMinutes:F0} min",
                 interval.TotalMinutes, firstPoll.TotalMinutes);
@@ -26,6 +28,7 @@ public sealed class CrownSeriesRefreshService(
             do
             {
                 await PollAsync(stoppingToken);
+                await RebuildMetaAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
@@ -55,6 +58,19 @@ public sealed class CrownSeriesRefreshService(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Crown Series poll failed");
+        }
+    }
+
+    // Also run at startup: a deploy between Duel weekends still serves the last weekend's decks.
+    private async Task RebuildMetaAsync(CancellationToken ct)
+    {
+        try
+        {
+            await meta.RebuildAsync(ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Crown Series meta rebuild failed");
         }
     }
 }

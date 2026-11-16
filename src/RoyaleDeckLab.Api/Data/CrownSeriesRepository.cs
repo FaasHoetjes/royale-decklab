@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -78,6 +79,27 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
         finally
         {
             MetaWriteGate.Instance.Release();
+        }
+    }
+
+    /// <summary>Every stored round as one player's battle with one deck, for the Crown Series meta.</summary>
+    public IEnumerable<BattleRecord> StreamRoundsAsBattles()
+    {
+        foreach (var r in db.CrownSeriesRounds.AsNoTracking())
+        {
+            yield return new BattleRecord
+            {
+                Key = $"{r.PlayerTag}|{r.BattleTimeMs}|{r.Round}",
+                BattleTime = r.BattleTimeMs.ToString("D15", CultureInfo.InvariantCulture),
+                BattleTimeMs = r.BattleTimeMs,
+                PlayerTag = r.PlayerTag,
+                CardIds = r.Cards.Select(c => c.Id).Order().ToArray(),
+                Result = r.Result,
+                CardVersions = r.Cards
+                    .OrderBy(c => c.Id)
+                    .Select(c => new CardVersion(c.Id, c.Version))
+                    .ToList(),
+            };
         }
     }
 

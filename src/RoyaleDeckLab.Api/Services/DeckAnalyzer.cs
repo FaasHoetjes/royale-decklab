@@ -35,7 +35,8 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions,
-        double opponentLevel)
+        double opponentLevel,
+        LevelFit? fit = null)
     {
         long totalLevel = 0;
         var minLevel = int.MaxValue;
@@ -76,7 +77,7 @@ public sealed class DeckAnalyzer
             throw new InvalidOperationException("Sequence contains no elements");
         }
         var meanLevel = (double)totalLevel / metaDeck.CardIds.Length;
-        var levelLogit = LevelModel.LevelLogit(meanLevel, minLevel, opponentLevel);
+        var levelLogit = (fit ?? LevelFit.War).Logit(meanLevel, minLevel, opponentLevel);
         var expectedWinRate = LevelModel.WinProbability(metaDeck.Confidence, levelLogit);
         return expectedWinRate * versionFit;
     }
@@ -197,6 +198,21 @@ public sealed class DeckAnalyzer
             deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked, ct: ct);
     }
 
+    /// <summary>The best Duel Deck from the Crown Series meta, with every card at the level the league lets it play at.</summary>
+    public WarDeckResult FindBestCrownSeriesDecks(
+        IReadOnlyList<DeckMeta> duelMeta,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        CrownSeriesLeague league,
+        int deckCount,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        var capped = league.CapLevels(cardMap);
+        var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
+        var candidates = ScoreFieldableDecks(duelMeta, capped, opponent, CrownSeriesLevels.Fit);
+        return SelectLineup(candidates, capped, includeAlternatives: true, deckCount: deckCount, ct: ct);
+    }
+
     private static bool IsAllowed(
         DeckMeta deck,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
@@ -288,13 +304,14 @@ public sealed class DeckAnalyzer
     public List<(DeckMeta deck, double score)> ScoreFieldableDecks(
         IReadOnlyList<DeckMeta> metaDecks,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
-        double? opponentLevel = null)
+        double? opponentLevel = null,
+        LevelFit? fit = null)
     {
         var opponent = opponentLevel ?? LevelModel.OpponentLevel(cardMap.Values);
         var fieldable = new List<(DeckMeta deck, double score)>();
         foreach (var metaDeck in metaDecks)
         {
-            var score = ScoreDeckForPlayer(cardMap, metaDeck, metaDeck.CardVersions, opponent);
+            var score = ScoreDeckForPlayer(cardMap, metaDeck, metaDeck.CardVersions, opponent, fit);
             if (score is not null)
             {
                 fieldable.Add((metaDeck, score.Value));

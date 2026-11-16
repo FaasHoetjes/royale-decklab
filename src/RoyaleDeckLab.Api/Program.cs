@@ -107,6 +107,8 @@ builder.Services.AddDiscordReminders(dataDirectory);
 builder.Services.AddSingleton<DeckAnalyzer>();
 builder.Services.AddSingleton<CalculationScheduler>();
 builder.Services.AddSingleton<PlayerDeckCache>();
+builder.Services.AddSingleton<CrownSeriesMeta>();
+builder.Services.AddSingleton<CrownSeriesDeckCache>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
 builder.Services.AddSingleton<UpgradeAdviceCache>();

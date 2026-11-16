@@ -223,8 +223,11 @@ public sealed class MetaBuilder(
         };
     }
 
-    public List<DeckMeta> AggregateBattles(IEnumerable<BattleRecord> records, long epochStartMs = 0)
+    /// <param name="priorWinRate">Where an unproven deck's win rate starts; the war fit by default.</param>
+    public List<DeckMeta> AggregateBattles(
+        IEnumerable<BattleRecord> records, long epochStartMs = 0, double? priorWinRate = null)
     {
+        var prior = priorWinRate ?? _opt.PriorWinRate;
         var sampledPlayers = new HashSet<string>();
 
         var byDeck = new Dictionary<int[], DeckAgg>(SameCards.Instance);
@@ -269,7 +272,7 @@ public sealed class MetaBuilder(
                 CardIds = agg.CardIds,
                 WinRate = agg.WeightedWins / agg.WeightedGames,
                 Confidence = DomainMath.PosteriorQuantile(
-                    agg.WeightedWins, agg.WeightedGames, _opt.PriorGames, _opt.PriorWinRate, _opt.RankingQuantile),
+                    agg.WeightedWins, agg.WeightedGames, _opt.PriorGames, prior, _opt.RankingQuantile),
                 Uses = agg.Games,
                 Players = agg.Players.Count,
                 PickRate = sampledPlayers.Count > 0 ? (double)agg.Players.Count / sampledPlayers.Count : 0,
