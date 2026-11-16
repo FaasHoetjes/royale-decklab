@@ -63,23 +63,6 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
     savePickerPrefs({ filters: [...filters], sortIndex, descending });
   }, [filters, sortIndex, descending]);
 
-  // The phone pill row scrolls sideways; a fade on the right hints at the pills past the edge.
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [moreRight, setMoreRight] = useState(false);
-  useEffect(() => {
-    const row = scrollRef.current;
-    if (!row) return;
-    const update = () => setMoreRight(row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
-    update();
-    row.addEventListener('scroll', update, { passive: true });
-    const observer = new ResizeObserver(update);
-    observer.observe(row);
-    return () => {
-      row.removeEventListener('scroll', update);
-      observer.disconnect();
-    };
-  }, [isMobile]);
-
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
   const ownedLevels = useMemo(() => cards.map(levelOf).filter((l): l is number => l != null), [cards]);
   const cardsLoaded = cards.length > 0;
@@ -209,6 +192,14 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
     </span>
   );
 
+  // On a phone only Customize shows, so its count stands in for the gold pills: boosts on is the default and doesn't count.
+  const changedCount =
+    Number(options.decks !== MAX_DECKS) +
+    Number(options.minLevel != null) +
+    Number(!options.boosts && seasonBoosts.cardIds.length > 0) +
+    options.require.length +
+    options.ban.length;
+
   const reset = canReset && (
     <button type="button" onClick={onReset} title="Back to the decks generated without options or swaps" className="mobile-touch-target" style={styles.reset}>
       Reset
@@ -218,19 +209,18 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
   return (
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
       {isMobile ? (
-        <div ref={scrollRef} role="group" aria-label="Customize your decks" className="gc-scroll" style={{ ...styles.scrollRow, ...(moreRight && styles.scrollFade) }}>
-          <button type="button" className="gc-pill" onClick={() => setSheetOpen(true)} aria-label="Customize your decks" style={pill('plain', true)}>
+        <div role="group" aria-label="Customize your decks" style={styles.row}>
+          <button
+            type="button"
+            className="gc-pill"
+            onClick={() => setSheetOpen(true)}
+            aria-label={changedCount > 0 ? `Customize your decks, ${changedCount} changed` : 'Customize your decks'}
+            style={pill(changedCount > 0 ? 'active' : 'plain', true)}
+          >
             <SlidersIcon />
             Customize
+            {changedCount > 0 && <span style={styles.count}>{changedCount}</span>}
           </button>
-          <button type="button" className="gc-pill" onClick={() => setSheetOpen(true)} style={pill(options.decks !== MAX_DECKS ? 'active' : 'plain', true)}>
-            {decksLabel(options.decks)}
-          </button>
-          <button type="button" className="gc-pill" onClick={() => setSheetOpen(true)} style={pill(options.minLevel != null ? 'active' : 'plain', true)}>
-            {levelLabel(options.minLevel)}
-          </button>
-          {boostsPill}
-          {rulePills}
           {reset}
         </div>
       ) : (
@@ -390,17 +380,6 @@ const styles = {
     flexWrap: 'wrap' as const,
     alignItems: 'center' as const,
     gap: '8px',
-  },
-  scrollRow: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '8px',
-    overflowX: 'auto' as const,
-    paddingBottom: '2px',
-  },
-  scrollFade: {
-    WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 56px), transparent)',
-    maskImage: 'linear-gradient(90deg, #000 calc(100% - 56px), transparent)',
   },
   anchor: {
     position: 'relative' as const,

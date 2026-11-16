@@ -470,13 +470,6 @@ input:disabled {
 .gc-menu {
   animation: gc-menu-in 0.16s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
-.gc-scroll {
-  scrollbar-width: none;
-}
-.gc-scroll::-webkit-scrollbar {
-  display: none;
-}
-
 .gc-thumb {
   transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
