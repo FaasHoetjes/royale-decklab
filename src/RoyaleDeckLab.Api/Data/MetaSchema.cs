@@ -29,9 +29,11 @@ public static class MetaSchema
         }
         if (!HasStateColumn(db, "season_boosts_patch_start_ms"))
         {
+            // The boosts already stored were found in the current patch; without the update the deploy would clear them.
+            using var tx = db.Database.BeginTransaction();
             db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN season_boosts_patch_start_ms INTEGER NOT NULL DEFAULT 0;");
-            // The boosts already stored were found in the current patch; without this the deploy would clear them.
             db.Database.ExecuteSqlRaw("UPDATE meta_state SET season_boosts_patch_start_ms = epoch_start_ms;");
+            tx.Commit();
         }
         db.Database.ExecuteSqlRaw(
             """

@@ -227,17 +227,23 @@ public sealed partial class BattleRepository(MetaDbContext db)
     public long GetSeasonBoostsPatchStartMs()
         => db.MetaState.AsNoTracking().Where(s => s.Id == 1).Select(s => s.SeasonBoostsPatchStartMs).FirstOrDefault();
 
+    /// <summary>
+    /// Clears the boosts for a new patch. The last check is forgotten too: a boundary is often set hours after it
+    /// took effect, so a check that ran meanwhile still judged by the old patch.
+    /// </summary>
     public async Task ClearSeasonBoostsForPatchAsync(long patchStartMs, CancellationToken ct = default)
     {
         await WriteGate.WaitAsync(ct);
         try
         {
-            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SeasonBoosts.ExecuteDeleteAsync(ct);
             await db.MetaState
                 .Where(s => s.Id == 1)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.SeasonBoostsPatchStartMs, patchStartMs), ct);
-            await transaction.CommitAsync(ct);
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.SeasonBoostsPatchStartMs, patchStartMs)
+                    .SetProperty(x => x.LastSeasonBoostCheckMs, 0L), ct);
+            await tx.CommitAsync(ct);
         }
         finally
         {

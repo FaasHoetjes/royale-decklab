@@ -38,9 +38,20 @@ public sealed class SeasonBoostWatchService(
         {
             while (true)
             {
+                var patchStartMs = 0L;
                 try
                 {
-                    var patchStartMs = await ClearOnNewPatchAsync(stoppingToken);
+                    patchStartMs = await ClearOnNewPatchAsync(stoppingToken);
+                }
+                catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+                {
+                    logger.LogError(ex, "Couldn't check for a new patch; trying again in {Minutes} min", Tick.TotalMinutes);
+                    await Task.Delay(Tick, clock, stoppingToken);
+                    continue;
+                }
+
+                try
+                {
                     var nowMs = clock.GetUtcNow().ToUnixTimeMilliseconds();
                     var dueMs = Math.Max(NextCheckMs(LastCheckMs(), patchStartMs, _opt.SeasonBoostCheckIntervalMs),
                         Math.Max(startedMs + _opt.SeasonBoostStartupDelayMs, retryAtMs));
