@@ -32,7 +32,7 @@ export default function CrownSeries() {
 
   const header = (
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
-      <h1 className={isMobile ? 'visually-hidden' : undefined} style={styles.title}>Crown Series Duel Deck</h1>
+      <h1 className={isMobile ? 'visually-hidden' : undefined} style={styles.title}>Crown Series Deck Generator</h1>
       <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined }}>
         Your best 4 decks for a Crown Series Duel, with your cards at the levels your league plays them at.
       </p>
