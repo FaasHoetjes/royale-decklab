@@ -45,7 +45,7 @@ export default function CrownSeriesBanner({ league, playerName, decks, total, sc
       <div
         style={{
           ...styles.backdrop,
-          background: `radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, ${league.color} 55%, ${navy}) 0%, ${navy} 70%)`,
+          background: `radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, ${league.color} var(--cs-top), var(--cs-base)) 0%, color-mix(in srgb, ${league.color} var(--cs-bottom), var(--cs-base)) 70%)`,
         }}
         aria-hidden="true"
       />
@@ -57,7 +57,7 @@ export default function CrownSeriesBanner({ league, playerName, decks, total, sc
             ...styles.track,
             left: `${step / 2}px`,
             right: `${step / 2}px`,
-            background: `linear-gradient(90deg, ${gold} ${reached}, rgba(255, 255, 255, 0.12) ${reached})`,
+            background: `linear-gradient(90deg, ${gold} ${reached}, var(--cs-track-off) ${reached})`,
           }}
         />
         <ol aria-label="Crown Series leagues" style={{ ...styles.path, height: `${current}px` }}>
@@ -73,9 +73,9 @@ export default function CrownSeriesBanner({ league, playerName, decks, total, sc
                     filter: isCurrent
                       ? `drop-shadow(0 0 18px ${l.glow}) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5))`
                       : i > at
-                        ? 'grayscale(1) brightness(0.55)'
+                        ? 'var(--cs-later-filter)'
                         : undefined,
-                    opacity: i > at ? 0.7 : 1,
+                    opacity: i > at ? 'var(--cs-later-opacity)' : 1,
                   }}
                 />
                 {isCurrent && (
@@ -134,10 +134,8 @@ export default function CrownSeriesBanner({ league, playerName, decks, total, sc
   );
 }
 
-// The banner stays dark in both themes, like the game's own art.
-const navy = '#0d1020';
 const gold = '#ffc93c';
-const muted = 'rgba(255, 255, 255, 0.72)';
+const muted = 'var(--cs-muted)';
 
 const styles = {
   banner: {
@@ -147,7 +145,7 @@ const styles = {
     borderRadius: '20px',
     border: '1px solid',
     boxShadow: 'var(--banner-shadow)',
-    color: '#ffffff',
+    color: 'var(--cs-text)',
   },
   backdrop: {
     position: 'absolute' as const,
@@ -181,7 +179,7 @@ const styles = {
     whiteSpace: 'nowrap' as const,
     fontSize: '13px',
     fontWeight: 800 as const,
-    color: '#ffd36a',
+    color: 'var(--cs-league-name)',
   },
   foot: {
     display: 'flex' as const,
@@ -204,11 +202,11 @@ const styles = {
     fontWeight: 900 as const,
     letterSpacing: '0.8px',
     textTransform: 'uppercase' as const,
-    background: 'linear-gradient(180deg, #ffe9a3 0%, #ffc93c 45%, #e89a1c 100%)',
+    background: 'var(--cs-eyebrow)',
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',
     color: 'transparent',
-    filter: 'drop-shadow(0 1px 0 #6b3a06)',
+    filter: 'var(--cs-eyebrow-shadow)',
   },
   name: {
     margin: '2px 0 0',
