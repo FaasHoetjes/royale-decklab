@@ -18,14 +18,11 @@ public sealed class CrownSeriesController(
     StatsRecorder stats,
     ILogger<CrownSeriesController> logger) : ControllerBase
 {
-    private const int MinDecks = 3;
-
     [HttpGet("api/player/{tag}/crown-series")]
     public async Task<IActionResult> DuelDeck(
         string tag,
         [FromQuery] string? league,
-        CancellationToken ct,
-        [FromQuery] int decks = LineupOptions.MaxDecks)
+        CancellationToken ct)
     {
         if (!PlayerTag.IsValid(tag))
         {
@@ -34,10 +31,6 @@ public sealed class CrownSeriesController(
         if (!CrownSeriesLeagueExtensions.TryParse(league, out var parsedLeague))
         {
             return BadRequest(new { error = "Unknown league" });
-        }
-        if (decks is < MinDecks or > LineupOptions.MaxDecks)
-        {
-            return BadRequest(new { error = "A Duel Deck has 3 or 4 decks" });
         }
         var current = meta.Current;
         if (current.Rounds == 0)
@@ -54,7 +47,7 @@ public sealed class CrownSeriesController(
                 return BadRequest(new { error = "Player cards data not found in API response" });
             }
 
-            var lineup = await deckCache.GetAsync(player, parsedLeague, decks, ct);
+            var lineup = await deckCache.GetAsync(player, parsedLeague, ct);
             stats.NoteServed(tag);
 
             return Ok(new

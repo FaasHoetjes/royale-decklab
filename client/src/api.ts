@@ -188,11 +188,10 @@ export function isNoDuelData(error: unknown): boolean {
 export function fetchCrownSeriesDecks(
   playerTag: string,
   league: CrownSeriesLeagueId,
-  decks: number,
   signal?: AbortSignal
 ): Promise<CrownSeriesResponse> {
   return getJson(
-    `/api/player/${encodeURIComponent(playerTag)}/crown-series?league=${league}&decks=${decks}`,
+    `/api/player/${encodeURIComponent(playerTag)}/crown-series?league=${league}`,
     'Failed to fetch Crown Series decks',
     signal
   );

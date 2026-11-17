@@ -27,7 +27,6 @@ export default function CrownSeries() {
     saveLeague(id);
     const params = new URLSearchParams(searchParams);
     params.set('league', id);
-    params.delete('decks');
     setSearchParams(params, { replace: true });
   };
 

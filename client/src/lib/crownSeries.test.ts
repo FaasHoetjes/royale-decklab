@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { LEAGUES, deckSizeOf, leagueFor } from './crownSeries';
+import { LEAGUES, leagueFor } from './crownSeries';
 
 describe('leagueFor', () => {
   test('the league in the link wins', () => {
@@ -8,17 +8,6 @@ describe('leagueFor', () => {
 
   test("an unknown league falls back to King's", () => {
     expect(leagueFor('gold').id).toBe('kings');
-  });
-});
-
-describe('deckSizeOf', () => {
-  test.each([
-    ['3', 3],
-    ['4', 4],
-    [null, 4],
-    ['5', 4],
-  ])('%p decks is %p', (value, size) => {
-    expect(deckSizeOf(value)).toBe(size);
   });
 });
 
