@@ -3,12 +3,12 @@ import { useApp } from '../AppContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCrownSeriesDecks } from '../queries';
 import { isNoDuelData, type CrownSeriesLeagueId } from '../api';
-import { DUEL_DECK_SIZES, LEAGUES, deckSizeOf, leagueFor, leagueOf, saveLeague, type DuelDeckSize } from '../lib/crownSeries';
+import { leagueFor, saveLeague } from '../lib/crownSeries';
 import { displayLevel } from '../lib/cardDisplay';
-import GeneratorHeader from '../components/GeneratorHeader';
+import CrownSeriesBanner from '../components/CrownSeriesBanner';
+import LeaguePicker from '../components/LeaguePicker';
 import DeckCard from '../components/DeckCard';
 import LoadError from '../components/LoadError';
-import { Segment } from '../components/generator/SegmentedChoice';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
 import { SearchIcon } from '../components/navIcons';
 
@@ -17,20 +17,17 @@ export default function CrownSeries() {
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const league = leagueFor(searchParams.get('league'));
-  const deckCount = deckSizeOf(searchParams.get('decks'));
 
-  const duelDecks = useCrownSeriesDecks(activePlayerTag, league.id, deckCount);
+  const duelDecks = useCrownSeriesDecks(activePlayerTag, league.id);
   const data = duelDecks.data;
   const decks = data?.duelDecks.decks ?? [];
   const isUpdating = duelDecks.isPlaceholderData;
 
-  const show = (next: { league?: CrownSeriesLeagueId; decks?: DuelDeckSize }) => {
+  const pickLeague = (id: CrownSeriesLeagueId) => {
+    saveLeague(id);
     const params = new URLSearchParams(searchParams);
-    if (next.league) {
-      saveLeague(next.league);
-      params.set('league', next.league);
-    }
-    if (next.decks) params.set('decks', String(next.decks));
+    params.set('league', id);
+    params.delete('decks');
     setSearchParams(params, { replace: true });
   };
 
@@ -38,7 +35,7 @@ export default function CrownSeries() {
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
       <h1 className={isMobile ? 'visually-hidden' : undefined} style={styles.title}>Crown Series Duel Deck</h1>
       <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined }}>
-        Your best {deckCount} decks for a Crown Series Duel, with your cards at the levels your league plays them at.
+        Your best 4 decks for a Crown Series Duel, with your cards at the levels your league plays them at.
       </p>
     </div>
   );
@@ -59,24 +56,10 @@ export default function CrownSeries() {
   }
 
   const controls = (
-    <div style={{ ...styles.controls, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 120px' }}>
-      <label style={styles.control}>
-        <span style={styles.controlLabel}>League</span>
-        <select
-          value={league.id}
-          onChange={(e) => show({ league: leagueOf(e.target.value)?.id })}
-          style={styles.select}
-        >
-          {LEAGUES.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name} League · cards up to level {l.levelCap}
-            </option>
-          ))}
-        </select>
-      </label>
+    <div style={styles.controls}>
       <div style={styles.control}>
-        <span style={styles.controlLabel}>Decks</span>
-        <Segment label="Number of decks" choices={[...DUEL_DECK_SIZES]} value={deckCount} onPick={(n) => show({ decks: n })} text={String} />
+        <span style={styles.controlLabel}>League</span>
+        <LeaguePicker league={league} onPick={pickLeague} />
       </div>
     </div>
   );
@@ -110,22 +93,22 @@ export default function CrownSeries() {
 
   const shownRounds = decks.reduce((sum, d) => sum + d.uses, 0);
   const leagueShare = shownRounds === 0 ? 1 : decks.reduce((sum, d) => sum + (d.leagueUses ?? 0), 0) / shownRounds;
+  const averageWinChance = decks.length === 0 ? 0 : data.duelDecks.totalScore / decks.length;
   const belowCap = decks.flatMap((d) => d.cards).filter((c) => displayLevel(c.level, c.maxLevel) < data.levelCap).length;
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '20px 0' }}>
       {header}
-      <GeneratorHeader
-        title={data.player.name}
-        eyebrow={`Crown Series · ${league.name} League`}
+      <CrownSeriesBanner
+        league={league}
+        playerName={data.player.name}
         decks={decks}
-        totalScore={data.duelDecks.totalScore}
-        total={{ value: `${data.duelDecks.totalScore.toFixed(1)} of ${decks.length}`, label: 'expected round wins' }}
+        total={{ value: `${Math.round(averageWinChance * 100)}%`, label: 'win chance per round' }}
         scoreTip={
           <>
-            <strong>Rounds you'd win playing each deck once.</strong>
+            <strong>Your average chance to win a round.</strong>
             <br />
-            The sum of your decks' win chances. Each starts from the deck's win rate in Crown Series Duels:{' '}
+            You bring all 4 decks and play 2 or 3 of them in a best of 3, so this averages their win chances. Each starts from the deck's win rate in Crown Series Duels:{' '}
             {data.duelRounds.toLocaleString()} rounds played at level {data.levelCap}, and{' '}
             {(data.allDuelRounds - data.duelRounds).toLocaleString()} from other leagues, which count for less. Then it
             factors in your card levels at the league's cap. Your opponents have about your levels, so a card below the
@@ -205,17 +188,6 @@ const styles = {
     fontSize: '13px',
     fontWeight: 600 as const,
     color: 'var(--text-secondary)',
-  },
-  select: {
-    height: '44px',
-    padding: '0 12px',
-    borderRadius: '11px',
-    border: '1px solid var(--border-strong)',
-    backgroundColor: 'var(--control-bg)',
-    color: 'var(--control-text)',
-    fontSize: '15px',
-    fontWeight: 600 as const,
-    minWidth: 0,
   },
   thinNote: {
     margin: '0 0 12px',
