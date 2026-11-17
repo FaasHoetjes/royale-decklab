@@ -50,10 +50,11 @@ public sealed class CrownSeriesCollector(
         await store.SetLastPollMsAsync(now, ct);
         logger.LogInformation(
             "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned, "
-            + "{Incomplete} incomplete Duels skipped, seeds tried: {@Seeds}, {Tracked} players tracked; "
+            + "{Incomplete} incomplete Duels skipped, seeds tried: {@Seeds}, "
+            + "of them below King's: {@SeedsBelowKings}, {Tracked} players tracked; "
             + "rounds found per cap: {@RoundsPerCap}, players tracked per cap: {@PlayersPerCap}",
             harvest.PlayersRead, harvest.FailedReads, harvest.RoundsFound, harvest.Added, pruned, harvest.IncompleteDuels,
-            harvest.SeedsTried, schedule.KnownPlayers, harvest.RoundsPerCap(), schedule.PlayersPerCap());
+            harvest.SeedsTried, harvest.SeedsBelowKings, schedule.KnownPlayers, harvest.RoundsPerCap(), schedule.PlayersPerCap());
         if (harvest.FailureKinds.Count > 0)
         {
             logger.LogWarning("Some battle logs couldn't be read: {@Errors}", harvest.FailureKinds);
@@ -101,17 +102,19 @@ public sealed class CrownSeriesCollector(
     /// </summary>
     private async Task ReadSeedsAsync(Harvest harvest, long now, CancellationToken ct)
     {
-        var seeds = new SeedPicks(_opt.SeedsPerPoll, tag => !harvest.WasRead(tag) && schedule.IsSeedDue(tag, now));
-        seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(_opt.SeedsPerPoll));
-        if (schedule.HasRoomBelowKings())
+        var seeds = new SeedPicks(_opt.SeedsPerPoll, tag => !harvest.WasRead(tag));
+        seeds.Pick(SeedSource.Visitor, schedule.WaitingVisitors(now));
+        var capsWithRoom = schedule.LowerCapsWithRoom();
+        if (capsWithRoom.Count > 0)
         {
+            await PickClanmatesAsync(seeds, harvest, capsWithRoom, now, ct);
             seeds.Pick(SeedSource.MetNearby, harvest.Leads()
-                .Where(lead => schedule.RoomAt(lead.Cap) > 0)
-                .Select(lead => lead.Tag));
-            seeds.Pick(SeedSource.Clanmate, await ClanmatesAsync(harvest, now, ct));
+                .Where(lead => capsWithRoom.Contains(lead.Cap))
+                .Select(lead => lead.Tag)
+                .Where(tag => schedule.IsSeedDue(tag, now)));
             var warPlayers = battles.PlayerTags().ToArray();
             Random.Shared.Shuffle(warPlayers);
-            seeds.Pick(SeedSource.WarCrawl, warPlayers);
+            seeds.Pick(SeedSource.WarCrawl, warPlayers.Where(tag => schedule.IsSeedDue(tag, now)));
         }
 
         foreach (var tag in seeds.Tags)
@@ -120,32 +123,45 @@ public sealed class CrownSeriesCollector(
         }
         harvest.AddSeedsTried(seeds.CountBySource);
         await ReadAsync(seeds.Tags, harvest, now, ct);
+        harvest.AddSeedsBelowKings(seeds.CountBySource.Keys.ToDictionary(
+            source => source,
+            source => seeds.TagsFrom(source).Count(tag => schedule.CapOf(tag) < LevelModel.MaxDisplayLevel)));
     }
 
-    /// <summary>The members of the clans of lower-league players read this poll, at caps that still have room.</summary>
-    private async Task<IReadOnlyList<string>> ClanmatesAsync(Harvest harvest, long now, CancellationToken ct)
+    /// <summary>
+    /// The members of the clans of lower-league players read this poll, at caps that still have room. Clans come
+    /// before the other-mode opponents, which are many more and would leave no room; a clan whose members didn't all
+    /// fit isn't marked tried, so it's asked again next poll.
+    /// </summary>
+    private async Task PickClanmatesAsync(
+        SeedPicks seeds, Harvest harvest, IReadOnlySet<int> capsWithRoom, long now, CancellationToken ct)
     {
+        if (!seeds.HasRoom)
+        {
+            return;
+        }
         var clans = harvest.LeadClans()
-            .Where(clan => schedule.RoomAt(clan.Cap) > 0)
+            .Where(clan => capsWithRoom.Contains(clan.Cap))
             .Where(clan => schedule.IsClanDue(clan.Tag, now))
             .Select(clan => clan.Tag)
             .Take(_opt.ClansPerPoll)
             .ToList();
-        foreach (var clan in clans)
-        {
-            schedule.RecordClanTried(clan, now);
-        }
 
-        var members = new ConcurrentBag<string>();
+        var members = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
         await Parallel.ForEachAsync(clans, parallel, async (clan, token) =>
+            members[clan] = await ClanMembersAsync(clan, harvest, token));
+
+        foreach (var clan in clans)
         {
-            foreach (var tag in await ClanMembersAsync(clan, harvest, token))
+            var allFit = seeds.Pick(SeedSource.Clanmate, members.GetValueOrDefault(clan, [])
+                .Where(tag => schedule.IsSeedDue(tag, now)));
+            if (!allFit)
             {
-                members.Add(tag);
+                return;
             }
-        });
-        return members.ToList();
+            schedule.RecordClanTried(clan, now);
+        }
     }
 
     private async Task<IReadOnlyList<string>> ClanMembersAsync(string clanTag, Harvest harvest, CancellationToken ct)
@@ -173,27 +189,36 @@ public sealed class CrownSeriesCollector(
     private sealed class SeedPicks(int limit, Func<string, bool> isDue)
     {
         private readonly List<string> _tags = [];
-        private readonly HashSet<string> _picked = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, SeedSource> _sourceByTag = new(StringComparer.Ordinal);
 
         public IReadOnlyList<string> Tags => _tags;
 
+        public bool HasRoom => _tags.Count < limit;
+
         public Dictionary<SeedSource, int> CountBySource { get; } = [];
 
-        public void Pick(SeedSource source, IEnumerable<string> tags)
+        public IEnumerable<string> TagsFrom(SeedSource source)
+            => _sourceByTag
+                .Where(s => s.Value == source)
+                .Select(s => s.Key);
+
+        /// <returns>Whether every tag due fit within the limit.</returns>
+        public bool Pick(SeedSource source, IEnumerable<string> tags)
         {
             foreach (var tag in tags)
             {
-                if (_tags.Count >= limit)
+                if (!HasRoom)
                 {
-                    return;
+                    return false;
                 }
-                if (!isDue(tag) || !_picked.Add(tag))
+                if (!isDue(tag) || !_sourceByTag.TryAdd(tag, source))
                 {
                     continue;
                 }
                 _tags.Add(tag);
                 CountBySource[source] = CountBySource.GetValueOrDefault(source) + 1;
             }
+            return true;
         }
     }
 
@@ -268,6 +293,9 @@ public sealed class CrownSeriesCollector(
 
         public int Added { get; set; }
         public Dictionary<SeedSource, int> SeedsTried { get; } = [];
+
+        /// <summary>Per source, the seeds whose latest Duel was below King's League: what each source is worth.</summary>
+        public Dictionary<SeedSource, int> SeedsBelowKings { get; } = [];
         public HashSet<string> UnknownModes { get; } = new(StringComparer.Ordinal);
 
         public int PlayersRead
@@ -352,11 +380,15 @@ public sealed class CrownSeriesCollector(
             }
         }
 
-        public void AddSeedsTried(IReadOnlyDictionary<SeedSource, int> bySource)
+        public void AddSeedsTried(IReadOnlyDictionary<SeedSource, int> bySource) => AddTo(SeedsTried, bySource);
+
+        public void AddSeedsBelowKings(IReadOnlyDictionary<SeedSource, int> bySource) => AddTo(SeedsBelowKings, bySource);
+
+        private static void AddTo(Dictionary<SeedSource, int> totals, IReadOnlyDictionary<SeedSource, int> bySource)
         {
             foreach (var (source, count) in bySource)
             {
-                SeedsTried[source] = SeedsTried.GetValueOrDefault(source) + count;
+                totals[source] = totals.GetValueOrDefault(source) + count;
             }
         }
 

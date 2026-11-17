@@ -21,6 +21,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"crownseries-{Guid.NewGuid():N}.db");
     private readonly FakeApi _api = new();
     private readonly FakeClock _clock = new();
+    private readonly CrownSeriesOptions _options = new() { ProbePlayers = 1 };
     private readonly ServiceProvider _services;
 
     public CrownSeriesCollectorTests()
@@ -28,7 +29,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
-        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new CrownSeriesOptions { ProbePlayers = 1 }));
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(_options));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<CrownSeriesRepository>();
         services.AddScoped<BattleRepository>();
@@ -341,7 +342,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
         _api.Logs["#VISITOR"] = [Duel("#VISITOR", "#LOW", TimeSpan.FromHours(1), cap: 11)];
         _api.Logs["#LOW"] = [Duel("#LOW", "#VISITOR", TimeSpan.FromHours(1), cap: 11)];
-        Schedule().AddVisitor("#VISITOR");
+        Schedule().AddVisitor("#VISITOR", Now.ToUnixTimeMilliseconds());
 
         await CollectAsync();
 
@@ -360,6 +361,38 @@ public sealed class CrownSeriesCollectorTests : IDisposable
 
         Assert.Contains("#MATE", _api.LogsRead);
         Assert.Contains("#LADDER", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_visitor_who_hasnt_played_yet_is_read_again_until_their_duels_show()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        Schedule().AddVisitor("#VISITOR", Now.ToUnixTimeMilliseconds());
+        await CollectAsync();
+
+        _clock.Now = Now.AddHours(1);
+        _api.Logs["#VISITOR"] = [Duel("#VISITOR", "#LOW", TimeSpan.Zero, cap: 12)];
+        await CollectAsync();
+
+        Assert.Equal(12, Schedule().CapOf("#VISITOR"));
+    }
+
+    [Fact]
+    public async Task A_clan_whose_members_found_no_room_is_asked_again_next_poll()
+    {
+        _options.SeedsPerPoll = 1;
+        _options.MaxRereadIntervalMs = _options.PollIntervalMs;
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), cap: 12, clanTag: "#CLAN")];
+        _api.ClanMembers["#CLAN"] = ["#MATE1", "#MATE2"];
+
+        await CollectAsync();
+        _clock.Now = Now.AddHours(1);
+        await CollectAsync();
+
+        Assert.Contains("#MATE1", _api.LogsRead);
+        Assert.Contains("#MATE2", _api.LogsRead);
     }
 
     [Fact]

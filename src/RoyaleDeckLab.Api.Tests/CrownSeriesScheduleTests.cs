@@ -144,20 +144,17 @@ public sealed class CrownSeriesScheduleTests
     }
 
     [Fact]
-    public void Visitors_wait_until_taken_and_beyond_the_limit_wait_for_the_next_poll()
+    public void A_visitor_waits_until_a_duel_shows_their_league_or_the_wait_runs_out()
     {
         var schedule = Schedule();
-        schedule.RecordRead("#TRACKED", [Duel(TimeSpan.FromHours(1), cap: 13)], NowMs);
-        schedule.AddVisitor("#TRACKED");
-        schedule.AddVisitor("#A");
-        schedule.AddVisitor("#B");
-        schedule.AddVisitor("#A");
+        var weekAgo = NowMs - (long)TimeSpan.FromDays(7).TotalMilliseconds;
+        var monthAgo = NowMs - (long)TimeSpan.FromDays(30).TotalMilliseconds;
+        schedule.AddVisitor("#PLAYED", NowMs);
+        schedule.AddVisitor("#NOT_YET", weekAgo);
+        schedule.AddVisitor("#LAPSED", monthAgo);
+        schedule.RecordRead("#PLAYED", [Duel(TimeSpan.FromHours(1), cap: 13)], NowMs);
+        schedule.RecordRead("#NOT_YET", [Battle(TimeSpan.FromHours(1), "Ladder")], NowMs);
 
-        var first = schedule.TakeVisitors(1);
-        var rest = schedule.TakeVisitors(10);
-
-        Assert.Single(first);
-        Assert.Equal(["#A", "#B"], first.Concat(rest).Order());
-        Assert.Empty(schedule.TakeVisitors(10));
+        Assert.Equal(["#NOT_YET"], schedule.WaitingVisitors(NowMs));
     }
 }

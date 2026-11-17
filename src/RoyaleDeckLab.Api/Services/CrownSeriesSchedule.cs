@@ -22,8 +22,8 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
     private readonly Dictionary<string, long> _seedsTriedMs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _clansTriedMs = new(StringComparer.Ordinal);
 
-    // Kept in memory only and never stored: the tags of people who used the Crown Series page.
-    private readonly HashSet<string> _waitingVisitors = new(StringComparer.Ordinal);
+    // Kept in memory only and never stored: the tags of people who used the Crown Series page, with when they last did.
+    private readonly Dictionary<string, long> _waitingVisitors = new(StringComparer.Ordinal);
 
     /// <param name="Cap">The cap of the player's latest Duel; null until one is seen.</param>
     private sealed record Tracked(long NextReadMs, long LastDuelMs, int? Cap);
@@ -129,34 +129,55 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
     }
 
     /// <summary>Someone used the Crown Series page: their own log shows their league, and their opponents fill it.</summary>
-    public void AddVisitor(string tag)
+    public void AddVisitor(string tag, long nowMs)
     {
         lock (_lock)
         {
-            if (_waitingVisitors.Count < MaxWaitingVisitors && !_players.ContainsKey(tag))
+            if (_waitingVisitors.Count < MaxWaitingVisitors || _waitingVisitors.ContainsKey(tag))
             {
-                _waitingVisitors.Add(tag);
+                _waitingVisitors[tag] = nowMs;
             }
         }
     }
 
-    /// <summary>Takes up to <paramref name="max"/> waiting visitors; the rest wait for the next poll.</summary>
-    public IReadOnlyList<string> TakeVisitors(int max)
+    /// <summary>
+    /// The visitors whose Duels haven't been seen yet. People pick their decks before they play, so a visitor stays
+    /// waiting, and is read every poll, until a Duel shows their league or
+    /// <see cref="CrownSeriesOptions.VisitorWaitMs"/> passes.
+    /// </summary>
+    public IReadOnlyList<string> WaitingVisitors(long nowMs)
     {
         lock (_lock)
         {
-            var visitors = _waitingVisitors
-                .Take(max)
+            var done = _waitingVisitors
+                .Where(v => v.Value < nowMs - _opt.VisitorWaitMs || _players.GetValueOrDefault(v.Key)?.Cap is not null)
+                .Select(v => v.Key)
                 .ToList();
-            _waitingVisitors.ExceptWith(visitors);
-            return visitors;
+            foreach (var tag in done)
+            {
+                _waitingVisitors.Remove(tag);
+            }
+            return _waitingVisitors.Keys.ToList();
         }
     }
 
-    public bool HasRoomBelowKings()
-        => CrownSeriesCaps.All
+    public int? CapOf(string tag)
+    {
+        lock (_lock)
+        {
+            return _players.GetValueOrDefault(tag)?.Cap;
+        }
+    }
+
+    /// <summary>The caps below King's that still have room, counted once.</summary>
+    public IReadOnlySet<int> LowerCapsWithRoom()
+    {
+        var perCap = PlayersPerCap();
+        return CrownSeriesCaps.All
             .Where(cap => cap < LevelModel.MaxDisplayLevel)
-            .Any(cap => RoomAt(cap) > 0);
+            .Where(cap => perCap.GetValueOrDefault(cap) < _opt.MaxPlayersPerCap)
+            .ToHashSet();
+    }
 
     public bool IsClanDue(string clanTag, long nowMs)
     {
