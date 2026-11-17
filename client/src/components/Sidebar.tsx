@@ -39,6 +39,9 @@ export function SidebarContent() {
     >
       <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
       {item.label}
+      {item.isNew && (
+        <span style={{ ...styles.newBadge, color: theme.accent, backgroundColor: 'var(--accent-a20)' }}>New</span>
+      )}
     </NavLink>
   );
 
@@ -287,6 +290,16 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     flexShrink: 0,
+  },
+  newBadge: {
+    flexShrink: 0,
+    padding: '2px 6px',
+    borderRadius: '999px',
+    fontSize: '10px',
+    fontWeight: 800 as const,
+    letterSpacing: '0.6px',
+    lineHeight: 1.3,
+    textTransform: 'uppercase' as const,
   },
   footer: {
     marginTop: 'auto',

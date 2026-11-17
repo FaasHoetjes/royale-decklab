@@ -11,7 +11,10 @@ export interface NavItem {
   description: string;
   end: boolean;
   icon: ReactNode;
+  isNew?: boolean;
 }
+
+const CROWN_SERIES_NEW_UNTIL = Date.parse('2027-01-05');
 
 /** The generator is home: the player's own page, or the landing page until a player is picked. */
 export function homePath(activePlayerTag: string | null): string {
@@ -33,10 +36,11 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
     },
     {
       to: '/crown-series',
-      label: 'Crown Series Decks',
-      title: 'Best Clash Royale Crown Series Duel Decks',
-      description: 'Your best three or four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.',
+      label: 'Crown Series',
+      title: 'Clash Royale Crown Series Deck Generator',
+      description: 'Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.',
       end: false,
+      isNew: Date.now() < CROWN_SERIES_NEW_UNTIL,
       icon: <CrownIcon />,
     },
     {

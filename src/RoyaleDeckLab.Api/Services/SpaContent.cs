@@ -16,7 +16,7 @@ public static class SpaContent
     private static readonly (string Path, string Label)[] Nav =
     [
         ("/", "War Deck Generator"),
-        ("/crown-series", "Crown Series Decks"),
+        ("/crown-series", "Crown Series"),
         ("/best-decks", "Best War Decks"),
         ("/cards", "Cards"),
         ("/patch", "Patch Overview"),
