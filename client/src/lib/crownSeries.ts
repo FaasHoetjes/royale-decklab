@@ -1,4 +1,5 @@
-import type { CrownSeriesLeagueId } from '../api';
+import type { CrownSeriesLeagueId, DeckCardData } from '../api';
+import { cardIconUrl, displayLevel, versionOf, type CardVersionRef } from './cardDisplay';
 
 export interface CrownSeriesLeague {
   id: CrownSeriesLeagueId;
@@ -62,4 +63,36 @@ export function saveLeague(league: CrownSeriesLeagueId): void {
   } catch {
     // Storage can be full or blocked; the league just isn't remembered.
   }
+}
+
+interface UpgradeDeck {
+  cards: DeckCardData[];
+  cardVersions?: CardVersionRef[];
+}
+
+export interface UpgradeTarget {
+  id: number;
+  name: string;
+  art: string;
+  level: number;
+  deckNumbers: number[];
+}
+
+/** Cards below the league's cap, the biggest gains first: the most levels short, then used by the most decks. */
+export function upgradeTargets(decks: UpgradeDeck[], levelCap: number): UpgradeTarget[] {
+  const targets = new Map<number, UpgradeTarget>();
+  decks.forEach((deck, i) => {
+    for (const card of deck.cards) {
+      const level = displayLevel(card.level, card.maxLevel);
+      if (level >= levelCap) continue;
+      const known = targets.get(card.id);
+      if (known) {
+        known.deckNumbers.push(i + 1);
+        continue;
+      }
+      const art = cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id));
+      targets.set(card.id, { id: card.id, name: card.name, art, level, deckNumbers: [i + 1] });
+    }
+  });
+  return [...targets.values()].sort((a, b) => a.level - b.level || b.deckNumbers.length - a.deckNumbers.length);
 }

@@ -3,10 +3,10 @@ import { useApp } from '../AppContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCrownSeriesDecks } from '../queries';
 import { isNoDuelData, type CrownSeriesLeagueId } from '../api';
-import { leagueFor, saveLeague } from '../lib/crownSeries';
-import { displayLevel } from '../lib/cardDisplay';
+import { leagueFor, saveLeague, upgradeTargets } from '../lib/crownSeries';
 import CrownSeriesBanner from '../components/CrownSeriesBanner';
 import LeaguePicker from '../components/LeaguePicker';
+import UpgradeFirst from '../components/UpgradeFirst';
 import DeckCard from '../components/DeckCard';
 import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
@@ -86,7 +86,7 @@ export default function CrownSeries() {
   const shownRounds = decks.reduce((sum, d) => sum + d.uses, 0);
   const leagueShare = shownRounds === 0 ? 1 : decks.reduce((sum, d) => sum + (d.leagueUses ?? 0), 0) / shownRounds;
   const averageWinChance = decks.length === 0 ? 0 : data.duelDecks.totalScore / decks.length;
-  const belowCap = decks.flatMap((d) => d.cards).filter((c) => displayLevel(c.level, c.maxLevel) < data.levelCap).length;
+  const upgrades = upgradeTargets(decks, data.levelCap);
 
   return (
     <div style={{ ...styles.container, padding: isMobile ? '8px 0' : '20px 0' }}>
@@ -117,12 +117,7 @@ export default function CrownSeries() {
             : `Most rounds behind these picks were played in other leagues, since few Duels at level ${data.levelCap} have been collected so far.`}
         </p>
       )}
-      {belowCap > 0 && (
-        <p style={styles.notice} role="note">
-          {belowCap} of these cards {belowCap === 1 ? 'is' : 'are'} below level {data.levelCap}, the cap in your league.
-          Upgrading {belowCap === 1 ? 'it' : 'them'} helps more than anything else.
-        </p>
-      )}
+      {upgrades.length > 0 && <UpgradeFirst targets={upgrades} levelCap={data.levelCap} isMobile={isMobile} />}
       <div style={{ ...styles.decks, gap: isMobile ? '16px' : '30px', opacity: isUpdating ? 0.55 : 1 }} aria-busy={isUpdating}>
         {decks.map((deck, i) => (
           <DeckCard
@@ -208,15 +203,6 @@ const styles = {
   thinNote: {
     margin: '0 0 12px',
     color: 'var(--text-secondary)',
-    fontSize: '14px',
-  },
-  notice: {
-    margin: '0 0 20px',
-    padding: '12px 14px',
-    borderRadius: '12px',
-    border: '1px solid color-mix(in srgb, var(--down) 35%, transparent)',
-    backgroundColor: 'color-mix(in srgb, var(--down) 8%, var(--bg-secondary))',
-    color: 'var(--text-primary)',
     fontSize: '14px',
   },
   decks: {

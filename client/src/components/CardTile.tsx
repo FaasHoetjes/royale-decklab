@@ -202,7 +202,7 @@ const styles = {
     color: '#fde047',
   },
   belowCapLevel: {
-    background: 'linear-gradient(to top, rgba(220, 38, 38, 0.95), rgba(220, 38, 38, 0.6) 70%, transparent)',
+    background: 'linear-gradient(to top, rgba(214, 140, 10, 0.95), rgba(214, 140, 10, 0.55) 70%, transparent)',
   },
   name: {
     fontSize: 'var(--card-name-font-size)',
