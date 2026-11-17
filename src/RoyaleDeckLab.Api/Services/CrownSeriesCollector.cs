@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
@@ -10,8 +11,9 @@ namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
 /// Stores the Crown Series Duels of the top Ranked players and of the opponents they met there, who play in the same
-/// league. The Ranked players are nearly all in King's League, so war crawl players are tried as seeds for the leagues
-/// below it, and each league cap follows its own opponents up to its share of the reads.
+/// league. The Ranked players are nearly all in King's League, so seeds are tried for the leagues below it: the site's
+/// Crown Series visitors, the clanmates and other-mode opponents of lower-league players, and war crawl players. Each
+/// league cap then follows its own opponents up to its share of the reads.
 /// </summary>
 public sealed class CrownSeriesCollector(
     ClashRoyaleCrawlClient client,
@@ -48,7 +50,7 @@ public sealed class CrownSeriesCollector(
         await store.SetLastPollMsAsync(now, ct);
         logger.LogInformation(
             "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned, "
-            + "{Incomplete} incomplete Duels skipped, {Seeds} seeds tried, {Tracked} players tracked; "
+            + "{Incomplete} incomplete Duels skipped, seeds tried: {@Seeds}, {Tracked} players tracked; "
             + "rounds found per cap: {@RoundsPerCap}, players tracked per cap: {@PlayersPerCap}",
             harvest.PlayersRead, harvest.FailedReads, harvest.RoundsFound, harvest.Added, pruned, harvest.IncompleteDuels,
             harvest.SeedsTried, schedule.KnownPlayers, harvest.RoundsPerCap(), schedule.PlayersPerCap());
@@ -93,27 +95,106 @@ public sealed class CrownSeriesCollector(
     }
 
     /// <summary>
-    /// Tries war crawl players while a cap below King's has room; the ones who play Duels there bring in their league's
-    /// opponents from then on.
+    /// Tries players who aren't tracked yet, the likeliest to play below King's League first; the ones who play Duels
+    /// bring in their league's opponents from then on. Visitors are tried whatever the room, since they came for their
+    /// own league.
     /// </summary>
     private async Task ReadSeedsAsync(Harvest harvest, long now, CancellationToken ct)
     {
-        if (CrownSeriesCaps.All.Where(cap => cap < LevelModel.MaxDisplayLevel).All(cap => schedule.RoomAt(cap) == 0))
+        var seeds = new SeedPicks(_opt.SeedsPerPoll, tag => !harvest.WasRead(tag) && schedule.IsSeedDue(tag, now));
+        seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(_opt.SeedsPerPoll));
+        if (schedule.HasRoomBelowKings())
         {
-            return;
+            seeds.Pick(SeedSource.MetNearby, harvest.Leads()
+                .Where(lead => schedule.RoomAt(lead.Cap) > 0)
+                .Select(lead => lead.Tag));
+            seeds.Pick(SeedSource.Clanmate, await ClanmatesAsync(harvest, now, ct));
+            var warPlayers = battles.PlayerTags().ToArray();
+            Random.Shared.Shuffle(warPlayers);
+            seeds.Pick(SeedSource.WarCrawl, warPlayers);
         }
 
-        var candidates = battles.PlayerTags()
-            .Where(tag => !harvest.WasRead(tag) && schedule.IsSeedDue(tag, now))
-            .ToArray();
-        Random.Shared.Shuffle(candidates);
-        var seeds = candidates.Take(_opt.SeedsPerPoll).ToList();
-        foreach (var tag in seeds)
+        foreach (var tag in seeds.Tags)
         {
             schedule.RecordSeedTried(tag, now);
         }
-        harvest.SeedsTried += seeds.Count;
-        await ReadAsync(seeds, harvest, now, ct);
+        harvest.AddSeedsTried(seeds.CountBySource);
+        await ReadAsync(seeds.Tags, harvest, now, ct);
+    }
+
+    /// <summary>The members of the clans of lower-league players read this poll, at caps that still have room.</summary>
+    private async Task<IReadOnlyList<string>> ClanmatesAsync(Harvest harvest, long now, CancellationToken ct)
+    {
+        var clans = harvest.LeadClans()
+            .Where(clan => schedule.RoomAt(clan.Cap) > 0)
+            .Where(clan => schedule.IsClanDue(clan.Tag, now))
+            .Select(clan => clan.Tag)
+            .Take(_opt.ClansPerPoll)
+            .ToList();
+        foreach (var clan in clans)
+        {
+            schedule.RecordClanTried(clan, now);
+        }
+
+        var members = new ConcurrentBag<string>();
+        var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
+        await Parallel.ForEachAsync(clans, parallel, async (clan, token) =>
+        {
+            foreach (var tag in await ClanMembersAsync(clan, harvest, token))
+            {
+                members.Add(tag);
+            }
+        });
+        return members.ToList();
+    }
+
+    private async Task<IReadOnlyList<string>> ClanMembersAsync(string clanTag, Harvest harvest, CancellationToken ct)
+    {
+        try
+        {
+            return await client.GetClanMemberTagsAsync(clanTag, ct);
+        }
+        catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
+        {
+            harvest.AddFailedRead(ex.GetType().Name);
+            return [];
+        }
+    }
+
+    private enum SeedSource
+    {
+        Visitor,
+        MetNearby,
+        Clanmate,
+        WarCrawl,
+    }
+
+    /// <summary>One poll's seeds: at most <paramref name="limit"/>, each tag once, and only the ones <paramref name="isDue"/>.</summary>
+    private sealed class SeedPicks(int limit, Func<string, bool> isDue)
+    {
+        private readonly List<string> _tags = [];
+        private readonly HashSet<string> _picked = new(StringComparer.Ordinal);
+
+        public IReadOnlyList<string> Tags => _tags;
+
+        public Dictionary<SeedSource, int> CountBySource { get; } = [];
+
+        public void Pick(SeedSource source, IEnumerable<string> tags)
+        {
+            foreach (var tag in tags)
+            {
+                if (_tags.Count >= limit)
+                {
+                    return;
+                }
+                if (!isDue(tag) || !_picked.Add(tag))
+                {
+                    continue;
+                }
+                _tags.Add(tag);
+                CountBySource[source] = CountBySource.GetValueOrDefault(source) + 1;
+            }
+        }
     }
 
     private async Task<bool> IsDuelWeekendOnAsync(IReadOnlyList<string> ranked, Harvest harvest, long now, CancellationToken ct)
@@ -182,8 +263,11 @@ public sealed class CrownSeriesCollector(
         private int _roundsFound;
         private int _incompleteDuels;
 
+        private readonly Dictionary<string, int> _leads = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _leadClans = new(StringComparer.Ordinal);
+
         public int Added { get; set; }
-        public int SeedsTried { get; set; }
+        public Dictionary<SeedSource, int> SeedsTried { get; } = [];
         public HashSet<string> UnknownModes { get; } = new(StringComparer.Ordinal);
 
         public int PlayersRead
@@ -268,6 +352,37 @@ public sealed class CrownSeriesCollector(
             }
         }
 
+        public void AddSeedsTried(IReadOnlyDictionary<SeedSource, int> bySource)
+        {
+            foreach (var (source, count) in bySource)
+            {
+                SeedsTried[source] = SeedsTried.GetValueOrDefault(source) + count;
+            }
+        }
+
+        /// <summary>The players lower-league players met in other modes and not read yet, with the cap they were met from.</summary>
+        public IReadOnlyList<(string Tag, int Cap)> Leads()
+        {
+            lock (_lock)
+            {
+                return _leads
+                    .Where(l => !_read.Contains(l.Key))
+                    .Select(l => (l.Key, l.Value))
+                    .ToList();
+            }
+        }
+
+        /// <summary>The clans of the lower-league players read, with their cap.</summary>
+        public IReadOnlyList<(string Tag, int Cap)> LeadClans()
+        {
+            lock (_lock)
+            {
+                return _leadClans
+                    .Select(c => (c.Key, c.Value))
+                    .ToList();
+            }
+        }
+
         public IReadOnlyDictionary<int, int> RoundsPerCap()
         {
             lock (_lock)
@@ -290,14 +405,52 @@ public sealed class CrownSeriesCollector(
         {
             lock (_lock)
             {
+                var duels = new List<(int Cap, long TimeMs)>();
                 foreach (var battle in log)
                 {
-                    AddBattle(battle);
+                    if (AddBattle(battle) is { } duel)
+                    {
+                        duels.Add(duel);
+                    }
+                }
+                if (duels.Count == 0)
+                {
+                    return;
+                }
+                var latestCap = duels.MaxBy(d => d.TimeMs).Cap;
+                if (latestCap < LevelModel.MaxDisplayLevel)
+                {
+                    AddLeads(log, latestCap);
                 }
             }
         }
 
-        private void AddBattle(CrBattle battle)
+        /// <summary>
+        /// Lower-league players are hard to find, so the players around one are worth trying: their other-mode
+        /// opponents and clanmates are likely near their level.
+        /// </summary>
+        private void AddLeads(IReadOnlyList<CrBattle> log, int cap)
+        {
+            var otherModeOpponents = log
+                .Where(b => !CrownSeriesRounds.IsCrownSeries(b))
+                .SelectMany(b => b.Opponent ?? [])
+                .Select(o => o.Tag)
+                .OfType<string>();
+            foreach (var tag in otherModeOpponents)
+            {
+                _leads.TryAdd(tag, cap);
+            }
+            var clanTag = log
+                .Select(b => b.Team?.FirstOrDefault()?.Clan?.Tag)
+                .FirstOrDefault(tag => !string.IsNullOrEmpty(tag));
+            if (clanTag is not null)
+            {
+                _leadClans.TryAdd(clanTag, cap);
+            }
+        }
+
+        /// <summary>Stores a complete Duel's rounds, and returns its cap and time; null for any other battle.</summary>
+        private (int Cap, long TimeMs)? AddBattle(CrBattle battle)
         {
             if (CrownSeriesRounds.UnknownMultiDeckMode(battle) is { } mode)
             {
@@ -310,7 +463,7 @@ public sealed class CrownSeriesCollector(
             }
             if (CrownSeriesRounds.CapOf(rounds) is not { } cap)
             {
-                return;
+                return null;
             }
             foreach (var round in rounds)
             {
@@ -328,6 +481,7 @@ public sealed class CrownSeriesCollector(
                 _roundsPerCap[cap] = _roundsPerCap.GetValueOrDefault(cap) + 1;
                 _latestDuelMs = Math.Max(_latestDuelMs, round.BattleTimeMs);
             }
+            return (cap, rounds[0].BattleTimeMs);
         }
     }
 }

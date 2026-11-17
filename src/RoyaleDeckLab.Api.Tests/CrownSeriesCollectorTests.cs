@@ -67,6 +67,8 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         public HashSet<string> Refused { get; } = [];
         public HashSet<string> Garbled { get; } = [];
         public ConcurrentBag<string> LogsRead { get; } = [];
+        public Dictionary<string, List<string>> ClanMembers { get; } = [];
+        public ConcurrentBag<string> ClansRead { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -89,6 +91,12 @@ public sealed class CrownSeriesCollectorTests : IDisposable
                 }
                 body = Logs.GetValueOrDefault(tag) ?? [];
             }
+            if (path.Contains("/clans/"))
+            {
+                var clanTag = path.Split('/')[^1];
+                ClansRead.Add(clanTag);
+                body = new { tag = clanTag, memberList = ClanMembers.GetValueOrDefault(clanTag, []).Select(tag => new { tag }) };
+            }
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
@@ -97,7 +105,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     }
 
     // Rare cards top out at 14, which shows as 16.
-    private static object Duel(string tag, string opponentTag, TimeSpan ago, int cap = 16)
+    private static object Duel(string tag, string opponentTag, TimeSpan ago, int cap = 16, string? clanTag = null)
     {
         object Round(int crowns, int firstId) => new
         {
@@ -113,10 +121,20 @@ public sealed class CrownSeriesCollectorTests : IDisposable
             deckSelection = "quadDeckPick",
             eventTag = "#EVENT",
             leagueNumber = 1,
-            team = new[] { new { tag, crowns = 2, rounds = new[] { Round(1, 1), Round(1, 11) } } },
+            team = new[] { new { tag, crowns = 2, rounds = new[] { Round(1, 1), Round(1, 11) }, clan = new { tag = clanTag } } },
             opponent = new[] { new { tag = opponentTag, crowns = 0, rounds = new[] { Round(0, 21), Round(0, 31) } } },
         };
     }
+
+    private static object Ladder(string tag, string opponentTag, TimeSpan ago) => new
+    {
+        type = "PvP",
+        battleTime = (Now - ago).UtcDateTime.ToString("yyyyMMdd'T'HHmmss") + ".000Z",
+        gameMode = new { id = 72000006, name = "Ladder" },
+        deckSelection = "collection",
+        team = new[] { new { tag, crowns = 1 } },
+        opponent = new[] { new { tag = opponentTag, crowns = 0 } },
+    };
 
     private async Task CollectAsync()
     {
@@ -314,5 +332,45 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         await CollectAsync();
 
         Assert.DoesNotContain("#IDLE", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_visitor_of_the_page_is_read_and_brings_in_their_league()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        _api.Logs["#VISITOR"] = [Duel("#VISITOR", "#LOW", TimeSpan.FromHours(1), cap: 11)];
+        _api.Logs["#LOW"] = [Duel("#LOW", "#VISITOR", TimeSpan.FromHours(1), cap: 11)];
+        Schedule().AddVisitor("#VISITOR");
+
+        await CollectAsync();
+
+        Assert.Contains("#LOW", _api.LogsRead);
+        Assert.Equal(2, Schedule().PlayersAt(11));
+    }
+
+    [Fact]
+    public async Task The_clanmates_and_ladder_opponents_of_a_lower_league_player_are_tried()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), cap: 12, clanTag: "#CLAN"), Ladder("#R1", "#LADDER", TimeSpan.FromHours(2))];
+        _api.ClanMembers["#CLAN"] = ["#R1", "#MATE"];
+
+        await CollectAsync();
+
+        Assert.Contains("#MATE", _api.LogsRead);
+        Assert.Contains("#LADDER", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_kings_league_player_brings_in_no_clanmates_or_ladder_opponents()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), clanTag: "#CLAN"), Ladder("#R1", "#LADDER", TimeSpan.FromHours(2))];
+
+        await CollectAsync();
+
+        Assert.Empty(_api.ClansRead);
+        Assert.DoesNotContain("#LADDER", _api.LogsRead);
     }
 }

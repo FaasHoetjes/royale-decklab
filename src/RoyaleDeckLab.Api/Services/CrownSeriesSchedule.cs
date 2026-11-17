@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
+using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Options;
 
 namespace RoyaleDeckLab.Api.Services;
@@ -12,10 +13,17 @@ namespace RoyaleDeckLab.Api.Services;
 /// </summary>
 public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
 {
+    // Bounds the visitors waiting for the next Duel weekend, whatever the traffic.
+    private const int MaxWaitingVisitors = 10_000;
+
     private readonly CrownSeriesOptions _opt = options.Value;
     private readonly object _lock = new();
     private readonly Dictionary<string, Tracked> _players = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _seedsTriedMs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _clansTriedMs = new(StringComparer.Ordinal);
+
+    // Kept in memory only and never stored: the tags of people who used the Crown Series page.
+    private readonly HashSet<string> _waitingVisitors = new(StringComparer.Ordinal);
 
     /// <param name="Cap">The cap of the player's latest Duel; null until one is seen.</param>
     private sealed record Tracked(long NextReadMs, long LastDuelMs, int? Cap);
@@ -99,7 +107,74 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
         }
     }
 
-    /// <summary>A war crawl player not tracked yet, and not tried in the last <see cref="CrownSeriesOptions.SeedRetryMs"/>.</summary>
+    /// <summary>
+    /// Tracks the players of the stored Duels again after a restart, each at the cap of their latest Duel: a player's
+    /// cap holds for the weekend, and the lower leagues' players would otherwise be found again only through seeds.
+    /// They are all due, and the same rules as a poll drop the inactive ones and the ones over their cap's share.
+    /// </summary>
+    public void Restore(IReadOnlyList<CappedBattle> rounds, long nowMs)
+    {
+        var latest = rounds
+            .GroupBy(r => r.Record.PlayerTag, StringComparer.Ordinal)
+            .Select(g => g.MaxBy(r => r.Record.BattleTimeMs));
+        lock (_lock)
+        {
+            foreach (var round in latest)
+            {
+                _players.TryAdd(round.Record.PlayerTag, new Tracked(nowMs, round.Record.BattleTimeMs, round.Cap));
+            }
+        }
+        ForgetInactive([], nowMs);
+        Trim([]);
+    }
+
+    /// <summary>Someone used the Crown Series page: their own log shows their league, and their opponents fill it.</summary>
+    public void AddVisitor(string tag)
+    {
+        lock (_lock)
+        {
+            if (_waitingVisitors.Count < MaxWaitingVisitors && !_players.ContainsKey(tag))
+            {
+                _waitingVisitors.Add(tag);
+            }
+        }
+    }
+
+    /// <summary>Takes up to <paramref name="max"/> waiting visitors; the rest wait for the next poll.</summary>
+    public IReadOnlyList<string> TakeVisitors(int max)
+    {
+        lock (_lock)
+        {
+            var visitors = _waitingVisitors
+                .Take(max)
+                .ToList();
+            _waitingVisitors.ExceptWith(visitors);
+            return visitors;
+        }
+    }
+
+    public bool HasRoomBelowKings()
+        => CrownSeriesCaps.All
+            .Where(cap => cap < LevelModel.MaxDisplayLevel)
+            .Any(cap => RoomAt(cap) > 0);
+
+    public bool IsClanDue(string clanTag, long nowMs)
+    {
+        lock (_lock)
+        {
+            return !_clansTriedMs.TryGetValue(clanTag, out var triedMs) || triedMs < nowMs - _opt.SeedRetryMs;
+        }
+    }
+
+    public void RecordClanTried(string clanTag, long nowMs)
+    {
+        lock (_lock)
+        {
+            _clansTriedMs[clanTag] = nowMs;
+        }
+    }
+
+    /// <summary>A seed not tracked yet, and not tried in the last <see cref="CrownSeriesOptions.SeedRetryMs"/>.</summary>
     public bool IsSeedDue(string tag, long nowMs)
     {
         lock (_lock)

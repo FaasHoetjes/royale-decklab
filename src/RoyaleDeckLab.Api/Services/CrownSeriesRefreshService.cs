@@ -7,6 +7,7 @@ namespace RoyaleDeckLab.Api.Services;
 public sealed class CrownSeriesRefreshService(
     IServiceScopeFactory scopeFactory,
     CrownSeriesMeta meta,
+    CrownSeriesSchedule schedule,
     TimeProvider time,
     IOptions<CrownSeriesOptions> options,
     ILogger<CrownSeriesRefreshService> logger) : BackgroundService
@@ -19,6 +20,7 @@ public sealed class CrownSeriesRefreshService(
         try
         {
             await RebuildMetaAsync(stoppingToken);
+            RestoreSchedule();
             var firstPoll = FirstPollDelay();
             logger.LogInformation("Crown Series poll scheduled every {Minutes} min, first in {FirstMinutes:F0} min",
                 interval.TotalMinutes, firstPoll.TotalMinutes);
@@ -45,6 +47,23 @@ public sealed class CrownSeriesRefreshService(
         var nowMs = time.GetUtcNow().ToUnixTimeMilliseconds();
         var untilDueMs = lastPollMs + _opt.PollIntervalMs - nowMs;
         return TimeSpan.FromMilliseconds(Math.Max(_opt.StartupDelayMs, untilDueMs));
+    }
+
+    // A schedule that can't be restored leaves the poll to start from the Ranked players and seeds, as on a first run.
+    private void RestoreSchedule()
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var rounds = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().ReadRoundsWithCaps();
+            schedule.Restore(rounds, time.GetUtcNow().ToUnixTimeMilliseconds());
+            logger.LogInformation("Crown Series schedule restored: {Tracked} players tracked; per cap: {@PlayersPerCap}",
+                schedule.KnownPlayers, schedule.PlayersPerCap());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Crown Series schedule restore failed");
+        }
     }
 
     // A failed poll is logged and the next one tries again, so one bad hour doesn't stop the collection.

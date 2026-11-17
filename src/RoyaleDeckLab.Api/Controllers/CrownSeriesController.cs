@@ -15,6 +15,7 @@ public sealed class CrownSeriesController(
     PlayerProfileCache players,
     CrownSeriesMeta meta,
     CrownSeriesDeckCache deckCache,
+    CrownSeriesSchedule schedule,
     StatsRecorder stats,
     ILogger<CrownSeriesController> logger) : ControllerBase
 {
@@ -49,6 +50,7 @@ public sealed class CrownSeriesController(
 
             var lineup = await deckCache.GetAsync(player, parsedLeague, ct);
             stats.NoteServed(tag);
+            schedule.AddVisitor(player.Tag);
 
             return Ok(new
             {

@@ -1,4 +1,6 @@
+using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Dtos;
+using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Options;
 using RoyaleDeckLab.Api.Services;
 
@@ -108,5 +110,54 @@ public sealed class CrownSeriesScheduleTests
 
         Assert.Equal(0, schedule.PlayersAt(13));
         Assert.Equal(1, schedule.PlayersAt(14));
+    }
+
+    private static CappedBattle StoredRound(string tag, TimeSpan ago, int cap)
+        => new(new BattleRecord
+        {
+            Key = $"{tag}|{ago}",
+            BattleTime = "",
+            BattleTimeMs = NowMs - (long)ago.TotalMilliseconds,
+            PlayerTag = tag,
+            CardIds = [],
+            Result = BattleResult.Win,
+            CardVersions = [],
+        }, cap);
+
+    [Fact]
+    public void A_restart_tracks_the_stored_players_again_at_their_latest_cap_and_all_due()
+    {
+        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerCap = 2 });
+
+        schedule.Restore(
+        [
+            StoredRound("#MOVED", TimeSpan.FromDays(8), cap: 12),
+            StoredRound("#MOVED", TimeSpan.FromHours(1), cap: 13),
+            StoredRound("#OLD", TimeSpan.FromHours(5), cap: 13),
+            StoredRound("#NEW", TimeSpan.FromHours(2), cap: 13),
+            StoredRound("#GONE", TimeSpan.FromDays(22), cap: 11),
+        ], NowMs);
+
+        Assert.Equal(["#MOVED", "#NEW"], schedule.KnownTags().Order());
+        Assert.Equal(0, schedule.PlayersAt(12));
+        Assert.True(schedule.IsDue("#MOVED", NowMs));
+    }
+
+    [Fact]
+    public void Visitors_wait_until_taken_and_beyond_the_limit_wait_for_the_next_poll()
+    {
+        var schedule = Schedule();
+        schedule.RecordRead("#TRACKED", [Duel(TimeSpan.FromHours(1), cap: 13)], NowMs);
+        schedule.AddVisitor("#TRACKED");
+        schedule.AddVisitor("#A");
+        schedule.AddVisitor("#B");
+        schedule.AddVisitor("#A");
+
+        var first = schedule.TakeVisitors(1);
+        var rest = schedule.TakeVisitors(10);
+
+        Assert.Single(first);
+        Assert.Equal(["#A", "#B"], first.Concat(rest).Order());
+        Assert.Empty(schedule.TakeVisitors(10));
     }
 }
