@@ -56,10 +56,7 @@ export default function CrownSeries() {
 
   const controls = (
     <div style={styles.controls}>
-      <div style={styles.control}>
-        <span style={styles.controlLabel}>League</span>
-        <LeaguePicker league={league} onPick={pickLeague} />
-      </div>
+      <LeaguePicker league={league} onPick={pickLeague} />
     </div>
   );
 
@@ -176,17 +173,6 @@ const styles = {
     display: 'grid' as const,
     gap: '12px',
     marginBottom: '20px',
-  },
-  control: {
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    gap: '6px',
-    minWidth: 0,
-  },
-  controlLabel: {
-    fontSize: '13px',
-    fontWeight: 600 as const,
-    color: 'var(--text-secondary)',
   },
   thinNote: {
     margin: '0 0 12px',
