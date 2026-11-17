@@ -42,12 +42,15 @@ public sealed class CrownSeriesMeta(
             var builder = scope.ServiceProvider.GetRequiredService<MetaBuilder>();
             var patchStartMs = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
             var rounds = store.ReadRoundsWithCaps();
+            var roundsPerCap = rounds
+                .GroupBy(r => r.Cap)
+                .ToDictionary(g => g.Key, g => g.Count());
 
             var byCap = new Dictionary<int, CrownSeriesCapMeta>();
             foreach (var cap in CrownSeriesCaps.All)
             {
                 ct.ThrowIfCancellationRequested();
-                byCap[cap] = BuildCap(builder, rounds, cap, patchStartMs);
+                byCap[cap] = BuildCap(builder, rounds, roundsPerCap, cap, patchStartMs);
             }
             Volatile.Write(ref _current, new CrownSeriesMetaSnapshot(byCap, rounds.Count, Current.Version + 1));
             logger.LogInformation("Crown Series meta from {Rounds} rounds; rounds per cap: {@RoundsPerCap}",
@@ -60,15 +63,17 @@ public sealed class CrownSeriesMeta(
     }
 
     /// <summary>
-    /// A cap with few rounds of its own leans on the caps next to it: each cap further away counts
-    /// <see cref="CrownSeriesOptions.OtherCapWeight"/> times less. One weekend of data couldn't yet show caps favouring
-    /// different decks, so this stays a setting rather than a fitted value.
+    /// A cap with few rounds of its own leans on the caps next to it, as <see cref="CrownSeriesBorrowing"/> weighs them.
+    /// One weekend of data couldn't yet show caps favouring different decks, so the weights stay settings rather than
+    /// fitted values.
     /// </summary>
-    private CrownSeriesCapMeta BuildCap(MetaBuilder builder, IReadOnlyList<CappedBattle> rounds, int cap, long patchStartMs)
+    private CrownSeriesCapMeta BuildCap(
+        MetaBuilder builder, IReadOnlyList<CappedBattle> rounds, IReadOnlyDictionary<int, int> roundsPerCap, int cap, long patchStartMs)
     {
-        var weight = options.Value.OtherCapWeight;
+        var capWeights = CrownSeriesBorrowing.WeightsFor(
+            cap, roundsPerCap, options.Value.OtherCapWeight, options.Value.MinBorrowedRounds);
         var weighted = rounds
-            .Select(r => (r.Record, Weight: r.Cap == cap ? 1.0 : Math.Pow(weight, Math.Abs(r.Cap - cap))))
+            .Select(r => (r.Record, Weight: capWeights.GetValueOrDefault(r.Cap)))
             .Where(r => r.Weight > 0);
         var decks = builder.AggregateWeightedBattles(weighted, patchStartMs, DuelPriorWinRate);
 
