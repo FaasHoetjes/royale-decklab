@@ -152,9 +152,6 @@ function CapMeter({ decks, levelCap }: { decks: BannerDeck[]; levelCap: number }
           <strong style={styles.meterCount}>{short === 0 ? `All ${levels.length}` : `${atCap} of ${levels.length}`}</strong>{' '}
           cards at level {levelCap}
         </span>
-        {short > 0 && (
-          <span>Upgrading the other {short === 1 ? 'card' : short} raises your win chance</span>
-        )}
       </div>
       <div style={{ ...styles.ticks, gridTemplateColumns: `repeat(${levels.length}, minmax(0, 1fr))` }} aria-hidden="true">
         {levels.map((level, i) => (
@@ -166,9 +163,7 @@ function CapMeter({ decks, levelCap }: { decks: BannerDeck[]; levelCap: number }
 }
 
 function tickLook(level: number, levelCap: number): CSSProperties {
-  if (level >= levelCap) return styles.tickOn;
-  if (level === levelCap - 1) return styles.tickNear;
-  return {};
+  return level >= levelCap ? styles.tickOn : {};
 }
 
 const gold = '#ffc93c';
@@ -321,8 +316,5 @@ const styles = {
   tickOn: {
     background: `linear-gradient(180deg, #ffe08a, ${gold})`,
     boxShadow: 'var(--cs-tick-glow)',
-  },
-  tickNear: {
-    backgroundColor: `color-mix(in srgb, ${gold} 45%, var(--cs-track-off))`,
   },
 };

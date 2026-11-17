@@ -87,7 +87,6 @@ export default function DeckCardBanner({
         <div style={{ ...styles.rest, gap: isMobile ? '12px' : '16px', fontSize: isMobile ? '13px' : '14px' }}>
           <span style={styles.restStat}>
             <b style={styles.restValue}>{(metaWinRate * 100).toFixed(1)}%</b> win rate
-            {duel && ` · ${uses} ${games}`}
             {!isMobile && (
               <InfoTip ariaLabel="Win rate details" color={theme.bannerMuted} placement="bottom">
                 {duel ? (

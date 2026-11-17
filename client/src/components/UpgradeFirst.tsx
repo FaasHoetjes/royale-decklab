@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import type { UpgradeTarget } from '../lib/crownSeries';
 import CardLink from './CardLink';
+import { TrendingUpIcon } from './navIcons';
 
 interface UpgradeFirstProps {
   targets: UpgradeTarget[];
@@ -11,18 +12,20 @@ interface UpgradeFirstProps {
 /** The cards below the league's cap, biggest gains first, so the player knows what to upgrade. */
 export default function UpgradeFirst({ targets, levelCap, isMobile }: UpgradeFirstProps) {
   const [expanded, setExpanded] = useState(false);
-  const limit = isMobile ? COLLAPSED_MOBILE : COLLAPSED_DESKTOP;
-  const fitsInRow = targets.length <= limit + 1;
-  const shown = expanded || fitsInRow ? targets : targets.slice(0, limit);
+  const rowRef = useRef<HTMLOListElement>(null);
+  const rowWidth = useWidth(rowRef);
+  const gap = isMobile ? 8 : 10;
+  const minTile = isMobile ? MIN_TILE_MOBILE : MIN_TILE_DESKTOP;
+  const columns = rowWidth > 0 ? Math.max(2, Math.floor((rowWidth + gap) / (minTile + gap))) : isMobile ? 6 : 11;
+  const fitsInRow = targets.length <= columns;
+  const shown = expanded || fitsInRow ? targets : targets.slice(0, columns - 1);
   const hidden = targets.length - shown.length;
 
   return (
     <section style={{ ...styles.panel, padding: isMobile ? '12px 12px 10px' : '14px 16px 12px' }} aria-labelledby="upgrade-first">
       <div style={styles.head}>
         <span style={styles.icon} aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 19V5M5 12l7-7 7 7" />
-          </svg>
+          <TrendingUpIcon />
         </span>
         <div style={styles.titles}>
           <h2 id="upgrade-first" style={styles.title}>Upgrade first</h2>
@@ -33,9 +36,9 @@ export default function UpgradeFirst({ targets, levelCap, isMobile }: UpgradeFir
         </span>
       </div>
 
-      <ol style={{ ...styles.cards, gap: isMobile ? '8px' : '10px' }}>
+      <ol ref={rowRef} style={{ ...styles.cards, gap: `${gap}px`, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
         {shown.map((target) => (
-          <li key={target.id} style={{ ...styles.card, width: isMobile ? '56px' : '64px' }}>
+          <li key={target.id}>
             <CardLink name={target.name} title={`${target.name} · Level ${target.level}/${levelCap}, in ${decksLabel(target.deckNumbers).toLowerCase()}`}>
               <div style={styles.art}>
                 {target.art && <img src={target.art} alt={target.name} loading="lazy" decoding="async" style={styles.image} />}
@@ -52,7 +55,7 @@ export default function UpgradeFirst({ targets, levelCap, isMobile }: UpgradeFir
           </li>
         ))}
         {hidden > 0 && (
-          <li style={{ ...styles.card, width: isMobile ? '56px' : '64px' }}>
+          <li>
             <button
               type="button"
               onClick={() => setExpanded(true)}
@@ -63,13 +66,35 @@ export default function UpgradeFirst({ targets, levelCap, isMobile }: UpgradeFir
             </button>
           </li>
         )}
+        {expanded && !fitsInRow && (
+          <li>
+            <button type="button" onClick={() => setExpanded(false)} aria-label="Show fewer cards" style={styles.more}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m6 15 6-6 6 6" />
+              </svg>
+            </button>
+          </li>
+        )}
       </ol>
     </section>
   );
 }
 
-const COLLAPSED_DESKTOP = 10;
-const COLLAPSED_MOBILE = 4;
+const MIN_TILE_DESKTOP = 64;
+const MIN_TILE_MOBILE = 50;
+
+function useWidth(ref: RefObject<HTMLElement | null>) {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    setWidth(element.clientWidth);
+    const observer = new ResizeObserver(() => setWidth(element.clientWidth));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+  return width;
+}
 
 const decksLabel = (deckNumbers: number[]) =>
   deckNumbers.length === 1 ? `Deck ${deckNumbers[0]}` : `Decks ${deckNumbers.join(', ')}`;
@@ -121,14 +146,10 @@ const styles = {
     whiteSpace: 'nowrap' as const,
   },
   cards: {
-    display: 'flex' as const,
-    flexWrap: 'wrap' as const,
+    display: 'grid' as const,
     margin: 0,
     padding: 0,
     listStyle: 'none',
-  },
-  card: {
-    flexShrink: 0,
   },
   art: {
     position: 'relative' as const,
@@ -150,10 +171,9 @@ const styles = {
     alignItems: 'center' as const,
     gap: '3px',
     marginTop: '5px',
-    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
     fontSize: '14px',
     lineHeight: 1,
-    color: 'var(--text-tertiary)',
+    color: 'var(--text-secondary)',
   },
   cap: {
     color: 'var(--upgrade-gold)',

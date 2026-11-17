@@ -34,7 +34,7 @@ public static partial class SpaHosting
         // The build puts a content hash in the head scripts' ?v=, so a new version always has a new URL.
         var isVersioned = request.Query.ContainsKey("v");
         if (isBundle || isVersioned) return "public, max-age=31536000, immutable";
-        if (request.Path.StartsWithSegments("/badges")) return "public, max-age=604800";
+        if (request.Path.StartsWithSegments("/badges") || request.Path.StartsWithSegments("/crown-series")) return "public, max-age=604800";
         return "no-cache";
     }
 
