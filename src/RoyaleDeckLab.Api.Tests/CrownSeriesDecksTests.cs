@@ -104,6 +104,66 @@ public sealed class CrownSeriesDecksTests : IDisposable
     }
 
     [Fact]
+    public void A_missing_meta_special_costs_nothing_when_another_card_in_the_deck_fills_its_slot()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Evo : 0)));
+
+        var score = DuelScore(cards, (1, CardVersionKind.Evo));
+
+        Assert.Equal(MetaConfidence, score, 10);
+    }
+
+    [Fact]
+    public void Each_special_slot_left_empty_costs_the_fitted_log_odds()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id)));
+
+        var score = DuelScore(cards, (1, CardVersionKind.Evo), (2, CardVersionKind.Hero));
+
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -2 * CrownSeriesLevels.EmptySpecialSlot), score, 10);
+    }
+
+    [Fact]
+    public void A_champion_fills_a_hero_slot()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => id switch
+        {
+            2 => Build.Card(id, evo: EvolutionBits.Hero),
+            3 => Build.Card(id, rarity: Rarity.Champion),
+            _ => Build.Card(id),
+        }));
+
+        var score = DuelScore(cards, (1, CardVersionKind.Hero), (3, CardVersionKind.Hero));
+
+        Assert.Equal(MetaConfidence, score, 10);
+    }
+
+    [Fact]
+    public void Evos_fill_at_most_two_slots()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id <= 3 ? EvolutionBits.Evo : 0)));
+
+        var score = DuelScore(cards, (1, CardVersionKind.Evo), (2, CardVersionKind.Evo), (4, CardVersionKind.Hero));
+
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -CrownSeriesLevels.EmptySpecialSlot), score, 10);
+    }
+
+    private const double MetaConfidence = 0.55;
+
+    private double DuelScore(Dictionary<int, PlayerItemLevel> cards, params (int Id, CardVersionKind Version)[] specials)
+    {
+        var deck = Build.Eight(1);
+        var versions = deck
+            .Select(id => new CardVersion(id, specials.FirstOrDefault(s => s.Id == id).Version))
+            .ToList();
+        var meta = new[] { Build.Deck(deck, confidence: MetaConfidence, versions: versions) };
+
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 1);
+
+        return Assert.Single(result.Decks).PlayerScore;
+    }
+
+    [Fact]
     public async Task TheMeta_RanksDuelDecks_ByTheirStoredRounds()
     {
         var strong = Build.Eight(1);
