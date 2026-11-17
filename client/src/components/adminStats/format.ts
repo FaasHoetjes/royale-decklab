@@ -33,7 +33,7 @@ const TOOL_LABELS: Record<string, string> = {
   clan: 'Clan war planner',
   faq: 'FAQ',
   patch: 'Patch link',
-  'crown-series': 'Crown Series decks',
+  'crown-series': 'Crown Series deck generator',
 };
 
 const DEVICE_LABELS: Record<string, string> = { phone: 'Phone', desktop: 'Desktop' };
