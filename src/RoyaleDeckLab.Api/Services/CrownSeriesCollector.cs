@@ -97,13 +97,13 @@ public sealed class CrownSeriesCollector(
 
     /// <summary>
     /// Tries players who aren't tracked yet, the likeliest to play below King's League first; the ones who play Duels
-    /// bring in their league's opponents from then on. Visitors are tried whatever the room, since they came for their
-    /// own league.
+    /// bring in their league's opponents from then on. Visitors are tried whatever the room: they are the site's own
+    /// users, in every league.
     /// </summary>
     private async Task ReadSeedsAsync(Harvest harvest, long now, CancellationToken ct)
     {
         var seeds = new SeedPicks(_opt.SeedsPerPoll, tag => !harvest.WasRead(tag));
-        seeds.Pick(SeedSource.Visitor, schedule.WaitingVisitors(now));
+        seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(now, _opt.VisitorsPerPoll));
         var capsWithRoom = schedule.LowerCapsWithRoom();
         if (capsWithRoom.Count > 0)
         {

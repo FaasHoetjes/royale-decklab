@@ -27,9 +27,15 @@ public sealed class CrownSeriesOptions
     // A seed without Duels may play next weekend.
     public long SeedRetryMs { get; set; } = 5L * 24 * 60 * 60 * 1000;
 
-    // How long a visitor of the Crown Series page is read every poll while no Duel of theirs shows up; Duel weekends
-    // are a week or two apart.
+    // How long a visitor who looked themselves up stays waiting while no Duel of theirs shows up; Duel weekends are a
+    // week or two apart.
     public long VisitorWaitMs { get; set; } = 14L * 24 * 60 * 60 * 1000;
+
+    // A waiting visitor whose log showed no Duel yet is tried again after this long, not every poll.
+    public long VisitorRereadMs { get; set; } = 4L * 60 * 60 * 1000;
+
+    // Visitors take at most this share of a poll's seeds, so the site's traffic can't crowd out the other sources.
+    public int VisitorsPerPoll { get; set; } = 500;
 
     // How much a round at a neighbouring cap counts in a league's decks at most, compounding per cap further away.
     public double OtherCapWeight { get; set; } = 0.5;

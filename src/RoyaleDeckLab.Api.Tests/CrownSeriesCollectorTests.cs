@@ -366,6 +366,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     [Fact]
     public async Task A_visitor_who_hasnt_played_yet_is_read_again_until_their_duels_show()
     {
+        _options.VisitorRereadMs = _options.PollIntervalMs;
         _api.Ranked.Add("#R1");
         _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
         Schedule().AddVisitor("#VISITOR", Now.ToUnixTimeMilliseconds());

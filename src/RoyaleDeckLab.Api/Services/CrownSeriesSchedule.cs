@@ -22,8 +22,10 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
     private readonly Dictionary<string, long> _seedsTriedMs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _clansTriedMs = new(StringComparer.Ordinal);
 
-    // Kept in memory only and never stored: the tags of people who used the Crown Series page, with when they last did.
-    private readonly Dictionary<string, long> _waitingVisitors = new(StringComparer.Ordinal);
+    // Kept in memory only and never stored: the tags of people who looked themselves up on the site.
+    private readonly Dictionary<string, Visitor> _waitingVisitors = new(StringComparer.Ordinal);
+
+    private sealed record Visitor(long VisitedMs, long TriedMs);
 
     /// <param name="Cap">The cap of the player's latest Duel; null until one is seen.</param>
     private sealed record Tracked(long NextReadMs, long LastDuelMs, int? Cap);
@@ -128,36 +130,52 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
         Trim([]);
     }
 
-    /// <summary>Someone used the Crown Series page: their own log shows their league, and their opponents fill it.</summary>
+    /// <summary>Someone looked themselves up on the site: their own log shows their league, and their opponents fill it.</summary>
     public void AddVisitor(string tag, long nowMs)
     {
         lock (_lock)
         {
-            if (_waitingVisitors.Count < MaxWaitingVisitors || _waitingVisitors.ContainsKey(tag))
+            if (_waitingVisitors.TryGetValue(tag, out var known))
             {
-                _waitingVisitors[tag] = nowMs;
+                _waitingVisitors[tag] = known with { VisitedMs = nowMs };
+                return;
+            }
+            if (_waitingVisitors.Count < MaxWaitingVisitors)
+            {
+                _waitingVisitors[tag] = new Visitor(nowMs, 0);
             }
         }
     }
 
     /// <summary>
-    /// The visitors whose Duels haven't been seen yet. People pick their decks before they play, so a visitor stays
-    /// waiting, and is read every poll, until a Duel shows their league or
-    /// <see cref="CrownSeriesOptions.VisitorWaitMs"/> passes.
+    /// Up to <paramref name="max"/> visitors whose Duels haven't been seen yet, the longest untried first. People look
+    /// themselves up before they play, so a visitor is tried again every <see cref="CrownSeriesOptions.VisitorRereadMs"/>
+    /// until a Duel shows their league or <see cref="CrownSeriesOptions.VisitorWaitMs"/> passes since their visit.
     /// </summary>
-    public IReadOnlyList<string> WaitingVisitors(long nowMs)
+    public IReadOnlyList<string> TakeVisitors(long nowMs, int max)
     {
         lock (_lock)
         {
             var done = _waitingVisitors
-                .Where(v => v.Value < nowMs - _opt.VisitorWaitMs || _players.GetValueOrDefault(v.Key)?.Cap is not null)
+                .Where(v => v.Value.VisitedMs < nowMs - _opt.VisitorWaitMs || _players.GetValueOrDefault(v.Key)?.Cap is not null)
                 .Select(v => v.Key)
                 .ToList();
             foreach (var tag in done)
             {
                 _waitingVisitors.Remove(tag);
             }
-            return _waitingVisitors.Keys.ToList();
+
+            var taken = _waitingVisitors
+                .Where(v => v.Value.TriedMs <= nowMs - _opt.VisitorRereadMs)
+                .OrderBy(v => v.Value.TriedMs)
+                .Take(max)
+                .Select(v => v.Key)
+                .ToList();
+            foreach (var tag in taken)
+            {
+                _waitingVisitors[tag] = _waitingVisitors[tag] with { TriedMs = nowMs };
+            }
+            return taken;
         }
     }
 

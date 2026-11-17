@@ -155,6 +155,22 @@ public sealed class CrownSeriesScheduleTests
         schedule.RecordRead("#PLAYED", [Duel(TimeSpan.FromHours(1), cap: 13)], NowMs);
         schedule.RecordRead("#NOT_YET", [Battle(TimeSpan.FromHours(1), "Ladder")], NowMs);
 
-        Assert.Equal(["#NOT_YET"], schedule.WaitingVisitors(NowMs));
+        Assert.Equal(["#NOT_YET"], schedule.TakeVisitors(NowMs, 10));
+    }
+
+    [Fact]
+    public void A_visitor_tried_without_a_duel_waits_out_the_reread_interval_and_the_poll_takes_only_its_share()
+    {
+        var schedule = Schedule(new CrownSeriesOptions { VisitorRereadMs = (long)TimeSpan.FromHours(4).TotalMilliseconds });
+        schedule.AddVisitor("#A", NowMs);
+        schedule.AddVisitor("#B", NowMs);
+
+        var first = schedule.TakeVisitors(NowMs, 1);
+        var second = schedule.TakeVisitors(NowMs + (long)TimeSpan.FromHours(1).TotalMilliseconds, 10);
+        var third = schedule.TakeVisitors(NowMs + (long)TimeSpan.FromHours(5).TotalMilliseconds, 10);
+
+        Assert.Single(first);
+        Assert.Equal(["#A", "#B"], first.Concat(second).Order());
+        Assert.Equal(first, third.Take(1));
     }
 }
