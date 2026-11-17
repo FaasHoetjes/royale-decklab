@@ -16,14 +16,23 @@ public sealed class CrownSeriesOptions
     // the same league, so each cap fills from its own players.
     public int MaxPlayersPerCap { get; set; } = 2000;
 
-    // War crawl players read per poll while a cap below King's still has room, to find players in the lower leagues.
+    // Players outside the tracked ones read per poll while a cap below King's still has room, to find players in the
+    // lower leagues: the site's Crown Series visitors first, then players met near a lower-league player, then war
+    // crawl players.
     public int SeedsPerPoll { get; set; } = 1000;
+
+    // Clans of lower-league players whose members are tried as seeds per poll; each costs one extra request.
+    public int ClansPerPoll { get; set; } = 20;
 
     // A seed without Duels may play next weekend.
     public long SeedRetryMs { get; set; } = 5L * 24 * 60 * 60 * 1000;
 
-    // How much a round at a neighbouring cap counts in a league's decks, compounding per cap further away.
+    // How much a round at a neighbouring cap counts in a league's decks at most, compounding per cap further away.
     public double OtherCapWeight { get; set; } = 0.5;
+
+    // A league borrows at most as many weighted rounds from other caps as it has of its own, and at least this many,
+    // so a thin league still gets decks. A judgement value: one weekend can't fit it yet.
+    public int MinBorrowedRounds { get; set; } = 2000;
 
     // How many players are read to see whether a Duel weekend is on, when no stored Duel says so.
     public int ProbePlayers { get; set; } = 100;

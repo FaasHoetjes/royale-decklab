@@ -36,7 +36,7 @@ public static class SpaContent
         => Page($"{H1(heading)}{P("Which card upgrade raises your war lineup the most.")}");
 
     public static string CrownSeries(string heading)
-        => Page($"{H1(heading)}{P("The 4 decks that give you the best shot in your Crown Series Duel, built from your cards at your league's level cap.")}");
+        => Page($"{H1(heading)}{P("The 4 best decks for your Crown Series Duel, optimized for your card collection and league's level cap.")}");
 
     public static string Clan(string heading)
         => Page($"{H1(heading)}{P("Who in your clan still has war decks to play today, and each member's best four war decks.")}");

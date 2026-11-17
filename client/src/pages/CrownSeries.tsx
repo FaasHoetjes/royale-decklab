@@ -34,7 +34,7 @@ export default function CrownSeries() {
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
       <h1 className={isMobile ? 'visually-hidden' : undefined} style={styles.title}>Crown Series Deck Generator</h1>
       <p style={{ ...styles.subtitle, margin: isMobile ? 0 : undefined }}>
-        The 4 decks that give you the best shot in your Crown Series Duel, built from your cards at your league's level cap.
+        The 4 best decks for your Crown Series Duel, optimized for your card collection and league's level cap.
       </p>
     </div>
   );
