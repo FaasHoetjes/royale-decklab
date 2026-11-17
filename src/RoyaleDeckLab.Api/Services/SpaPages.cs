@@ -41,6 +41,15 @@ public static partial class SpaPages
     private const string ClanPath = "/clan";
     private const string AdminStatsPath = "/admin/stats";
 
+    /// <summary>
+    /// Pages that work by direct link but aren't released yet: no sitemap entry, no crawler nav link, no indexing.
+    /// Mirrors <c>unlisted</c> in client/src/components/navItems.tsx.
+    /// </summary>
+    public static IReadOnlySet<string> UnlistedPaths { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "/crown-series",
+    };
+
     /// <summary>Heading is the page's h1 as the app shows it.</summary>
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
@@ -74,7 +83,7 @@ public static partial class SpaPages
         {
             if (string.Equals(path, page.Path, StringComparison.OrdinalIgnoreCase))
             {
-                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, false)
+                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, UnlistedPaths.Contains(page.Path))
                 {
                     Content = page.Content,
                     Heading = page.Heading,
@@ -252,6 +261,7 @@ public static partial class SpaPages
     public static string Sitemap(IEnumerable<CatalogCard> cards)
     {
         var paths = StaticPages(DateTimeOffset.UnixEpoch).Select(p => p.Path)
+            .Where(path => !UnlistedPaths.Contains(path))
             .Prepend("/")
             .Concat(cards.Select(c => $"{CardsPath}/{CardSlug(c.Name)}").Order(StringComparer.Ordinal))
             .Distinct();

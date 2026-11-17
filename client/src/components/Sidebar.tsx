@@ -59,7 +59,7 @@ export function SidebarContent() {
         <div style={styles.brandBottom}>DECKLAB</div>
       </Link>
 
-      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].map(renderNavLink)}</div>
+      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].filter((item) => !item.unlisted).map(renderNavLink)}</div>
 
       <div style={styles.footer}>
         <div style={styles.footerIcons}>

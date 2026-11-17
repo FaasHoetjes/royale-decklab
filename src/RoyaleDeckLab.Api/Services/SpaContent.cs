@@ -222,7 +222,7 @@ public static class SpaContent
     private static string Page(string main)
     {
         var html = new StringBuilder("<div id=\"prerender\"><nav><ul>");
-        foreach (var (path, label) in Nav)
+        foreach (var (path, label) in Nav.Where(n => !SpaPages.UnlistedPaths.Contains(n.Path)))
         {
             html.Append("<li><a href=\"").Append(path).Append("\">").Append(Encode(label)).Append("</a></li>");
         }

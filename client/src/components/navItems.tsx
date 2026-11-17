@@ -12,6 +12,8 @@ export interface NavItem {
   end: boolean;
   icon: ReactNode;
   isNew?: boolean;
+  /** Works by direct link but isn't released yet, so the sidebar leaves it out; mirrors SpaPages.UnlistedPaths. */
+  unlisted?: boolean;
 }
 
 const CROWN_SERIES_NEW_UNTIL = Date.parse('2027-01-05');
@@ -41,6 +43,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       description: 'Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.',
       end: false,
       isNew: Date.now() < CROWN_SERIES_NEW_UNTIL,
+      unlisted: true,
       icon: <CrownIcon />,
     },
     {
