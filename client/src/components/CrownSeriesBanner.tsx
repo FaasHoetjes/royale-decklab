@@ -202,7 +202,7 @@ const styles = {
     fontWeight: 900 as const,
     letterSpacing: '0.8px',
     textTransform: 'uppercase' as const,
-    background: 'var(--cs-eyebrow)',
+    backgroundImage: 'var(--cs-eyebrow)',
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',
     color: 'transparent',
