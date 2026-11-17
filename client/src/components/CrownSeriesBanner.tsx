@@ -250,8 +250,7 @@ const styles = {
     position: 'absolute' as const,
     bottom: 0,
     width: '58px',
-    borderRadius: '6px',
     transformOrigin: '50% 120%',
-    boxShadow: '0 6px 14px rgba(0, 0, 0, 0.45)',
+    filter: 'var(--hero-card-shadow)',
   },
 };
