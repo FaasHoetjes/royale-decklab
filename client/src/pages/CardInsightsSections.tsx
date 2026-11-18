@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CardInsights, CardPatchPoint, CatalogCard } from '../api';
-import { cardIconUrl } from '../lib/cardDisplay';
 import { percent } from '../lib/cardStats';
-import CardLink from '../components/CardLink';
-import CardTile from '../components/CardTile';
-import { ChangePill } from '../components/WinRateChange';
+import { ChangeTile, ChangeTileRow } from '../components/ChangeTiles';
 import type { Theme } from '../theme';
 
 interface Props {
@@ -65,7 +62,7 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
           gap={gap}
           theme={theme}
           isMobile={isMobile}
-          tiles={partners.map((p) => ({ card: byId.get(p.cardId)!, share: p.share, difference: p.winRate - cardWinRate }))}
+          tiles={partners.map((p) => ({ card: byId.get(p.cardId)!, difference: p.winRate - cardWinRate, detail: `in ${percent(p.share, 0)} of games` }))}
         />
       )}
 
@@ -75,7 +72,7 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
           gap={gap}
           theme={theme}
           isMobile={isMobile}
-          tiles={counters.map((c) => ({ card: byId.get(c.cardId)!, difference: c.winRate - insights.matchupWinRate! }))}
+          tiles={counters.map((c) => ({ card: byId.get(c.cardId)!, difference: c.winRate - insights.matchupWinRate!, detail: `${percent(c.winRate)} win rate` }))}
         />
       )}
 
@@ -87,36 +84,21 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
 
 interface Tile {
   card: CatalogCard;
-  share?: number;
   difference: number;
+  detail: string;
 }
 
 function TileSection({ title, tiles, gap, theme, isMobile }: { title: string; tiles: Tile[]; gap: string; theme: Theme; isMobile: boolean }) {
   return (
     <section style={{ marginTop: gap }}>
       <h2 style={{ ...styles.title, color: theme.text.primary }}>{title}</h2>
-      <ul style={{ ...styles.tiles, gridTemplateColumns: `repeat(${isMobile ? 3 : 6}, minmax(0, 1fr))` }}>
-        {tiles.map(({ card, share, difference }) => (
-          <li key={card.id} style={styles.tile}>
-            <CardLink name={card.name}>
-              <CardTile name={card.name} iconUrl={cardIconUrl(card.iconUrls, 'normal')} elixirCost={card.elixirCost} showName={false} />
-            </CardLink>
-            <b style={{ ...styles.tileName, color: theme.text.primary }}>{card.name}</b>
-            {share != null && (
-              <>
-                <div style={styles.track}>
-                  <span style={{ ...styles.fill, width: `${share * 100}%` }} />
-                </div>
-                <div style={{ ...styles.tileLine, color: theme.text.secondary }}>in {percent(share, 0)} of its games</div>
-              </>
-            )}
-            <div style={{ ...styles.tileLine, color: theme.text.secondary }}>
-              <span>{share != null ? 'win rate' : 'win rate vs'}</span>
-              <ChangePill change={difference} />
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div style={{ ...styles.panel, padding: isMobile ? '2px 14px' : '4px 20px' }}>
+        <ChangeTileRow isMobile={isMobile}>
+          {tiles.map(({ card, difference, detail }) => (
+            <ChangeTile key={card.id} card={card} change={difference} detail={detail} isMobile={isMobile} />
+          ))}
+        </ChangeTileRow>
+      </div>
     </section>
   );
 }
@@ -216,35 +198,6 @@ const styles = {
   columns: {
     display: 'grid' as const,
     gap: '20px',
-  },
-  tiles: {
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    display: 'grid' as const,
-    gap: '12px',
-  },
-  tile: {
-    padding: '10px',
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    gap: '8px',
-    minWidth: 0,
-    borderRadius: '14px',
-    backgroundColor: 'var(--bg-secondary)',
-    border: '1px solid var(--panel-border)',
-    boxShadow: 'var(--panel-shadow)',
-  },
-  tileName: {
-    fontSize: '14px',
-    overflowWrap: 'anywhere' as const,
-  },
-  tileLine: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: '6px',
-    fontSize: '12px',
   },
   sparkHead: {
     fontSize: '13px',

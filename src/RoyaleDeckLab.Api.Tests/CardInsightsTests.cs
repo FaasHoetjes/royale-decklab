@@ -44,10 +44,30 @@ public sealed class CardInsightsTests
 
         var partners = InsightOf(tallier, 1).Partners;
 
-        Assert.Equal([2, 3, 4, 5, 6, 7], partners.Select(p => p.CardId));
+        Assert.Equal([2, 3, 4, 5, 6, 7, 8], partners.Select(p => p.CardId));
         Assert.Equal(0.75, partners[0].Share, 10);
         Assert.Equal(1.0, partners[0].WinRate, 10);
         Assert.DoesNotContain(partners, p => p.CardId == 20);
+        Assert.Equal([2, 3, 4], InsightOf(tallier, 1).UsualPartners);
+    }
+
+    [Fact]
+    public void Partners_must_clearly_lift_the_win_rate_and_rank_with_few_games_counting_for_less()
+    {
+        var next = 1000;
+        IEnumerable<BattleRecord> With(int partner, int games, int wins, string tag) => Enumerable.Range(0, games).Select(i =>
+        {
+            int[] deck = partner > 0 ? [1, partner, next++, next++, next++, next++, next++, next++] : [1, next++, next++, next++, next++, next++, next++, next++];
+            return Build.Battle($"{tag}{i}", deck, i < wins ? BattleResult.Win : BattleResult.Loss);
+        }).ToList();
+
+        var tallier = Tally(
+            With(50, 1_000, 550, "#A")
+                .Concat(With(60, 120, 72, "#B"))
+                .Concat(With(70, 300, 156, "#C"))
+                .Concat(With(0, 1_000, 432, "#D")));
+
+        Assert.Equal([50, 60], InsightOf(tallier, 1).Partners.Select(p => p.CardId));
     }
 
     [Fact]
@@ -83,7 +103,7 @@ public sealed class CardInsightsTests
 
         Assert.Equal(2400, insight.MatchupGames);
         Assert.Equal(0.5, insight.MatchupWinRate!.Value, 10);
-        Assert.Equal([100, 101, 102, 103, 104, 105], insight.Counters.Select(c => c.CardId));
+        Assert.Equal([100, 101, 102, 103, 104, 105, 106, 107], insight.Counters.Select(c => c.CardId));
         Assert.Equal(0.3, insight.Counters[0].WinRate, 10);
     }
 
@@ -110,7 +130,9 @@ public sealed class CardInsightsTests
     [Fact]
     public void Battles_without_a_known_opponent_count_for_partners_but_not_matchups()
     {
-        var tallier = Tally(Repeat(150, Build.Eight(1), BattleResult.Win, "#A"));
+        var tallier = Tally(
+            Repeat(150, Build.Eight(1), BattleResult.Win, "#A")
+                .Concat(Repeat(150, [1, 20, 21, 22, 23, 24, 25, 26], BattleResult.Loss, "#B")));
 
         var insight = InsightOf(tallier, 1);
 
@@ -194,7 +216,8 @@ public sealed class CardInsightsTextTests
         Stat(5, 500, 0.60, 0.01));
 
     private static CardInsight Insight(params CardCounter[] counters) => new(
-        [new(2, 900, 0.45, 0.57), new(3, 700, 0.35, 0.55), new(4, 500, 0.25, 0.60)],
+        [2, 3, 4],
+        [new(5, 300, 0.15, 0.62)],
         [],
         counters,
         counters.Length > 0 ? 5_000 : 0,
@@ -204,14 +227,33 @@ public sealed class CardInsightsTextTests
         => CardInsightsText.Build(card ?? Catalog[0], Catalog, stats, insight, [], [], []);
 
     [Fact]
-    public void The_summary_states_the_rank_among_cards_with_enough_games()
+    public void The_summary_gives_a_verdict_with_the_rank_among_cards_with_enough_games()
     {
         var summary = InsightsFor(Ranked, Insight()).Summary;
 
-        Assert.StartsWith("Card1 is a 3-elixir common troop that wins 56.0% of its Clan War battles", summary[0]);
-        Assert.Contains("#1 of 4 cards by win rate", summary[0]);
-        Assert.Contains("the #3 most used card", summary[0]);
-        Assert.Contains("most often played with Card2, Card3 and Card4", summary[1]);
+        Assert.Equal(
+            "Card1 is a 3-elixir common troop. In Clan War this patch it wins 56.0% of its battles in the top war clans, " +
+            "which is among the strongest: #1 of 4 cards by win rate. It's in 10.0% of war decks, #3 by use rate.",
+            summary[0]);
+        Assert.Equal("It's most often played with Card2, Card3 and Card4.", summary[1]);
+    }
+
+    [Fact]
+    public void A_card_in_the_lower_half_is_below_average()
+    {
+        var summary = InsightsFor(Ranked, card: Catalog[2]).Summary;
+
+        Assert.Contains("which is below average: #3 of 4 cards by win rate", summary[0]);
+    }
+
+    [Fact]
+    public void A_mostly_evolved_card_names_its_partners_in_the_same_sentence()
+    {
+        var stats = Stats(Stat(1, 2_000, 0.56, 0.10, evoShare: 0.82));
+
+        var summary = InsightsFor(stats, Insight()).Summary;
+
+        Assert.Equal("Most players use its Evolution (82% of games), usually with Card2, Card3 and Card4.", summary[1]);
     }
 
     [Fact]
@@ -219,7 +261,7 @@ public sealed class CardInsightsTextTests
     {
         var summary = InsightsFor(Ranked, card: Catalog[4]).Summary;
 
-        Assert.Contains("too few to rank it", summary[0]);
+        Assert.Contains("but with only 500 games that's too few to rank it", summary[0]);
     }
 
     [Fact]

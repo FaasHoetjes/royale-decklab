@@ -14,6 +14,7 @@ import CardTile from './CardTile';
 import CardLink from './CardLink';
 import LoadError from './LoadError';
 import { ChangePill } from './WinRateChange';
+import { ChangeTile, ChangeTileRow, changeTileBox } from './ChangeTiles';
 
 const SKELETON_TILES = 10;
 
@@ -307,28 +308,22 @@ function MoverRow({ title, empty, movers, cardById, isMobile }: MoverRowProps) {
     <Panel title={title} link isMobile={isMobile}>
       {shown.length === 0 && <p style={{ ...styles.empty, color: theme.text.secondary }}>{empty}</p>}
       {shown.length > 0 && (
-        <div style={{ ...styles.scroller, gap: isMobile ? '20px' : '16px' }}>
+        <ChangeTileRow isMobile={isMobile}>
           {shown.map(({ mover, card }) => (
-            <div key={card.id} style={{ ...styles.tile, flexBasis: isMobile ? '74px' : '86px', width: isMobile ? '74px' : '86px' }}>
-              <CardLink name={card.name}>
-                <CardTile
-                  name={card.name}
-                  iconUrl={cardIconUrl(card.iconUrls, mostPlayedVersion(mover.stat))}
-                  elixirCost={card.elixirCost}
-                  nameColor={theme.text.primary}
-                  nameSize="11.5px"
-                  lazyLoad
-                />
-                <div style={styles.tileChange}>
-                  <ChangePill change={mover.change} large />
-                </div>
-                <div style={{ ...styles.tileRange, color: theme.text.tertiary }}>
+            <ChangeTile
+              key={card.id}
+              card={card}
+              version={mostPlayedVersion(mover.stat)}
+              change={mover.change}
+              isMobile={isMobile}
+              detail={
+                <>
                   {percent(mover.from)} → <b style={{ ...styles.tileRangeTo, color: theme.text.secondary }}>{percent(mover.to)}</b>
-                </div>
-              </CardLink>
-            </div>
+                </>
+              }
+            />
           ))}
-        </div>
+        </ChangeTileRow>
       )}
     </Panel>
   );
@@ -337,14 +332,14 @@ function MoverRow({ title, empty, movers, cardById, isMobile }: MoverRowProps) {
 function MoverSkeleton({ title, isMobile }: { title: string; isMobile: boolean }) {
   return (
     <Panel title={title} link isMobile={isMobile}>
-      <div role="status" aria-label={`Loading ${title.toLowerCase()}`} style={{ ...styles.scroller, gap: isMobile ? '20px' : '16px' }}>
+      <ChangeTileRow role="status" aria-label={`Loading ${title.toLowerCase()}`} isMobile={isMobile}>
         {Array.from({ length: SKELETON_TILES }, (_, i) => (
-          <div key={i} aria-hidden="true" style={{ ...styles.tile, flexBasis: isMobile ? '74px' : '86px', width: isMobile ? '74px' : '86px' }}>
+          <div key={i} aria-hidden="true" style={changeTileBox(isMobile)}>
             <span className="skeleton" style={styles.skeletonArt} />
             <span className="skeleton" style={styles.skeletonLine} />
           </div>
         ))}
-      </div>
+      </ChangeTileRow>
     </Panel>
   );
 }
@@ -433,19 +428,6 @@ const styles = {
     overflowX: 'auto' as const,
     padding: '12px 2px 10px',
     scrollbarWidth: 'thin' as const,
-  },
-  tile: {
-    flexShrink: 0,
-    textAlign: 'center' as const,
-  },
-  tileChange: {
-    marginTop: '5px',
-  },
-  tileRange: {
-    marginTop: '3px',
-    fontSize: '11px',
-    fontVariantNumeric: 'tabular-nums' as const,
-    whiteSpace: 'nowrap' as const,
   },
   tileRangeTo: {
     fontWeight: 600 as const,

@@ -11,6 +11,7 @@ public sealed record CardStyle(string Name, int Games, double Share, double? Win
 public sealed record CardCounter(int CardId, int Games, double WinRate);
 
 public sealed record CardInsight(
+    IReadOnlyList<int> UsualPartners,
     IReadOnlyList<CardPartner> Partners,
     IReadOnlyList<CardStyle> Styles,
     IReadOnlyList<CardCounter> Counters,
@@ -19,7 +20,8 @@ public sealed record CardInsight(
 
 public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int[], string?>? classify)
 {
-    public const int PartnerCount = 6;
+    public const int PartnerCount = 12;
+    public const int UsualPartnerCount = 3;
     public const int MinPartnerGames = 100;
 
     public const int StyleCount = 4;
@@ -27,11 +29,13 @@ public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int
     public const int MinStyleGamesForWinRate = 100;
     public const string OtherStyles = "Other decks";
 
-    public const int CounterCount = 6;
+    public const int CounterCount = 12;
     public const int MinCounterGames = 200;
 
-    // Counters rank on a win rate shrunk toward the card's own, so rarely met cards need a bigger gap.
-    public const int CounterPriorGames = 200;
+    // Partners and counters must differ from the card's own win rate by more than this many standard errors, then
+    // rank on a win rate shrunk toward it, so a big gap on few games ranks below a smaller one on many.
+    public const double ClearGapStandardErrors = 2;
+    public const int PriorGames = 200;
 
     public const int MinMatchupGames = 2000;
     public const int MinCounters = 3;
@@ -53,6 +57,7 @@ public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int
         {
             var card = period.Card(id);
             card.Games++;
+            card.Wins += win;
             foreach (var partner in battle.CardIds)
             {
                 if (partner != id)
@@ -129,12 +134,16 @@ public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int
 
     private static CardInsight Insight(CardCounts card)
     {
-        var partners = card.Partners.Counts
+        var usualPartners = card.Partners.Counts
             .Where(kv => kv.Value.Games >= MinPartnerGames)
             .OrderByDescending(kv => kv.Value.Games)
             .ThenBy(kv => kv.Key)
+            .Take(UsualPartnerCount)
+            .Select(kv => kv.Key)
+            .ToList();
+        var partners = ClearlyApart(card.Partners, card.Wins / card.Games, MinPartnerGames, above: true)
             .Take(PartnerCount)
-            .Select(kv => new CardPartner(kv.Key, kv.Value.Games, (double)kv.Value.Games / card.Games, kv.Value.Wins / kv.Value.Games))
+            .Select(x => new CardPartner(x.CardId, x.Tally.Games, (double)x.Tally.Games / card.Games, x.Tally.Wins / x.Tally.Games))
             .ToList();
 
         var styles = new List<CardStyle>();
@@ -161,14 +170,9 @@ public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int
         var counters = new List<CardCounter>();
         if (baseline is { } b && matchup.Games >= MinMatchupGames)
         {
-            counters = card.Versus.Counts
-                .Where(kv => kv.Value.Games >= MinCounterGames)
-                .Select(kv => (kv.Key, kv.Value, Pulled: (kv.Value.Wins + CounterPriorGames * b) / (kv.Value.Games + CounterPriorGames)))
-                .Where(x => x.Pulled < b)
-                .OrderBy(x => x.Pulled)
-                .ThenBy(x => x.Key)
+            counters = ClearlyApart(card.Versus, b, MinCounterGames, above: false)
                 .Take(CounterCount)
-                .Select(x => new CardCounter(x.Key, x.Value.Games, x.Value.Wins / x.Value.Games))
+                .Select(x => new CardCounter(x.CardId, x.Tally.Games, x.Tally.Wins / x.Tally.Games))
                 .ToList();
             if (counters.Count < MinCounters)
             {
@@ -176,7 +180,23 @@ public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int
             }
         }
 
-        return new CardInsight(partners, styles, counters, matchup.Games, baseline);
+        return new CardInsight(usualPartners, partners, styles, counters, matchup.Games, baseline);
+    }
+
+    private static IEnumerable<(int CardId, Tally Tally)> ClearlyApart(Tallies<int> tallies, double baseline, int minGames, bool above)
+    {
+        var sign = above ? 1 : -1;
+        return tallies.Counts
+            .Where(kv => kv.Value.Games >= minGames)
+            .Where(kv =>
+            {
+                var gap = sign * (kv.Value.Wins / kv.Value.Games - baseline);
+                var standardError = Math.Sqrt(baseline * (1 - baseline) / kv.Value.Games);
+                return gap > ClearGapStandardErrors * standardError;
+            })
+            .OrderByDescending(kv => sign * (kv.Value.Wins + PriorGames * baseline) / (kv.Value.Games + PriorGames))
+            .ThenBy(kv => kv.Key)
+            .Select(kv => (kv.Key, kv.Value));
     }
 
     private static CardStyle Style(string name, Tally tally, int cardGames)
@@ -216,6 +236,7 @@ public sealed class CardInsightsTallier((long From, long To)[] periods, Func<int
     private sealed class CardCounts
     {
         public int Games;
+        public double Wins;
         public Tally Matchup;
         public Tallies<int> Partners { get; } = new();
         public Tallies<int> Versus { get; } = new();
