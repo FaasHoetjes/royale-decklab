@@ -11,9 +11,14 @@ interface DeckCardBannerProps {
   playerScore: number;
   metaWinRate: number;
   uses: number;
+  leagueUses?: number | null;
   players: number;
   pickRate: number;
+  /** Where the win rate was measured: Clan War battles, or Crown Series Duel rounds. */
+  source?: WinRateSource;
 }
+
+export type WinRateSource = 'war' | 'duel';
 
 const theme = {
   bannerMuted: 'var(--hero-muted)',
@@ -28,9 +33,13 @@ export default function DeckCardBanner({
   playerScore,
   metaWinRate,
   uses,
+  leagueUses,
   players,
   pickRate,
+  source = 'war',
 }: DeckCardBannerProps) {
+  const duel = source === 'duel';
+  const games = duel ? (uses === 1 ? 'round' : 'rounds') : uses === 1 ? 'game' : 'games';
   return (
     <div style={{ ...styles.banner, padding: isMobile ? '16px 16px 18px' : '18px 24px' }}>
       {/* Art layers are clipped on their own, so the stat tooltips can still overflow the banner. */}
@@ -52,23 +61,44 @@ export default function DeckCardBanner({
       <div style={{ ...styles.stats, gap: isMobile ? '16px' : '22px', paddingRight: isMobile ? '84px' : '130px' }}>
         <div style={styles.lead}>
           <span style={styles.statLabel}>
-            Score
+            {duel ? 'Your win chance' : 'Score'}
             {!isMobile && (
-              <InfoTip ariaLabel="How the score is derived" color={theme.bannerMuted} placement="bottom">
-                <strong>How well this meta deck fits your collection.</strong>
-                <br />
-                Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
+              <InfoTip ariaLabel={duel ? 'How your win chance is derived' : 'How the score is derived'} color={theme.bannerMuted} placement="bottom">
+                {duel ? (
+                  <>
+                    <strong>Your chance to win a round with this deck.</strong>
+                    <br />
+                    Starts from the deck's win rate in Crown Series Duels, then factors in how your card levels at the league's cap compare to your opponents'. Missing Evolutions and Heroes lower it. Win rates are rated cautiously, so a deck with only a few rounds can't ride a lucky streak.
+                  </>
+                ) : (
+                  <>
+                    <strong>How well this meta deck fits your collection.</strong>
+                    <br />
+                    Starts from the deck's win rate among top players, then factors in your card levels (under-leveled cards are penalized), and the Evolutions and Heroes you've unlocked. Win rates are rated cautiously, so a deck with only a few games can't ride a lucky streak.
+                  </>
+                )}
               </InfoTip>
             )}
           </span>
-          <span style={{ ...styles.leadValue, fontSize: isMobile ? '18px' : '20px' }}>{playerScore.toFixed(3)}</span>
+          <span style={{ ...styles.leadValue, fontSize: isMobile ? '18px' : '20px' }}>
+            {duel ? `${Math.round(playerScore * 100)}%` : playerScore.toFixed(3)}
+          </span>
         </div>
         <div style={{ ...styles.rest, gap: isMobile ? '12px' : '16px', fontSize: isMobile ? '13px' : '14px' }}>
           <span style={styles.restStat}>
             <b style={styles.restValue}>{(metaWinRate * 100).toFixed(1)}%</b> win rate
             {!isMobile && (
               <InfoTip ariaLabel="Win rate details" color={theme.bannerMuted} placement="bottom">
-                <strong>Win rate</strong> across {uses} game{uses === 1 ? '' : 's'} played by top war players.
+                {duel ? (
+                  <>
+                    <strong>Win rate</strong> across {uses} Crown Series Duel {games}, {leagueUses ?? 0} of them in your
+                    league. Rounds from other leagues count for less, the further away the league.
+                  </>
+                ) : (
+                  <>
+                    <strong>Win rate</strong> across {uses} {games} played by top war players.
+                  </>
+                )}
                 <br />
                 Run by {players} player{players === 1 ? '' : 's'} ({(pickRate * 100).toFixed(1)}% pick rate).
                 <br />

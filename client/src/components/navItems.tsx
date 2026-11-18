@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
+import { ZapIcon, CrownIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
@@ -11,7 +11,12 @@ export interface NavItem {
   description: string;
   end: boolean;
   icon: ReactNode;
+  isNew?: boolean;
+  /** Works by direct link but isn't released yet, so the sidebar leaves it out; mirrors SpaPages.UnlistedPaths. */
+  unlisted?: boolean;
 }
+
+const CROWN_SERIES_NEW_UNTIL = Date.parse('2027-01-05');
 
 /** The generator is home: the player's own page, or the landing page until a player is picked. */
 export function homePath(activePlayerTag: string | null): string {
@@ -30,6 +35,16 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       description: SITE_DESCRIPTION,
       end: true,
       icon: <ZapIcon />,
+    },
+    {
+      to: '/crown-series',
+      label: 'Crown Series',
+      title: 'Clash Royale Crown Series Deck Generator',
+      description: 'Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.',
+      end: false,
+      isNew: Date.now() < CROWN_SERIES_NEW_UNTIL,
+      unlisted: true,
+      icon: <CrownIcon />,
     },
     {
       to: '/best-decks',
@@ -75,6 +90,11 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
 }
 
 // Not in the menu: /patch opens the start page at its patch section, under its own title for search results.
+/** The sidebar's links: every tool and the FAQ, without the pages not released yet. */
+export function sidebarItems(activePlayerTag: string | null): NavItem[] {
+  return [...toolItems(activePlayerTag), FAQ_ITEM].filter((item) => !item.unlisted);
+}
+
 export const PATCH_ITEM: NavItem = {
   to: '/patch',
   label: 'Patch Overview',

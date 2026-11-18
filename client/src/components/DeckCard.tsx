@@ -5,13 +5,14 @@ import { buildDeckLink } from '../lib/deckLink';
 import { useIsMobile } from '../hooks/useIsMobile';
 import CardTile from './CardTile';
 import CardLink from './CardLink';
-import DeckCardBanner from './deckCard/DeckCardBanner';
+import DeckCardBanner, { type WinRateSource } from './deckCard/DeckCardBanner';
 import DeckLinkAction from './DeckLinkAction';
 
 interface DeckCardProps {
   cards: DeckCardData[];
   metaWinRate: number;
   uses: number;
+  leagueUses?: number | null;
   players: number;
   pickRate: number;
   cardVersions?: CardVersionRef[];
@@ -25,18 +26,29 @@ interface DeckCardProps {
   /** Generator only: keep this deck while the others are re-picked around it. */
   locked?: boolean;
   onToggleLock?: () => void;
+  source?: WinRateSource;
+  /** Crown Series: the league's level cap, so cards below it stand out. */
+  levelCap?: number;
 }
 
-const cardTitle = (card: DeckCardData) => {
-  const level = `${card.name} · Level ${displayLevel(card.level, card.maxLevel)}/16`;
-  if (card.boostedFromLevel == null) return level;
-  return `${level}, boosted this season from your level ${displayLevel(card.boostedFromLevel, card.maxLevel)}`;
+const cardTitle = (card: DeckCardData, levelCap: number | undefined) => {
+  const shown = displayLevel(card.level, card.maxLevel);
+  const level = `${card.name} · Level ${shown}/${levelCap ?? 16}`;
+  if (card.boostedFromLevel != null) {
+    return `${level}, boosted this season from your level ${displayLevel(card.boostedFromLevel, card.maxLevel)}`;
+  }
+  if (card.cappedFromLevel != null) {
+    return `${level}, the league's cap; your card is level ${displayLevel(card.cappedFromLevel, card.maxLevel)}`;
+  }
+  if (levelCap != null && shown < levelCap) return `${level}, ${levelCap - shown} below the league's cap`;
+  return level;
 };
 
 export default function DeckCard({
   cards,
   metaWinRate,
   uses,
+  leagueUses,
   players,
   pickRate,
   cardVersions,
@@ -49,6 +61,8 @@ export default function DeckCard({
   priority,
   locked,
   onToggleLock,
+  source,
+  levelCap,
 }: DeckCardProps) {
   const isMobile = useIsMobile();
 
@@ -78,14 +92,16 @@ export default function DeckCard({
         playerScore={playerScore}
         metaWinRate={metaWinRate}
         uses={uses}
+        leagueUses={leagueUses}
         players={players}
         pickRate={pickRate}
+        source={source}
       />
 
       <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 24px 18px' }}>
         <div style={{ ...styles.cards, gap: isMobile ? '10px 8px' : '14px 22px' }}>
           {orderedCards.map((card, index) => (
-            <CardLink key={card.id} name={card.name} title={cardTitle(card)}>
+            <CardLink key={card.id} name={card.name} title={cardTitle(card, levelCap)}>
               <CardTile
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, versionOf(cardVersions, card.id))}
@@ -93,6 +109,7 @@ export default function DeckCard({
                 elixirCost={card.elixirCost}
                 level={displayLevel(card.level, card.maxLevel)}
                 boosted={card.boostedFromLevel != null}
+                belowCap={levelCap != null && displayLevel(card.level, card.maxLevel) < levelCap}
                 nameColor={theme.cardText}
                 nameSize={isMobile ? '11.5px' : '12px'}
                 nameLines={isMobile ? 2 : 1}

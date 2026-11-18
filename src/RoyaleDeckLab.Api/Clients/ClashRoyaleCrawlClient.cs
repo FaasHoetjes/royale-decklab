@@ -19,6 +19,9 @@ public sealed class ClashRoyaleCrawlClient(HttpClient http, CrawlConcurrency con
     public Task<IReadOnlyList<string>> GetClanMemberTagsAsync(string clanTag, CancellationToken ct = default)
         => concurrency.RunAsync(() => _api.GetClanMemberTagsAsync(clanTag, ct), ct);
 
+    public Task<IReadOnlyList<string>> GetActiveClanMemberTagsAsync(string clanTag, DateTimeOffset seenSince, CancellationToken ct = default)
+        => concurrency.RunAsync(() => _api.GetActiveClanMemberTagsAsync(clanTag, seenSince, ct), ct);
+
     public Task<CrPlayer> GetPlayerDataAsync(string playerTag, CancellationToken ct = default)
         => concurrency.RunAsync(() => _api.GetPlayerDataAsync(playerTag, ct), ct);
 

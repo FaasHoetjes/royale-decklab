@@ -36,6 +36,16 @@ public sealed class SpaPagesTests
     }
 
     [Fact]
+    public void AnUnlistedPage_IsServedButNotIndexedOrLinkedForCrawlers()
+    {
+        var page = Resolve("/crown-series");
+
+        Assert.Equal(200, page.StatusCode);
+        Assert.True(page.NoIndex);
+        Assert.DoesNotContain("href=\"/crown-series\"", SpaContent.Faq("FAQ", null));
+    }
+
+    [Fact]
     public void PlayerPage_IsServedButNotIndexed()
     {
         var page = Resolve("/2QGG92L9");
@@ -196,6 +206,7 @@ public sealed class SpaPagesTests
         Assert.Contains("<loc>https://royaledecklab.com/cards/mini-pekka</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/clan</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/patch</loc>", xml);
+        Assert.DoesNotContain("/crown-series", xml);
         Assert.Equal(10, Count(xml, "<loc>"));
     }
 

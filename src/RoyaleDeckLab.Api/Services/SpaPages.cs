@@ -25,7 +25,7 @@ public sealed record SpaPage(int StatusCode, string Title, string Description, s
     public string? Body { get; init; }
 }
 
-public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Patch, Builder, Upgrades, Clan, Faq }
+public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Patch, Builder, Upgrades, Clan, Faq, CrownSeries }
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -41,6 +41,15 @@ public static partial class SpaPages
     private const string ClanPath = "/clan";
     private const string AdminStatsPath = "/admin/stats";
 
+    /// <summary>
+    /// Pages that work by direct link but aren't released yet: no sitemap entry, no crawler nav link, no indexing.
+    /// Mirrors <c>unlisted</c> in client/src/components/navItems.tsx.
+    /// </summary>
+    public static IReadOnlySet<string> UnlistedPaths { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "/crown-series",
+    };
+
     /// <summary>Heading is the page's h1 as the app shows it.</summary>
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
@@ -48,6 +57,7 @@ public static partial class SpaPages
         ("/patch", $"Clash Royale Patch Changes in Clan War ({MonthYear(now)})", "Patch Overview", "What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.", SpaContentKind.Patch),
         (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
         ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.", SpaContentKind.Builder),
+        ("/crown-series", "Clash Royale Crown Series Deck Generator", "Crown Series Deck Generator", "Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.", SpaContentKind.CrownSeries),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
         (ClanPath, "Clash Royale Clan War Planner", "Clan War Planner", "See who in your Clash Royale clan still has war decks to play today, and give every member their best four war decks.", SpaContentKind.Clan),
         ("/faq", "Clash Royale War Deck FAQ", "FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.", SpaContentKind.Faq),
@@ -73,7 +83,7 @@ public static partial class SpaPages
         {
             if (string.Equals(path, page.Path, StringComparison.OrdinalIgnoreCase))
             {
-                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, false)
+                return new(200, $"{page.Title} · {SiteName}", page.Description, page.Path, UnlistedPaths.Contains(page.Path))
                 {
                     Content = page.Content,
                     Heading = page.Heading,
@@ -251,6 +261,7 @@ public static partial class SpaPages
     public static string Sitemap(IEnumerable<CatalogCard> cards)
     {
         var paths = StaticPages(DateTimeOffset.UnixEpoch).Select(p => p.Path)
+            .Where(path => !UnlistedPaths.Contains(path))
             .Prepend("/")
             .Concat(cards.Select(c => $"{CardsPath}/{CardSlug(c.Name)}").Order(StringComparer.Ordinal))
             .Distinct();

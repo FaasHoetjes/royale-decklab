@@ -38,7 +38,7 @@ public static class LevelModel
         => LevelLogit(displayLevels.Average(), displayLevels.Min(), opponentLevel);
 
     public static double LevelLogit(double meanLevel, int weakestLevel, double opponentLevel)
-        => PerLevel * (meanLevel - opponentLevel) - WeakestCard * (meanLevel - weakestLevel);
+        => LevelFit.War.Logit(meanLevel, weakestLevel, opponentLevel);
 
     public static double WinProbability(double baseWinRate, double levelLogit)
     {
@@ -53,4 +53,13 @@ public static class LevelModel
         var logit = Math.Log(baseWinRate / (1 - baseWinRate)) + levelLogit;
         return 1 / (1 + Math.Exp(-logit));
     }
+}
+
+/// <summary>How much a level gap moves a deck's win odds in one game mode.</summary>
+public sealed record LevelFit(double PerLevel, double WeakestCard)
+{
+    public static LevelFit War { get; } = new(LevelModel.PerLevel, LevelModel.WeakestCard);
+
+    public double Logit(double meanLevel, int weakestLevel, double opponentLevel)
+        => PerLevel * (meanLevel - opponentLevel) - WeakestCard * (meanLevel - weakestLevel);
 }

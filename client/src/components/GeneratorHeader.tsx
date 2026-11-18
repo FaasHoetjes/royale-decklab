@@ -17,6 +17,8 @@ interface GeneratorHeaderProps {
   /** The lineup as shown, swaps included. */
   decks: BannerDeck[];
   totalScore: number;
+  /** Replaces the total score's number and its label. */
+  total?: { value: string; label: string };
   /** Replaces the generator's explanation of the total score. */
   scoreTip?: ReactNode;
   children?: ReactNode;
@@ -26,7 +28,7 @@ interface GeneratorHeaderProps {
   isMobile: boolean;
 }
 
-export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
+export default function GeneratorHeader({ title, eyebrow = 'Your war decks', decks, totalScore, total, scoreTip, children, style, toggle, isMobile }: GeneratorHeaderProps) {
   const art = decks
     .map((deck) => {
       const card = featuredCard(deck.cards);
@@ -119,9 +121,9 @@ export default function GeneratorHeader({ title, eyebrow = 'Your war decks', dec
         <span style={styles.empty}>No decks fit your options</span>
       ) : (
         <div style={{ ...styles.lead, ...(toggle ? { ...styles.aboveToggle, pointerEvents: 'none' } : {}) }}>
-          <span style={{ ...styles.leadValue, fontSize: isMobile ? '22px' : '26px' }}>{totalScore.toFixed(3)}</span>
+          <span style={{ ...styles.leadValue, fontSize: isMobile ? '22px' : '26px' }}>{total?.value ?? totalScore.toFixed(3)}</span>
           <span style={styles.leadLabel}>
-            total score
+            {total?.label ?? 'total score'}
             {/* With a toggle, clicks on the score fall through to it; only the tip stays clickable. */}
             <span style={{ display: 'inline-flex', pointerEvents: 'auto' }}>
               <InfoTip

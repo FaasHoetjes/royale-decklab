@@ -5,7 +5,7 @@ import { getTheme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PlayerMenu, { Avatar } from './PlayerMenu';
-import { homePath, toolItems, FAQ_ITEM, type NavItem } from './navItems';
+import { homePath, sidebarItems, type NavItem } from './navItems';
 import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
@@ -39,6 +39,9 @@ export function SidebarContent() {
     >
       <span style={styles.navIcon} aria-hidden="true">{item.icon}</span>
       {item.label}
+      {item.isNew && (
+        <span style={{ ...styles.newBadge, color: theme.accent, backgroundColor: 'var(--accent-a20)' }}>New</span>
+      )}
     </NavLink>
   );
 
@@ -56,7 +59,7 @@ export function SidebarContent() {
         <div style={styles.brandBottom}>DECKLAB</div>
       </Link>
 
-      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].map(renderNavLink)}</div>
+      <div style={styles.navList}>{sidebarItems(activePlayerTag).map(renderNavLink)}</div>
 
       <div style={styles.footer}>
         <div style={styles.footerIcons}>
@@ -287,6 +290,16 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     flexShrink: 0,
+  },
+  newBadge: {
+    flexShrink: 0,
+    padding: '2px 6px',
+    borderRadius: '999px',
+    fontSize: '10px',
+    fontWeight: 800 as const,
+    letterSpacing: '0.6px',
+    lineHeight: 1.3,
+    textTransform: 'uppercase' as const,
   },
   footer: {
     marginTop: 'auto',

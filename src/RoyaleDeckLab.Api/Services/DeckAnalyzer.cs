@@ -37,22 +37,15 @@ public sealed class DeckAnalyzer
         IReadOnlyList<CardVersion>? cardVersions,
         double opponentLevel)
     {
-        long totalLevel = 0;
-        var minLevel = int.MaxValue;
-        var versionFit = 1.0;
-
-        for (var i = 0; i < metaDeck.CardIds.Length; i++)
+        if (DeckLevels(cardMap, metaDeck.CardIds) is not var (meanLevel, minLevel))
         {
-            var cardId = metaDeck.CardIds[i];
-            if (!cardMap.TryGetValue(cardId, out var playerCard))
-            {
-                return null;
-            }
+            return null;
+        }
 
-            var level = LevelModel.DisplayLevel(playerCard);
-            totalLevel += level;
-            minLevel = Math.Min(minLevel, level);
-
+        var versionFit = 1.0;
+        foreach (var cardId in metaDeck.CardIds)
+        {
+            var playerCard = cardMap[cardId];
             if (cardVersions is not null && playerCard.Rarity != Rarity.Champion)
             {
                 for (var v = 0; v < cardVersions.Count; v++)
@@ -71,14 +64,44 @@ public sealed class DeckAnalyzer
             }
         }
 
-        if (metaDeck.CardIds.Length == 0)
+        var levelLogit = LevelFit.War.Logit(meanLevel, minLevel, opponentLevel);
+        var expectedWinRate = LevelModel.WinProbability(metaDeck.Confidence, levelLogit);
+        return expectedWinRate * versionFit;
+    }
+
+    /// <returns>Null when the player is missing one of the cards.</returns>
+    private static (double Mean, int Weakest)? DeckLevels(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, int[] cardIds)
+    {
+        if (cardIds.Length == 0)
         {
             throw new InvalidOperationException("Sequence contains no elements");
         }
-        var meanLevel = (double)totalLevel / metaDeck.CardIds.Length;
-        var levelLogit = LevelModel.LevelLogit(meanLevel, minLevel, opponentLevel);
-        var expectedWinRate = LevelModel.WinProbability(metaDeck.Confidence, levelLogit);
-        return expectedWinRate * versionFit;
+
+        long totalLevel = 0;
+        var minLevel = int.MaxValue;
+        foreach (var cardId in cardIds)
+        {
+            if (!cardMap.TryGetValue(cardId, out var card))
+            {
+                return null;
+            }
+            var level = LevelModel.DisplayLevel(card);
+            totalLevel += level;
+            minLevel = Math.Min(minLevel, level);
+        }
+        return ((double)totalLevel / cardIds.Length, minLevel);
+    }
+
+    private static double? ScoreDuelDeck(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel)
+    {
+        if (DeckLevels(cardMap, deck.CardIds) is not var (meanLevel, minLevel))
+        {
+            return null;
+        }
+        var levelLogit = CrownSeriesLevels.Fit.Logit(meanLevel, minLevel, opponentLevel);
+        var emptySlots = CardVersionRules.EmptySpecialSlots(deck.CardIds, deck.CardVersions, cardMap);
+        var specialsLogit = -CrownSeriesLevels.EmptySpecialSlot * emptySlots;
+        return LevelModel.WinProbability(deck.Confidence, levelLogit + specialsLogit);
     }
 
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
@@ -167,6 +190,7 @@ public sealed class DeckAnalyzer
             MetaWinRate = deck.WinRate,
             Confidence = deck.Confidence,
             Uses = deck.Uses,
+            LeagueUses = deck.LeagueUses,
             Players = deck.Players ?? 0,
             PickRate = deck.PickRate ?? 0,
             PlayerScore = score,
@@ -195,6 +219,28 @@ public sealed class DeckAnalyzer
 
         return SelectLineup(candidates, cardMap, includeAlternatives: true,
             deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked, ct: ct);
+    }
+
+    /// <summary>The best Duel Deck from the Crown Series meta, with every card at the level the league lets it play at.</summary>
+    public WarDeckResult FindBestCrownSeriesDecks(
+        IReadOnlyList<DeckMeta> duelMeta,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        CrownSeriesLeague league,
+        int deckCount,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        var capped = league.CapLevels(cardMap);
+        var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
+        var candidates = new List<(DeckMeta deck, double score)>();
+        foreach (var deck in duelMeta)
+        {
+            if (ScoreDuelDeck(capped, deck, opponent) is { } score)
+            {
+                candidates.Add((deck, score));
+            }
+        }
+        return SelectLineup(candidates, capped, includeAlternatives: true, deckCount: deckCount, ct: ct);
     }
 
     private static bool IsAllowed(

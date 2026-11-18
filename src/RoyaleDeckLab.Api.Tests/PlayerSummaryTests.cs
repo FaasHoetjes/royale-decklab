@@ -48,7 +48,7 @@ public sealed class PlayerSummaryTests
     }
 
     private static PlayerController Controller(StubApi api) => new(
-        new PlayerProfileCache(new StubFactory(api), TimeProvider.System), null!, null!, null!, null!, NullLogger<PlayerController>.Instance);
+        new PlayerProfileCache(new StubFactory(api), TimeProvider.System), null!, null!, null!, null!, TimeProvider.System, null!, NullLogger<PlayerController>.Instance);
 
     private sealed class StubFactory(HttpMessageHandler handler) : IHttpClientFactory
     {

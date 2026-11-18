@@ -126,6 +126,10 @@ public sealed partial class BattleRepository(MetaDbContext db)
 
     public long GetEpochStart() => State().EpochStartMs;
 
+    /// <summary>Every player whose war battles are stored.</summary>
+    public IReadOnlyList<string> PlayerTags()
+        => db.Battles.AsNoTracking().Select(b => b.PlayerTag).Distinct().ToList();
+
     public long GetPreviousEpochStart() => State().PreviousEpochStartMs;
 
     public (long Epoch, long Previous) GetEpochs()

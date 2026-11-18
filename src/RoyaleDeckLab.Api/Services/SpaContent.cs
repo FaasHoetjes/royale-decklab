@@ -16,6 +16,7 @@ public static class SpaContent
     private static readonly (string Path, string Label)[] Nav =
     [
         ("/", "War Deck Generator"),
+        ("/crown-series", "Crown Series"),
         ("/best-decks", "Best War Decks"),
         ("/cards", "Cards"),
         ("/patch", "Patch Overview"),
@@ -33,6 +34,9 @@ public static class SpaContent
 
     public static string Upgrades(string heading)
         => Page($"{H1(heading)}{P("Which card upgrade raises your war lineup the most.")}");
+
+    public static string CrownSeries(string heading)
+        => Page($"{H1(heading)}{P("The 4 best decks for your Crown Series Duel, optimized for your card collection and league's level cap.")}");
 
     public static string Clan(string heading)
         => Page($"{H1(heading)}{P("Who in your clan still has war decks to play today, and each member's best four war decks.")}");
@@ -218,7 +222,7 @@ public static class SpaContent
     private static string Page(string main)
     {
         var html = new StringBuilder("<div id=\"prerender\"><nav><ul>");
-        foreach (var (path, label) in Nav)
+        foreach (var (path, label) in Nav.Where(n => !SpaPages.UnlistedPaths.Contains(n.Path)))
         {
             html.Append("<li><a href=\"").Append(path).Append("\">").Append(Encode(label)).Append("</a></li>");
         }

@@ -21,10 +21,19 @@ public sealed record PlayerItemLevel
     [JsonIgnore]
     public int OwnedLevel => BoostedFromLevel ?? Level;
 
+    /// <summary>The player's own level when a Crown Series league cap has lowered <see cref="Level"/>.</summary>
+    public int? CappedFromLevel { get; init; }
+
     public PlayerItemLevel BoostedTo(int displayLevel) => this with
     {
         Level = displayLevel - (LevelModel.MaxDisplayLevel - MaxLevel),
         BoostedFromLevel = OwnedLevel,
+    };
+
+    public PlayerItemLevel CappedTo(int displayLevel) => this with
+    {
+        Level = displayLevel - (LevelModel.MaxDisplayLevel - MaxLevel),
+        CappedFromLevel = Level,
     };
 }
 
