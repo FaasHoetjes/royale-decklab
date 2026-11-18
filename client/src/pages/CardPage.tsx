@@ -5,7 +5,6 @@ import { getTheme } from '../theme';
 import { useAllCards, useCardDecks, useCardInsights, useCardStats } from '../queries';
 import type { CatalogCard } from '../api';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { FOLD_EASING, prefersReducedMotion } from '../lib/motion';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { cardSlug, cardType, mostPlayedVersion, specialVersions } from '../lib/cardInfo';
 import { cardRanks, isLowSample, percent } from '../lib/cardStats';
@@ -21,7 +20,6 @@ import NotFound from './NotFound';
 import { periodNote } from '../lib/statsPeriod';
 import { StatTile, PlaySplit } from './CardStatViews';
 import CardInsightsSections from './CardInsightsSections';
-import { usePastBuildButton } from './usePastBuildButton';
 
 const VERSION_SLOT = { evo: 0, hero: 1, normal: undefined } as const;
 
@@ -98,7 +96,6 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
-  const build = usePastBuildButton(isMobile);
   const statsQuery = useCardStats();
   const decksQuery = useCardDecks(card.id);
   const insightsQuery = useCardInsights(card.id);
@@ -208,7 +205,7 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
           {stat && (versions.evo || versions.hero) && !isChampion && <PlaySplit theme={theme} stat={stat} />}
           {isMobile && (
             <div style={styles.buildPanel}>
-              <Link ref={build.buttonRef} to={buildHref} style={{ ...styles.buildButton, ...styles.buildButtonWide, backgroundColor: theme.accent, color: theme.onAccent }}>
+              <Link to={buildHref} style={{ ...styles.buildButton, ...styles.buildButtonWide, backgroundColor: theme.accent, color: theme.onAccent }}>
                 {lockIcon}
                 <span style={styles.buildLabel}>Build war decks with {card.name}</span>
               </Link>
@@ -249,33 +246,10 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
             ))}
           </div>
         )}
-        <div ref={build.endRef} />
       </section>
 
       {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} cardWinRate={stat?.winRate} catalog={catalog} theme={theme} isMobile={isMobile} />}
 
-      {isMobile && (
-        <div style={styles.buildFloat}>
-          <Link
-            to={buildHref}
-            aria-hidden={!build.floating}
-            tabIndex={build.floating ? undefined : -1}
-            style={{
-              ...styles.buildButton,
-              ...styles.buildPill,
-              backgroundColor: theme.accent,
-              color: theme.onAccent,
-              opacity: build.floating ? 1 : 0,
-              transform: build.floating ? 'none' : 'translateY(16px)',
-              pointerEvents: build.floating ? 'auto' : 'none',
-              transition: prefersReducedMotion() ? 'none' : `opacity 200ms ${FOLD_EASING}, transform 200ms ${FOLD_EASING}`,
-            }}
-          >
-            {lockIcon}
-            Build with {card.name}
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
@@ -419,23 +393,6 @@ const styles = {
     padding: '13px 16px',
     fontSize: '15px',
     textAlign: 'center' as const,
-  },
-  buildFloat: {
-    position: 'fixed' as const,
-    left: '12px',
-    right: '12px',
-    bottom: 'calc(16px + env(safe-area-inset-bottom))',
-    zIndex: 850,
-    display: 'flex' as const,
-    justifyContent: 'center' as const,
-    pointerEvents: 'none' as const,
-  },
-  buildPill: {
-    padding: '11px 20px',
-    borderRadius: '999px',
-    fontSize: '15px',
-    maxWidth: '100%',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
   },
   deckList: {
     display: 'flex' as const,
