@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { CardInsights, CardPatchPoint, CatalogCard } from '../api';
 import { percent } from '../lib/cardStats';
 import { ChangeTile, ChangeTileRow } from '../components/ChangeTiles';
+import { ChangePill } from '../components/WinRateChange';
 import type { Theme } from '../theme';
 
 interface Props {
@@ -39,21 +40,7 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
       {insights.styles.length > 0 &&
         section(
           `Deck styles with ${card.name}`,
-          <ul style={styles.list}>
-            {insights.styles.map((style) => (
-              <li key={style.name} style={styles.styleRow}>
-                <div style={styles.styleHead}>
-                  <span style={{ color: theme.text.primary, fontWeight: 700 }}>{style.name}</span>
-                  <span style={{ color: theme.text.secondary }}>
-                    {percent(style.share)} of games{style.winRate != null && `, ${percent(style.winRate)} win rate`}
-                  </span>
-                </div>
-                <div style={styles.track}>
-                  <span style={{ ...styles.fill, width: `${style.share * 100}%` }} />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <DeckStyles cardName={card.name} styleShares={insights.styles} cardWinRate={cardWinRate} theme={theme} isMobile={isMobile} />
         )}
 
       {partners.length > 0 && (
@@ -78,6 +65,53 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
 
       {insights.history.length >= 2 &&
         section(`${card.name} over the last patches`, <PatchHistory points={insights.history} theme={theme} isMobile={isMobile} />)}
+    </>
+  );
+}
+
+interface DeckStylesProps {
+  cardName: string;
+  styleShares: CardInsights['styles'];
+  cardWinRate: number | undefined;
+  theme: Theme;
+  isMobile: boolean;
+}
+
+function DeckStyles({ cardName, styleShares, cardWinRate, theme, isMobile }: DeckStylesProps) {
+  return (
+    <>
+      <div style={{ ...styles.styleGrid, gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 78px' : 'minmax(0, 1fr) 116px', columnGap: isMobile ? '14px' : '28px' }}>
+        <div style={{ ...styles.columnHead, color: theme.text.tertiary }}>Share of games</div>
+        <div style={{ ...styles.columnHead, color: theme.text.tertiary, textAlign: 'right' }}>Win rate</div>
+        {styleShares.map((style) => (
+          <Fragment key={style.name}>
+            <div>
+              <div style={styles.styleHead}>
+                <span style={{ color: theme.text.primary, fontWeight: 700 }}>{style.name}</span>
+                <span style={{ color: theme.text.secondary, fontVariantNumeric: 'tabular-nums' }}>{percent(style.share)}</span>
+              </div>
+              <div style={styles.track}>
+                <span style={{ ...styles.fill, width: `${style.share * 100}%`, backgroundColor: style.winRate == null ? theme.text.tertiary : 'var(--accent)' }} />
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              {style.winRate == null ? (
+                <span style={{ color: theme.text.tertiary }}>–</span>
+              ) : (
+                <>
+                  <span style={{ ...styles.styleWinRate, fontSize: isMobile ? '17px' : '20px', color: theme.text.primary }}>{percent(style.winRate)}</span>
+                  {cardWinRate != null && <ChangePill change={style.winRate - cardWinRate} />}
+                </>
+              )}
+            </div>
+          </Fragment>
+        ))}
+      </div>
+      {cardWinRate != null && (
+        <p style={{ ...styles.footnote, color: theme.text.tertiary }}>
+          Compared with {cardName}'s overall win rate of {percent(cardWinRate)}.
+        </p>
+      )}
     </>
   );
 }
@@ -173,15 +207,31 @@ const styles = {
     flexDirection: 'column' as const,
     gap: '10px',
   },
-  styleRow: {
+  styleGrid: {
+    display: 'grid' as const,
+    rowGap: '14px',
+    alignItems: 'center' as const,
     fontSize: '14px',
+  },
+  columnHead: {
+    fontSize: '12px',
   },
   styleHead: {
     display: 'flex' as const,
-    flexWrap: 'wrap' as const,
     justifyContent: 'space-between' as const,
-    gap: '4px 12px',
+    gap: '10px',
     marginBottom: '6px',
+  },
+  styleWinRate: {
+    display: 'block' as const,
+    fontWeight: 800,
+    lineHeight: 1.1,
+    marginBottom: '3px',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  footnote: {
+    margin: '14px 0 0',
+    fontSize: '12.5px',
   },
   track: {
     height: '8px',
