@@ -95,14 +95,15 @@ export default function CrownSeries() {
         league={league}
         playerName={data.player.name}
         decks={decks}
+        decksLevelCap={data.levelCap}
         total={{ value: `${Math.round(averageWinChance * 100)}%`, label: 'win chance per round' }}
         scoreTip={
           <>
             <strong>Your average chance to win a round.</strong>
             <br />
             You bring all 4 decks and play 2 or 3 of them in a best of 3, so this averages their win chances. Each starts from the deck's win rate in Crown Series Duels:{' '}
-            {data.duelRounds.toLocaleString()} rounds played at level {data.levelCap}, and{' '}
-            {(data.allDuelRounds - data.duelRounds).toLocaleString()} from other leagues, which count for less. Then it
+            {data.duelRounds.toLocaleString()} rounds played at level {data.levelCap}, plus rounds from other leagues, which
+            count for less and add up to {data.otherLeagueRounds.toLocaleString()} more. Then it
             factors in your card levels at the league's cap. Your opponents have about your levels, so a card below the
             cap costs a lot.
           </>

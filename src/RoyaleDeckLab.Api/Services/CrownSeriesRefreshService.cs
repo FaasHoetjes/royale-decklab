@@ -19,8 +19,10 @@ public sealed class CrownSeriesRefreshService(
         var interval = TimeSpan.FromMilliseconds(_opt.PollIntervalMs);
         try
         {
-            await RebuildMetaAsync(stoppingToken);
-            RestoreSchedule();
+            var rounds = ReadStoredRounds();
+            await RebuildMetaAsync(roundsChanged: true, rounds, stoppingToken);
+            RestoreSchedule(rounds);
+            rounds = null;
             var firstPoll = FirstPollDelay();
             logger.LogInformation("Crown Series poll scheduled every {Minutes} min, first in {FirstMinutes:F0} min",
                 interval.TotalMinutes, firstPoll.TotalMinutes);
@@ -29,8 +31,8 @@ public sealed class CrownSeriesRefreshService(
             using var timer = new PeriodicTimer(interval, time);
             do
             {
-                await PollAsync(stoppingToken);
-                await RebuildMetaAsync(stoppingToken);
+                var roundsChanged = await PollAsync(stoppingToken);
+                await RebuildMetaAsync(roundsChanged, rounds: null, stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
@@ -49,13 +51,31 @@ public sealed class CrownSeriesRefreshService(
         return TimeSpan.FromMilliseconds(Math.Max(_opt.StartupDelayMs, untilDueMs));
     }
 
-    // A schedule that can't be restored leaves the poll to start from the Ranked players and seeds, as on a first run.
-    private void RestoreSchedule()
+    // Read once at startup for both the decks and the schedule; null when the store can't be read, which leaves the
+    // rebuild to try reading it itself.
+    private IReadOnlyList<CappedBattle>? ReadStoredRounds()
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var rounds = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().ReadRoundsWithCaps();
+            return scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().ReadRoundsWithCaps();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Reading the stored Crown Series rounds failed");
+            return null;
+        }
+    }
+
+    // A schedule that can't be restored leaves the poll to start from the Ranked players and seeds, as on a first run.
+    private void RestoreSchedule(IReadOnlyList<CappedBattle>? rounds)
+    {
+        if (rounds is null)
+        {
+            return;
+        }
+        try
+        {
             schedule.Restore(rounds, time.GetUtcNow().ToUnixTimeMilliseconds());
             logger.LogInformation("Crown Series schedule restored: {Tracked} players tracked; per cap: {@PlayersPerCap}",
                 schedule.KnownPlayers, schedule.PlayersPerCap());
@@ -66,26 +86,28 @@ public sealed class CrownSeriesRefreshService(
         }
     }
 
-    // A failed poll is logged and the next one tries again, so one bad hour doesn't stop the collection.
-    private async Task PollAsync(CancellationToken ct)
+    // A failed poll is logged and the next one tries again, so one bad hour doesn't stop the collection. It may have
+    // stored rounds before failing, so it counts as a change.
+    private async Task<bool> PollAsync(CancellationToken ct)
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<CrownSeriesCollector>().CollectAsync(ct);
+            return await scope.ServiceProvider.GetRequiredService<CrownSeriesCollector>().CollectAsync(ct);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Crown Series poll failed");
+            return true;
         }
     }
 
     // Also run at startup: a deploy between Duel weekends still serves the last weekend's decks.
-    private async Task RebuildMetaAsync(CancellationToken ct)
+    private async Task RebuildMetaAsync(bool roundsChanged, IReadOnlyList<CappedBattle>? rounds, CancellationToken ct)
     {
         try
         {
-            await meta.RebuildAsync(ct);
+            await meta.RebuildAsync(roundsChanged, rounds, ct);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {

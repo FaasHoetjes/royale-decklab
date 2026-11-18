@@ -176,7 +176,8 @@ export interface CrownSeriesResponse {
   levelCap: number;
   /** Rounds played at the league's cap. */
   duelRounds: number;
-  allDuelRounds: number;
+  /** Other leagues' rounds behind the decks, weighted by how much they count. */
+  otherLeagueRounds: number;
   duelDecks: PlayerResponse['warDecks'];
 }
 

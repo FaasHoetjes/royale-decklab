@@ -90,6 +90,11 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
 }
 
 // Not in the menu: /patch opens the start page at its patch section, under its own title for search results.
+/** The sidebar's links: every tool and the FAQ, without the pages not released yet. */
+export function sidebarItems(activePlayerTag: string | null): NavItem[] {
+  return [...toolItems(activePlayerTag), FAQ_ITEM].filter((item) => !item.unlisted);
+}
+
 export const PATCH_ITEM: NavItem = {
   to: '/patch',
   label: 'Patch Overview',

@@ -35,6 +35,12 @@ public sealed class CrownSeriesController(
             return BadRequest(new { error = "Unknown league" });
         }
         var current = meta.Current;
+        if (!meta.IsBuilt)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.RetryAfter = "15";
+            return StatusCode(503, new { error = "The Duel decks are still loading, try again in a minute", code = "meta_loading" });
+        }
         if (current.Rounds == 0)
         {
             Response.Headers.CacheControl = "no-store";
@@ -50,6 +56,8 @@ public sealed class CrownSeriesController(
             }
 
             var lineup = await deckCache.GetAsync(player, parsedLeague, ct);
+            // Each round is stored once per player side.
+            var capMeta = current.ForCap(parsedLeague.LevelCap());
             stats.NoteServed(tag);
             schedule.AddVisitor(player.Tag, time.GetUtcNow().ToUnixTimeMilliseconds());
 
@@ -65,8 +73,8 @@ public sealed class CrownSeriesController(
                 },
                 league = parsedLeague,
                 levelCap = parsedLeague.LevelCap(),
-                duelRounds = current.ForCap(parsedLeague.LevelCap()).Rounds,
-                allDuelRounds = current.Rounds,
+                duelRounds = capMeta.Rounds / 2,
+                otherLeagueRounds = (int)Math.Round(capMeta.BorrowedRounds / 2),
                 duelDecks = lineup,
             });
         }

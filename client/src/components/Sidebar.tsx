@@ -5,7 +5,7 @@ import { getTheme } from '../theme';
 import { usePlayerSwitcher } from '../hooks/usePlayerSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PlayerMenu, { Avatar } from './PlayerMenu';
-import { homePath, toolItems, FAQ_ITEM, type NavItem } from './navItems';
+import { homePath, sidebarItems, type NavItem } from './navItems';
 import { MailIcon, GitHubIcon, SwitchIcon } from './navIcons';
 import { CONTACT_EMAIL_URL, GITHUB_URL } from '../lib/contact';
 
@@ -59,7 +59,7 @@ export function SidebarContent() {
         <div style={styles.brandBottom}>DECKLAB</div>
       </Link>
 
-      <div style={styles.navList}>{[...toolItems(activePlayerTag), FAQ_ITEM].filter((item) => !item.unlisted).map(renderNavLink)}</div>
+      <div style={styles.navList}>{sidebarItems(activePlayerTag).map(renderNavLink)}</div>
 
       <div style={styles.footer}>
         <div style={styles.footerIcons}>

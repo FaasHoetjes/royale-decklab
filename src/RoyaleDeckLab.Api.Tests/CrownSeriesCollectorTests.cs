@@ -70,6 +70,8 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         public ConcurrentBag<string> LogsRead { get; } = [];
         public Dictionary<string, List<string>> ClanMembers { get; } = [];
         public ConcurrentBag<string> ClansRead { get; } = [];
+        public HashSet<string> BrokenClans { get; } = [];
+        public Dictionary<string, DateTimeOffset> LastSeen { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -96,7 +98,19 @@ public sealed class CrownSeriesCollectorTests : IDisposable
             {
                 var clanTag = path.Split('/')[^1];
                 ClansRead.Add(clanTag);
-                body = new { tag = clanTag, memberList = ClanMembers.GetValueOrDefault(clanTag, []).Select(tag => new { tag }) };
+                if (BrokenClans.Contains(clanTag))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+                }
+                body = new
+                {
+                    tag = clanTag,
+                    memberList = ClanMembers.GetValueOrDefault(clanTag, []).Select(tag => new
+                    {
+                        tag,
+                        lastSeen = LastSeen.TryGetValue(tag, out var seen) ? seen.UtcDateTime.ToString("yyyyMMdd'T'HHmmss") + ".000Z" : null,
+                    }),
+                };
             }
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -328,11 +342,51 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         StoreWarPlayers("#IDLE");
 
         await CollectAsync();
+        Assert.Contains("#IDLE", _api.LogsRead);
         _clock.Now = Now.AddHours(1);
         _api.LogsRead.Clear();
         await CollectAsync();
 
         Assert.DoesNotContain("#IDLE", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_seed_whose_log_couldnt_be_read_is_tried_again_next_poll()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        StoreWarPlayers("#FLAKY");
+        _api.Garbled.Add("#FLAKY");
+
+        await CollectAsync();
+        _api.Garbled.Clear();
+        _clock.Now = Now.AddHours(1);
+        _api.LogsRead.Clear();
+        await CollectAsync();
+
+        Assert.Contains("#FLAKY", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_seed_who_battled_lately_without_a_duel_is_tried_again_within_the_weekend()
+    {
+        _options.LiveDuelWindowMs = (long)TimeSpan.FromDays(1).TotalMilliseconds;
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        StoreWarPlayers("#LATE");
+        _api.Logs["#LATE"] = [Ladder("#LATE", "#SOMEONE", TimeSpan.FromHours(1))];
+
+        await CollectAsync();
+        _clock.Now = Now.AddHours(1);
+        _api.LogsRead.Clear();
+        await CollectAsync();
+        var readAfterAnHour = _api.LogsRead.Contains("#LATE");
+        _clock.Now = Now.AddHours(12);
+        _api.LogsRead.Clear();
+        await CollectAsync();
+
+        Assert.False(readAfterAnHour);
+        Assert.Contains("#LATE", _api.LogsRead);
     }
 
     [Fact]
@@ -394,6 +448,97 @@ public sealed class CrownSeriesCollectorTests : IDisposable
 
         Assert.Contains("#MATE1", _api.LogsRead);
         Assert.Contains("#MATE2", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_clan_that_couldnt_be_read_is_asked_again_next_poll()
+    {
+        _options.MaxRereadIntervalMs = _options.PollIntervalMs;
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), cap: 12, clanTag: "#CLAN")];
+        _api.ClanMembers["#CLAN"] = ["#MATE"];
+        _api.BrokenClans.Add("#CLAN");
+
+        await CollectAsync();
+        _api.BrokenClans.Clear();
+        _clock.Now = Now.AddHours(1);
+        await CollectAsync();
+
+        Assert.Equal(2, _api.ClansRead.Count);
+        Assert.Contains("#MATE", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_clan_whose_members_all_fit_is_not_asked_again_next_poll()
+    {
+        _options.MaxRereadIntervalMs = _options.PollIntervalMs;
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), cap: 12, clanTag: "#CLAN")];
+        _api.ClanMembers["#CLAN"] = ["#MATE"];
+
+        await CollectAsync();
+        _clock.Now = Now.AddHours(1);
+        await CollectAsync();
+
+        Assert.Single(_api.ClansRead);
+    }
+
+    [Fact]
+    public async Task Clanmates_not_seen_online_lately_are_not_tried()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), cap: 12, clanTag: "#CLAN")];
+        _api.ClanMembers["#CLAN"] = ["#ONLINE", "#AWAY"];
+        _api.LastSeen["#ONLINE"] = Now.AddHours(-2);
+        _api.LastSeen["#AWAY"] = Now.AddDays(-10);
+
+        await CollectAsync();
+
+        Assert.Contains("#ONLINE", _api.LogsRead);
+        Assert.DoesNotContain("#AWAY", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task Lower_league_opponents_are_followed_several_steps_in_one_poll()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#A", TimeSpan.FromHours(1), cap: 12)];
+        _api.Logs["#A"] = [Duel("#A", "#B", TimeSpan.FromHours(1), cap: 12)];
+        _api.Logs["#B"] = [Duel("#B", "#C", TimeSpan.FromHours(1), cap: 12)];
+        _api.Logs["#C"] = [Duel("#C", "#D", TimeSpan.FromHours(1), cap: 12)];
+
+        await CollectAsync();
+
+        Assert.Contains("#D", _api.LogsRead);
+        Assert.Equal(4, Schedule().PlayersAt(12));
+    }
+
+    [Fact]
+    public async Task Kings_league_opponents_are_followed_once_per_poll()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#A", TimeSpan.FromHours(1))];
+        _api.Logs["#A"] = [Duel("#A", "#B", TimeSpan.FromHours(1))];
+
+        await CollectAsync();
+
+        Assert.Contains("#A", _api.LogsRead);
+        Assert.DoesNotContain("#B", _api.LogsRead);
+    }
+
+    [Fact]
+    public async Task A_poll_that_adds_or_prunes_nothing_reports_no_change()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromDays(3))];
+
+        using var scope = _services.CreateScope();
+        var collector = scope.ServiceProvider.GetRequiredService<CrownSeriesCollector>();
+        var first = await collector.CollectAsync();
+        var second = await collector.CollectAsync();
+
+        Assert.True(first);
+        Assert.False(second);
     }
 
     [Fact]

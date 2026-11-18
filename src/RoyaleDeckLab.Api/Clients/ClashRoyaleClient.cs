@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using RoyaleDeckLab.Api.Dtos;
+using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Clients;
 
@@ -38,6 +39,20 @@ public sealed class ClashRoyaleClient(HttpClient http)
         var encoded = Uri.EscapeDataString(clanTag);
         var data = await http.GetFromJsonAsync<ClanResponse>($"clans/{encoded}", Json, ct);
         return data?.MemberList?.Select(m => m.Tag).Where(t => !string.IsNullOrEmpty(t)).Cast<string>().ToList() ?? [];
+    }
+
+    /// <summary>The members seen online since <paramref name="seenSince"/>, and the ones whose last seen time isn't given.</summary>
+    public async Task<IReadOnlyList<string>> GetActiveClanMemberTagsAsync(
+        string clanTag, DateTimeOffset seenSince, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(clanTag);
+        var data = await http.GetFromJsonAsync<ClanResponse>($"clans/{encoded}", Json, ct);
+        return data?.MemberList?
+            .Where(m => ApiTime.Parse(m.LastSeen) is not { } seen || seen >= seenSince)
+            .Select(m => m.Tag)
+            .Where(t => !string.IsNullOrEmpty(t))
+            .Cast<string>()
+            .ToList() ?? [];
     }
 
     public async Task<ClanResponse> GetClanAsync(string clanTag, CancellationToken ct = default)

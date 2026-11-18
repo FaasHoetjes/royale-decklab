@@ -24,8 +24,25 @@ public sealed class CrownSeriesOptions
     // Clans of lower-league players whose members are tried as seeds per poll; each costs one extra request.
     public int ClansPerPoll { get; set; } = 20;
 
-    // A seed without Duels may play next weekend.
+    // An idle seed without Duels may play next weekend.
     public long SeedRetryMs { get; set; } = 5L * 24 * 60 * 60 * 1000;
+
+    // A seed who battled lately but had no Duel yet, and a lower-league clan, are tried again this soon: about 40% of
+    // a weekend's players start their Duels more than 12 h in.
+    public long ActiveSeedRetryMs { get; set; } = 12L * 60 * 60 * 1000;
+
+    // A seed whose newest battle is this recent counts as active.
+    public long ActiveSeedWindowMs { get; set; } = 2L * 24 * 60 * 60 * 1000;
+
+    // Clanmates not seen online this recently are unlikely to play this weekend's Duels.
+    public long ClanmateSeenWithinMs { get; set; } = 3L * 24 * 60 * 60 * 1000;
+
+    // The war crawl's player list changes with the war refresh, not every poll.
+    public long WarPlayersRefreshMs { get; set; } = 6L * 60 * 60 * 1000;
+
+    // How many times a poll follows the new opponents found below King's League: each read can turn up more, and
+    // they are near certain to play Duels at that cap.
+    public int OpponentStepsPerPoll { get; set; } = 4;
 
     // How long a visitor who looked themselves up stays waiting while no Duel of theirs shows up; Duel weekends are a
     // week or two apart.
@@ -45,7 +62,7 @@ public sealed class CrownSeriesOptions
     public int MinBorrowedRounds { get; set; } = 2000;
 
     // How many players are read to see whether a Duel weekend is on, when no stored Duel says so.
-    public int ProbePlayers { get; set; } = 100;
+    public int ProbePlayers { get; set; } = 20;
 
     // A Duel played this recently means the weekend is on.
     public long LiveDuelWindowMs { get; set; } = 2L * 60 * 60 * 1000;

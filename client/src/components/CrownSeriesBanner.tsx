@@ -13,13 +13,15 @@ interface CrownSeriesBannerProps {
   league: CrownSeriesLeague;
   playerName: string;
   decks: BannerDeck[];
+  /** The cap the decks were built for, which trails the league while another league's decks load. */
+  decksLevelCap: number;
   total: { value: string; label: string };
   scoreTip: ReactNode;
   isMobile: boolean;
 }
 
 /** The player's league on the path from Dagger to King's, above their name and expected round wins. */
-export default function CrownSeriesBanner({ league, playerName, decks, total, scoreTip, isMobile }: CrownSeriesBannerProps) {
+export default function CrownSeriesBanner({ league, playerName, decks, decksLevelCap, total, scoreTip, isMobile }: CrownSeriesBannerProps) {
   const at = LEAGUES.findIndex((l) => l.id === league.id);
   const reached = `${(at / (LEAGUES.length - 1)) * 100}%`;
   const art = decks
@@ -131,7 +133,7 @@ export default function CrownSeriesBanner({ league, playerName, decks, total, sc
         )}
       </div>
 
-      {decks.length > 0 && <CapMeter decks={decks} levelCap={league.levelCap} />}
+      {decks.length > 0 && <CapMeter decks={decks} levelCap={decksLevelCap} />}
     </section>
   );
 }

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
@@ -30,7 +29,8 @@ public sealed class CrownSeriesCollector(
 
     private readonly CrownSeriesOptions _opt = options.Value;
 
-    public async Task CollectAsync(CancellationToken ct = default)
+    /// <returns>Whether any rounds were added or pruned, so the decks need building again.</returns>
+    public async Task<bool> CollectAsync(CancellationToken ct = default)
     {
         var now = time.GetUtcNow().ToUnixTimeMilliseconds();
         var cutoff = now - metaOptions.Value.BattleWindowMs;
@@ -64,6 +64,7 @@ public sealed class CrownSeriesCollector(
             logger.LogWarning("Skipped multi-deck battles of modes that aren't the Crown Series Duel: {@Modes}",
                 harvest.UnknownModes);
         }
+        return harvest.Added > 0 || pruned > 0;
     }
 
     private async Task PollAsync(Harvest harvest, long now, CancellationToken ct)
@@ -85,14 +86,31 @@ public sealed class CrownSeriesCollector(
         await ReadAsync(due, harvest, now, ct);
         await ReadSeedsAsync(harvest, now, ct);
         schedule.Trim(ranked);
+        await FollowOpponentsAsync(ranked, harvest, now, ct);
+    }
 
-        var newOpponents = harvest.Opponents()
-            .Where(o => !schedule.IsKnown(o.Tag))
-            .GroupBy(o => o.Cap)
-            .SelectMany(atCap => atCap.Take(schedule.RoomAt(atCap.Key)).Select(o => o.Tag))
-            .ToList();
-        await ReadAsync(newOpponents, harvest, now, ct);
-        schedule.Trim(ranked);
+    /// <summary>
+    /// Reads the new opponents met in this poll's Duels, up to each cap's room. Below King's League their own Duels
+    /// bring in more opponents, so those are followed again in the same poll rather than an hour or more later.
+    /// </summary>
+    private async Task FollowOpponentsAsync(IReadOnlyList<string> ranked, Harvest harvest, long now, CancellationToken ct)
+    {
+        for (var step = 0; step < Math.Max(1, _opt.OpponentStepsPerPoll); step++)
+        {
+            var isFirst = step == 0;
+            var newOpponents = harvest.Opponents()
+                .Where(o => isFirst || o.Cap < LevelModel.MaxDisplayLevel)
+                .Where(o => !schedule.IsKnown(o.Tag))
+                .GroupBy(o => o.Cap)
+                .SelectMany(atCap => atCap.Take(schedule.RoomAt(atCap.Key)).Select(o => o.Tag))
+                .ToList();
+            if (newOpponents.Count == 0)
+            {
+                return;
+            }
+            await ReadAsync(newOpponents, harvest, now, ct);
+            schedule.Trim(ranked);
+        }
     }
 
     /// <summary>
@@ -112,51 +130,62 @@ public sealed class CrownSeriesCollector(
                 .Where(lead => capsWithRoom.Contains(lead.Cap))
                 .Select(lead => lead.Tag)
                 .Where(tag => schedule.IsSeedDue(tag, now)));
-            var warPlayers = battles.PlayerTags().ToArray();
-            Random.Shared.Shuffle(warPlayers);
-            seeds.Pick(SeedSource.WarCrawl, warPlayers.Where(tag => schedule.IsSeedDue(tag, now)));
+            if (seeds.HasRoom)
+            {
+                var warPlayers = schedule.WarPlayers(battles.PlayerTags, now).ToArray();
+                Random.Shared.Shuffle(warPlayers);
+                seeds.Pick(SeedSource.WarCrawl, warPlayers.Where(tag => schedule.IsSeedDue(tag, now)));
+            }
         }
 
-        foreach (var tag in seeds.Tags)
-        {
-            schedule.RecordSeedTried(tag, now);
-        }
         harvest.AddSeedsTried(seeds.CountBySource);
-        await ReadAsync(seeds.Tags, harvest, now, ct);
+        try
+        {
+            await ReadAsync(seeds.Tags, harvest, now, ct);
+        }
+        finally
+        {
+            // Only a log that was read counts as tried: one the API failed to send is tried again next poll.
+            foreach (var tag in seeds.Tags)
+            {
+                if (harvest.NewestBattleMs(tag) is { } newestBattleMs)
+                {
+                    schedule.RecordSeedTried(tag, newestBattleMs, now);
+                }
+            }
+        }
         harvest.AddSeedsBelowKings(seeds.CountBySource.Keys.ToDictionary(
             source => source,
             source => seeds.TagsFrom(source).Count(tag => schedule.CapOf(tag) < LevelModel.MaxDisplayLevel)));
     }
 
     /// <summary>
-    /// The members of the clans of lower-league players read this poll, at caps that still have room. Clans come
-    /// before the other-mode opponents, which are many more and would leave no room; a clan whose members didn't all
-    /// fit isn't marked tried, so it's asked again next poll.
+    /// The recently online members of the clans of lower-league players read this poll, at caps that still have room.
+    /// Clans come before the other-mode opponents, which are many more and would leave no room. Clans are asked one
+    /// at a time, so none is asked for once the seeds are full; one whose members didn't all fit, or that couldn't be
+    /// read, isn't marked tried, so it's asked again next poll.
     /// </summary>
     private async Task PickClanmatesAsync(
         SeedPicks seeds, Harvest harvest, IReadOnlySet<int> capsWithRoom, long now, CancellationToken ct)
     {
-        if (!seeds.HasRoom)
-        {
-            return;
-        }
         var clans = harvest.LeadClans()
+            .OrderBy(clan => clan.Cap)
             .Where(clan => capsWithRoom.Contains(clan.Cap))
             .Where(clan => schedule.IsClanDue(clan.Tag, now))
             .Select(clan => clan.Tag)
-            .Take(_opt.ClansPerPoll)
-            .ToList();
-
-        var members = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        var parallel = new ParallelOptions { MaxDegreeOfParallelism = CrawlConcurrency.MaxRequests, CancellationToken = ct };
-        await Parallel.ForEachAsync(clans, parallel, async (clan, token) =>
-            members[clan] = await ClanMembersAsync(clan, harvest, token));
-
+            .Take(_opt.ClansPerPoll);
+        var seenSince = DateTimeOffset.FromUnixTimeMilliseconds(now - _opt.ClanmateSeenWithinMs);
         foreach (var clan in clans)
         {
-            var allFit = seeds.Pick(SeedSource.Clanmate, members.GetValueOrDefault(clan, [])
-                .Where(tag => schedule.IsSeedDue(tag, now)));
-            if (!allFit)
+            if (!seeds.HasRoom)
+            {
+                return;
+            }
+            if (await ClanMembersAsync(clan, seenSince, harvest, ct) is not { } members)
+            {
+                continue;
+            }
+            if (!seeds.Pick(SeedSource.Clanmate, members.Where(tag => schedule.IsSeedDue(tag, now))))
             {
                 return;
             }
@@ -164,16 +193,17 @@ public sealed class CrownSeriesCollector(
         }
     }
 
-    private async Task<IReadOnlyList<string>> ClanMembersAsync(string clanTag, Harvest harvest, CancellationToken ct)
+    private async Task<IReadOnlyList<string>?> ClanMembersAsync(
+        string clanTag, DateTimeOffset seenSince, Harvest harvest, CancellationToken ct)
     {
         try
         {
-            return await client.GetClanMemberTagsAsync(clanTag, ct);
+            return await client.GetActiveClanMemberTagsAsync(clanTag, seenSince, ct);
         }
         catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
         {
             harvest.AddFailedRead(ex.GetType().Name);
-            return [];
+            return null;
         }
     }
 
@@ -266,7 +296,7 @@ public sealed class CrownSeriesCollector(
         {
             var log = await client.GetPlayerBattlelogAsync(tag, ct);
             schedule.RecordRead(tag, log, now);
-            harvest.Add(log);
+            harvest.Add(tag, log);
         }
         catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
         {
@@ -282,6 +312,7 @@ public sealed class CrownSeriesCollector(
         private readonly HashSet<string> _seenRounds = new(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _opponentCaps = new(StringComparer.Ordinal);
         private readonly Dictionary<int, int> _roundsPerCap = [];
+        private readonly Dictionary<string, long> _newestBattleMs = new(StringComparer.Ordinal);
         private List<CrownSeriesRound> _pending = [];
         private long _latestDuelMs;
         private int _failedReads;
@@ -433,10 +464,20 @@ public sealed class CrownSeriesCollector(
             }
         }
 
-        public void Add(IReadOnlyList<CrBattle> log)
+        /// <summary>The newest battle in the player's log, of any mode; null when their log wasn't read this poll.</summary>
+        public long? NewestBattleMs(string tag)
         {
             lock (_lock)
             {
+                return _newestBattleMs.TryGetValue(tag, out var ms) ? ms : null;
+            }
+        }
+
+        public void Add(string tag, IReadOnlyList<CrBattle> log)
+        {
+            lock (_lock)
+            {
+                _newestBattleMs[tag] = log.Select(b => BattleRepository.ParseBattleTime(b.BattleTime)).DefaultIfEmpty(0).Max();
                 var duels = new List<(int Cap, long TimeMs)>();
                 foreach (var battle in log)
                 {

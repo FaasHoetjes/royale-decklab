@@ -231,9 +231,28 @@ public sealed class CrownSeriesDecksTests : IDisposable
         Assert.Equal(hammerWinner, hammer.Decks[0].CardIds);
         Assert.Equal(kingsWinner, kings.Decks[0].CardIds);
         Assert.Equal(60, hammer.Rounds);
+        Assert.Equal(60 * 0.5 * 0.5 * 0.5, hammer.BorrowedRounds, 6);
         var borrowed = hammer.Decks.Single(d => d.CardIds.SequenceEqual(filler));
         Assert.Equal(0, borrowed.LeagueUses);
         Assert.Equal(30, borrowed.Uses);
+    }
+
+    [Fact]
+    public async Task The_decks_are_built_again_only_when_the_rounds_changed()
+    {
+        await StoreAsync(
+            Round("#A", "#B", 0, Build.Eight(1), BattleResult.Win),
+            Round("#B", "#A", 0, Build.Eight(9), BattleResult.Loss));
+        var meta = Meta();
+        await meta.RebuildAsync();
+        var built = meta.Current.Version;
+
+        await meta.RebuildAsync(roundsChanged: false, rounds: null);
+        var unchanged = meta.Current.Version;
+        await meta.RebuildAsync(roundsChanged: true, rounds: null);
+
+        Assert.Equal(built, unchanged);
+        Assert.Equal(built + 1, meta.Current.Version);
     }
 
     private CrownSeriesMeta Meta() => new(

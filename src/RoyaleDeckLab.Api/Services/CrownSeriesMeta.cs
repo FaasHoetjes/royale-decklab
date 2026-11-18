@@ -5,8 +5,9 @@ using RoyaleDeckLab.Api.Options;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <param name="Rounds">The rounds played at this cap; the decks also count other caps' rounds, weighted less.</param>
-public sealed record CrownSeriesCapMeta(IReadOnlyList<DeckMeta> Decks, int Rounds)
+/// <param name="Rounds">The stored rounds at this cap, one per player side, so each round played counts twice.</param>
+/// <param name="BorrowedRounds">The other caps' stored rounds the decks count, as weighted.</param>
+public sealed record CrownSeriesCapMeta(IReadOnlyList<DeckMeta> Decks, int Rounds, double BorrowedRounds = 0)
 {
     public static CrownSeriesCapMeta Empty { get; } = new([], 0);
 }
@@ -29,19 +30,33 @@ public sealed class CrownSeriesMeta(
 
     private readonly SemaphoreSlim _rebuildGate = new(1, 1);
     private CrownSeriesMetaSnapshot _current = CrownSeriesMetaSnapshot.Empty;
+    private long _builtPatchStartMs;
 
     public CrownSeriesMetaSnapshot Current => Volatile.Read(ref _current);
 
-    public async Task RebuildAsync(CancellationToken ct = default)
+    public bool IsBuilt => Current.Version > 0;
+
+    public Task RebuildAsync(CancellationToken ct = default) => RebuildAsync(roundsChanged: true, rounds: null, ct);
+
+    /// <summary>
+    /// Builds the decks again when the stored rounds changed or a new patch started, which reweighs them; a new
+    /// build also drops every player's cached lineup.
+    /// </summary>
+    /// <param name="rounds">The stored rounds, when the caller already read them; read from the store otherwise.</param>
+    public async Task RebuildAsync(bool roundsChanged, IReadOnlyList<CappedBattle>? rounds, CancellationToken ct = default)
     {
         await _rebuildGate.WaitAsync(ct);
         try
         {
             using var scope = scopeFactory.CreateScope();
+            var patchStartMs = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
+            if (!roundsChanged && IsBuilt && patchStartMs == _builtPatchStartMs)
+            {
+                return;
+            }
             var store = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>();
             var builder = scope.ServiceProvider.GetRequiredService<MetaBuilder>();
-            var patchStartMs = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
-            var rounds = store.ReadRoundsWithCaps();
+            rounds ??= store.ReadRoundsWithCaps();
             var roundsPerCap = rounds
                 .GroupBy(r => r.Cap)
                 .ToDictionary(g => g.Key, g => g.Count());
@@ -53,6 +68,7 @@ public sealed class CrownSeriesMeta(
                 byCap[cap] = BuildCap(builder, rounds, roundsPerCap, cap, patchStartMs);
             }
             Volatile.Write(ref _current, new CrownSeriesMetaSnapshot(byCap, rounds.Count, Current.Version + 1));
+            _builtPatchStartMs = patchStartMs;
             logger.LogInformation("Crown Series meta from {Rounds} rounds; rounds per cap: {@RoundsPerCap}",
                 rounds.Count, byCap.ToDictionary(c => c.Key, c => c.Value.Rounds));
         }
@@ -84,7 +100,10 @@ public sealed class CrownSeriesMeta(
         var withOwnUses = decks
             .Select(d => WithLeagueUses(d, ownUses.GetValueOrDefault(string.Join(',', d.CardIds))))
             .ToList();
-        return new CrownSeriesCapMeta(withOwnUses, ownRounds.Count);
+        var borrowedRounds = rounds
+            .Where(r => r.Cap != cap)
+            .Sum(r => capWeights.GetValueOrDefault(r.Cap));
+        return new CrownSeriesCapMeta(withOwnUses, ownRounds.Count, borrowedRounds);
     }
 
     private static DeckMeta WithLeagueUses(DeckMeta deck, int leagueUses) => new()
