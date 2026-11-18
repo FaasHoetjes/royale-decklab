@@ -162,7 +162,7 @@ public static class SpaContent
         return html.Append("</ul>").ToString();
     }
 
-    public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks)
+    public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks, CardInsightsResponse? insights = null, IReadOnlyList<CatalogCard>? catalog = null)
     {
         var html = new StringBuilder("<p><a href=\"/cards\">All cards</a></p>").Append(H1($"{card.Name} Decks"));
         var facts = new[]
@@ -193,7 +193,74 @@ public static class SpaContent
         {
             html.Append(P($"No war deck with {card.Name} has been played by five or more players yet, so there's none to rank."));
         }
+        if (insights is not null)
+        {
+            html.Append(CardInsights(card, insights, (catalog ?? []).ToDictionary(c => c.Id, c => c.Name)));
+        }
         return Page(html.ToString());
+    }
+
+    private static string CardInsights(CatalogCard card, CardInsightsResponse insights, IReadOnlyDictionary<int, string> names)
+    {
+        var html = new StringBuilder(H2($"{card.Name} in Clan War"));
+        foreach (var paragraph in insights.Summary)
+        {
+            html.Append(P(paragraph));
+        }
+
+        if (insights.Styles.Count > 0)
+        {
+            html.Append(H2($"Deck styles with {card.Name}")).Append("<ul>");
+            foreach (var style in insights.Styles)
+            {
+                var winRate = style.WinRate is { } w ? $", {SpaPages.Percent(w)} win rate" : "";
+                html.Append("<li>").Append(Encode($"{style.Name}: {SpaPages.Percent(style.Share)} of games{winRate}")).Append("</li>");
+            }
+            html.Append("</ul>");
+        }
+
+        if (insights.Partners.Count > 0 || insights.Counters.Count > 0)
+        {
+            html.Append(H2($"{card.Name} partners and counters"));
+            html.Append(MatchupList("Plays well with", insights.Partners.Select(p => (p.CardId, $"in {SpaPages.Percent(p.Share)} of its games, {SpaPages.Percent(p.WinRate)} win rate"))));
+            html.Append(MatchupList("Struggles against", insights.Counters.Select(c => (c.CardId, $"{SpaPages.Percent(c.WinRate)} win rate against it"))));
+        }
+
+        if (insights.History.Count >= 2)
+        {
+            html.Append(H2($"{card.Name} over the last patches")).Append("<ul>");
+            foreach (var point in insights.History)
+            {
+                var since = point.Since is { } s ? $"From {DateTimeOffset.Parse(s, CultureInfo.InvariantCulture).ToString("MMMM d", CultureInfo.InvariantCulture)}" : "Earlier";
+                html.Append("<li>").Append(Encode($"{since}: {SpaPages.Percent(point.WinRate)} win rate, {SpaPages.Percent(point.PlayRate)} play rate")).Append("</li>");
+            }
+            html.Append("</ul>");
+        }
+
+        if (insights.Faq.Count > 0)
+        {
+            html.Append(H2($"{card.Name} FAQ"));
+            foreach (var item in insights.Faq)
+            {
+                html.Append(H3(item.Question)).Append(P(item.Answer));
+            }
+        }
+        return html.ToString();
+
+        string MatchupList(string heading, IEnumerable<(int CardId, string Detail)> rows)
+        {
+            var list = rows.Where(r => names.ContainsKey(r.CardId)).ToList();
+            if (list.Count == 0)
+            {
+                return "";
+            }
+            var section = new StringBuilder(H3(heading)).Append("<ul>");
+            foreach (var (cardId, detail) in list)
+            {
+                section.Append("<li>").Append(CardLink(names[cardId])).Append(Encode($": {detail}")).Append("</li>");
+            }
+            return section.Append("</ul>").ToString();
+        }
     }
 
     private static IReadOnlyList<string> DeckNames(IEnumerable<BestDeckEntry> decks)

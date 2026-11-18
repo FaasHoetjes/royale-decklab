@@ -16,6 +16,7 @@ import {
   fetchCardStats,
   fetchPatch,
   fetchCardDecks,
+  fetchCardInsights,
   fetchUpgradeAdvice,
   fetchClanWar,
   fetchClanReminders,
@@ -38,6 +39,7 @@ export const queryKeys = {
   cardStats: ['card-stats'] as const,
   patch: ['patch'] as const,
   cardDecks: (cardId: number) => ['card-decks', cardId] as const,
+  cardInsights: (cardId: number) => ['card-insights', cardId] as const,
   playerWarDecks: (tag: string, options = '') => ['player', tag, 'war-decks', options] as const,
   playerSummary: (tag: string) => ['player', tag, 'summary'] as const,
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
@@ -184,6 +186,15 @@ export function useCardDecks(cardId: number | undefined) {
   return useQuery({
     queryKey: queryKeys.cardDecks(cardId ?? 0),
     queryFn: ({ signal }) => fetchCardDecks(cardId!, signal),
+    enabled: cardId != null,
+    staleTime: FIVE_MINUTES_MS,
+  });
+}
+
+export function useCardInsights(cardId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.cardInsights(cardId ?? 0),
+    queryFn: ({ signal }) => fetchCardInsights(cardId!, signal),
     enabled: cardId != null,
     staleTime: FIVE_MINUTES_MS,
   });

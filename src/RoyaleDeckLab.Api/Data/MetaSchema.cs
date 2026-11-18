@@ -11,7 +11,11 @@ public static class MetaSchema
     public static void EnsureMetaSchema(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MetaDbContext>();
+        scope.ServiceProvider.GetRequiredService<MetaDbContext>().EnsureMetaSchema();
+    }
+
+    public static void EnsureMetaSchema(this MetaDbContext db)
+    {
         db.Database.EnsureCreated();
         db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
         db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
@@ -34,6 +38,10 @@ public static class MetaSchema
             db.Database.ExecuteSqlRaw("ALTER TABLE meta_state ADD COLUMN season_boosts_patch_start_ms INTEGER NOT NULL DEFAULT 0;");
             db.Database.ExecuteSqlRaw("UPDATE meta_state SET season_boosts_patch_start_ms = epoch_start_ms;");
             tx.Commit();
+        }
+        if (!HasColumn(db, "battles", "opponent_key"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE battles ADD COLUMN opponent_key TEXT;");
         }
         db.Database.ExecuteSqlRaw(
             """
@@ -93,6 +101,8 @@ public static class MetaSchema
             "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
     }
 
-    private static bool HasStateColumn(MetaDbContext db, string name) => db.Database.SqlQuery<int>(
-        $"SELECT COUNT(*) AS Value FROM pragma_table_info('meta_state') WHERE name = {name}").Single() > 0;
+    private static bool HasStateColumn(MetaDbContext db, string name) => HasColumn(db, "meta_state", name);
+
+    private static bool HasColumn(MetaDbContext db, string table, string name) => db.Database.SqlQuery<int>(
+        $"SELECT COUNT(*) AS Value FROM pragma_table_info({table}) WHERE name = {name}").Single() > 0;
 }

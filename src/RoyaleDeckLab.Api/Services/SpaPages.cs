@@ -203,6 +203,26 @@ public static partial class SpaPages
             }),
         });
 
+    public static string? WithFaq(string? structuredData, IReadOnlyList<CardFaqItem> faq)
+    {
+        if (faq.Count == 0)
+        {
+            return structuredData;
+        }
+        var faqPage = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "FAQPage",
+            ["mainEntity"] = faq.Select(item => new Dictionary<string, object>
+            {
+                ["@type"] = "Question",
+                ["name"] = item.Question,
+                ["acceptedAnswer"] = new Dictionary<string, object> { ["@type"] = "Answer", ["text"] = item.Answer },
+            }),
+        });
+        return structuredData is null ? faqPage : $"[{structuredData},{faqPage}]";
+    }
+
     internal static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
 
     /// <summary>Matches cardSlug in client/src/lib/cardInfo.ts.</summary>
@@ -254,7 +274,7 @@ public static partial class SpaPages
         SpaContentKind.Home or SpaContentKind.Patch => ["/api/meta/status", "/api/cards", "/api/cards/stats", "/api/best-decks", "/api/patch"],
         SpaContentKind.BestDecks => ["/api/best-decks"],
         SpaContentKind.Cards => ["/api/cards", "/api/cards/stats"],
-        SpaContentKind.Card when page.Card is { } card => ["/api/cards", "/api/cards/stats", $"/api/cards/{card.Id}/decks"],
+        SpaContentKind.Card when page.Card is { } card => ["/api/cards", "/api/cards/stats", $"/api/cards/{card.Id}/decks", $"/api/cards/{card.Id}/insights"],
         _ => [],
     };
 

@@ -38,13 +38,13 @@ public sealed class CardPeriodsTests
             (0, long.MaxValue)));
 
         Assert.Equal(3, period.Battles);
-        Assert.Equal(new CardTally(1, 2, 1.5, 0, 0), Card(period, 1));
-        Assert.Equal(new CardTally(5, 3, 1.5, 0, 0), Card(period, 5));
-        Assert.Equal(new CardTally(12, 1, 0, 0, 0), Card(period, 12));
+        Assert.Equal(new CardTally(1, 2, 1.5, 0, 0, 0, 0), Card(period, 1));
+        Assert.Equal(new CardTally(5, 3, 1.5, 0, 0, 0, 0), Card(period, 5));
+        Assert.Equal(new CardTally(12, 1, 0, 0, 0, 0, 0), Card(period, 12));
     }
 
     [Fact]
-    public void Counts_how_often_each_card_is_played_as_Evo_and_as_Hero()
+    public void Counts_how_often_and_how_well_each_card_is_played_as_Evo_and_as_Hero()
     {
         var deck = Build.Eight(1);
         CardVersion[] evo = [new(1, CardVersionKind.Evo), new(2, CardVersionKind.Hero)];
@@ -52,14 +52,14 @@ public sealed class CardPeriodsTests
         var period = Assert.Single(Tally(
             [
                 Build.Battle("#P1", deck, BattleResult.Win, versions: evo),
-                Build.Battle("#P2", deck, BattleResult.Win, versions: evo),
+                Build.Battle("#P2", deck, BattleResult.Loss, versions: evo),
                 Build.Battle("#P3", deck, BattleResult.Win, versions: hero),
                 Build.Battle("#P4", deck, BattleResult.Win),
             ],
             (0, long.MaxValue)));
 
-        Assert.Equal(new CardTally(1, 4, 4, EvoGames: 2, HeroGames: 1), Card(period, 1));
-        Assert.Equal(new CardTally(2, 4, 4, EvoGames: 0, HeroGames: 2), Card(period, 2));
+        Assert.Equal(new CardTally(1, 4, 3, EvoGames: 2, HeroGames: 1, EvoWins: 1, HeroWins: 1), Card(period, 1));
+        Assert.Equal(new CardTally(2, 4, 3, EvoGames: 0, HeroGames: 2, EvoWins: 0, HeroWins: 1), Card(period, 2));
     }
 
     [Fact]
@@ -76,9 +76,9 @@ public sealed class CardPeriodsTests
             (BattleRepository.ParseBattleTime("20260920T000000.000Z"), Patch), (Patch, long.MaxValue));
 
         Assert.Equal(1, periods[0].Battles);
-        Assert.Equal(new CardTally(1, 1, 1, 0, 0), Card(periods[0], 1));
+        Assert.Equal(new CardTally(1, 1, 1, 0, 0, 0, 0), Card(periods[0], 1));
         Assert.Equal(2, periods[1].Battles);
-        Assert.Equal(new CardTally(1, 2, 0, 0, 0), Card(periods[1], 1));
+        Assert.Equal(new CardTally(1, 2, 0, 0, 0, 0, 0), Card(periods[1], 1));
     }
 
     [Fact]
@@ -173,5 +173,29 @@ public sealed class CardPeriodsTests
         Assert.Equal(MetaCache.IsoMs(Patch), stats.Since);
         Assert.Null(stats.Until);
         Assert.Equal(0.4 / 0.9, Assert.Single(stats.Cards).WinRate, 10);
+    }
+
+    [Fact]
+    public void Each_version_gets_a_win_rate_once_it_has_enough_games()
+    {
+        var period = new CardPeriod(0, long.MaxValue, 40_000,
+            [new CardTally(1, 1_000, 520, EvoGames: 600, HeroGames: 50, EvoWins: 330, HeroWins: 20)]);
+
+        var card = Assert.Single(CardPeriods.Compare(period, null).Cards);
+
+        Assert.Equal(0.55, card.EvoWinRate!.Value, 10);
+        Assert.Equal(170.0 / 350, card.NormalWinRate!.Value, 10);
+        Assert.Null(card.HeroWinRate);
+    }
+
+    [Fact]
+    public void A_period_saved_without_version_wins_has_no_version_win_rates()
+    {
+        var period = new CardPeriod(0, long.MaxValue, 40_000, [new CardTally(1, 1_000, 520, EvoGames: 600, HeroGames: 0)]);
+
+        var card = Assert.Single(CardPeriods.Compare(period, null).Cards);
+
+        Assert.Null(card.EvoWinRate);
+        Assert.Null(card.NormalWinRate);
     }
 }

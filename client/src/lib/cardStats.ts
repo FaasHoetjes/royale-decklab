@@ -47,3 +47,16 @@ export function cardRanks(stats: CardStat[]) {
 }
 
 export const percent = (share: number, digits = 1) => `${(share * 100).toFixed(digits)}%`;
+
+export function wholePercents(shares: number[]): number[] {
+  const parts = shares.map((s, index) => ({ index, raw: s * 100, whole: Math.floor(s * 100) }));
+  const total = Math.round(shares.reduce((sum, s) => sum + s, 0) * 100);
+  let missing = total - parts.reduce((sum, p) => sum + p.whole, 0);
+  const byRemainder = [...parts].sort((a, b) => b.raw - b.whole - (a.raw - a.whole) || b.raw - a.raw);
+  for (const part of byRemainder) {
+    if (missing <= 0) break;
+    part.whole++;
+    missing--;
+  }
+  return parts.map((p) => p.whole);
+}

@@ -57,8 +57,8 @@ public sealed partial class BattleRepository(MetaDbContext db)
         cmd.CommandText =
             """
             INSERT OR IGNORE INTO battles
-                (key, battle_time, battle_time_ms, player_tag, card_ids, result, card_versions)
-            VALUES ($key, $battleTime, $battleTimeMs, $playerTag, $cardIds, $result, $cardVersions)
+                (key, battle_time, battle_time_ms, player_tag, card_ids, result, card_versions, opponent_key)
+            VALUES ($key, $battleTime, $battleTimeMs, $playerTag, $cardIds, $result, $cardVersions, $opponentKey)
             """;
         var pKey = AddParameter(cmd, "$key");
         var pTime = AddParameter(cmd, "$battleTime");
@@ -67,6 +67,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
         var pCards = AddParameter(cmd, "$cardIds");
         var pResult = AddParameter(cmd, "$result");
         var pVersions = AddParameter(cmd, "$cardVersions");
+        var pOpponent = AddParameter(cmd, "$opponentKey");
 
         var added = 0;
         foreach (var r in records)
@@ -78,6 +79,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
             pCards.Value = JsonSerializer.Serialize(r.CardIds, StorageJson.Options);
             pResult.Value = r.Result.ToString().ToLowerInvariant();
             pVersions.Value = JsonSerializer.Serialize(r.CardVersions, StorageJson.Options);
+            pOpponent.Value = (object?)r.OpponentKey ?? DBNull.Value;
             added += await cmd.ExecuteNonQueryAsync(ct);
         }
         await tx.CommitAsync(ct);
@@ -118,6 +120,7 @@ public sealed partial class BattleRepository(MetaDbContext db)
                 CardIds = b.CardIds,
                 Result = b.Result,
                 CardVersions = b.CardVersions,
+                OpponentKey = b.OpponentKey,
             };
         }
     }
@@ -328,6 +331,11 @@ public sealed partial class BattleRepository(MetaDbContext db)
         var e = db.CardPeriods.AsNoTracking().FirstOrDefault(p => p.EndMs == endMs);
         return e is null ? null : new CardPeriod(e.StartMs, e.EndMs, e.Battles, e.Cards);
     }
+
+    public IReadOnlyList<CardPeriod> GetCardPeriods()
+        => db.CardPeriods.AsNoTracking().OrderBy(p => p.EndMs).AsEnumerable()
+            .Select(e => new CardPeriod(e.StartMs, e.EndMs, e.Battles, e.Cards))
+            .ToList();
 
     public async Task SaveCardPeriodAsync(CardPeriod period, CancellationToken ct = default)
     {

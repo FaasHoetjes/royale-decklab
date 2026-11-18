@@ -403,6 +403,9 @@ export interface CardStat {
   changeMargin: number | null;
   /** The change is bigger than the margin. */
   changeIsClear: boolean;
+  normalWinRate?: number | null;
+  evoWinRate?: number | null;
+  heroWinRate?: number | null;
 }
 
 export interface CardStatsResponse {
@@ -444,6 +447,48 @@ export function fetchPatch(signal?: AbortSignal): Promise<{ updates: BalanceUpda
 
 export function fetchCardDecks(cardId: number, signal?: AbortSignal): Promise<{ decks: BestDeckEntry[] }> {
   return getJson(`/api/cards/${cardId}/decks`, 'Failed to fetch decks for this card', signal);
+}
+
+export interface CardPartner {
+  cardId: number;
+  games: number;
+  share: number;
+  winRate: number;
+}
+
+export interface CardStyle {
+  name: string;
+  games: number;
+  share: number;
+  winRate: number | null;
+}
+
+export interface CardCounter {
+  cardId: number;
+  games: number;
+  winRate: number;
+}
+
+export interface CardPatchPoint {
+  since: string | null;
+  until: string | null;
+  games: number;
+  winRate: number;
+  playRate: number;
+}
+
+export interface CardInsights {
+  summary: string[];
+  styles: CardStyle[];
+  partners: CardPartner[];
+  counters: CardCounter[];
+  matchupWinRate: number | null;
+  history: CardPatchPoint[];
+  faq: { question: string; answer: string }[];
+}
+
+export function fetchCardInsights(cardId: number, signal?: AbortSignal): Promise<CardInsights> {
+  return getJson(`/api/cards/${cardId}/insights`, 'Failed to fetch insights for this card', signal);
 }
 
 export async function scoreBuilderDecks(

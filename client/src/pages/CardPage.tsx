@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { useAllCards, useCardDecks, useCardStats } from '../queries';
+import { useAllCards, useCardDecks, useCardInsights, useCardStats } from '../queries';
 import type { CatalogCard } from '../api';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { FOLD_EASING, prefersReducedMotion } from '../lib/motion';
@@ -20,6 +20,7 @@ import { BestDecksSkeleton } from '../components/LoadingSkeletons';
 import NotFound from './NotFound';
 import { periodNote } from '../lib/statsPeriod';
 import { StatTile, PlaySplit } from './CardStatViews';
+import CardInsightsSections from './CardInsightsSections';
 import { usePastBuildButton } from './usePastBuildButton';
 
 const VERSION_SLOT = { evo: 0, hero: 1, normal: undefined } as const;
@@ -83,7 +84,7 @@ export default function CardPage() {
   }
   if (!catalog.data) return null;
   if (!card) return <NotFound />;
-  return <CardDetails key={card.id} card={card} />;
+  return <CardDetails key={card.id} card={card} catalog={catalog.data} />;
 }
 
 const lockIcon = (
@@ -93,13 +94,14 @@ const lockIcon = (
   </svg>
 );
 
-function CardDetails({ card }: { card: CatalogCard }) {
+function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCard[] }) {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
   const build = usePastBuildButton(isMobile);
   const statsQuery = useCardStats();
   const decksQuery = useCardDecks(card.id);
+  const insightsQuery = useCardInsights(card.id);
 
   const stats = statsQuery.data;
   const stat = stats?.cards.find((s) => s.id === card.id);
@@ -250,6 +252,8 @@ function CardDetails({ card }: { card: CatalogCard }) {
         )}
         <div ref={build.endRef} />
       </section>
+
+      {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} catalog={catalog} theme={theme} isMobile={isMobile} />}
 
       {isMobile && (
         <div style={styles.buildFloat}>

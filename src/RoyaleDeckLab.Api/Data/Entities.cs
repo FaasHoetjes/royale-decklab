@@ -17,6 +17,8 @@ public sealed class BattleEntity
     public BattleResult Result { get; set; }
 
     public IReadOnlyList<CardVersion> CardVersions { get; set; } = [];
+
+    public string? OpponentKey { get; set; }
 }
 
 public sealed class CrownSeriesRoundEntity

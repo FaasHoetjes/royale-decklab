@@ -166,17 +166,21 @@ public sealed class MetaBuilder(
         var (playerResult, opponentResult) = ResultsFor(teamCrowns, oppCrowns);
 
         var playerRecord = ToBattleRecord(playerTag, battleTime, teamCards, playerResult, keySuffix);
+        var opponentRecord = string.IsNullOrEmpty(opponentTag)
+            ? null
+            : ToBattleRecord(opponentTag, battleTime, oppCards, opponentResult, keySuffix);
+        if (playerRecord is not null && opponentRecord is not null)
+        {
+            playerRecord = playerRecord with { OpponentKey = opponentRecord.Key };
+            opponentRecord = opponentRecord with { OpponentKey = playerRecord.Key };
+        }
         if (playerRecord is not null)
         {
             records.Add(playerRecord);
         }
-        if (!string.IsNullOrEmpty(opponentTag))
+        if (opponentRecord is not null)
         {
-            var opponentRecord = ToBattleRecord(opponentTag, battleTime, oppCards, opponentResult, keySuffix);
-            if (opponentRecord is not null)
-            {
-                records.Add(opponentRecord);
-            }
+            records.Add(opponentRecord);
         }
     }
 
@@ -294,7 +298,7 @@ public sealed class MetaBuilder(
 
     // Battles are keyed by their cards and versions themselves: a text key for each of them was most of what a
     // rebuild allocated.
-    private sealed class SameCards : IEqualityComparer<int[]>
+    internal sealed class SameCards : IEqualityComparer<int[]>
     {
         public static readonly SameCards Instance = new();
 

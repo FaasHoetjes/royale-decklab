@@ -70,6 +70,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             b.Property(x => x.CardIds).HasColumnName("card_ids").HasConversion(cardIdsConverter, cardIdsComparer).IsRequired();
             b.Property(x => x.Result).HasColumnName("result").HasConversion(resultConverter).IsRequired();
             b.Property(x => x.CardVersions).HasColumnName("card_versions").HasConversion(versionsConverter, versionsComparer).IsRequired();
+            b.Property(x => x.OpponentKey).HasColumnName("opponent_key");
             b.HasIndex(x => x.BattleTimeMs).HasDatabaseName("idx_battles_time");
         });
 
