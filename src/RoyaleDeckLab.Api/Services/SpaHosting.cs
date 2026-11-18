@@ -126,11 +126,7 @@ public static partial class SpaHosting
             try
             {
                 var insights = await CardInsightsOrNull(page, catalog, meta, decks, balanceUpdates, ctx.RequestAborted);
-                page = page with
-                {
-                    Body = await PageBody(page, catalog, meta, decks, balanceUpdates, faqHtml, insights, ctx.RequestAborted),
-                    StructuredData = SpaPages.WithFaq(page.StructuredData, insights?.Faq ?? []),
-                };
+                page = page with { Body = await PageBody(page, catalog, meta, decks, balanceUpdates, faqHtml, insights, ctx.RequestAborted) };
             }
             catch (Exception ex) when (!ctx.RequestAborted.IsCancellationRequested)
             {

@@ -1,6 +1,6 @@
 import type { CardStat } from '../api';
 
-export const CARD_SORTS = ['Win rate', 'Play rate', 'Change'] as const;
+export const CARD_SORTS = ['Win rate', 'Use rate', 'Change'] as const;
 export type CardSort = (typeof CARD_SORTS)[number];
 
 // Card win rates in war spread about 1.9 points around 50% (one standard deviation, measured over 226k battles in Oct 2026).
@@ -16,7 +16,7 @@ export function isLowSample(stat: CardStat): boolean {
 }
 
 function sortValue(stat: CardStat, sort: CardSort): number | null {
-  if (sort === 'Play rate') return stat.playRate;
+  if (sort === 'Use rate') return stat.playRate;
   if (sort === 'Change') return stat.winRateChange;
   return stat.winRate;
 }
@@ -35,7 +35,7 @@ export function sortCardStats<T extends { stat: CardStat }>(cards: T[], sort: Ca
   });
 }
 
-/** Each card's place by play rate among all cards, and by win rate among the cards with enough games. */
+/** Each card's place by use rate among all cards, and by win rate among the cards with enough games. */
 export function cardRanks(stats: CardStat[]) {
   const byPlay = [...stats].sort((a, b) => b.playRate - a.playRate);
   const ranked = stats.filter((s) => !isLowSample(s)).sort((a, b) => b.winRate - a.winRate);

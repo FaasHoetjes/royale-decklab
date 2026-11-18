@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using RoyaleDeckLab.Api.Data;
@@ -211,7 +210,7 @@ public sealed class CardInsightsTextTests
 
         Assert.StartsWith("Card1 is a 3-elixir common troop that wins 56.0% of its Clan War battles", summary[0]);
         Assert.Contains("#1 of 4 cards by win rate", summary[0]);
-        Assert.Contains("the #3 most played card", summary[0]);
+        Assert.Contains("the #3 most used card", summary[0]);
         Assert.Contains("most often played with Card2, Card3 and Card4", summary[1]);
     }
 
@@ -241,58 +240,13 @@ public sealed class CardInsightsTextTests
     }
 
     [Fact]
-    public void The_faq_asks_about_counters_only_once_there_are_some()
-    {
-        var without = InsightsFor(Ranked, Insight()).Faq.Select(f => f.Question);
-        var with = InsightsFor(Ranked, Insight(new(10, 400, 0.40), new(11, 400, 0.42), new(12, 400, 0.44))).Faq;
-
-        Assert.DoesNotContain("What counters Card1?", without);
-        var counters = Assert.Single(with, f => f.Question == "What counters Card1?");
-        Assert.Equal("In Clan War, Card1 wins least often against Card10 (40.0%), Card11 (42.0%) and Card12 (44.0%).", counters.Answer);
-    }
-
-    [Fact]
-    public void A_top_card_is_called_good_in_clan_war()
-    {
-        var good = Assert.Single(InsightsFor(Ranked).Faq, f => f.Question == "Is Card1 good in Clan War?");
-
-        Assert.StartsWith("Yes. Card1 wins 56.0% of its war battles, #1 of 4 cards", good.Answer);
-    }
-
-    [Fact]
-    public void The_evolution_gets_a_question_once_it_has_a_win_rate()
-    {
-        var stats = Stats(Stat(1, 2_000, 0.56, 0.10, evoShare: 0.4) with { EvoWinRate = 0.6, NormalWinRate = 0.53 });
-
-        var evo = Assert.Single(InsightsFor(stats).Faq, f => f.Question == "Should I use the Card1 Evolution?");
-
-        Assert.Equal("40% of Card1 war games use it. The Evolution wins 60.0% of its war battles, against 53.0% for the normal card.", evo.Answer);
-    }
-
-    [Fact]
-    public void The_faq_is_added_to_the_page_structured_data()
-    {
-        var json = SpaPages.WithFaq("""{"@type":"BreadcrumbList"}""", [new("Q?", "A.")]);
-
-        using var doc = JsonDocument.Parse(json!);
-        var faq = doc.RootElement[1];
-        Assert.Equal("BreadcrumbList", doc.RootElement[0].GetProperty("@type").GetString());
-        Assert.Equal("FAQPage", faq.GetProperty("@type").GetString());
-        Assert.Equal("A.", faq.GetProperty("mainEntity")[0].GetProperty("acceptedAnswer").GetProperty("text").GetString());
-    }
-
-    [Fact]
-    public void Without_questions_the_structured_data_is_unchanged()
-        => Assert.Equal("{}", SpaPages.WithFaq("{}", []));
-
-    [Fact]
     public void The_crawler_copy_has_the_sections_in_page_order()
     {
         var insights = InsightsFor(Ranked, Insight(new(10, 400, 0.40), new(11, 400, 0.42), new(12, 400, 0.44)));
 
         var html = SpaContent.Card(Catalog[0], Ranked.Cards[0], true, [], insights, Catalog);
 
-        var order = new[] { "Card1 in Clan War", "Card1 partners and counters", "Plays well with", "Struggles against", "Card1 FAQ" }
+        var order = new[] { "Card1 in Clan War", "Card1 plays well with", "Card1 struggles against" }
             .Select(heading => html.IndexOf(heading, StringComparison.Ordinal))
             .ToList();
         Assert.DoesNotContain(-1, order);

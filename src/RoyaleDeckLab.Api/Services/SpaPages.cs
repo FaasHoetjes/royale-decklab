@@ -54,8 +54,8 @@ public static partial class SpaPages
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
         ("/best-decks", $"Best Clash Royale War Decks ({MonthYear(now)})", "Best War Deck Sets", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.", SpaContentKind.BestDecks),
-        ("/patch", $"Clash Royale Patch Changes in Clan War ({MonthYear(now)})", "Patch Overview", "What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.", SpaContentKind.Patch),
-        (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
+        ("/patch", $"Clash Royale Patch Changes in Clan War ({MonthYear(now)})", "Patch Overview", "What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and use rate moved the most.", SpaContentKind.Patch),
+        (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, use rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
         ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.", SpaContentKind.Builder),
         ("/crown-series", "Clash Royale Crown Series Deck Generator", "Crown Series Deck Generator", "Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.", SpaContentKind.CrownSeries),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
@@ -166,8 +166,8 @@ public static partial class SpaPages
         }
         var stat = stats.FirstOrDefault(s => s.Id == card.Id);
         var numbers = stat is null
-            ? "its win rate, play rate and change"
-            : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} play rate and its change";
+            ? "its win rate, use rate and change"
+            : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} use rate and its change";
         return new(
             200,
             CardTitle(card.Name, now),
@@ -202,26 +202,6 @@ public static partial class SpaPages
                 ["item"] = Origin + step.Path,
             }),
         });
-
-    public static string? WithFaq(string? structuredData, IReadOnlyList<CardFaqItem> faq)
-    {
-        if (faq.Count == 0)
-        {
-            return structuredData;
-        }
-        var faqPage = JsonSerializer.Serialize(new Dictionary<string, object>
-        {
-            ["@context"] = "https://schema.org",
-            ["@type"] = "FAQPage",
-            ["mainEntity"] = faq.Select(item => new Dictionary<string, object>
-            {
-                ["@type"] = "Question",
-                ["name"] = item.Question,
-                ["acceptedAnswer"] = new Dictionary<string, object> { ["@type"] = "Answer", ["text"] = item.Answer },
-            }),
-        });
-        return structuredData is null ? faqPage : $"[{structuredData},{faqPage}]";
-    }
 
     internal static string Percent(double share) => (share * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
 

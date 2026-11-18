@@ -58,7 +58,7 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       to: '/cards',
       label: 'Cards',
       title: 'Clash Royale Card Win Rates in Clan War',
-      description: 'How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.',
+      description: 'How every Clash Royale card does in Clan War right now: win rate, use rate, the change since the last balance update and its best war decks.',
       end: false,
       icon: <CardsIcon />,
     },
@@ -99,7 +99,7 @@ export const PATCH_ITEM: NavItem = {
   to: '/patch',
   label: 'Patch Overview',
   title: `Clash Royale Patch Changes in Clan War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`,
-  description: 'What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.',
+  description: 'What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and use rate moved the most.',
   end: false,
   icon: <ChangesIcon />,
 };

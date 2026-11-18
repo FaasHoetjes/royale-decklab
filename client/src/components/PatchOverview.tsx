@@ -103,7 +103,7 @@ export default function PatchOverview() {
 
       {!failed && !ready && (
         <>
-          <MoverSkeleton title="Biggest war play rate changes since last patch" isMobile={isMobile} />
+          <MoverSkeleton title="Biggest war use rate changes since last patch" isMobile={isMobile} />
           <MoverSkeleton title="Biggest war win rate changes since last patch" isMobile={isMobile} />
         </>
       )}
@@ -119,7 +119,7 @@ export default function PatchOverview() {
       {stats && catalog.data && !stats.isLastPatch && (
         <>
           <MoverRow
-            title="Biggest war play rate changes since last patch"
+            title="Biggest war use rate changes since last patch"
             empty="No card has enough games in both patches to compare yet."
             movers={playRateMovers(stats.cards)}
             cardById={cardById}

@@ -111,8 +111,8 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
   useEffect(() => {
     document.title = `Best ${card.name} Decks for Clash Royale War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`;
     const numbers = stat
-      ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} play rate and its change`
-      : 'its win rate, play rate and change';
+      ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} use rate and its change`
+      : 'its win rate, use rate and change';
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute('content', `The best ${card.name} decks for Clash Royale Clan War, ranked on real war battles: ${numbers} since the last balance update.`);
@@ -155,13 +155,13 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
           )
         )}
       </StatTile>
-      <StatTile theme={theme} value={percent(stat.playRate)} label="play rate" />
+      <StatTile theme={theme} value={percent(stat.playRate)} label="use rate" />
       {winRank && ranks ? (
         <StatTile theme={theme} value={`#${winRank}`} label={`win rate rank of ${ranks.rankedCount}`} />
       ) : (
         <StatTile theme={theme} value={stat.games.toLocaleString('en-US')} label="games" />
       )}
-      {playRank && ranks && <StatTile theme={theme} value={`#${playRank}`} label={`play rate rank of ${ranks.playRank.size}`} />}
+      {playRank && ranks && <StatTile theme={theme} value={`#${playRank}`} label={`use rate rank of ${ranks.playRank.size}`} />}
     </div>
   );
 
@@ -210,7 +210,7 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
             <div style={styles.buildPanel}>
               <Link ref={build.buttonRef} to={buildHref} style={{ ...styles.buildButton, ...styles.buildButtonWide, backgroundColor: theme.accent, color: theme.onAccent }}>
                 {lockIcon}
-                Build my best war decks with {card.name}
+                <span style={styles.buildLabel}>Build war decks with {card.name}</span>
               </Link>
             </div>
           )}
@@ -252,7 +252,7 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
         <div ref={build.endRef} />
       </section>
 
-      {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} catalog={catalog} theme={theme} isMobile={isMobile} />}
+      {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} cardWinRate={stat?.winRate} catalog={catalog} theme={theme} isMobile={isMobile} />}
 
       {isMobile && (
         <div style={styles.buildFloat}>
@@ -407,13 +407,17 @@ const styles = {
   buildPanel: {
     marginTop: '16px',
   },
+  buildLabel: {
+    minWidth: 0,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  },
   buildButtonWide: {
     display: 'flex' as const,
     width: '100%',
     boxSizing: 'border-box' as const,
     padding: '13px 16px',
     fontSize: '15px',
-    whiteSpace: 'normal' as const,
     textAlign: 'center' as const,
   },
   buildFloat: {

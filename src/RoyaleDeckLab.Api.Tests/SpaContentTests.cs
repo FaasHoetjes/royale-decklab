@@ -37,7 +37,7 @@ public sealed class SpaContentTests
 
         Assert.Contains("<h1>Mega Knight Decks</h1>", html);
         Assert.Contains("<p>7 elixir &#183; Legendary</p>", html);
-        Assert.Contains("<p>52.3% win rate &#183; 8.1% play rate &#183; 1,500 games</p>", html);
+        Assert.Contains("<p>52.3% win rate &#183; 8.1% use rate &#183; 1,500 games</p>", html);
         Assert.Contains("<h2>Best war decks with Mega Knight</h2>", html);
         Assert.Contains("<h3>Log Bait &#183; Inferno Tower</h3><p>55.0% win rate</p>", html);
         Assert.Contains("<a href=\"/cards/goblin-barrel\">Goblin Barrel</a>", html);
@@ -56,7 +56,7 @@ public sealed class SpaContentTests
 
         Assert.Contains("<h1>October Patch</h1>", html);
         Assert.Contains("<h2>Balance changes, October 19</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a> (nerf): Damage 212 → 202</li></ul>", html);
-        Assert.Contains("<h2>Biggest play rate changes</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a>: 7.0% → 5.0%</li><li><a href=\"/cards/mega-knight\">", html);
+        Assert.Contains("<h2>Biggest use rate changes</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a>: 7.0% → 5.0%</li><li><a href=\"/cards/mega-knight\">", html);
         Assert.Contains("<h2>Biggest win rate changes</h2><ul><li><a href=\"/cards/mini-pekka\">Mini P.E.K.K.A</a>: 50.0% → 46.0%</li></ul>", html);
         Assert.Contains("<a href=\"/patch\">Patch Overview</a>", html);
     }

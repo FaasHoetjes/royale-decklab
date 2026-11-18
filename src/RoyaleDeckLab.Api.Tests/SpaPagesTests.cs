@@ -137,7 +137,7 @@ public sealed class SpaPagesTests
         var page = Resolve("/cards/mega-knight");
         Assert.Equal("Best Mega Knight Decks for Clash Royale War (November 2026)", page.Title);
         Assert.Equal(
-            "The best Mega Knight decks for Clash Royale Clan War, ranked on real war battles: 52.3% win rate, 8.1% play rate and its change since the last balance update.",
+            "The best Mega Knight decks for Clash Royale Clan War, ranked on real war battles: 52.3% win rate, 8.1% use rate and its change since the last balance update.",
             page.Description);
     }
 

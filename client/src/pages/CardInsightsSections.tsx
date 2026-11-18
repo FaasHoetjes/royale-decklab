@@ -3,17 +3,20 @@ import type { CardInsights, CardPatchPoint, CatalogCard } from '../api';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { percent } from '../lib/cardStats';
 import CardLink from '../components/CardLink';
+import CardTile from '../components/CardTile';
+import { ChangePill } from '../components/WinRateChange';
 import type { Theme } from '../theme';
 
 interface Props {
   card: CatalogCard;
   insights: CardInsights;
+  cardWinRate: number | undefined;
   catalog: CatalogCard[];
   theme: Theme;
   isMobile: boolean;
 }
 
-export default function CardInsightsSections({ card, insights, catalog, theme, isMobile }: Props) {
+export default function CardInsightsSections({ card, insights, cardWinRate, catalog, theme, isMobile }: Props) {
   const byId = new Map(catalog.map((c) => [c.id, c]));
   const partners = insights.partners.filter((p) => byId.has(p.cardId));
   const counters = insights.counters.filter((c) => byId.has(c.cardId));
@@ -56,65 +59,65 @@ export default function CardInsightsSections({ card, insights, catalog, theme, i
           </ul>
         )}
 
-      {(partners.length > 0 || counters.length > 0) &&
-        section(
-          `${card.name} partners and counters`,
-          <div style={{ ...styles.columns, gridTemplateColumns: isMobile || counters.length === 0 ? '1fr' : '1fr 1fr' }}>
-            {partners.length > 0 && (
-              <CardList
-                title="Plays well with"
-                theme={theme}
-                rows={partners.map((p) => ({
-                  card: byId.get(p.cardId)!,
-                  detail: `in ${percent(p.share)} of its games, ${percent(p.winRate)} win rate`,
-                }))}
-              />
-            )}
-            {counters.length > 0 && (
-              <CardList
-                title="Struggles against"
-                theme={theme}
-                rows={counters.map((c) => ({ card: byId.get(c.cardId)!, detail: `${percent(c.winRate)} win rate against it` }))}
-              />
-            )}
-          </div>
-        )}
+      {partners.length > 0 && cardWinRate != null && (
+        <TileSection
+          title={`${card.name} plays well with`}
+          gap={gap}
+          theme={theme}
+          isMobile={isMobile}
+          tiles={partners.map((p) => ({ card: byId.get(p.cardId)!, share: p.share, difference: p.winRate - cardWinRate }))}
+        />
+      )}
+
+      {counters.length > 0 && insights.matchupWinRate != null && (
+        <TileSection
+          title={`${card.name} struggles against`}
+          gap={gap}
+          theme={theme}
+          isMobile={isMobile}
+          tiles={counters.map((c) => ({ card: byId.get(c.cardId)!, difference: c.winRate - insights.matchupWinRate! }))}
+        />
+      )}
 
       {insights.history.length >= 2 &&
         section(`${card.name} over the last patches`, <PatchHistory points={insights.history} theme={theme} isMobile={isMobile} />)}
-
-      {insights.faq.length > 0 &&
-        section(
-          `${card.name} FAQ`,
-          insights.faq.map((item) => (
-            <div key={item.question} style={styles.faqItem}>
-              <h3 style={{ ...styles.question, color: theme.text.primary }}>{item.question}</h3>
-              <p style={{ ...styles.paragraph, color: theme.text.secondary }}>{item.answer}</p>
-            </div>
-          ))
-        )}
     </>
   );
 }
 
-function CardList({ title, rows, theme }: { title: string; rows: { card: CatalogCard; detail: string }[]; theme: Theme }) {
+interface Tile {
+  card: CatalogCard;
+  share?: number;
+  difference: number;
+}
+
+function TileSection({ title, tiles, gap, theme, isMobile }: { title: string; tiles: Tile[]; gap: string; theme: Theme; isMobile: boolean }) {
   return (
-    <div>
-      <h3 style={{ ...styles.question, color: theme.text.primary }}>{title}</h3>
-      <ul style={styles.list}>
-        {rows.map(({ card, detail }) => (
-          <li key={card.id} style={styles.cardRow}>
-            <img src={cardIconUrl(card.iconUrls, 'normal')} alt="" width={30} height={36} loading="lazy" style={styles.icon} />
-            <span style={{ minWidth: 0 }}>
-              <CardLink name={card.name}>
-                <span style={{ color: theme.text.primary, fontWeight: 700 }}>{card.name}</span>
-              </CardLink>
-              <span style={{ color: theme.text.secondary }}>: {detail}</span>
-            </span>
+    <section style={{ marginTop: gap }}>
+      <h2 style={{ ...styles.title, color: theme.text.primary }}>{title}</h2>
+      <ul style={{ ...styles.tiles, gridTemplateColumns: `repeat(${isMobile ? 3 : 6}, minmax(0, 1fr))` }}>
+        {tiles.map(({ card, share, difference }) => (
+          <li key={card.id} style={styles.tile}>
+            <CardLink name={card.name}>
+              <CardTile name={card.name} iconUrl={cardIconUrl(card.iconUrls, 'normal')} elixirCost={card.elixirCost} showName={false} />
+            </CardLink>
+            <b style={{ ...styles.tileName, color: theme.text.primary }}>{card.name}</b>
+            {share != null && (
+              <>
+                <div style={styles.track}>
+                  <span style={{ ...styles.fill, width: `${share * 100}%` }} />
+                </div>
+                <div style={{ ...styles.tileLine, color: theme.text.secondary }}>in {percent(share, 0)} of its games</div>
+              </>
+            )}
+            <div style={{ ...styles.tileLine, color: theme.text.secondary }}>
+              <span>{share != null ? 'win rate' : 'win rate vs'}</span>
+              <ChangePill change={difference} />
+            </div>
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 
@@ -126,13 +129,13 @@ function PatchHistory({ points, theme, isMobile }: { points: CardPatchPoint[]; t
     <>
       <div style={{ ...styles.columns, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
         <Sparkline label="Win rate" values={points.map((p) => p.winRate)} theme={theme} />
-        <Sparkline label="Play rate" values={points.map((p) => p.playRate)} theme={theme} />
+        <Sparkline label="Use rate" values={points.map((p) => p.playRate)} theme={theme} />
       </div>
       <ul style={{ ...styles.list, marginTop: '14px' }}>
         {points.map((p) => (
           <li key={p.since ?? 'earlier'} style={{ color: theme.text.secondary, fontSize: '13px' }}>
             <span style={{ color: theme.text.primary, fontWeight: 600 }}>{sinceLabel(p.since)}</span>: {percent(p.winRate)} win rate,{' '}
-            {percent(p.playRate)} play rate
+            {percent(p.playRate)} use rate
           </li>
         ))}
       </ul>
@@ -214,23 +217,34 @@ const styles = {
     display: 'grid' as const,
     gap: '20px',
   },
-  cardRow: {
+  tiles: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'grid' as const,
+    gap: '12px',
+  },
+  tile: {
+    padding: '10px',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    gap: '8px',
+    minWidth: 0,
+    borderRadius: '14px',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--panel-border)',
+    boxShadow: 'var(--panel-shadow)',
+  },
+  tileName: {
+    fontSize: '14px',
+    overflowWrap: 'anywhere' as const,
+  },
+  tileLine: {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: '10px',
-    fontSize: '14px',
-  },
-  icon: {
-    flexShrink: 0,
-    objectFit: 'contain' as const,
-  },
-  question: {
-    margin: '0 0 6px',
-    fontSize: '15px',
-    fontWeight: 700 as const,
-  },
-  faqItem: {
-    marginBottom: '6px',
+    justifyContent: 'space-between' as const,
+    gap: '6px',
+    fontSize: '12px',
   },
   sparkHead: {
     fontSize: '13px',

@@ -484,7 +484,6 @@ export interface CardInsights {
   counters: CardCounter[];
   matchupWinRate: number | null;
   history: CardPatchPoint[];
-  faq: { question: string; answer: string }[];
 }
 
 export function fetchCardInsights(cardId: number, signal?: AbortSignal): Promise<CardInsights> {

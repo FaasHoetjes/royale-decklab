@@ -43,8 +43,8 @@ describe('sortCardStats', () => {
     expect(ids(sortCardStats(cards, 'Win rate'))).toEqual([3, 4, 1, 2]);
   });
 
-  test('ranks by play rate', () => {
-    expect(ids(sortCardStats(cards, 'Play rate'))).toEqual([4, 1, 3, 2]);
+  test('ranks by use rate', () => {
+    expect(ids(sortCardStats(cards, 'Use rate'))).toEqual([4, 1, 3, 2]);
   });
 
   test('ranks by change, with cards that have none after those that do', () => {
@@ -58,7 +58,7 @@ describe('sortCardStats', () => {
 });
 
 describe('cardRanks', () => {
-  test('ranks play rate over every card and win rate over the cards with enough games', () => {
+  test('ranks use rate over every card and win rate over the cards with enough games', () => {
     const { playRank, winRank, rankedCount } = cardRanks([stat(1, 0.5, 10_000), stat(2, 0.7, 300), stat(3, 0.55, 5_000)]);
     expect([playRank.get(1), playRank.get(3), playRank.get(2)]).toEqual([1, 2, 3]);
     expect([winRank.get(3), winRank.get(1), winRank.get(2)]).toEqual([1, 2, undefined]);

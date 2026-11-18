@@ -6,16 +6,13 @@ namespace RoyaleDeckLab.Api.Services;
 
 public sealed record CardPatchPoint(string? Since, string? Until, int Games, double WinRate, double PlayRate);
 
-public sealed record CardFaqItem(string Question, string Answer);
-
 public sealed record CardInsightsResponse(
     IReadOnlyList<string> Summary,
     IReadOnlyList<CardStyle> Styles,
     IReadOnlyList<CardPartner> Partners,
     IReadOnlyList<CardCounter> Counters,
     double? MatchupWinRate,
-    IReadOnlyList<CardPatchPoint> History,
-    IReadOnlyList<CardFaqItem> Faq);
+    IReadOnlyList<CardPatchPoint> History);
 
 public static class CardInsightsText
 {
@@ -43,15 +40,14 @@ public static class CardInsightsText
         var styles = insight?.Styles ?? [];
         var stat = stats.Cards.FirstOrDefault(s => s.Id == card.Id);
         var deckNames = DeckNames(decks);
-        var text = new Writer(card, names, stats, stat, partners, counters, styles, decks, deckNames, updates);
+        var text = new Writer(card, names, stats, stat, partners, decks, deckNames, updates);
         return new CardInsightsResponse(
             text.Summary(),
             styles,
             partners,
             counters,
             counters.Count > 0 ? insight?.MatchupWinRate : null,
-            History(card.Id, history),
-            text.Faq());
+            History(card.Id, history));
     }
 
     private static List<CardPatchPoint> History(int cardId, IReadOnlyList<CardPeriod> periods)
@@ -93,8 +89,6 @@ public static class CardInsightsText
         CardStatsResponse stats,
         CardStat? stat,
         IReadOnlyList<CardPartner> partners,
-        IReadOnlyList<CardCounter> counters,
-        IReadOnlyList<CardStyle> styles,
         IReadOnlyList<BestDeckEntry> decks,
         IReadOnlyList<string> deckNames,
         IReadOnlyList<BalanceUpdate> updates)
@@ -114,7 +108,7 @@ public static class CardInsightsText
             first += winRank is { } rank
                 ? $", #{rank} of {rankedCount} cards by win rate."
                 : $". With only {Count(stat.Games)} games, that's too few to rank it by win rate.";
-            first += $" It's in {Pct(stat.PlayRate)} of war decks, the #{playRank} most played card.";
+            first += $" It's in {Pct(stat.PlayRate)} of war decks, the #{playRank} most used card.";
 
             var second = new List<string>();
             if (stat.WinRateChange is { } change)
@@ -140,72 +134,6 @@ public static class CardInsightsText
                 second.Add($"The best war deck with it right now is {deckNames[0]}, with a {Pct(decks[0].WinRate)} win rate over {Count(decks[0].Uses)} games.");
             }
             return second.Count > 0 ? [first, string.Join(" ", second)] : [first];
-        }
-
-        public List<CardFaqItem> Faq()
-        {
-            var faq = new List<CardFaqItem>();
-            if (decks.Count > 0)
-            {
-                var best = decks[0];
-                var answer = $"{deckNames[0]} ({string.Join(", ", best.Cards.Select(c => c.Name))}) has the best record in Clan War right now: " +
-                             $"a {Pct(best.WinRate)} win rate over {Count(best.Uses)} games.";
-                var mostPlayed = Enumerable.Range(0, decks.Count).MaxBy(i => decks[i].Uses);
-                if (mostPlayed != 0)
-                {
-                    answer += $" Of the top {_name} decks, {deckNames[mostPlayed]} is played most: {Pct(decks[mostPlayed].WinRate)} over {Count(decks[mostPlayed].Uses)} games.";
-                }
-                faq.Add(new($"What is the best {_name} deck in Clash Royale right now?", answer));
-            }
-
-            if (stat is not null && Ranks(stats.Cards, card.Id) is { WinRank: { } winRank } ranks)
-            {
-                var place = (double)winRank / ranks.RankedCount;
-                var verdict = place <= 0.25 ? "Yes. " : place > 0.75 ? "Not on its own. " : "It's about average. ";
-                var answer = $"{verdict}{_name} wins {Pct(stat.WinRate)} of its war battles, #{winRank} of {ranks.RankedCount} cards, " +
-                             $"and is in {Pct(stat.PlayRate)} of war decks, the #{ranks.PlayRank} most played.";
-                var rated = styles.Where(s => s.WinRate is not null && s.Name != CardInsightsTallier.OtherStyles).ToList();
-                if (rated.Count >= 2)
-                {
-                    var bestStyle = rated.MaxBy(s => s.WinRate)!;
-                    answer += $" It does best in {bestStyle.Name} decks, at {Pct(bestStyle.WinRate!.Value)}.";
-                }
-                faq.Add(new($"Is {_name} good in Clan War?", answer));
-            }
-
-            if (partners.Count >= SummaryPartners)
-            {
-                var top = partners.Take(SummaryPartners).Select(p => $"{names[p.CardId]} (in {Pct(p.Share, 0)} of its games)");
-                var answer = $"The cards most often played with {_name} in Clan War are {List(top)}.";
-                var bestPartner = partners.MaxBy(p => p.WinRate)!;
-                if (stat is not null && bestPartner.WinRate > stat.WinRate)
-                {
-                    answer += $" Decks that also run {names[bestPartner.CardId]} win most often, at {Pct(bestPartner.WinRate)}.";
-                }
-                faq.Add(new($"What cards go well with {_name}?", answer));
-            }
-
-            if (counters.Count > 0)
-            {
-                var worst = counters.Take(SummaryPartners).Select(c => $"{names[c.CardId]} ({Pct(c.WinRate)})");
-                faq.Add(new($"What counters {_name}?",
-                    $"In Clan War, {_name} wins least often against {List(worst)}."));
-            }
-
-            if (!_isChampion && stat is { NormalWinRate: { } normal })
-            {
-                if (stat.EvoWinRate is { } evo)
-                {
-                    faq.Add(new($"Should I use the {_name} Evolution?",
-                        $"{Pct(stat.EvoShare, 0)} of {_name} war games use it. The Evolution wins {Pct(evo)} of its war battles, against {Pct(normal)} for the normal card."));
-                }
-                if (stat.HeroWinRate is { } hero)
-                {
-                    faq.Add(new($"Should I use the {_name} Hero?",
-                        $"{Pct(stat.HeroShare, 0)} of {_name} war games use it. The Hero wins {Pct(hero)} of its war battles, against {Pct(normal)} for the normal card."));
-                }
-            }
-            return faq;
         }
 
         private string Describe()

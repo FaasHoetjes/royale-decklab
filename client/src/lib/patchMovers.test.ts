@@ -42,7 +42,7 @@ describe('winRateMovers', () => {
 });
 
 describe('playRateMovers', () => {
-  test('ranks by the change in play rate and skips cards too rare to compare', () => {
+  test('ranks by the change in use rate and skips cards too rare to compare', () => {
     const movers = playRateMovers([
       stat(1, { playRate: [0.05, 0.06] }),
       stat(2, { playRate: [0.09, 0.07] }),
