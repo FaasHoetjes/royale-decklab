@@ -195,12 +195,12 @@ public static class SpaContent
         }
         if (insights is not null)
         {
-            html.Append(CardInsights(card, stat, insights, (catalog ?? []).ToDictionary(c => c.Id, c => c.Name)));
+            html.Append(CardInsights(card, insights, (catalog ?? []).ToDictionary(c => c.Id, c => c.Name)));
         }
         return Page(html.ToString());
     }
 
-    private static string CardInsights(CatalogCard card, CardStat? stat, CardInsightsResponse insights, IReadOnlyDictionary<int, string> names)
+    private static string CardInsights(CatalogCard card, CardInsightsResponse insights, IReadOnlyDictionary<int, string> names)
     {
         var html = new StringBuilder(H2($"{card.Name} in Clan War"));
         foreach (var paragraph in insights.Summary)
@@ -219,10 +219,8 @@ public static class SpaContent
             html.Append("</ul>");
         }
 
-        var partners = stat is null ? [] : insights.Partners.Select(p => (p.CardId, $"in {Share(p.Share)} of its games, win rate {Points(p.WinRate - stat.WinRate)}"));
-        var counters = insights.MatchupWinRate is { } baseline
-            ? insights.Counters.Select(c => (c.CardId, $"win rate vs {Points(c.WinRate - baseline)}"))
-            : [];
+        var partners = insights.Partners.Select(p => (p.CardId, $"in {Share(p.Share)} of its games, win rate {Points(p.Lift)} above expected"));
+        var counters = insights.Counters.Select(c => (c.CardId, $"{SpaPages.Percent(c.WinRate)} win rate against it, {Points(-c.Lift)} below expected"));
         html.Append(MatchupList($"{card.Name} plays well with", partners));
         html.Append(MatchupList($"{card.Name} struggles against", counters));
 

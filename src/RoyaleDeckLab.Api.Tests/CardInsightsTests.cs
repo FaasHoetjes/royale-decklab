@@ -36,38 +36,47 @@ public sealed class CardInsightsTests
     }
 
     [Fact]
-    public void Partners_are_the_cards_played_with_it_most_once_they_have_enough_games()
+    public void Usual_partners_are_the_cards_played_with_it_most_once_they_have_enough_games()
     {
         var tallier = Tally(
             Repeat(150, Build.Eight(1), BattleResult.Win, "#A")
                 .Concat(Repeat(50, [1, 20, 21, 22, 23, 24, 25, 26], BattleResult.Loss, "#B")));
 
-        var partners = InsightOf(tallier, 1).Partners;
-
-        Assert.Equal([2, 3, 4, 5, 6, 7, 8], partners.Select(p => p.CardId));
-        Assert.Equal(0.75, partners[0].Share, 10);
-        Assert.Equal(1.0, partners[0].WinRate, 10);
-        Assert.DoesNotContain(partners, p => p.CardId == 20);
         Assert.Equal([2, 3, 4], InsightOf(tallier, 1).UsualPartners);
     }
 
-    [Fact]
-    public void Partners_must_clearly_lift_the_win_rate_and_rank_with_few_games_counting_for_less()
+    private static List<BattleRecord> Games(int[] cards, int games, int wins, string tag, ref int nextFiller)
     {
-        var next = 1000;
-        IEnumerable<BattleRecord> With(int partner, int games, int wins, string tag) => Enumerable.Range(0, games).Select(i =>
+        var battles = new List<BattleRecord>();
+        for (var i = 0; i < games; i++)
         {
-            int[] deck = partner > 0 ? [1, partner, next++, next++, next++, next++, next++, next++] : [1, next++, next++, next++, next++, next++, next++, next++];
-            return Build.Battle($"{tag}{i}", deck, i < wins ? BattleResult.Win : BattleResult.Loss);
-        }).ToList();
+            var deck = cards.Concat(Enumerable.Range(nextFiller, 8 - cards.Length)).ToArray();
+            nextFiller += 8 - cards.Length;
+            battles.Add(Build.Battle($"{tag}{i}", deck, i < wins ? BattleResult.Win : BattleResult.Loss));
+        }
+        return battles;
+    }
 
+    [Fact]
+    public void Partners_must_clearly_beat_what_both_cards_win_on_their_own_and_rank_with_few_games_counting_for_less()
+    {
+        var filler = 10_000;
         var tallier = Tally(
-            With(50, 1_000, 550, "#A")
-                .Concat(With(60, 120, 72, "#B"))
-                .Concat(With(70, 300, 156, "#C"))
-                .Concat(With(0, 1_000, 432, "#D")));
+            Games([1, 50], 1_000, 570, "#A", ref filler)
+                .Concat(Games([1, 60], 150, 90, "#B", ref filler))
+                .Concat(Games([1, 70], 300, 156, "#C", ref filler))
+                .Concat(Games([1, 80], 300, 180, "#D", ref filler))
+                .Concat(Games([1], 1_000, 379, "#E", ref filler))
+                .Concat(Games([50], 3_000, 1_500, "#F", ref filler))
+                .Concat(Games([60], 3_000, 1_500, "#G", ref filler))
+                .Concat(Games([70], 3_000, 1_500, "#H", ref filler))
+                .Concat(Games([80], 3_000, 1_800, "#I", ref filler))
+                .ToList());
 
-        Assert.Equal([50, 60], InsightOf(tallier, 1).Partners.Select(p => p.CardId));
+        var partners = InsightOf(tallier, 1).Partners;
+
+        Assert.Equal([50, 60], partners.Select(p => p.CardId));
+        Assert.Equal(0.57 - 2_070.0 / 4_000, partners[0].Lift, 10);
     }
 
     [Fact]
@@ -97,7 +106,9 @@ public sealed class CardInsightsTests
         var deck = Build.Eight(1);
         var tallier = Tally(
             Pairs(1200, deck, Build.Eight(100), wins: 360, "X")
-                .Concat(Pairs(1200, deck, Build.Eight(200), wins: 840, "Y")));
+                .Concat(Pairs(1200, deck, Build.Eight(200), wins: 840, "Y"))
+                .Concat(Repeat(1500, Build.Eight(100), BattleResult.Win, "#W"))
+                .Concat(Repeat(1500, Build.Eight(100), BattleResult.Loss, "#L")));
 
         var insight = InsightOf(tallier, 1);
 
@@ -138,7 +149,7 @@ public sealed class CardInsightsTests
 
         Assert.Equal(0, insight.MatchupGames);
         Assert.Null(insight.MatchupWinRate);
-        Assert.NotEmpty(insight.Partners);
+        Assert.NotEmpty(insight.UsualPartners);
     }
 
     private static CardPeriod Period(long start, long end, int battles) => new(start, end, battles, []);
@@ -217,7 +228,7 @@ public sealed class CardInsightsTextTests
 
     private static CardInsight Insight(params CardCounter[] counters) => new(
         [2, 3, 4],
-        [new(5, 300, 0.15, 0.62)],
+        [new(5, 300, 0.15, 0.62, 0.06)],
         [],
         counters,
         counters.Length > 0 ? 5_000 : 0,
@@ -284,7 +295,7 @@ public sealed class CardInsightsTextTests
     [Fact]
     public void The_crawler_copy_has_the_sections_in_page_order()
     {
-        var insights = InsightsFor(Ranked, Insight(new(10, 400, 0.40), new(11, 400, 0.42), new(12, 400, 0.44)));
+        var insights = InsightsFor(Ranked, Insight(new(10, 400, 0.40, -0.12), new(11, 400, 0.42, -0.1), new(12, 400, 0.44, -0.08)));
 
         var html = SpaContent.Card(Catalog[0], Ranked.Cards[0], true, [], insights, Catalog);
 

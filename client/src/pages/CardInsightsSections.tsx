@@ -56,23 +56,23 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
           </ul>
         )}
 
-      {partners.length > 0 && cardWinRate != null && (
+      {partners.length > 0 && (
         <TileSection
           title={`${card.name} plays well with`}
           gap={gap}
           theme={theme}
           isMobile={isMobile}
-          tiles={partners.map((p) => ({ card: byId.get(p.cardId)!, difference: p.winRate - cardWinRate, detail: `in ${percent(p.share, 0)} of games` }))}
+          tiles={partners.map((p) => ({ card: byId.get(p.cardId)!, difference: p.lift, detail: `in ${percent(p.share, 0)} of games` }))}
         />
       )}
 
-      {counters.length > 0 && insights.matchupWinRate != null && (
+      {counters.length > 0 && (
         <TileSection
           title={`${card.name} struggles against`}
           gap={gap}
           theme={theme}
           isMobile={isMobile}
-          tiles={counters.map((c) => ({ card: byId.get(c.cardId)!, difference: c.winRate - insights.matchupWinRate!, detail: `${percent(c.winRate)} win rate` }))}
+          tiles={counters.map((c) => ({ card: byId.get(c.cardId)!, difference: c.lift, detail: `${percent(c.winRate)} win rate` }))}
         />
       )}
 

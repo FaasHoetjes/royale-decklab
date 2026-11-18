@@ -454,6 +454,7 @@ export interface CardPartner {
   games: number;
   share: number;
   winRate: number;
+  lift: number;
 }
 
 export interface CardStyle {
@@ -467,6 +468,7 @@ export interface CardCounter {
   cardId: number;
   games: number;
   winRate: number;
+  lift: number;
 }
 
 export interface CardPatchPoint {
