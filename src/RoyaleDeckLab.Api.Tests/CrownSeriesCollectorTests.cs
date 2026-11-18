@@ -514,6 +514,40 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     }
 
     [Fact]
+    public async Task An_opponent_whose_log_couldnt_be_read_is_not_asked_again_in_the_same_poll()
+    {
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#A", TimeSpan.FromHours(1), cap: 12)];
+        _api.Garbled.Add("#A");
+
+        await CollectAsync();
+
+        Assert.Single(_api.LogsRead, tag => tag == "#A");
+    }
+
+    [Fact]
+    public async Task A_seed_whose_log_fails_twice_waits_before_it_is_tried_again()
+    {
+        _options.LiveDuelWindowMs = (long)TimeSpan.FromDays(1).TotalMilliseconds;
+        _api.Ranked.Add("#R1");
+        _api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1))];
+        StoreWarPlayers("#GONE");
+        _api.Garbled.Add("#GONE");
+
+        foreach (var hours in new[] { 0, 1, 2 })
+        {
+            _clock.Now = Now.AddHours(hours);
+            await CollectAsync();
+        }
+        var readsBeforeTheWait = _api.LogsRead.Count(tag => tag == "#GONE");
+        _clock.Now = Now.AddHours(13);
+        await CollectAsync();
+
+        Assert.Equal(2, readsBeforeTheWait);
+        Assert.Equal(3, _api.LogsRead.Count(tag => tag == "#GONE"));
+    }
+
+    [Fact]
     public async Task Kings_league_opponents_are_followed_once_per_poll()
     {
         _api.Ranked.Add("#R1");

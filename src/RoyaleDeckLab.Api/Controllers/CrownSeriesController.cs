@@ -56,7 +56,6 @@ public sealed class CrownSeriesController(
             }
 
             var lineup = await deckCache.GetAsync(player, parsedLeague, ct);
-            // Each round is stored once per player side.
             var capMeta = current.ForCap(parsedLeague.LevelCap());
             stats.NoteServed(tag);
             schedule.AddVisitor(player.Tag, time.GetUtcNow().ToUnixTimeMilliseconds());
@@ -73,6 +72,7 @@ public sealed class CrownSeriesController(
                 },
                 league = parsedLeague,
                 levelCap = parsedLeague.LevelCap(),
+                // Each round is stored once per player side.
                 duelRounds = capMeta.Rounds / 2,
                 otherLeagueRounds = (int)Math.Round(capMeta.BorrowedRounds / 2),
                 duelDecks = lineup,

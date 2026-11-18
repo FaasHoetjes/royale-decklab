@@ -102,8 +102,11 @@ export default function CrownSeries() {
             <strong>Your average chance to win a round.</strong>
             <br />
             You bring all 4 decks and play 2 or 3 of them in a best of 3, so this averages their win chances. Each starts from the deck's win rate in Crown Series Duels:{' '}
-            {data.duelRounds.toLocaleString()} rounds played at level {data.levelCap}, plus rounds from other leagues, which
-            count for less and add up to {data.otherLeagueRounds.toLocaleString()} more. Then it
+            {data.duelRounds.toLocaleString()} rounds played at level {data.levelCap}
+            {data.otherLeagueRounds > 0
+              ? `, plus rounds from other leagues, which count for less and add up to ${data.otherLeagueRounds.toLocaleString()} more`
+              : ''}
+            . Then it
             factors in your card levels at the league's cap. Your opponents have about your levels, so a card below the
             cap costs a lot.
           </>

@@ -20,6 +20,7 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
     private readonly object _lock = new();
     private readonly Dictionary<string, Tracked> _players = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _seedsDueMs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _seedsFailedMs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _clansTriedMs = new(StringComparer.Ordinal);
     private (long FetchedMs, IReadOnlyList<string> Tags)? _warPlayers;
 
@@ -245,7 +246,25 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
         var isActive = newestBattleMs >= nowMs - _opt.ActiveSeedWindowMs;
         lock (_lock)
         {
+            _seedsFailedMs.Remove(tag);
             _seedsDueMs[tag] = nowMs + (isActive ? _opt.ActiveSeedRetryMs : _opt.SeedRetryMs);
+        }
+    }
+
+    /// <summary>
+    /// A seed whose log the API failed to send is tried again next poll, since most failures are one-offs; failing
+    /// again, as a deleted or banned account does every time, it waits <see cref="CrownSeriesOptions.ActiveSeedRetryMs"/>.
+    /// </summary>
+    public void RecordSeedFailed(string tag, long nowMs)
+    {
+        lock (_lock)
+        {
+            if (_seedsFailedMs.Remove(tag))
+            {
+                _seedsDueMs[tag] = nowMs + _opt.ActiveSeedRetryMs;
+                return;
+            }
+            _seedsFailedMs[tag] = nowMs;
         }
     }
 
@@ -309,6 +328,7 @@ public sealed class CrownSeriesSchedule(IOptions<CrownSeriesOptions> options)
             }
             DropLapsedVisitors(nowMs);
             RemoveWhere(_seedsDueMs, dueMs => dueMs <= nowMs);
+            RemoveWhere(_seedsFailedMs, failedMs => failedMs <= nowMs - _opt.ActiveSeedRetryMs);
             RemoveWhere(_clansTriedMs, triedMs => triedMs <= nowMs - _opt.ActiveSeedRetryMs);
         }
     }

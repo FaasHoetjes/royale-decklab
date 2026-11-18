@@ -145,12 +145,15 @@ public sealed class CrownSeriesCollector(
         }
         finally
         {
-            // Only a log that was read counts as tried: one the API failed to send is tried again next poll.
-            foreach (var tag in seeds.Tags)
+            foreach (var tag in seeds.Tags.Where(harvest.WasRead))
             {
                 if (harvest.NewestBattleMs(tag) is { } newestBattleMs)
                 {
                     schedule.RecordSeedTried(tag, newestBattleMs, now);
+                }
+                else
+                {
+                    schedule.RecordSeedFailed(tag, now);
                 }
             }
         }
