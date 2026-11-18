@@ -155,14 +155,13 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
           )
         )}
       </StatTile>
-      <StatTile theme={theme} value={percent(stat.playRate)} label="play rate">
-        {playRank && <span style={{ color: theme.text.secondary }}>#{playRank} most played</span>}
-      </StatTile>
+      <StatTile theme={theme} value={percent(stat.playRate)} label="play rate" />
       {winRank && ranks ? (
         <StatTile theme={theme} value={`#${winRank}`} label={`win rate rank of ${ranks.rankedCount}`} />
       ) : (
         <StatTile theme={theme} value={stat.games.toLocaleString('en-US')} label="games" />
       )}
+      {playRank && ranks && <StatTile theme={theme} value={`#${playRank}`} label={`play rate rank of ${ranks.playRank.size}`} />}
     </div>
   );
 
@@ -194,7 +193,7 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
               <div style={styles.facts}>{factChips}</div>
             </>
           )}
-          {statsQuery.isLoading && <span className="skeleton" style={styles.tilesSkeleton} />}
+          {statsQuery.isLoading && <span className="skeleton" style={{ ...styles.tilesSkeleton, ...(isMobile ? { height: '180px' } : {}) }} />}
           {statTiles}
           {stats && !stat && (
             <p style={{ ...styles.note, color: theme.text.secondary }}>Nobody in the top war clans has played {card.name} in a war battle this patch.</p>
@@ -359,17 +358,17 @@ const styles = {
   },
   tiles: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(3, minmax(0, 168px))',
+    gridTemplateColumns: 'repeat(4, minmax(0, 168px))',
     gap: '10px',
   },
   tilesMobile: {
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: '8px',
   },
   tilesSkeleton: {
     display: 'block' as const,
     height: '86px',
-    maxWidth: '520px',
+    maxWidth: '702px',
     borderRadius: '12px',
   },
   note: {
