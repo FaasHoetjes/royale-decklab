@@ -1,27 +1,52 @@
+import { useEffect, useRef } from 'react';
 import { useBestDecks } from '../queries';
 import { cardIconUrl, versionOf } from '../lib/cardDisplay';
 
 const MAX_ART = 40;
 const CARDS_PER_COLUMN = 12;
 
-// Solid behind the middle of the window, so the text there stays readable over the art.
 // Just enough at the bottom for the footer, which only shows once the page is scrolled to its end.
 const BOTTOM_FADE = 'linear-gradient(to top, var(--bg-primary) 40px, transparent 110px)';
-const DESKTOP_FADE = [
-  BOTTOM_FADE,
-  'radial-gradient(ellipse 36% 40% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, color-mix(in srgb, var(--bg-primary) 35%, transparent) 100%)',
-].join(', ');
-const PHONE_FADE = [
-  BOTTOM_FADE,
-  'radial-gradient(ellipse 62% 36% at 50% 50%, var(--bg-primary) 50%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, color-mix(in srgb, var(--bg-primary) 40%, transparent) 100%)',
-].join(', ');
+// Solid behind the hero in the middle of the window, so its text stays readable over the art.
+const DESKTOP_SPOTLIGHT =
+  'radial-gradient(ellipse 36% 40% at 50% 50%, var(--bg-primary) 45%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 70%, color-mix(in srgb, var(--bg-primary) 35%, transparent) 100%)';
+const PHONE_SPOTLIGHT =
+  'radial-gradient(ellipse 62% 36% at 50% 50%, var(--bg-primary) 50%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 75%, color-mix(in srgb, var(--bg-primary) 40%, transparent) 100%)';
 const LAYOUTS = {
-  desktop: { columns: 18, width: 118, gap: 18, fade: DESKTOP_FADE },
-  phone: { columns: 9, width: 86, gap: 12, fade: PHONE_FADE },
+  desktop: { columns: 18, width: 118, gap: 18, spotlight: DESKTOP_SPOTLIGHT },
+  phone: { columns: 9, width: 86, gap: 12, spotlight: PHONE_SPOTLIGHT },
 } as const;
 
+// The spotlight is gone once the page has scrolled this share of the window, about when the hero leaves it.
+const SPOTLIGHT_SCROLL_SHARE = 0.5;
+
+function useSpotlightFade(shown: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!shown) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const progress = Math.min(1, window.scrollY / (window.innerHeight * SPOTLIGHT_SCROLL_SHARE));
+      if (ref.current) ref.current.style.opacity = String(1 - progress);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [shown]);
+  return ref;
+}
+
 /**
- * Tilted columns of the meta's cards drifting up and down behind the window, faded out toward the middle.
+ * Tilted columns of the meta's cards drifting up and down behind the window, faded out toward the middle while the hero is in view.
  * It sticks to the window inside a grid cell it shares with the page, rather than being fixed, so it ends with the
  * page's content and moves with it when Safari bounces at either end, instead of showing in the gap.
  * The layer sticks just below the phone's 61px header plus the main column's padding; the wall inside reaches back
@@ -39,6 +64,7 @@ export default function CardWall({ isMobile }: { isMobile: boolean }) {
   ]
     .filter(Boolean)
     .slice(0, MAX_ART);
+  const spotlightRef = useSpotlightFade(art.length > 0);
   if (art.length === 0) return null;
 
   const layout = isMobile ? LAYOUTS.phone : LAYOUTS.desktop;
@@ -68,7 +94,8 @@ export default function CardWall({ isMobile }: { isMobile: boolean }) {
           );
         })}
       </div>
-      <div style={{ ...styles.fade, background: layout.fade }} />
+      <div ref={spotlightRef} style={{ ...styles.fade, background: layout.spotlight }} />
+      <div style={{ ...styles.fade, background: BOTTOM_FADE }} />
     </div>
     </div>
   );
