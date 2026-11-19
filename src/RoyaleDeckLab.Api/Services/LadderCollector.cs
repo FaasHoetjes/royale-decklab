@@ -83,6 +83,7 @@ public sealed class LadderCollector(
         schedule.Trim([]);
 
         await poll.FollowOpponentsAsync([], _ => true, ct);
+        await poll.ReadAsync(schedule.DueTags(now), ct);
         return seeds.CountBySource;
     }
 

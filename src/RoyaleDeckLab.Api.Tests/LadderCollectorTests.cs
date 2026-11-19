@@ -218,7 +218,7 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
-    public async Task Rereads_leave_room_for_seeds()
+    public async Task Rereads_leave_room_for_seeds_and_get_what_the_seeds_leave()
     {
         LadderOptions.ReadsPerPoll = 4;
         LadderOptions.SeedsPerPoll = 2;
@@ -228,7 +228,7 @@ public sealed class LadderCollectorTests : CollectorFixture
         await CollectAsync();
 
         Assert.Contains("#V", Api.LogsRead);
-        Assert.Equal(2, Api.LogsRead.Count(tag => tag.StartsWith("#T")));
+        Assert.Equal(3, Api.LogsRead.Count(tag => tag.StartsWith("#T")));
     }
 
     [Fact]
