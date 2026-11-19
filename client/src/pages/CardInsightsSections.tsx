@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import type { CardInsights, CardPatchPoint, CatalogCard } from '../api';
-import { percent } from '../lib/cardStats';
+import { isClearChange, percent } from '../lib/cardStats';
 import { ChangeTile, ChangeTileRow } from '../components/ChangeTiles';
 import { ChangePill } from '../components/WinRateChange';
 import type { Theme } from '../theme';
@@ -136,48 +136,89 @@ function TileSection({ title, tiles, gap, theme, isMobile }: { title: string; ti
   );
 }
 
-const sinceLabel = (since: string | null) =>
-  since ? `From ${new Date(since).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })}` : 'Earlier';
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+function patchLabel(point: CardPatchPoint): string {
+  if (!point.until) return 'Now';
+  return point.since ? shortDate(point.since) : `Before ${shortDate(point.until)}`;
+}
+
+function patchRange(point: CardPatchPoint): string {
+  if (!point.since) return point.until ? `before ${shortDate(point.until)}` : 'earlier';
+  return point.until ? `${shortDate(point.since)} – ${shortDate(point.until)}` : `since ${shortDate(point.since)}`;
+}
 
 function PatchHistory({ points, theme, isMobile }: { points: CardPatchPoint[]; theme: Theme; isMobile: boolean }) {
+  const latest = points.at(-1)!;
+  const previous = points.at(-2)!;
+  const stat = (label: string, values: number[], isClear: boolean) => (
+    <PatchStat label={label} values={values} points={points} isClear={isClear} theme={theme} isMobile={isMobile} />
+  );
   return (
     <>
-      <div style={{ ...styles.columns, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-        <Sparkline label="Win rate" values={points.map((p) => p.winRate)} theme={theme} />
-        <Sparkline label="Use rate" values={points.map((p) => p.playRate)} theme={theme} />
+      <div style={{ ...styles.columns, gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))' }}>
+        {stat('Win rate', points.map((p) => p.winRate), isClearChange(previous, latest))}
+        {stat('Use rate', points.map((p) => p.playRate), false)}
       </div>
-      <ul style={{ ...styles.list, marginTop: '14px' }}>
-        {points.map((p) => (
-          <li key={p.since ?? 'earlier'} style={{ color: theme.text.secondary, fontSize: '13px' }}>
-            <span style={{ color: theme.text.primary, fontWeight: 600 }}>{sinceLabel(p.since)}</span>: {percent(p.winRate)} win rate,{' '}
-            {percent(p.playRate)} use rate
-          </li>
-        ))}
-      </ul>
+      <p style={{ ...styles.footnote, color: theme.text.tertiary }}>Changes are against the patch before, {patchRange(previous)}.</p>
     </>
   );
 }
 
-const SPARK_WIDTH = 240;
-const SPARK_HEIGHT = 48;
+interface PatchStatProps {
+  label: string;
+  values: number[];
+  points: CardPatchPoint[];
+  isClear: boolean;
+  theme: Theme;
+  isMobile: boolean;
+}
 
-function Sparkline({ label, values, theme }: { label: string; values: number[]; theme: Theme }) {
-  const latest = values.at(-1) ?? 0;
+function PatchStat({ label, values, points, isClear, theme, isMobile }: PatchStatProps) {
+  const latest = values.at(-1)!;
+  const previous = values.at(-2)!;
+  const last = points.length - 1;
+  return (
+    <div style={styles.patchStat}>
+      <div style={{ ...styles.patchLabel, color: theme.text.secondary }}>{label} this patch</div>
+      <div style={styles.patchValue}>
+        <span style={{ ...styles.patchNumber, fontSize: isMobile ? '30px' : '34px', color: theme.text.primary }}>{percent(latest)}</span>
+        <ChangePill change={latest - previous} isClear={isClear} large />
+      </div>
+      <Sparkline label={label} values={values} points={points} theme={theme} />
+      <div style={styles.ticks}>
+        {points.map((p, i) => (
+          <div key={p.since ?? 'earlier'} style={{ textAlign: i === 0 ? 'left' : i === last ? 'right' : 'center' }}>
+            <div style={{ color: i === last ? theme.text.primary : theme.text.secondary, fontWeight: i === last ? 700 : 500 }}>{patchLabel(p)}</div>
+            <div style={{ color: theme.text.tertiary, fontVariantNumeric: 'tabular-nums' }}>{p.games.toLocaleString('en-US')} games</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const SPARK_WIDTH = 300;
+const SPARK_HEIGHT = 56;
+
+function Sparkline({ label, values, points, theme }: { label: string; values: number[]; points: CardPatchPoint[]; theme: Theme }) {
   const min = Math.min(...values);
   const range = Math.max(...values) - min || 1;
   const step = SPARK_WIDTH / (values.length - 1);
-  const coords = values.map((v, i) => [i * step, SPARK_HEIGHT - 4 - ((v - min) / range) * (SPARK_HEIGHT - 8)] as const);
-  const [lastX, lastY] = coords.at(-1) ?? [0, 0];
+  const coords = values.map((v, i) => [i * step, SPARK_HEIGHT - 6 - ((v - min) / range) * (SPARK_HEIGHT - 14)] as const);
+  const line = coords.map(([x, y]) => `${x},${y}`).join(' ');
+  const description = values.map((v, i) => `${patchLabel(points[i]!)} ${percent(v)}`).join(', ');
   return (
-    <div>
-      <div style={{ ...styles.sparkHead, color: theme.text.secondary }}>
-        {label} <b style={{ color: theme.text.primary }}>{percent(latest)}</b>
-      </div>
-      <svg viewBox={`-4 0 ${SPARK_WIDTH + 8} ${SPARK_HEIGHT}`} style={styles.spark} role="img" aria-label={`${label} per patch: ${values.map((v) => percent(v)).join(', ')}`}>
-        <polyline points={coords.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={lastX} cy={lastY} r="3.5" fill="var(--accent)" />
-      </svg>
-    </div>
+    <svg viewBox={`-6 -2 ${SPARK_WIDTH + 12} ${SPARK_HEIGHT + 4}`} style={styles.spark} role="img" aria-label={`${label} per patch: ${description}`}>
+      <polygon points={`0,${SPARK_HEIGHT} ${line} ${SPARK_WIDTH},${SPARK_HEIGHT}`} fill="var(--accent)" opacity="0.1" />
+      <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {coords.map(([x, y], i) => {
+        const isLatest = i === coords.length - 1;
+        return (
+          <circle key={i} cx={x} cy={y} r={isLatest ? 4 : 3} fill={isLatest ? 'var(--accent)' : theme.bg.tertiary} stroke="var(--accent)" strokeWidth="2" />
+        );
+      })}
+    </svg>
   );
 }
 
@@ -197,14 +238,6 @@ const styles = {
     margin: '0 0 10px',
     fontSize: '14.5px',
     lineHeight: 1.6,
-  },
-  list: {
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    gap: '10px',
   },
   styleGrid: {
     display: 'grid' as const,
@@ -246,15 +279,40 @@ const styles = {
   },
   columns: {
     display: 'grid' as const,
-    gap: '20px',
+    gap: '14px',
   },
-  sparkHead: {
-    fontSize: '13px',
-    marginBottom: '6px',
+  patchStat: {
+    minWidth: 0,
+    padding: '16px 16px 12px',
+    borderRadius: '14px',
+    backgroundColor: 'var(--bg-tertiary)',
+  },
+  patchLabel: {
+    fontSize: '12.5px',
+  },
+  patchValue: {
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '10px',
+    margin: '4px 0 10px',
+  },
+  patchNumber: {
+    fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
+    lineHeight: 1,
+    fontVariantNumeric: 'tabular-nums',
   },
   spark: {
     display: 'block' as const,
     width: '100%',
-    height: '48px',
+    height: 'auto',
+    overflow: 'visible' as const,
+  },
+  ticks: {
+    display: 'flex' as const,
+    justifyContent: 'space-between' as const,
+    gap: '8px',
+    marginTop: '6px',
+    fontSize: '11px',
+    lineHeight: 1.35,
   },
 };

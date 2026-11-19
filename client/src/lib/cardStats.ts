@@ -15,6 +15,12 @@ export function isLowSample(stat: CardStat): boolean {
   return stat.games < MIN_RELIABLE_GAMES;
 }
 
+/** Whether a win rate moved by more than chance (two standard errors) between two samples, such as two patches. */
+export function isClearChange(before: { winRate: number; games: number }, after: { winRate: number; games: number }): boolean {
+  const variance = (s: { winRate: number; games: number }) => (s.winRate * (1 - s.winRate)) / s.games;
+  return Math.abs(after.winRate - before.winRate) > 2 * Math.sqrt(variance(before) + variance(after));
+}
+
 function sortValue(stat: CardStat, sort: CardSort): number | null {
   if (sort === 'Use rate') return stat.playRate;
   if (sort === 'Change') return stat.winRateChange;

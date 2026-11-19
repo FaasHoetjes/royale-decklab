@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { CardStat } from '../api';
-import { cardRanks, isLowSample, sortCardStats, wholePercents } from './cardStats';
+import { cardRanks, isClearChange, isLowSample, sortCardStats, wholePercents } from './cardStats';
 
 const BATTLES = 200_000;
 
@@ -74,5 +74,15 @@ describe('wholePercents', () => {
   test('hands leftover points to the largest remainders', () => {
     expect(wholePercents([0.284, 0.193, 0.523])).toEqual([29, 19, 52]);
     expect(wholePercents([1 / 3, 1 / 3, 1 / 3]).reduce((a, b) => a + b)).toBe(100);
+  });
+});
+
+describe('isClearChange', () => {
+  test('a small step on many games is still within chance', () => {
+    expect(isClearChange({ winRate: 0.4766, games: 24_573 }, { winRate: 0.4839, games: 12_723 })).toBe(false);
+  });
+
+  test('a step beyond two standard errors is clear', () => {
+    expect(isClearChange({ winRate: 0.47, games: 20_000 }, { winRate: 0.49, games: 20_000 })).toBe(true);
   });
 });
