@@ -100,14 +100,31 @@ predict the following days worse at every boundary.
 
 ### Ladder battles (`ladder.db`)
 
-Every battle log the war crawl and the Crown Series poll read also holds
-Trophy Road and Ranked battles. Both players' sides of each are stored in
-`ladder.db`, next to `meta.db`: the player's starting trophies on Trophy Road
-or their league in Ranked, the result, and each card with its level and
-version. A battle read from both players' logs is stored once. Sides older
-than 14 days are pruned, and after each crawl the log lists how many are
-stored per 1,000 trophies and per Ranked league. Like `meta.db`, it's derived
-data and can be deleted.
+Every battle log a crawl reads also holds Trophy Road and Ranked battles. Both
+players' sides of each are stored in `ladder.db`, next to `meta.db`: the
+player's starting trophies on Trophy Road or their league in Ranked, the
+result, and each card with its level and version. A battle read from both
+players' logs is stored once, and sides older than 14 days are pruned. Like
+`meta.db`, it's derived data and can be deleted.
+
+The war crawl only reaches players above about 9,000 trophies, so an hourly
+ladder poll reads players in every 1,000-trophy range from 4,000 up and in
+every Ranked league, at most 1,000 tracked players each:
+
+- Ladder matches players on trophies, so following a player's opponents fills
+  their own range. Opponents a poll had no reads left for are kept for the
+  next one, and the ranges with the most room are read first.
+- The site's visitors start ranges no one is tracked in yet, followed by the
+  clanmates of players in ranges with room.
+- A poll reads at most 2,000 logs, or 500 while a Crown Series weekend is on,
+  and waits for a war rebuild to finish before it starts.
+
+After each poll the log lists the battles stored and the players tracked per
+range and league.
+
+The ladder poll and the Crown Series poll share their scheduling, seeding and
+opponent following (`Services/Crawling`); each only decides what group a
+player belongs to.
 
 ### Usage stats (`stats.db`)
 

@@ -94,6 +94,10 @@ builder.Services.AddHostedService<MetaRefreshService>();
 builder.Services.AddSingleton<CrownSeriesSchedule>();
 builder.Services.AddScoped<CrownSeriesCollector>();
 builder.Services.AddHostedService<CrownSeriesRefreshService>();
+builder.Services.AddSingleton<LadderSchedule>();
+builder.Services.AddScoped<LadderCollector>();
+builder.Services.AddHostedService<LadderRefreshService>();
+builder.Services.AddSingleton<VisitorSeeds>();
 builder.Services.AddSingleton<CardReleases>();
 builder.Services.AddHttpClient<SupercellBlogClient>(http =>
     {
