@@ -140,6 +140,20 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_player_who_dropped_below_the_lowest_range_isnt_followed_back_in_from_older_battles()
+    {
+        RestoreTracked(["#T"]);
+        Api.Logs["#T"] = [TrophyRoadBattle("#T", "#X", TimeSpan.FromMinutes(30), trophies: 3900)];
+        await CollectAsync();
+
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#T", TimeSpan.FromHours(1), trophies: 4100)];
+        await CollectAsync();
+
+        Assert.Single(Api.LogsRead, tag => tag == "#T");
+    }
+
+    [Fact]
     public async Task A_clan_asked_without_reads_left_for_its_members_is_asked_again()
     {
         LadderOptions.ReadsPerPoll = 2;

@@ -11,10 +11,10 @@ public sealed class LadderSchedule(IOptions<LadderOptions> options) : PlayerTrac
     private readonly object _metLock = new();
     private Dictionary<string, LadderGroup> _met = new(StringComparer.Ordinal);
 
-    public void KeepMet(IEnumerable<(string Tag, LadderGroup Group)> opponents)
+    public void KeepMet(IEnumerable<(string Tag, LadderGroup Group)> opponents, long nowMs)
     {
         var kept = opponents
-            .Where(o => !IsKnown(o.Tag))
+            .Where(o => CanTrack(o.Tag, nowMs))
             .GroupBy(o => o.Group)
             .SelectMany(inGroup => inGroup.Take(RoomIn(inGroup.Key)))
             .ToDictionary(o => o.Tag, o => o.Group, StringComparer.Ordinal);

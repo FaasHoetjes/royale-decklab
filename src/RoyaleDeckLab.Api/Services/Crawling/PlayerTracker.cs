@@ -14,6 +14,7 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
     private readonly Dictionary<string, long> _seedsDueMs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _seedsFailedMs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _clansTriedMs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _leftMs = new(StringComparer.Ordinal);
 
     private readonly Dictionary<string, Visitor> _waitingVisitors = new(StringComparer.Ordinal);
 
@@ -70,6 +71,16 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
 
     private bool IsDue(Tracked tracked, long nowMs) => tracked.NextReadMs <= nowMs + _opt.PollIntervalMs / 2;
 
+    /// <summary>Not tracked, and didn't leave the groups lately: older battles in other logs still show them inside.</summary>
+    public bool CanTrack(string tag, long nowMs)
+    {
+        lock (_lock)
+        {
+            return !_players.ContainsKey(tag)
+                && (!_leftMs.TryGetValue(tag, out var leftMs) || leftMs < nowMs - _opt.ForgetAfterMs);
+        }
+    }
+
     /// <summary>
     /// The next read waits half the time the log took to fill, so it comes long before the oldest battle drops out;
     /// a log unchanged since the last read waits twice as long as before.
@@ -93,12 +104,13 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
         }
     }
 
-    public void Forget(string tag)
+    public void Forget(string tag, long nowMs)
     {
         lock (_lock)
         {
             _players.Remove(tag);
             _waitingVisitors.Remove(tag);
+            _leftMs[tag] = nowMs;
         }
     }
 
@@ -270,6 +282,7 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
             RemoveWhere(_seedsDueMs, dueMs => dueMs <= nowMs);
             RemoveWhere(_seedsFailedMs, failedMs => failedMs <= nowMs - _opt.ActiveSeedRetryMs);
             RemoveWhere(_clansTriedMs, triedMs => triedMs <= nowMs - _opt.ActiveSeedRetryMs);
+            RemoveWhere(_leftMs, leftMs => leftMs < nowMs - _opt.ForgetAfterMs);
         }
     }
 

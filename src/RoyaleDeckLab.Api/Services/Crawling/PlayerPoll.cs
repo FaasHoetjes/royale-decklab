@@ -64,7 +64,7 @@ public sealed class PlayerPoll<TGroup>(
             var (group, seenMs) = harvest.Add(tag, log);
             if (harvest.HasLeft(tag))
             {
-                tracker.Forget(tag);
+                tracker.Forget(tag, nowMs);
             }
             else
             {
@@ -157,7 +157,7 @@ public sealed class PlayerPoll<TGroup>(
             var isFirst = step == 0;
             var newOpponents = harvest.Opponents()
                 .Where(o => isFirst || followsAgain(o.Group))
-                .Where(o => !tracker.IsKnown(o.Tag))
+                .Where(o => tracker.CanTrack(o.Tag, nowMs))
                 .GroupBy(o => o.Group)
                 .Select(inGroup => (Opponents: inGroup, Room: tracker.RoomIn(inGroup.Key)))
                 .OrderByDescending(g => g.Room)

@@ -45,7 +45,7 @@ public sealed class LadderCollector(
         }
 
         await poll.FlushAsync(ct);
-        schedule.KeepMet(harvest.Opponents().Where(o => !harvest.WasMetEarlier(o.Tag)));
+        schedule.KeepMet(harvest.Opponents().Where(o => !harvest.WasMetEarlier(o.Tag)), now);
         poll.ReportLadder("ladder poll");
         store.SetLastPollMs(now);
         logger.LogInformation(
