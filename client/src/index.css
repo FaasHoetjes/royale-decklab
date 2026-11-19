@@ -4,7 +4,7 @@
   font-weight: 400;
   font-display: swap;
   src: url('./assets/fonts/lilita-one-digits.woff2') format('woff2');
-  unicode-range: U+0030-0039;
+  unicode-range: U+0030-0039, U+003F;
 }
 
 * {
