@@ -93,6 +93,15 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
         }
     }
 
+    public void Forget(string tag)
+    {
+        lock (_lock)
+        {
+            _players.Remove(tag);
+            _waitingVisitors.Remove(tag);
+        }
+    }
+
     public int PlayersIn(TGroup group)
     {
         lock (_lock)

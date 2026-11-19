@@ -146,9 +146,14 @@ public sealed class LadderCollector(
                     latest = side;
                 }
             }
-            if (latest is null || LadderGroup.Of(latest, _options) is not { } ownGroup)
+            if (latest is null)
             {
-                return (null, latest?.BattleTimeMs ?? 0);
+                return (null, 0);
+            }
+            if (LadderGroup.Of(latest, _options) is not { } ownGroup)
+            {
+                MarkLeft(tag);
+                return (null, latest.BattleTimeMs);
             }
             AddLeadClan(log, ownGroup);
             return (ownGroup, latest.BattleTimeMs);

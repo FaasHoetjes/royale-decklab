@@ -62,7 +62,14 @@ public sealed class PlayerPoll<TGroup>(
         {
             var log = await client.GetPlayerBattlelogAsync(tag, ct);
             var (group, seenMs) = harvest.Add(tag, log);
-            tracker.RecordRead(tag, log, group, seenMs, nowMs);
+            if (harvest.HasLeft(tag))
+            {
+                tracker.Forget(tag);
+            }
+            else
+            {
+                tracker.RecordRead(tag, log, group, seenMs, nowMs);
+            }
         }
         catch (Exception ex) when (ex is not BrokenCircuitException && !ct.IsCancellationRequested)
         {

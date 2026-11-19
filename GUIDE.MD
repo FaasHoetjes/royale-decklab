@@ -113,7 +113,8 @@ every Ranked league, at most 1,000 tracked players each:
 
 - Ladder matches players on trophies, so following a player's opponents fills
   their own range. Opponents a poll had no reads left for are kept for the
-  next one, and the ranges with the most room are read first.
+  next one, and the ranges with the most room are read first. A player who
+  drops below 4,000 trophies is dropped.
 - The site's visitors start ranges no one is tracked in yet, followed by the
   clanmates of players in ranges with room.
 - A poll reads at most 2,000 logs, or 500 while a Crown Series weekend is on,

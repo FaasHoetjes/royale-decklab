@@ -128,6 +128,18 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_player_who_drops_below_the_lowest_range_is_dropped()
+    {
+        RestoreTracked(["#T"]);
+        Api.Logs["#T"] = [TrophyRoadBattle("#T", "#X", TimeSpan.FromMinutes(30), trophies: 3900)];
+
+        await CollectAsync();
+
+        Assert.Contains("#T", Api.LogsRead);
+        Assert.False(Schedule().IsKnown("#T"));
+    }
+
+    [Fact]
     public async Task The_emptiest_range_gets_the_reads_first()
     {
         LadderOptions.ReadsPerPoll = 3;

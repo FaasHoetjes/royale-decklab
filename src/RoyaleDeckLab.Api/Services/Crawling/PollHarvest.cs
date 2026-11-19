@@ -15,6 +15,7 @@ public abstract class PollHarvest<TGroup> where TGroup : struct
     private readonly Dictionary<string, TGroup> _leads = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TGroup> _leadClans = new(StringComparer.Ordinal);
     private readonly HashSet<string> _failureKinds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _left = new(StringComparer.Ordinal);
     private int _failedReads;
     private List<LadderBattle> _pendingLadder = [];
     private int _ladderFound;
@@ -102,6 +103,16 @@ public abstract class PollHarvest<TGroup> where TGroup : struct
             return AddLog(tag, log, ladderSides);
         }
     }
+
+    public bool HasLeft(string tag)
+    {
+        lock (Lock)
+        {
+            return _left.Contains(tag);
+        }
+    }
+
+    protected void MarkLeft(string tag) => _left.Add(tag);
 
     /// <summary>Called holding <see cref="Lock"/>.</summary>
     protected abstract (TGroup? Group, long SeenMs) AddLog(
