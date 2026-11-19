@@ -118,7 +118,8 @@ every Ranked league, at most 1,000 tracked players each:
 - The site's visitors start ranges no one is tracked in yet, followed by the
   clanmates of players in ranges with room.
 - A poll reads at most 2,000 logs, or 500 while a Crown Series weekend is on,
-  and waits for a war rebuild to finish before it starts.
+  clan member lists included, and waits for a war rebuild to finish before it
+  starts.
 
 After each poll the log lists the battles stored and the players tracked per
 range and league. The stored counts are kept in `ladder_counts` as battles are

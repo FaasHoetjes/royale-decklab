@@ -78,7 +78,7 @@ public sealed class PlayerPoll<TGroup>(
     }
 
     public SeedPicks<TSource> Seeds<TSource>(int limit) where TSource : struct, Enum
-        => new(limit, tag => !harvest.WasRead(tag));
+        => new(limit, tag => !harvest.WasRead(tag), () => ReadsLeft);
 
     public async Task ReadSeedsAsync<TSource>(SeedPicks<TSource> picks, CancellationToken ct) where TSource : struct, Enum
     {
@@ -132,6 +132,7 @@ public sealed class PlayerPoll<TGroup>(
 
     private async Task<IReadOnlyList<string>?> ClanMembersAsync(string clanTag, DateTimeOffset seenSince, CancellationToken ct)
     {
+        _reads++;
         try
         {
             return await client.GetActiveClanMemberTagsAsync(clanTag, seenSince, ct);

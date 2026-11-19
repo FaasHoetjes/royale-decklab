@@ -140,6 +140,27 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_clan_asked_without_reads_left_for_its_members_is_asked_again()
+    {
+        LadderOptions.ReadsPerPoll = 2;
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#A", TimeSpan.FromMinutes(30), clanTag: "#CLAN")];
+        Api.ClanMembers["#CLAN"] = ["#V", "#MATE"];
+        Api.LastSeen["#MATE"] = Now.AddHours(-2);
+
+        await CollectAsync();
+
+        Assert.Equal(["#V"], Api.LogsRead);
+        Assert.Equal(["#CLAN"], Api.ClansRead);
+
+        LadderOptions.ReadsPerPoll = 10;
+        Clock.Now = Now.AddHours(25);
+        await CollectAsync();
+
+        Assert.Contains("#MATE", Api.LogsRead);
+    }
+
+    [Fact]
     public async Task The_emptiest_range_gets_the_reads_first()
     {
         LadderOptions.ReadsPerPoll = 3;

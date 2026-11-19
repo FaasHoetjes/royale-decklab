@@ -1,7 +1,6 @@
 namespace RoyaleDeckLab.Api.Services.Crawling;
 
-/// <summary>One poll's seeds: at most <paramref name="limit"/>, each tag once, and only the ones <paramref name="isDue"/>.</summary>
-public sealed class SeedPicks<TSource>(int limit, Func<string, bool> isDue) where TSource : struct, Enum
+public sealed class SeedPicks<TSource>(int limit, Func<string, bool> isDue, Func<int> readsLeft) where TSource : struct, Enum
 {
     private readonly List<string> _tags = [];
     private readonly Dictionary<string, TSource> _sourceByTag = new(StringComparer.Ordinal);
@@ -9,7 +8,7 @@ public sealed class SeedPicks<TSource>(int limit, Func<string, bool> isDue) wher
 
     public IReadOnlyList<string> Tags => _tags;
 
-    public bool HasRoom => _tags.Count < limit;
+    public bool HasRoom => _tags.Count < limit && _tags.Count - _taken < readsLeft();
 
     public Dictionary<TSource, int> CountBySource { get; } = [];
 
@@ -18,7 +17,7 @@ public sealed class SeedPicks<TSource>(int limit, Func<string, bool> isDue) wher
             .Where(s => EqualityComparer<TSource>.Default.Equals(s.Value, source))
             .Select(s => s.Key);
 
-    /// <returns>Whether every tag due fit within the limit.</returns>
+    /// <returns>Whether every tag due fit.</returns>
     public bool Pick(TSource source, IEnumerable<string> tags)
     {
         foreach (var tag in tags)

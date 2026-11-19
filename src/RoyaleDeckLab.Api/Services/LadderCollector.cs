@@ -71,7 +71,7 @@ public sealed class LadderCollector(
         schedule.Trim([]);
 
         var seeds = poll.Seeds<SeedSource>(_opt.SeedsPerPoll);
-        seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(now, _opt.VisitorsPerPoll));
+        seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(now, Math.Min(_opt.VisitorsPerPoll, poll.ReadsLeft)));
         await poll.ReadSeedsAsync(seeds, ct);
         var clans = harvest.LeadClans()
             .Select(clan => (clan.Tag, Room: schedule.RoomIn(clan.Group)))
