@@ -127,6 +127,16 @@ public sealed class LadderStoreTests : IDisposable
     }
 
     [Fact]
+    public void Counts_are_regrouped_when_the_band_width_changes()
+    {
+        new LadderStore(_path).Merge([Side("#A", 1, standing: 9999), Side("#B", 1, standing: 10000), Side("#C", 1, standing: 10999)]);
+
+        var counts = new LadderStore(_path, 500).Counts();
+
+        Assert.Equal(new Dictionary<int, int> { [9500] = 1, [10000] = 1, [10500] = 1 }, counts.PerTrophyBand);
+    }
+
+    [Fact]
     public void A_broken_file_fails_each_call_until_its_replaced()
     {
         File.WriteAllText(_path, "not a database, but long enough to be read as one's header");

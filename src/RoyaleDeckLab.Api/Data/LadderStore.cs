@@ -12,6 +12,7 @@ public sealed class LadderStore
 {
     private const string Band = "CASE mode WHEN $trophyRoad THEN standing / $width * $width ELSE standing END";
     private const string LastPollKey = "last_poll_ms";
+    private const string BandWidthKey = "band_width";
 
     private readonly string _connectionString;
     private readonly int _bandWidth;
@@ -63,7 +64,10 @@ public sealed class LadderStore
                 PRIMARY KEY (mode, band)
             ) WITHOUT ROWID;
             """);
-        Recount(connection);
+        if (GetState(connection, BandWidthKey) != _bandWidth)
+        {
+            Recount(connection);
+        }
     }
 
     private void Recount(SqliteConnection connection)
@@ -79,6 +83,7 @@ public sealed class LadderStore
             """;
         AddBandParameters(recount);
         recount.ExecuteNonQuery();
+        SetState(connection, transaction, BandWidthKey, _bandWidth);
         transaction.Commit();
     }
 
