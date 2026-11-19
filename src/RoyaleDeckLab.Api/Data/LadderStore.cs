@@ -5,12 +5,13 @@ namespace RoyaleDeckLab.Api.Data;
 
 /// <summary>
 /// Trophy Road and Ranked battles in their own SQLite file: they come in far faster than war battles, and keeping
-/// them apart leaves meta.db's writes and size as they are.
+/// them apart leaves meta.db's writes and size as they are. Sides are keyed by range and time, so the stats read one
+/// range's recent battles in key order.
 /// </summary>
 public sealed class LadderStore
 {
-    private const string TrophyRoad = "trophy_road";
     private const string Band = "CASE mode WHEN $trophyRoad THEN standing / $width * $width ELSE standing END";
+    private const string LastPollKey = "last_poll_ms";
 
     private readonly string _connectionString;
     private readonly int _bandWidth;
@@ -24,34 +25,49 @@ public sealed class LadderStore
         _bandWidth = trophyBandWidth;
     }
 
-    // Recounting once per start picks up a changed band width.
     private void Create(SqliteConnection connection)
     {
+        Execute(connection, "PRAGMA journal_mode=WAL;");
+        // The first layout's sides are derived data, so they're dropped rather than converted.
+        if (HasColumn(connection, "ladder_battles", "cards"))
+        {
+            Execute(connection, "DROP TABLE ladder_battles; DROP TABLE IF EXISTS ladder_counts;");
+        }
         Execute(connection,
-            """
-            PRAGMA journal_mode=WAL;
+            $"""
             CREATE TABLE IF NOT EXISTS ladder_battles (
-                player_tag TEXT NOT NULL,
-                battle_time_ms INTEGER NOT NULL,
-                mode TEXT NOT NULL,
+                mode INTEGER NOT NULL,
                 standing INTEGER NOT NULL,
+                battle_time_ms INTEGER NOT NULL,
+                player_tag TEXT NOT NULL,
                 opponent_tag TEXT NOT NULL,
-                result TEXT NOT NULL,
-                cards TEXT NOT NULL,
-                PRIMARY KEY (player_tag, battle_time_ms)
+                result INTEGER NOT NULL,
+                crowns INTEGER NOT NULL,
+                opponent_crowns INTEGER NOT NULL,
+                deck TEXT NOT NULL,
+                levels BLOB NOT NULL,
+                tower_troop_id INTEGER,
+                tower_troop_level INTEGER,
+                PRIMARY KEY (mode, standing, battle_time_ms, player_tag)
             ) WITHOUT ROWID;
+            CREATE UNIQUE INDEX IF NOT EXISTS ladder_battles_by_player ON ladder_battles (player_tag, battle_time_ms);
             CREATE INDEX IF NOT EXISTS ladder_battles_by_time ON ladder_battles (battle_time_ms);
             CREATE TABLE IF NOT EXISTS ladder_state (
                 key TEXT NOT NULL PRIMARY KEY,
                 value INTEGER NOT NULL
             );
             CREATE TABLE IF NOT EXISTS ladder_counts (
-                mode TEXT NOT NULL,
+                mode INTEGER NOT NULL,
                 band INTEGER NOT NULL,
                 sides INTEGER NOT NULL,
                 PRIMARY KEY (mode, band)
             ) WITHOUT ROWID;
             """);
+        Recount(connection);
+    }
+
+    private void Recount(SqliteConnection connection)
+    {
         using var transaction = connection.BeginTransaction();
         using var recount = connection.CreateCommand();
         recount.Transaction = transaction;
@@ -77,60 +93,77 @@ public sealed class LadderStore
         lock (_writeLock)
         {
             using var connection = Open();
-            using var transaction = connection.BeginTransaction();
-            using var insert = connection.CreateCommand();
-            insert.Transaction = transaction;
-            insert.CommandText =
-                """
-                INSERT OR IGNORE INTO ladder_battles
-                    (player_tag, battle_time_ms, mode, standing, opponent_tag, result, cards)
-                VALUES ($player, $time, $mode, $standing, $opponent, $result, $cards)
-                """;
-            var player = insert.Parameters.Add("$player", SqliteType.Text);
-            var time = insert.Parameters.Add("$time", SqliteType.Integer);
-            var mode = insert.Parameters.Add("$mode", SqliteType.Text);
-            var standing = insert.Parameters.Add("$standing", SqliteType.Integer);
-            var opponent = insert.Parameters.Add("$opponent", SqliteType.Text);
-            var result = insert.Parameters.Add("$result", SqliteType.Text);
-            var cards = insert.Parameters.Add("$cards", SqliteType.Text);
-
-            var added = new Dictionary<(LadderMode, int), int>();
-            foreach (var battle in battles)
-            {
-                player.Value = battle.PlayerTag;
-                time.Value = battle.BattleTimeMs;
-                mode.Value = ModeName(battle.Mode);
-                standing.Value = battle.Standing;
-                opponent.Value = battle.OpponentTag;
-                result.Value = battle.Result.ToString().ToLowerInvariant();
-                cards.Value = CrownSeriesCardStorage.Serialize(battle.Cards);
-                if (insert.ExecuteNonQuery() > 0)
-                {
-                    var key = (battle.Mode, BandOf(battle.Mode, battle.Standing));
-                    added[key] = added.GetValueOrDefault(key) + 1;
-                }
-            }
-
-            using var count = connection.CreateCommand();
-            count.Transaction = transaction;
-            count.CommandText =
-                """
-                INSERT INTO ladder_counts (mode, band, sides) VALUES ($mode, $band, $sides)
-                ON CONFLICT (mode, band) DO UPDATE SET sides = sides + excluded.sides
-                """;
-            var countMode = count.Parameters.Add("$mode", SqliteType.Text);
-            var band = count.Parameters.Add("$band", SqliteType.Integer);
-            var sides = count.Parameters.Add("$sides", SqliteType.Integer);
-            foreach (var ((modeOf, bandOf), n) in added)
-            {
-                countMode.Value = ModeName(modeOf);
-                band.Value = bandOf;
-                sides.Value = n;
-                count.ExecuteNonQuery();
-            }
-            transaction.Commit();
-            return added.Values.Sum();
+            return MergeBatch(connection, battles.ToList());
         }
+    }
+
+    private int MergeBatch(SqliteConnection connection, IReadOnlyList<LadderBattle> battles)
+    {
+        using var transaction = connection.BeginTransaction();
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText =
+            """
+            INSERT OR IGNORE INTO ladder_battles
+                (mode, standing, battle_time_ms, player_tag, opponent_tag, result, crowns, opponent_crowns, deck, levels,
+                 tower_troop_id, tower_troop_level)
+            VALUES ($mode, $standing, $time, $player, $opponent, $result, $crowns, $opponentCrowns, $deck, $levels,
+                 $towerTroop, $towerTroopLevel)
+            """;
+        var mode = insert.Parameters.Add("$mode", SqliteType.Integer);
+        var standing = insert.Parameters.Add("$standing", SqliteType.Integer);
+        var time = insert.Parameters.Add("$time", SqliteType.Integer);
+        var player = insert.Parameters.Add("$player", SqliteType.Text);
+        var opponent = insert.Parameters.Add("$opponent", SqliteType.Text);
+        var result = insert.Parameters.Add("$result", SqliteType.Integer);
+        var crowns = insert.Parameters.Add("$crowns", SqliteType.Integer);
+        var opponentCrowns = insert.Parameters.Add("$opponentCrowns", SqliteType.Integer);
+        var deck = insert.Parameters.Add("$deck", SqliteType.Text);
+        var levels = insert.Parameters.Add("$levels", SqliteType.Blob);
+        var towerTroop = insert.Parameters.Add("$towerTroop", SqliteType.Integer);
+        var towerTroopLevel = insert.Parameters.Add("$towerTroopLevel", SqliteType.Integer);
+
+        var added = new Dictionary<(LadderMode, int), int>();
+        foreach (var battle in battles)
+        {
+            mode.Value = (int)battle.Mode;
+            standing.Value = battle.Standing;
+            time.Value = battle.BattleTimeMs;
+            player.Value = battle.PlayerTag;
+            opponent.Value = battle.OpponentTag;
+            result.Value = (int)battle.Result;
+            crowns.Value = battle.Crowns;
+            opponentCrowns.Value = battle.OpponentCrowns;
+            deck.Value = LadderDeck.Key(battle.Cards);
+            levels.Value = LadderDeck.Levels(battle.Cards);
+            towerTroop.Value = (object?)battle.TowerTroop?.Id ?? DBNull.Value;
+            towerTroopLevel.Value = (object?)battle.TowerTroop?.Level ?? DBNull.Value;
+            if (insert.ExecuteNonQuery() > 0)
+            {
+                var key = (battle.Mode, BandOf(battle.Mode, battle.Standing));
+                added[key] = added.GetValueOrDefault(key) + 1;
+            }
+        }
+
+        using var count = connection.CreateCommand();
+        count.Transaction = transaction;
+        count.CommandText =
+            """
+            INSERT INTO ladder_counts (mode, band, sides) VALUES ($mode, $band, $sides)
+            ON CONFLICT (mode, band) DO UPDATE SET sides = sides + excluded.sides
+            """;
+        var countMode = count.Parameters.Add("$mode", SqliteType.Integer);
+        var band = count.Parameters.Add("$band", SqliteType.Integer);
+        var sides = count.Parameters.Add("$sides", SqliteType.Integer);
+        foreach (var ((modeOf, bandOf), n) in added)
+        {
+            countMode.Value = (int)modeOf;
+            band.Value = bandOf;
+            sides.Value = n;
+            count.ExecuteNonQuery();
+        }
+        transaction.Commit();
+        return added.Values.Sum();
     }
 
     public int Prune(long cutoffMs)
@@ -178,7 +211,7 @@ public sealed class LadderStore
         using var reader = select.ExecuteReader();
         while (reader.Read())
         {
-            var counts = reader.GetString(0) == TrophyRoad ? trophyRoad : ranked;
+            var counts = (LadderMode)reader.GetInt32(0) == LadderMode.TrophyRoad ? trophyRoad : ranked;
             counts[reader.GetInt32(1)] = reader.GetInt32(2);
         }
         return new LadderCounts(trophyRoad, ranked);
@@ -188,14 +221,14 @@ public sealed class LadderStore
     /// Each player's latest side since <paramref name="sinceMs"/>, at most <paramref name="perBand"/> per Trophy Road
     /// range and Ranked league, the most recent first.
     /// </summary>
-    public IReadOnlyList<LadderBattle> LatestPerPlayer(int perBand, long sinceMs)
+    public IReadOnlyList<LatestLadderSide> LatestPerPlayer(int perBand, long sinceMs)
     {
         using var connection = Open();
         using var select = connection.CreateCommand();
         select.CommandText =
             $"""
             WITH latest AS (
-                SELECT player_tag, MAX(battle_time_ms) AS battle_time_ms, mode, standing, opponent_tag, result, cards
+                SELECT player_tag, MAX(battle_time_ms) AS battle_time_ms, mode, standing
                 FROM ladder_battles
                 WHERE battle_time_ms >= $since
                 GROUP BY player_tag
@@ -203,7 +236,7 @@ public sealed class LadderStore
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY mode, {Band} ORDER BY battle_time_ms DESC) AS n
                 FROM latest
             )
-            SELECT player_tag, battle_time_ms, mode, standing, opponent_tag, result, cards
+            SELECT player_tag, battle_time_ms, mode, standing
             FROM ranked
             WHERE n <= $perBand
             """;
@@ -211,20 +244,11 @@ public sealed class LadderStore
         select.Parameters.AddWithValue("$since", sinceMs);
         select.Parameters.AddWithValue("$perBand", perBand);
 
-        var sides = new List<LadderBattle>();
+        var sides = new List<LatestLadderSide>();
         using var reader = select.ExecuteReader();
         while (reader.Read())
         {
-            sides.Add(new LadderBattle
-            {
-                PlayerTag = reader.GetString(0),
-                BattleTimeMs = reader.GetInt64(1),
-                Mode = reader.GetString(2) == TrophyRoad ? LadderMode.TrophyRoad : LadderMode.Ranked,
-                Standing = reader.GetInt32(3),
-                OpponentTag = reader.GetString(4),
-                Result = Enum.Parse<BattleResult>(reader.GetString(5), ignoreCase: true),
-                Cards = CrownSeriesCardStorage.Deserialize(reader.GetString(6)),
-            });
+            sides.Add(new LatestLadderSide(reader.GetString(0), reader.GetInt64(1), (LadderMode)reader.GetInt32(2), reader.GetInt32(3)));
         }
         return sides;
     }
@@ -232,9 +256,7 @@ public sealed class LadderStore
     public long GetLastPollMs()
     {
         using var connection = Open();
-        using var select = connection.CreateCommand();
-        select.CommandText = "SELECT value FROM ladder_state WHERE key = 'last_poll_ms'";
-        return select.ExecuteScalar() is long ms ? ms : 0;
+        return GetState(connection, LastPollKey) ?? 0;
     }
 
     public void SetLastPollMs(long ms)
@@ -242,28 +264,36 @@ public sealed class LadderStore
         lock (_writeLock)
         {
             using var connection = Open();
-            using var upsert = connection.CreateCommand();
-            upsert.CommandText =
-                "INSERT INTO ladder_state (key, value) VALUES ('last_poll_ms', $ms) ON CONFLICT (key) DO UPDATE SET value = $ms";
-            upsert.Parameters.AddWithValue("$ms", ms);
-            upsert.ExecuteNonQuery();
+            SetState(connection, null, LastPollKey, ms);
         }
+    }
+
+    private static long? GetState(SqliteConnection connection, string key)
+    {
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT value FROM ladder_state WHERE key = $key";
+        select.Parameters.AddWithValue("$key", key);
+        return select.ExecuteScalar() is long value ? value : null;
+    }
+
+    private static void SetState(SqliteConnection connection, SqliteTransaction? transaction, string key, long value)
+    {
+        using var upsert = connection.CreateCommand();
+        upsert.Transaction = transaction;
+        upsert.CommandText =
+            "INSERT INTO ladder_state (key, value) VALUES ($key, $value) ON CONFLICT (key) DO UPDATE SET value = $value";
+        upsert.Parameters.AddWithValue("$key", key);
+        upsert.Parameters.AddWithValue("$value", value);
+        upsert.ExecuteNonQuery();
     }
 
     private void AddBandParameters(SqliteCommand command)
     {
-        command.Parameters.AddWithValue("$trophyRoad", TrophyRoad);
+        command.Parameters.AddWithValue("$trophyRoad", (int)LadderMode.TrophyRoad);
         command.Parameters.AddWithValue("$width", _bandWidth);
     }
 
     private int BandOf(LadderMode mode, int standing) => mode == LadderMode.TrophyRoad ? standing / _bandWidth * _bandWidth : standing;
-
-    private static string ModeName(LadderMode mode) => mode switch
-    {
-        LadderMode.TrophyRoad => TrophyRoad,
-        LadderMode.Ranked => "ranked",
-        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
-    };
 
     private SqliteConnection Open()
     {
@@ -291,6 +321,15 @@ public sealed class LadderStore
         }
     }
 
+    private static bool HasColumn(SqliteConnection connection, string table, string column)
+    {
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT COUNT(*) FROM pragma_table_info($table) WHERE name = $column";
+        select.Parameters.AddWithValue("$table", table);
+        select.Parameters.AddWithValue("$column", column);
+        return (long)select.ExecuteScalar()! > 0;
+    }
+
     private static void Execute(SqliteConnection connection, string sql)
     {
         using var command = connection.CreateCommand();
@@ -302,3 +341,5 @@ public sealed class LadderStore
 public sealed record LadderCounts(
     IReadOnlyDictionary<int, int> PerTrophyBand,
     IReadOnlyDictionary<int, int> PerRankedLeague);
+
+public sealed record LatestLadderSide(string PlayerTag, long BattleTimeMs, LadderMode Mode, int Standing);

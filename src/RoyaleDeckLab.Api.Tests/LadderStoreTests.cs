@@ -81,6 +81,52 @@ public sealed class LadderStoreTests : IDisposable
     }
 
     [Fact]
+    public void A_side_keeps_its_deck_levels_crowns_and_tower_troop()
+    {
+        var store = new LadderStore(_path);
+        store.Merge([Side("#A", 1000) with
+        {
+            Cards = [new CrownSeriesCard(26000000, 16, CardVersionKind.Evo), new CrownSeriesCard(26000001, 15, CardVersionKind.Normal)],
+            Crowns = 3,
+            OpponentCrowns = 1,
+            TowerTroop = new CrownSeriesCard(159000000, 14, CardVersionKind.Normal),
+        }]);
+
+        using var connection = new SqliteConnection($"Data Source={_path}");
+        connection.Open();
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT deck, levels, crowns, opponent_crowns, tower_troop_id, tower_troop_level FROM ladder_battles";
+        using var reader = select.ExecuteReader();
+        Assert.True(reader.Read());
+        Assert.Equal("26000000e,26000001", reader.GetString(0));
+        Assert.Equal(new byte[] { 16, 15 }, (byte[])reader.GetValue(1));
+        Assert.Equal((3, 1, 159000000, 14), (reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5)));
+    }
+
+    [Fact]
+    public void The_first_layout_is_replaced_by_the_current_one()
+    {
+        using (var connection = new SqliteConnection($"Data Source={_path}"))
+        {
+            connection.Open();
+            using var create = connection.CreateCommand();
+            create.CommandText =
+                """
+                CREATE TABLE ladder_battles (player_tag TEXT, battle_time_ms INTEGER, mode TEXT, standing INTEGER,
+                    opponent_tag TEXT, result TEXT, cards TEXT, PRIMARY KEY (player_tag, battle_time_ms)) WITHOUT ROWID;
+                INSERT INTO ladder_battles VALUES ('#A', 1000, 'trophy_road', 10000, '#OPP', 'win', '[]');
+                """;
+            create.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+
+        var store = new LadderStore(_path);
+
+        Assert.Equal(1, store.Merge([Side("#A", 1000)]));
+        Assert.Equal(new Dictionary<int, int> { [10000] = 1 }, store.Counts().PerTrophyBand);
+    }
+
+    [Fact]
     public void A_broken_file_fails_each_call_until_its_replaced()
     {
         File.WriteAllText(_path, "not a database, but long enough to be read as one's header");

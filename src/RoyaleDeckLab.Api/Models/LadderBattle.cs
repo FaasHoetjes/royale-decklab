@@ -22,6 +22,12 @@ public sealed record LadderBattle
 
     public required BattleResult Result { get; init; }
 
+    public int Crowns { get; init; }
+
+    public int OpponentCrowns { get; init; }
+
+    public CrownSeriesCard? TowerTroop { get; init; }
+
     /// <summary>By card id.</summary>
     public required IReadOnlyList<CrownSeriesCard> Cards { get; init; }
 }

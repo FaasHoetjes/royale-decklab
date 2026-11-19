@@ -35,6 +35,19 @@ public sealed class LadderBattlesTests
     }
 
     [Fact]
+    public void A_side_keeps_both_crowns_and_its_tower_troop()
+    {
+        var team = Side("#A", 3, 6000) with { SupportCards = [new CrBattleCard(159000000, null, "common", 11, 14)] };
+
+        var sides = LadderBattles.From(Battle("PvP", "Ladder", team, Side("#B", 1, 6010)));
+
+        var a = sides.Single(s => s.PlayerTag == "#A");
+        Assert.Equal((3, 1), (a.Crowns, a.OpponentCrowns));
+        Assert.Equal(new CrownSeriesCard(159000000, LevelModel.DisplayLevel(11, 14), CardVersionKind.Normal), a.TowerTroop);
+        Assert.Null(sides.Single(s => s.PlayerTag == "#B").TowerTroop);
+    }
+
+    [Fact]
     public void A_ranked_battle_is_placed_by_its_league()
     {
         var sides = LadderBattles.From(Battle("pathOfLegend", "Ranked1v1_NewArena2", Side("#A", 1, null), Side("#B", 1, null), league: 4));

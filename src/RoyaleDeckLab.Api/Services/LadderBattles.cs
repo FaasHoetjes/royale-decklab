@@ -39,6 +39,11 @@ public static class LadderBattles
         _ => null,
     };
 
+    private static CrownSeriesCard? TowerTroop(IReadOnlyList<CrBattleCard>? supportCards)
+        => supportCards is [{ Level: int level, MaxLevel: int maxLevel } troop, ..]
+            ? new CrownSeriesCard(troop.Id, LevelModel.DisplayLevel(level, maxLevel), CardVersionKind.Normal)
+            : null;
+
     private static LadderBattle? Side(CrBattle battle, LadderMode mode, long timeMs, CrBattleSide player, CrBattleSide opponent)
     {
         var standing = mode == LadderMode.TrophyRoad ? player.StartingTrophies : battle.LeagueNumber;
@@ -54,7 +59,10 @@ public static class LadderBattles
             Mode = mode,
             Standing = value,
             Result = BattleResultExtensions.FromCrowns(player.Crowns, opponent.Crowns),
+            Crowns = player.Crowns,
+            OpponentCrowns = opponent.Crowns,
             Cards = cards,
+            TowerTroop = TowerTroop(player.SupportCards),
         };
     }
 }
