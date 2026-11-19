@@ -246,7 +246,7 @@ function ChangeCard({ change, card, stat, isMobile }: { change: BalanceChange; c
               <CardTile
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, change.version)}
-                elixirCost={card.elixirCost}
+                elixirCost={card.elixirCost ?? null}
                 showName={false}
                 lazyLoad
                 artStyle={{ boxShadow: `0 0 0 2px color-mix(in srgb, ${kindColor} 60%, transparent), 0 6px 16px color-mix(in srgb, ${kindColor} 30%, transparent)` }}

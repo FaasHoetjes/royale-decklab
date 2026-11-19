@@ -133,7 +133,7 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
         name={card.name}
         iconUrl={cardIconUrl(card.iconUrls, shownVersion)}
         slotIndex={VERSION_SLOT[shownVersion]}
-        elixirCost={card.elixirCost}
+        elixirCost={card.elixirCost ?? null}
         showName={false}
         fetchPriority="high"
       />

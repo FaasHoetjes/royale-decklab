@@ -47,9 +47,10 @@ function Drop() {
   );
 }
 
-export default function ElixirBadge({ cost }: { cost: number }) {
+export default function ElixirBadge({ cost }: { cost: number | null }) {
+  const label = cost ?? '?';
   return (
-    <svg viewBox="0 0 28 30" style={styles.badge} aria-label={`${cost} elixir`} role="img">
+    <svg viewBox="0 0 28 30" style={styles.badge} aria-label={cost == null ? 'Variable elixir' : `${cost} elixir`} role="img">
       <Drop />
       <g transform="translate(14 0) scale(1.12 1) translate(-14 0)">
         <text
@@ -63,7 +64,7 @@ export default function ElixirBadge({ cost }: { cost: number }) {
           strokeWidth="3.8"
           strokeLinejoin="round"
         >
-          {cost}
+          {label}
         </text>
         <text
           x="14"
@@ -77,7 +78,7 @@ export default function ElixirBadge({ cost }: { cost: number }) {
           strokeLinejoin="round"
           paintOrder="stroke"
         >
-          {cost}
+          {label}
         </text>
       </g>
     </svg>
