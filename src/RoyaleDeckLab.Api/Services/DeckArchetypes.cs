@@ -100,15 +100,15 @@ public static class DeckArchetypes
         return (name, rule.WinCondition);
     }
 
-    /// <summary>
-    /// Names for decks shown together, matching distinctDeckNames: a name two decks share gets the priciest card
-    /// only that deck runs, e.g. "Log Bait · Inferno Tower".
-    /// </summary>
     public static IReadOnlyList<string> DistinctNames(IEnumerable<BestDeckEntry> decks)
         => DistinctNames(decks
             .Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList())
             .ToList());
 
+    /// <summary>
+    /// Names for decks shown together, matching distinctDeckNames: a name two decks share gets the priciest card
+    /// only that deck runs, e.g. "Log Bait · Inferno Tower".
+    /// </summary>
     public static IReadOnlyList<string> DistinctNames(IReadOnlyList<IReadOnlyList<(string Name, int? ElixirCost)>> decks)
     {
         var classified = decks.Select(cards => (Cards: cards, Classified: Classify(cards))).ToList();

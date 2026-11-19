@@ -162,7 +162,7 @@ public static class SpaContent
         return html.Append("</ul>").ToString();
     }
 
-    public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks, CardInsightsResponse? insights = null, IReadOnlyList<CatalogCard>? catalog = null)
+    public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks, CardInsightsResponse? insights = null, IReadOnlyList<CatalogCard>? catalog = null, bool isLastPatch = false)
     {
         var html = new StringBuilder("<p><a href=\"/cards\">All cards</a></p>").Append(H1($"{card.Name} Decks"));
         if (SpaPages.TopDeckSentence(card.Name, decks) is { } topDeck)
@@ -185,7 +185,7 @@ public static class SpaContent
         }
         else if (statsLoaded)
         {
-            html.Append(P($"Nobody in the top war clans has played {card.Name} in a war battle this patch."));
+            html.Append(P($"Nobody in the top war clans has played {card.Name} in a war battle {(isLastPatch ? "last patch" : "this patch")}."));
         }
         html.Append(H2($"Best war decks with {card.Name}"));
         if (decks.Count > 0)

@@ -210,7 +210,8 @@ public static partial class SpaHosting
                 meta.IsLoaded,
                 cardDecks,
                 insights,
-                cards),
+                cards,
+                meta.CardStats.IsLastPatch),
         };
     }
 

@@ -118,6 +118,13 @@ public sealed class SpaContentTests
     }
 
     [Fact]
+    public void CardPage_SaysLastPatchWhenShowingIt()
+    {
+        var html = SpaContent.Card(MiniPekka, null, true, [], isLastPatch: true);
+        Assert.Contains("Nobody in the top war clans has played Mini P.E.K.K.A in a war battle last patch.", html);
+    }
+
+    [Fact]
     public void CardPage_BeforeTheMetaLoads_ClaimsNothing()
     {
         var html = SpaContent.Card(MiniPekka, null, false, []);
