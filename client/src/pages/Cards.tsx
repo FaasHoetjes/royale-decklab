@@ -159,7 +159,7 @@ export default function Cards() {
                   <CardTile
                     name={card.name}
                     iconUrl={cardIconUrl(card.iconUrls, mostPlayedVersion(stat))}
-                    elixirCost={card.elixirCost}
+                    elixirCost={card.elixirCost ?? null}
                     nameColor={theme.text.primary}
                     nameSize={isMobile ? '11px' : '12px'}
                     lazyLoad={i >= EAGER_TILE_COUNT}

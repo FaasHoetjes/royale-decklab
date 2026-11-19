@@ -159,7 +159,7 @@ export default function CardCollection({
                   <CardTile
                     name={card.name}
                     iconUrl={pickerIconUrl(card, filters)}
-                    elixirCost={card.elixirCost}
+                    elixirCost={card.elixirCost ?? null}
                     level={level >= 0 ? level : undefined}
                     nameColor={theme.text.secondary}
                     lazyLoad

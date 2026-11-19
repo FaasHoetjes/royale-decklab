@@ -99,7 +99,7 @@ export default function DeckSlot({
           name={card.name}
           iconUrl={cardIconUrl(card.iconUrls, activeVersion ?? 'normal')}
           slotIndex={slotIndex}
-          elixirCost={card.elixirCost}
+          elixirCost={card.elixirCost ?? null}
           level={level}
           nameColor={theme.text.primary}
           artStyle={dropOutline}

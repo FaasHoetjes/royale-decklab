@@ -239,7 +239,7 @@ const CardCell = memo(({ card, filters, isUsed, championBlocked, isSelected, pre
         <CardTile
           name={card.name}
           iconUrl={pickerIconUrl(card, filters)}
-          elixirCost={card.elixirCost}
+          elixirCost={card.elixirCost ?? null}
           level={level >= 0 ? level : undefined}
           boosted={card.isBoosted}
           nameColor={textPrimary}

@@ -106,7 +106,7 @@ export default function DeckCard({
                 name={card.name}
                 iconUrl={cardIconUrl(card.iconUrls, versionOf(cardVersions, card.id))}
                 slotIndex={index}
-                elixirCost={card.elixirCost}
+                elixirCost={card.elixirCost ?? null}
                 level={displayLevel(card.level, card.maxLevel)}
                 boosted={card.boostedFromLevel != null}
                 belowCap={levelCap != null && displayLevel(card.level, card.maxLevel) < levelCap}

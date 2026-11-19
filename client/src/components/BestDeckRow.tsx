@@ -58,7 +58,7 @@ export default function BestDeckRow({ deck, name, theme, isMobile, lazyLoad }: B
             name={card.name}
             iconUrl={cardIconUrl(card.iconUrls, versionOf(deck.cardVersions, card.id))}
             slotIndex={index}
-            elixirCost={card.elixirCost}
+            elixirCost={card.elixirCost ?? null}
             nameColor={theme.text.primary}
             lazyLoad={lazyLoad}
           />

@@ -37,7 +37,7 @@ export function ChangeTile({ card, version = 'normal', change, detail, isMobile 
         <CardTile
           name={card.name}
           iconUrl={cardIconUrl(card.iconUrls, version)}
-          elixirCost={card.elixirCost}
+          elixirCost={card.elixirCost ?? null}
           nameColor={theme.text.primary}
           nameSize="11.5px"
           lazyLoad

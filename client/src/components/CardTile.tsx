@@ -9,7 +9,8 @@ interface CardTileProps {
   iconUrl?: string;
   /** The first three positions get the evo/hero/both frame. */
   slotIndex?: number;
-  elixirCost?: number;
+  /** Null draws a "?" drop, as the game does for Mirror. */
+  elixirCost?: number | null;
   level?: number | null;
   /** The level is this season's boost, not the player's own. */
   boosted?: boolean;
@@ -75,7 +76,7 @@ export default function CardTile({
           {placeholderInitials(name)}
         </div>
       )}
-      {elixirCost != null && <ElixirBadge cost={elixirCost} />}
+      {elixirCost !== undefined && <ElixirBadge cost={elixirCost} />}
       {level != null && <div style={levelStyle(boosted, belowCap)}>Level {level}</div>}
       {locked && (
         <span style={styles.lock} title="You don't own this card">
