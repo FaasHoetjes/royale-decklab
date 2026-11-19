@@ -268,19 +268,27 @@ public sealed class LadderStore
     private SqliteConnection Open()
     {
         var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        if (!_created)
+        try
         {
-            lock (_createLock)
+            connection.Open();
+            if (!_created)
             {
-                if (!_created)
+                lock (_createLock)
                 {
-                    Create(connection);
-                    _created = true;
+                    if (!_created)
+                    {
+                        Create(connection);
+                        _created = true;
+                    }
                 }
             }
+            return connection;
         }
-        return connection;
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
     }
 
     private static void Execute(SqliteConnection connection, string sql)

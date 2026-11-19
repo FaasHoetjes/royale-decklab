@@ -81,6 +81,20 @@ public sealed class LadderStoreTests : IDisposable
     }
 
     [Fact]
+    public void A_broken_file_fails_each_call_until_its_replaced()
+    {
+        File.WriteAllText(_path, "not a database, but long enough to be read as one's header");
+        var store = new LadderStore(_path);
+
+        Assert.Throws<SqliteException>(() => store.Counts());
+        Assert.Throws<SqliteException>(() => store.Counts());
+
+        SqliteConnection.ClearAllPools();
+        File.Delete(_path);
+        Assert.Equal(1, store.Merge([Side("#A", 1000)]));
+    }
+
+    [Fact]
     public void Reopening_keeps_what_was_stored()
     {
         new LadderStore(_path).Merge([Side("#A", 1000)]);
