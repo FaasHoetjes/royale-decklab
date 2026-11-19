@@ -40,7 +40,7 @@ public abstract class CollectorFixture : IDisposable
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(CrownSeries));
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(LadderOptions));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
-        services.AddSingleton(_ => new LadderStore(_ladderDbPath));
+        services.AddSingleton(_ => new LadderStore(_ladderDbPath, LadderOptions.TrophyBandWidth));
         services.AddSingleton<LadderIntake>();
         services.AddScoped<CrownSeriesRepository>();
         services.AddScoped<BattleRepository>();

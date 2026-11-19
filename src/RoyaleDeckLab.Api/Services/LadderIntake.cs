@@ -36,7 +36,7 @@ public sealed class LadderIntake(
         try
         {
             var pruned = store.Prune(Cutoff());
-            var counts = store.Counts(_opt.TrophyBandWidth);
+            var counts = store.Counts();
             logger.LogInformation(
                 "Ladder battles from the {Source}: {Found} sides found, +{Added} new, {Pruned} pruned; "
                 + "stored per {Width} trophies: {@PerTrophyBand}, per Ranked league: {@PerRankedLeague}",

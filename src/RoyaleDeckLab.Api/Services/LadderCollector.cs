@@ -104,7 +104,7 @@ public sealed class LadderCollector(
     public void RestoreSchedule()
     {
         var now = time.GetUtcNow().ToUnixTimeMilliseconds();
-        var latest = store.LatestPerPlayer(_opt.MaxPlayersPerGroup, _opt.TrophyBandWidth, now - _opt.ForgetAfterMs)
+        var latest = store.LatestPerPlayer(_opt.MaxPlayersPerGroup, now - _opt.ForgetAfterMs)
             .Select(side => (side.PlayerTag, Group: LadderGroup.Of(side, _opt), side.BattleTimeMs))
             .Where(p => p.Group is not null)
             .Select(p => (p.PlayerTag, p.Group!.Value, p.BattleTimeMs));

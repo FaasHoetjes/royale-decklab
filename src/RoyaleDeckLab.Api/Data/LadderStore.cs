@@ -13,15 +13,18 @@ public sealed class LadderStore
     private const string Band = "CASE mode WHEN $trophyRoad THEN standing / $width * $width ELSE standing END";
 
     private readonly string _connectionString;
+    private readonly int _bandWidth;
     private readonly Lock _writeLock = new();
     private readonly Lock _createLock = new();
     private volatile bool _created;
 
-    public LadderStore(string path)
+    public LadderStore(string path, int trophyBandWidth = 1000)
     {
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        _bandWidth = trophyBandWidth;
     }
 
+    // Recounting once per start picks up a changed band width.
     private void Create(SqliteConnection connection)
     {
         Execute(connection,
@@ -42,7 +45,25 @@ public sealed class LadderStore
                 key TEXT NOT NULL PRIMARY KEY,
                 value INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS ladder_counts (
+                mode TEXT NOT NULL,
+                band INTEGER NOT NULL,
+                sides INTEGER NOT NULL,
+                PRIMARY KEY (mode, band)
+            ) WITHOUT ROWID;
             """);
+        using var transaction = connection.BeginTransaction();
+        using var recount = connection.CreateCommand();
+        recount.Transaction = transaction;
+        recount.CommandText =
+            $"""
+            DELETE FROM ladder_counts;
+            INSERT INTO ladder_counts (mode, band, sides)
+            SELECT mode, {Band}, COUNT(*) FROM ladder_battles GROUP BY 1, 2;
+            """;
+        AddBandParameters(recount);
+        recount.ExecuteNonQuery();
+        transaction.Commit();
     }
 
     /// <returns>How many weren't stored yet: a battle read from both players' logs is stored once.</returns>
@@ -73,7 +94,7 @@ public sealed class LadderStore
             var result = insert.Parameters.Add("$result", SqliteType.Text);
             var cards = insert.Parameters.Add("$cards", SqliteType.Text);
 
-            var added = 0;
+            var added = new Dictionary<(LadderMode, int), int>();
             foreach (var battle in battles)
             {
                 player.Value = battle.PlayerTag;
@@ -83,10 +104,32 @@ public sealed class LadderStore
                 opponent.Value = battle.OpponentTag;
                 result.Value = battle.Result.ToString().ToLowerInvariant();
                 cards.Value = CrownSeriesCardStorage.Serialize(battle.Cards);
-                added += insert.ExecuteNonQuery();
+                if (insert.ExecuteNonQuery() > 0)
+                {
+                    var key = (battle.Mode, BandOf(battle.Mode, battle.Standing));
+                    added[key] = added.GetValueOrDefault(key) + 1;
+                }
+            }
+
+            using var count = connection.CreateCommand();
+            count.Transaction = transaction;
+            count.CommandText =
+                """
+                INSERT INTO ladder_counts (mode, band, sides) VALUES ($mode, $band, $sides)
+                ON CONFLICT (mode, band) DO UPDATE SET sides = sides + excluded.sides
+                """;
+            var countMode = count.Parameters.Add("$mode", SqliteType.Text);
+            var band = count.Parameters.Add("$band", SqliteType.Integer);
+            var sides = count.Parameters.Add("$sides", SqliteType.Integer);
+            foreach (var ((modeOf, bandOf), n) in added)
+            {
+                countMode.Value = ModeName(modeOf);
+                band.Value = bandOf;
+                sides.Value = n;
+                count.ExecuteNonQuery();
             }
             transaction.Commit();
-            return added;
+            return added.Values.Sum();
         }
     }
 
@@ -95,29 +138,40 @@ public sealed class LadderStore
         lock (_writeLock)
         {
             using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            using var uncount = connection.CreateCommand();
+            uncount.Transaction = transaction;
+            uncount.CommandText =
+                $"""
+                UPDATE ladder_counts SET sides = ladder_counts.sides - pruned.sides
+                FROM (
+                    SELECT mode, {Band} AS band, COUNT(*) AS sides
+                    FROM ladder_battles
+                    WHERE battle_time_ms < $cutoff
+                    GROUP BY 1, 2
+                ) AS pruned
+                WHERE ladder_counts.mode = pruned.mode AND ladder_counts.band = pruned.band;
+                DELETE FROM ladder_counts WHERE sides <= 0;
+                """;
+            AddBandParameters(uncount);
+            uncount.Parameters.AddWithValue("$cutoff", cutoffMs);
+            uncount.ExecuteNonQuery();
+
             using var delete = connection.CreateCommand();
+            delete.Transaction = transaction;
             delete.CommandText = "DELETE FROM ladder_battles WHERE battle_time_ms < $cutoff";
             delete.Parameters.AddWithValue("$cutoff", cutoffMs);
-            return delete.ExecuteNonQuery();
+            var pruned = delete.ExecuteNonQuery();
+            transaction.Commit();
+            return pruned;
         }
     }
 
-    /// <summary>
-    /// Stored player sides per Trophy Road band of <paramref name="trophyBandWidth"/> trophies, keyed by the band's
-    /// lowest trophies, and per Ranked league.
-    /// </summary>
-    public LadderCounts Counts(int trophyBandWidth)
+    public LadderCounts Counts()
     {
         using var connection = Open();
         using var select = connection.CreateCommand();
-        select.CommandText =
-            $"""
-            SELECT mode, {Band} AS band, COUNT(*)
-            FROM ladder_battles
-            GROUP BY mode, band
-            ORDER BY mode, band
-            """;
-        AddBandParameters(select, trophyBandWidth);
+        select.CommandText = "SELECT mode, band, sides FROM ladder_counts";
 
         var trophyRoad = new SortedDictionary<int, int>();
         var ranked = new SortedDictionary<int, int>();
@@ -134,7 +188,7 @@ public sealed class LadderStore
     /// Each player's latest side since <paramref name="sinceMs"/>, at most <paramref name="perBand"/> per Trophy Road
     /// range and Ranked league, the most recent first.
     /// </summary>
-    public IReadOnlyList<LadderBattle> LatestPerPlayer(int perBand, int trophyBandWidth, long sinceMs)
+    public IReadOnlyList<LadderBattle> LatestPerPlayer(int perBand, long sinceMs)
     {
         using var connection = Open();
         using var select = connection.CreateCommand();
@@ -153,7 +207,7 @@ public sealed class LadderStore
             FROM ranked
             WHERE n <= $perBand
             """;
-        AddBandParameters(select, trophyBandWidth);
+        AddBandParameters(select);
         select.Parameters.AddWithValue("$since", sinceMs);
         select.Parameters.AddWithValue("$perBand", perBand);
 
@@ -196,11 +250,13 @@ public sealed class LadderStore
         }
     }
 
-    private static void AddBandParameters(SqliteCommand command, int trophyBandWidth)
+    private void AddBandParameters(SqliteCommand command)
     {
         command.Parameters.AddWithValue("$trophyRoad", TrophyRoad);
-        command.Parameters.AddWithValue("$width", trophyBandWidth);
+        command.Parameters.AddWithValue("$width", _bandWidth);
     }
+
+    private int BandOf(LadderMode mode, int standing) => mode == LadderMode.TrophyRoad ? standing / _bandWidth * _bandWidth : standing;
 
     private static string ModeName(LadderMode mode) => mode switch
     {

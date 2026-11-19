@@ -59,10 +59,25 @@ public sealed class LadderStoreTests : IDisposable
             Side("#E", 1, LadderMode.Ranked, 3),
         ]);
 
-        var counts = store.Counts(1000);
+        var counts = store.Counts();
 
         Assert.Equal(new Dictionary<int, int> { [9000] = 1, [10000] = 2 }, counts.PerTrophyBand);
         Assert.Equal(new Dictionary<int, int> { [3] = 2 }, counts.PerRankedLeague);
+    }
+
+    [Fact]
+    public void Counts_follow_prunes_and_survive_a_reopen()
+    {
+        var store = new LadderStore(_path);
+        store.Merge([Side("#A", 1000), Side("#A", 2000), Side("#B", 3000, LadderMode.Ranked, 4)]);
+        store.Merge([Side("#A", 1000)]);
+        store.Prune(1500);
+
+        var counts = new LadderStore(_path).Counts();
+
+        Assert.Equal(new Dictionary<int, int> { [10000] = 1 }, counts.PerTrophyBand);
+        Assert.Equal(new Dictionary<int, int> { [4] = 1 }, counts.PerRankedLeague);
+        Assert.Equal(counts.PerTrophyBand, store.Counts().PerTrophyBand);
     }
 
     [Fact]

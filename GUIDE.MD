@@ -120,7 +120,8 @@ every Ranked league, at most 1,000 tracked players each:
   and waits for a war rebuild to finish before it starts.
 
 After each poll the log lists the battles stored and the players tracked per
-range and league.
+range and league. The stored counts are kept in `ladder_counts` as battles are
+added and pruned, so reporting them doesn't read the whole table.
 
 The ladder poll and the Crown Series poll share their scheduling, seeding and
 opponent following (`Services/Crawling`); each only decides what group a

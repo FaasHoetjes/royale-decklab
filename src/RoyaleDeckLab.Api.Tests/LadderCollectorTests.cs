@@ -19,7 +19,7 @@ public sealed class LadderCollectorTests : CollectorFixture
 
     private void Visit(string tag) => Services.GetRequiredService<VisitorSeeds>().Add(tag);
 
-    private int StoredSides() => Services.GetRequiredService<LadderStore>().Counts(1000).PerTrophyBand.Values.Sum();
+    private int StoredSides() => Services.GetRequiredService<LadderStore>().Counts().PerTrophyBand.Values.Sum();
 
     [Fact]
     public async Task A_visitor_brings_in_the_opponents_of_their_trophy_range()

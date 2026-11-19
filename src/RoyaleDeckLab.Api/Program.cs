@@ -84,7 +84,8 @@ var metaDbPath = builder.Configuration.GetSection(MetaOptions.SectionName).Get<M
 var dataDirectory = Path.GetDirectoryName(Path.GetFullPath(metaDbPath, contentRoot))
     ?? throw new InvalidOperationException("The meta database path has no directory");
 builder.Services.AddSingleton(sp => new StatsStore(Path.Combine(dataDirectory, "stats.db"), sp.GetRequiredService<TimeProvider>()));
-builder.Services.AddSingleton(_ => new LadderStore(Path.Combine(dataDirectory, "ladder.db")));
+builder.Services.AddSingleton(sp => new LadderStore(
+    Path.Combine(dataDirectory, "ladder.db"), sp.GetRequiredService<IOptions<LadderOptions>>().Value.TrophyBandWidth));
 builder.Services.AddSingleton<LadderIntake>();
 builder.Services.AddSingleton<StatsRecorder>();
 builder.Services.AddSingleton<LivePresence>();
