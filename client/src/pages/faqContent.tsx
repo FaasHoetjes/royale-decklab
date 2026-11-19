@@ -175,8 +175,8 @@ export const faqItems: FaqItem[] = [
     answer: (
       <>
         <p style={pStyle}>
-          It shows each card’s Clan War win rate, play rate, and win-rate change since the previous
-          patch. Draws count as half a win; play rate is the share of recorded decks using the card.
+          It shows each card’s Clan War win rate, use rate, and win-rate change since the previous
+          patch. Draws count as half a win; use rate is the share of recorded decks using the card.
           Changes are shown in percentage points.
         </p>
         <p style={pLast}>

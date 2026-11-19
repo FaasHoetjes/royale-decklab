@@ -15,4 +15,6 @@ public sealed record BattleRecord
     public required BattleResult Result { get; init; }
 
     public required IReadOnlyList<CardVersion> CardVersions { get; init; }
+
+    public string? OpponentKey { get; init; }
 }

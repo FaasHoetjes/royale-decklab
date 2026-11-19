@@ -40,6 +40,7 @@ public static partial class SpaPages
     private const string CardsPath = "/cards";
     private const string ClanPath = "/clan";
     private const string AdminStatsPath = "/admin/stats";
+    private const int MaxDescriptionLength = 160;
 
     /// <summary>
     /// Pages that work by direct link but aren't released yet: no sitemap entry, no crawler nav link, no indexing.
@@ -54,8 +55,8 @@ public static partial class SpaPages
     private static (string Path, string Title, string Heading, string Description, SpaContentKind Content)[] StaticPages(DateTimeOffset now) =>
     [
         ("/best-decks", $"Best Clash Royale War Decks ({MonthYear(now)})", "Best War Deck Sets", "The strongest four-deck Clash Royale war sets right now, ranked on Clan War battles from the top 100 war clans.", SpaContentKind.BestDecks),
-        ("/patch", $"Clash Royale Patch Changes in Clan War ({MonthYear(now)})", "Patch Overview", "What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and play rate moved the most.", SpaContentKind.Patch),
-        (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, play rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
+        ("/patch", $"Clash Royale Patch Changes in Clan War ({MonthYear(now)})", "Patch Overview", "What changed in Clash Royale Clan War this patch: the latest balance changes and the cards whose win rate and use rate moved the most.", SpaContentKind.Patch),
+        (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, use rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
         ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.", SpaContentKind.Builder),
         ("/crown-series", "Clash Royale Crown Series Deck Generator", "Crown Series Deck Generator", "Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.", SpaContentKind.CrownSeries),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
@@ -164,14 +165,10 @@ public static partial class SpaPages
         {
             return NotFound;
         }
-        var stat = stats.FirstOrDefault(s => s.Id == card.Id);
-        var numbers = stat is null
-            ? "its win rate, play rate and change"
-            : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} play rate and its change";
         return new(
             200,
             CardTitle(card.Name, now),
-            $"The best {card.Name} decks for Clash Royale Clan War, ranked on real war battles: {numbers} since the last balance update.",
+            CardDescription(card.Name, stats.FirstOrDefault(s => s.Id == card.Id), []),
             $"{CardsPath}/{CardSlug(card.Name)}",
             false)
         {
@@ -180,6 +177,58 @@ public static partial class SpaPages
             Card = card,
             StructuredData = Breadcrumb([(SiteName, "/"), ("Cards", CardsPath), (card.Name, $"{CardsPath}/{CardSlug(card.Name)}")]),
         };
+    }
+
+    /// <summary>
+    /// Names the card's top-ranked deck, so Google's snippet answers "best balloon deck" with a deck to copy.
+    /// Falls back to the card's own numbers when it has no ranked deck or the deck's name won't fit.
+    /// Mirrors cardDescription in client/src/lib/topDeck.ts.
+    /// </summary>
+    public static string CardDescription(string cardName, CardStat? stat, IReadOnlyList<BestDeckEntry> decks)
+    {
+        var others = decks.Count - 1;
+        var more = others switch { <= 0 => "", 1 => " Plus 1 more ranked war deck.", _ => $" Plus {others} more ranked war decks." };
+        foreach (var keyCards in new[] { 3, 2 })
+        {
+            if (TopDeckSentence(cardName, decks, keyCards) is not { } sentence)
+            {
+                break;
+            }
+            if ((sentence + more).Length <= MaxDescriptionLength)
+            {
+                return sentence + more;
+            }
+            if (sentence.Length <= MaxDescriptionLength)
+            {
+                return sentence;
+            }
+        }
+        var numbers = stat is null
+            ? "its win rate, use rate and change"
+            : $"{Percent(stat.WinRate)} win rate, {Percent(stat.PlayRate)} use rate and its change";
+        return $"The best {cardName} decks for Clash Royale Clan War, ranked on real war battles: {numbers} since the last balance update.";
+    }
+
+    public static string? TopDeckSentence(string cardName, IReadOnlyList<BestDeckEntry> decks, int keyCards = 3)
+    {
+        if (decks.Count == 0)
+        {
+            return null;
+        }
+        var deck = decks[0];
+        var nameParts = DeckArchetypes.DistinctNames(decks)[0].Split(" · ");
+        var archetype = nameParts[0];
+        var archetypeWords = archetype.Split(' ').ToHashSet(StringComparer.Ordinal);
+        var key = nameParts.Skip(1)
+            .Concat(deck.Cards
+                .Where(c => c.Name != cardName && !c.Name.Split(' ').All(archetypeWords.Contains))
+                .OrderByDescending(c => c.ElixirCost ?? 0)
+                .Select(c => c.Name))
+            .Distinct()
+            .Take(keyCards)
+            .ToList();
+        var with = key.Count > 0 ? $" with {CardInsightsText.List(key)}" : "";
+        return $"Best {cardName} war deck right now: {archetype}{with}, {Percent(deck.WinRate)} win rate in the top war clans.";
     }
 
     // Worded the way people search ("royal giant deck"), without the site name so the card fits before Google cuts it off.
@@ -254,7 +303,7 @@ public static partial class SpaPages
         SpaContentKind.Home or SpaContentKind.Patch => ["/api/meta/status", "/api/cards", "/api/cards/stats", "/api/best-decks", "/api/patch"],
         SpaContentKind.BestDecks => ["/api/best-decks"],
         SpaContentKind.Cards => ["/api/cards", "/api/cards/stats"],
-        SpaContentKind.Card when page.Card is { } card => ["/api/cards", "/api/cards/stats", $"/api/cards/{card.Id}/decks"],
+        SpaContentKind.Card when page.Card is { } card => ["/api/cards", "/api/cards/stats", $"/api/cards/{card.Id}/decks", $"/api/cards/{card.Id}/insights"],
         _ => [],
     };
 

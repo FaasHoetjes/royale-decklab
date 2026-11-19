@@ -56,7 +56,7 @@ public sealed class ErrorCachingTests : IDisposable
     [Fact]
     public async Task A_failed_card_catalog_isnt_cached()
     {
-        var controller = WithFilterCaching(new CardsController(_catalog, _meta, new BestDecksBuilder(), NullLogger<CardsController>.Instance));
+        var controller = WithFilterCaching(Cards());
 
         var result = Assert.IsType<ObjectResult>(await controller.Get());
 
@@ -67,13 +67,29 @@ public sealed class ErrorCachingTests : IDisposable
     [Fact]
     public async Task Failed_card_decks_arent_cached()
     {
-        var controller = WithFilterCaching(new CardsController(_catalog, _meta, new BestDecksBuilder(), NullLogger<CardsController>.Instance));
+        var controller = WithFilterCaching(Cards());
 
         var result = Assert.IsType<ObjectResult>(await controller.Decks(26_000_000));
 
         Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
         Assert.Equal("no-store", controller.Response.Headers.CacheControl.ToString());
     }
+
+    [Fact]
+    public async Task Failed_card_insights_arent_cached()
+    {
+        var controller = WithFilterCaching(Cards());
+
+        var result = Assert.IsType<ObjectResult>(await controller.Insights(26_000_000));
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
+        Assert.Equal("no-store", controller.Response.Headers.CacheControl.ToString());
+    }
+
+    private CardsController Cards()
+        => new(_catalog, _meta, new BestDecksBuilder(),
+            new BalanceUpdateStore(_services.GetRequiredService<IServiceScopeFactory>(), NullLogger<BalanceUpdateStore>.Instance),
+            NullLogger<CardsController>.Instance);
 
     [Fact]
     public async Task Failed_best_decks_arent_cached()

@@ -36,10 +36,12 @@ public sealed class CardTallier((long From, long To)[] periods)
                 if (v.Version == CardVersionKind.Evo)
                 {
                     counts.Evo++;
+                    counts.EvoWins += win;
                 }
                 else
                 {
                     counts.Hero++;
+                    counts.HeroWins += win;
                 }
             }
         }
@@ -63,7 +65,7 @@ public sealed class CardTallier((long From, long To)[] periods)
             r.To,
             _battles[p],
             _cards[p].OrderBy(kv => kv.Key)
-                .Select(kv => new CardTally(kv.Key, kv.Value.Games, kv.Value.Wins, kv.Value.Evo, kv.Value.Hero))
+                .Select(kv => new CardTally(kv.Key, kv.Value.Games, kv.Value.Wins, kv.Value.Evo, kv.Value.Hero, kv.Value.EvoWins, kv.Value.HeroWins))
                 .ToList()))
             .ToArray();
 
@@ -73,6 +75,8 @@ public sealed class CardTallier((long From, long To)[] periods)
         public double Wins;
         public int Evo;
         public int Hero;
+        public double EvoWins;
+        public double HeroWins;
     }
 }
 
@@ -83,6 +87,7 @@ public static class CardPeriods
     public const int MinCurrentBattles = 10_000;
 
     public const int MinGamesForChange = 100;
+    public const int MinGamesForVersionWinRate = 100;
 
     public static CardStatsResponse Compare(CardPeriod current, CardPeriod? previous)
     {
@@ -134,8 +139,18 @@ public static class CardPeriods
             PreviousPlayRate: before is not null && battlesBefore > 0 ? (double)before.Games / battlesBefore : null,
             WinRateChange: change,
             ChangeMargin: margin,
-            ChangeIsClear: change is { } c && Math.Abs(c) >= margin);
+            ChangeIsClear: change is { } c && Math.Abs(c) >= margin)
+        {
+            NormalWinRate = VersionWinRate(
+                card.Games - card.EvoGames - card.HeroGames,
+                card.EvoGames + card.HeroGames == 0 ? card.Wins : card.Wins - card.EvoWins - card.HeroWins),
+            EvoWinRate = VersionWinRate(card.EvoGames, card.EvoWins),
+            HeroWinRate = VersionWinRate(card.HeroGames, card.HeroWins),
+        };
     }
+
+    private static double? VersionWinRate(int games, double? wins)
+        => wins is { } w && games >= MinGamesForVersionWinRate ? w / games : null;
 
     private static string? IsoOrNull(long ms) => ms > 0 ? MetaCache.IsoMs(ms) : null;
 }

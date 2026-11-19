@@ -166,6 +166,19 @@ public sealed class MetaCacheTests : IDisposable
         Assert.True(cache.LastCacheTime > FortyDaysAgo);
     }
 
+    [Fact]
+    public async Task Both_sides_of_a_war_battle_point_at_each_other()
+    {
+        using var sp = Services(crawlFails: false);
+        await SeedOldBattlesAsync(sp, lastBuildMs: FortyDaysAgo);
+
+        await sp.GetRequiredService<MetaCache>().InitializeAsync();
+
+        var stored = StoredBattles(sp).ToDictionary(b => b.PlayerTag);
+        Assert.Equal(stored["#P2"].Key, stored["#P1"].OpponentKey);
+        Assert.Equal(stored["#P1"].Key, stored["#P2"].OpponentKey);
+    }
+
     private static HashSet<CardVersion> KnownVersions(ServiceProvider sp)
     {
         using var scope = sp.CreateScope();

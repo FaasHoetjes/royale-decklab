@@ -5,9 +5,11 @@
 
 const BODY_GRADIENT_ID = 'elixirBody';
 const GLOW_GRADIENT_ID = 'elixirGlow';
+const DIGIT_GRADIENT_ID = 'elixirDigit';
 const DROP_PATH =
   'M19.6 1.7 C22.9 4.9 26.7 10.6 26.7 17.3 C26.7 24.2 21.1 29 14 29 C6.9 29 1.3 24.4 1.3 17.7 C1.3 10.4 8.6 4.4 18 1.5 C18.7 1.3 19.2 1.4 19.6 1.7 Z';
 const OUTLINE = '#500054';
+const DIGIT_SHADOW = '#2e0033';
 
 export function ElixirGradientDefs() {
   return (
@@ -25,6 +27,11 @@ export function ElixirGradientDefs() {
           <stop offset="45%" stopColor="#ffd0ff" stopOpacity="0.6" />
           <stop offset="100%" stopColor="#ff80ff" stopOpacity="0" />
         </radialGradient>
+        <linearGradient id={DIGIT_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="55%" stopColor="#fdf3ff" />
+          <stop offset="100%" stopColor="#f2c4f6" />
+        </linearGradient>
       </defs>
     </svg>
   );
@@ -44,20 +51,35 @@ export default function ElixirBadge({ cost }: { cost: number }) {
   return (
     <svg viewBox="0 0 28 30" style={styles.badge} aria-label={`${cost} elixir`} role="img">
       <Drop />
-      <text
-        x="13.6"
-        y="18.6"
-        textAnchor="middle"
-        dominantBaseline="central"
-        style={styles.number}
-        fill="#ffffff"
-        stroke="#3a003e"
-        strokeWidth="2.8"
-        strokeLinejoin="round"
-        paintOrder="stroke"
-      >
-        {cost}
-      </text>
+      <g transform="translate(14 0) scale(1.12 1) translate(-14 0)">
+        <text
+          x="14"
+          y="17.2"
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={styles.number}
+          fill={DIGIT_SHADOW}
+          stroke={DIGIT_SHADOW}
+          strokeWidth="3.8"
+          strokeLinejoin="round"
+        >
+          {cost}
+        </text>
+        <text
+          x="14"
+          y="16"
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={styles.number}
+          fill={`url(#${DIGIT_GRADIENT_ID})`}
+          stroke="#4a0450"
+          strokeWidth="3.4"
+          strokeLinejoin="round"
+          paintOrder="stroke"
+        >
+          {cost}
+        </text>
+      </g>
     </svg>
   );
 }
@@ -80,6 +102,6 @@ const styles = {
   },
   number: {
     fontFamily: "'Lilita One', system-ui, -apple-system, sans-serif",
-    fontSize: '14px',
+    fontSize: '18px',
   },
 };

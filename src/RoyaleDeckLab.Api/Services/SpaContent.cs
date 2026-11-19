@@ -51,7 +51,7 @@ public static class SpaContent
             .Append(P("The strongest four deck war sets in the current meta. Assumes a maxed collection with all Evolutions and Heroes."));
         // A deck can show up in several sets; like the page, it keeps one name across all of them.
         var unique = sets.SelectMany(s => s.Decks).DistinctBy(d => MetaCache.DeckKey(d.CardIds)).ToList();
-        var names = DeckNames(unique);
+        var names = DeckArchetypes.DistinctNames(unique);
         var nameOf = unique
             .Select((d, i) => (Key: MetaCache.DeckKey(d.CardIds), Name: names[i]))
             .ToDictionary(x => x.Key, x => x.Name);
@@ -70,7 +70,7 @@ public static class SpaContent
         if (cards.Count > 0)
         {
             var statById = stats.Cards.ToDictionary(s => s.Id);
-            html.Append("<table><thead><tr><th>Card</th><th>Win rate</th><th>Play rate</th></tr></thead><tbody>");
+            html.Append("<table><thead><tr><th>Card</th><th>Win rate</th><th>Use rate</th></tr></thead><tbody>");
             var ordered = cards
                 .OrderByDescending(c => statById.GetValueOrDefault(c.Id)?.PlayRate ?? -1)
                 .ThenBy(c => c.Name, StringComparer.Ordinal);
@@ -113,7 +113,7 @@ public static class SpaContent
     public static string Patch(IReadOnlyList<CatalogCard> cards, CardStatsResponse stats, IReadOnlyList<BalanceUpdate> updates)
     {
         var html = new StringBuilder(H1(PatchHeading(stats, updates)))
-            .Append(P("The latest balance changes, and the cards whose Clan War win rate and play rate moved the most since the last patch."));
+            .Append(P("The latest balance changes, and the cards whose Clan War win rate and use rate moved the most since the last patch."));
         var nameById = cards.ToDictionary(c => c.Id, c => c.Name);
         foreach (var update in updates)
         {
@@ -147,7 +147,7 @@ public static class SpaContent
             .OrderByDescending(s => Math.Abs(s.WinRateChange ?? 0))
             .Take(PatchMoverCount)
             .Select(s => (nameById[s.Id], s.PreviousWinRate ?? 0, s.WinRate));
-        html.Append(H2("Biggest play rate changes")).Append(MoverList(playRateMovers))
+        html.Append(H2("Biggest use rate changes")).Append(MoverList(playRateMovers))
             .Append(H2("Biggest win rate changes")).Append(MoverList(winRateMovers));
         return Page(html.ToString());
     }
@@ -162,9 +162,13 @@ public static class SpaContent
         return html.Append("</ul>").ToString();
     }
 
-    public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks)
+    public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks, CardInsightsResponse? insights = null, IReadOnlyList<CatalogCard>? catalog = null, bool isLastPatch = false)
     {
         var html = new StringBuilder("<p><a href=\"/cards\">All cards</a></p>").Append(H1($"{card.Name} Decks"));
+        if (SpaPages.TopDeckSentence(card.Name, decks) is { } topDeck)
+        {
+            html.Append(P(topDeck));
+        }
         var facts = new[]
         {
             card.ElixirCost is { } cost ? $"{cost} elixir" : null,
@@ -177,31 +181,84 @@ public static class SpaContent
         if (stat is not null)
         {
             var games = stat.Games.ToString("N0", CultureInfo.InvariantCulture);
-            html.Append(P($"{SpaPages.Percent(stat.WinRate)} win rate · {SpaPages.Percent(stat.PlayRate)} play rate · {games} games"));
+            html.Append(P($"{SpaPages.Percent(stat.WinRate)} win rate · {SpaPages.Percent(stat.PlayRate)} use rate · {games} games"));
         }
         else if (statsLoaded)
         {
-            html.Append(P($"Nobody in the top war clans has played {card.Name} in a war battle this patch."));
+            html.Append(P($"Nobody in the top war clans has played {card.Name} in a war battle {(isLastPatch ? "last patch" : "this patch")}."));
         }
         html.Append(H2($"Best war decks with {card.Name}"));
         if (decks.Count > 0)
         {
-            var names = DeckNames(decks);
+            var names = DeckArchetypes.DistinctNames(decks);
             html.Append(DeckList(decks.Select((d, i) => (d, names[i]))));
         }
         else if (statsLoaded)
         {
             html.Append(P($"No war deck with {card.Name} has been played by five or more players yet, so there's none to rank."));
         }
+        if (insights is not null)
+        {
+            html.Append(CardInsights(card, insights, (catalog ?? []).ToDictionary(c => c.Id, c => c.Name)));
+        }
         return Page(html.ToString());
     }
 
-    private static IReadOnlyList<string> DeckNames(IEnumerable<BestDeckEntry> decks)
+    private static string CardInsights(CatalogCard card, CardInsightsResponse insights, IReadOnlyDictionary<int, string> names)
     {
-        var cardLists = decks
-            .Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList())
-            .ToList();
-        return DeckArchetypes.DistinctNames(cardLists);
+        var html = new StringBuilder(H2($"{card.Name} in Clan War"));
+        foreach (var paragraph in insights.Summary)
+        {
+            html.Append(P(paragraph));
+        }
+
+        if (insights.Styles.Count > 0)
+        {
+            html.Append(H2($"Deck styles with {card.Name}")).Append("<ul>");
+            foreach (var style in insights.Styles)
+            {
+                var winRate = style.WinRate is { } w ? $", {SpaPages.Percent(w)} win rate" : "";
+                html.Append("<li>").Append(Encode($"{style.Name}: {SpaPages.Percent(style.Share)} of games{winRate}")).Append("</li>");
+            }
+            html.Append("</ul>");
+        }
+
+        var partners = insights.Partners.Select(p => (p.CardId, $"in {Share(p.Share)} of its games, win rate {Points(p.Lift)} points above expected"));
+        var counters = insights.Counters.Select(c => (c.CardId, $"{SpaPages.Percent(c.WinRate)} win rate against it, {Points(c.Lift)} points below expected"));
+        html.Append(MatchupList($"{card.Name} plays well with", partners));
+        html.Append(MatchupList($"{card.Name} struggles against", counters));
+
+        if (insights.History.Count >= 2)
+        {
+            html.Append(H2($"{card.Name} over the last patches")).Append("<ul>");
+            foreach (var point in insights.History)
+            {
+                var since = point.Since is { } s ? $"From {DateTimeOffset.Parse(s, CultureInfo.InvariantCulture).ToString("MMMM d", CultureInfo.InvariantCulture)}" : "Earlier";
+                html.Append("<li>").Append(Encode($"{since}: {SpaPages.Percent(point.WinRate)} win rate, {SpaPages.Percent(point.PlayRate)} use rate")).Append("</li>");
+            }
+            html.Append("</ul>");
+        }
+
+        return html.ToString();
+
+        static string Share(double share) => (share * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+        static string Points(double difference) => Math.Abs(difference * 100).ToString("0.0", CultureInfo.InvariantCulture);
+
+        string MatchupList(string heading, IEnumerable<(int CardId, string Detail)> rows)
+        {
+            var list = rows.Where(r => names.ContainsKey(r.CardId)).ToList();
+            if (list.Count == 0)
+            {
+                return "";
+            }
+            var section = new StringBuilder(H2(heading)).Append("<ul>");
+            foreach (var (cardId, detail) in list)
+            {
+                section.Append("<li>").Append(CardLink(names[cardId])).Append(Encode($": {detail}")).Append("</li>");
+            }
+            return section.Append("</ul>").ToString();
+        }
     }
 
     private static string DeckList(IEnumerable<(BestDeckEntry Deck, string Name)> decks)

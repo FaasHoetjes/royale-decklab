@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { CardStat } from '../api';
-import { cardRanks, isLowSample, sortCardStats } from './cardStats';
+import { cardRanks, isLowSample, sortCardStats, wholePercents } from './cardStats';
 
 const BATTLES = 200_000;
 
@@ -43,8 +43,8 @@ describe('sortCardStats', () => {
     expect(ids(sortCardStats(cards, 'Win rate'))).toEqual([3, 4, 1, 2]);
   });
 
-  test('ranks by play rate', () => {
-    expect(ids(sortCardStats(cards, 'Play rate'))).toEqual([4, 1, 3, 2]);
+  test('ranks by use rate', () => {
+    expect(ids(sortCardStats(cards, 'Use rate'))).toEqual([4, 1, 3, 2]);
   });
 
   test('ranks by change, with cards that have none after those that do', () => {
@@ -58,10 +58,21 @@ describe('sortCardStats', () => {
 });
 
 describe('cardRanks', () => {
-  test('ranks play rate over every card and win rate over the cards with enough games', () => {
+  test('ranks use rate over every card and win rate over the cards with enough games', () => {
     const { playRank, winRank, rankedCount } = cardRanks([stat(1, 0.5, 10_000), stat(2, 0.7, 300), stat(3, 0.55, 5_000)]);
     expect([playRank.get(1), playRank.get(3), playRank.get(2)]).toEqual([1, 2, 3]);
     expect([winRank.get(3), winRank.get(1), winRank.get(2)]).toEqual([1, 2, undefined]);
     expect(rankedCount).toBe(2);
+  });
+});
+
+describe('wholePercents', () => {
+  test('adds up to 100 when each share would round up on its own', () => {
+    expect(wholePercents([0.345, 0.655])).toEqual([34, 66]);
+  });
+
+  test('hands leftover points to the largest remainders', () => {
+    expect(wholePercents([0.284, 0.193, 0.523])).toEqual([29, 19, 52]);
+    expect(wholePercents([1 / 3, 1 / 3, 1 / 3]).reduce((a, b) => a + b)).toBe(100);
   });
 });

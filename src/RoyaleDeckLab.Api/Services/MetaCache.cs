@@ -24,7 +24,7 @@ public sealed class MetaCache(
     private readonly object _indexLock = new();
 
     private volatile List<DeckMeta> _meta = [];
-    private volatile CardStatsResponse _cardStats = new(null, null, 0, false, []);
+    private volatile CardData _cards = new(new(null, null, 0, false, []), new Dictionary<int, CardInsight>(), []);
     private long _lastCacheTime;
     private long _epochStart;
     private long _version;
@@ -35,7 +35,13 @@ public sealed class MetaCache(
     private long _metaIndexVersion = -1;
 
     public IReadOnlyList<DeckMeta> Meta => _meta;
-    public CardStatsResponse CardStats => _cardStats;
+    public CardStatsResponse CardStats => _cards.Stats;
+
+    public CardData Cards => _cards;
+
+    public const int PatchHistoryLength = 6;
+
+    private static readonly TimeSpan CatalogTimeout = TimeSpan.FromSeconds(10);
     public int DeckCount => _meta.Count;
     public long LastCacheTime => Interlocked.Read(ref _lastCacheTime);
     public long EpochStart => Interlocked.Read(ref _epochStart);
@@ -116,21 +122,26 @@ public sealed class MetaCache(
     {
         var (epoch, previous) = store.GetEpochs();
         Interlocked.Exchange(ref _epochStart, epoch);
-        var tallier = epoch > 0
-            ? new CardTallier([(previous, epoch), (epoch, long.MaxValue)])
-            : new CardTallier([(0, long.MaxValue)]);
+        (long, long)[] ranges = epoch > 0 ? [(previous, epoch), (epoch, long.MaxValue)] : [(0, long.MaxValue)];
+        var tallier = new CardTallier(ranges);
+        var classifier = ClassifierOrNullAsync(ct);
+        var insights = new CardInsightsTallier(ranges);
         var battles = 0;
         var decks = builder.AggregateBattles(
             Observe(store.AllBattles(), battle =>
             {
                 battles++;
                 tallier.Add(battle);
+                insights.Add(battle);
             }),
             epoch);
         var periods = tallier.Periods();
-        _cardStats = epoch > 0
+        var stats = epoch > 0
             ? CardPeriods.Compare(periods[1], await KeepPreviousPeriodAsync(store, periods[0], ct))
             : CardPeriods.Compare(periods[0], null);
+        var statsPeriod = epoch > 0 && !stats.IsLastPatch ? 1 : 0;
+        var cardInsights = insights.Insights(await classifier)[statsPeriod];
+        _cards = new CardData(stats, cardInsights, History(store.GetCardPeriods(), epoch > 0 ? periods[1] : null));
         _meta = decks;
         _isLoaded = true;
         Interlocked.Increment(ref _version);
@@ -352,6 +363,50 @@ public sealed class MetaCache(
         return saved;
     }
 
+    private async Task<Func<int[], string?>?> ClassifierOrNullAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        if (scope.ServiceProvider.GetService<CardCatalog>() is not { } catalog)
+        {
+            return null;
+        }
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(CatalogTimeout);
+        try
+        {
+            var cards = await catalog.GetAsync(timeout.Token);
+            return cards.Count > 0 ? CardInsightsTallier.Classifier(cards) : null;
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Card catalog unavailable; card deck styles are left out of this aggregation");
+            return null;
+        }
+    }
+
+    public static IReadOnlyList<CardPeriod> History(IReadOnlyList<CardPeriod> saved, CardPeriod? current)
+    {
+        var all = current is null ? saved : saved.Append(current);
+        var kept = new List<CardPeriod>();
+        var newerPeriodStart = long.MaxValue;
+        foreach (var period in all.OrderByDescending(p => p.EndMs).ThenByDescending(p => p.Battles))
+        {
+            var overlapsNewer = period.EndMs > newerPeriodStart;
+            if (overlapsNewer || period.Battles < CardPeriods.MinCurrentBattles)
+            {
+                continue;
+            }
+            kept.Add(period);
+            newerPeriodStart = period.StartMs;
+            if (kept.Count == PatchHistoryLength)
+            {
+                break;
+            }
+        }
+        kept.Reverse();
+        return kept;
+    }
+
     private static IEnumerable<T> Observe<T>(IEnumerable<T> source, Action<T> observer)
     {
         foreach (var item in source)
@@ -389,3 +444,8 @@ public sealed class MetaCache(
     public static string IsoMs(long ms)
         => DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 }
+
+public sealed record CardData(
+    CardStatsResponse Stats,
+    IReadOnlyDictionary<int, CardInsight> Insights,
+    IReadOnlyList<CardPeriod> PatchHistory);

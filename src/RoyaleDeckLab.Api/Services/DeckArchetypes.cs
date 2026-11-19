@@ -1,3 +1,5 @@
+using RoyaleDeckLab.Api.Dtos;
+
 namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
@@ -97,6 +99,11 @@ public static class DeckArchetypes
         var name = rule.NameOf?.Invoke(deck) ?? rule.Name ?? $"{rule.WinCondition} {rule.Style ?? StyleByElixir(deck)}";
         return (name, rule.WinCondition);
     }
+
+    public static IReadOnlyList<string> DistinctNames(IEnumerable<BestDeckEntry> decks)
+        => DistinctNames(decks
+            .Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList())
+            .ToList());
 
     /// <summary>
     /// Names for decks shown together, matching distinctDeckNames: a name two decks share gets the priciest card

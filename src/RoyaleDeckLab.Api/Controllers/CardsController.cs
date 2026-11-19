@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Controllers;
@@ -10,6 +11,7 @@ public sealed class CardsController(
     CardCatalog catalog,
     MetaCache cache,
     BestDecksBuilder decks,
+    BalanceUpdateStore balanceUpdates,
     ILogger<CardsController> logger) : ControllerBase
 {
     public const int DecksPerCard = 5;
@@ -59,5 +61,42 @@ public sealed class CardsController(
             Response.Headers.CacheControl = "no-store";
             return StatusCode(500, new { error = "Failed to find decks for this card" });
         }
+    }
+
+    [HttpGet("{id:int}/insights")]
+    [OutputCache(PolicyName = "public-json")]
+    [RequireMetaLoaded]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    public async Task<IActionResult> Insights(int id)
+    {
+        try
+        {
+            var cards = await catalog.GetAsync();
+            if (cards.FirstOrDefault(c => c.Id == id) is not { } card)
+            {
+                return NotFound(new { error = "Unknown card" });
+            }
+            return Ok(InsightsFor(card, cards, cache, decks, balanceUpdates));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error writing insights for card {CardId}", id);
+            Response.Headers.CacheControl = "no-store";
+            return StatusCode(500, new { error = "Failed to write insights for this card" });
+        }
+    }
+
+    public static CardInsightsResponse InsightsFor(
+        CatalogCard card, IReadOnlyList<CatalogCard> cards, MetaCache meta, BestDecksBuilder decks, BalanceUpdateStore balanceUpdates)
+    {
+        var data = meta.Cards;
+        return CardInsightsText.Build(
+            card,
+            cards,
+            data.Stats,
+            data.Insights.GetValueOrDefault(card.Id),
+            data.PatchHistory,
+            decks.TopDecksWithCached(card.Id, meta.Version, meta.Meta, cards, DecksPerCard),
+            balanceUpdates.During(data.Stats, cards));
     }
 }

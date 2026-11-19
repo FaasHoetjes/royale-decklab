@@ -29,4 +29,9 @@ public sealed record CardStat(
     double? PreviousPlayRate,
     double? WinRateChange,
     double? ChangeMargin,
-    bool ChangeIsClear);
+    bool ChangeIsClear)
+{
+    public double? NormalWinRate { get; init; }
+    public double? EvoWinRate { get; init; }
+    public double? HeroWinRate { get; init; }
+}

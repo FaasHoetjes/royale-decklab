@@ -2,10 +2,9 @@ import { useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { getTheme } from '../theme';
-import { useAllCards, useCardDecks, useCardStats } from '../queries';
+import { useAllCards, useCardDecks, useCardInsights, useCardStats } from '../queries';
 import type { CatalogCard } from '../api';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { FOLD_EASING, prefersReducedMotion } from '../lib/motion';
 import { cardIconUrl } from '../lib/cardDisplay';
 import { cardSlug, cardType, mostPlayedVersion, specialVersions } from '../lib/cardInfo';
 import { cardRanks, isLowSample, percent } from '../lib/cardStats';
@@ -20,7 +19,8 @@ import { BestDecksSkeleton } from '../components/LoadingSkeletons';
 import NotFound from './NotFound';
 import { periodNote } from '../lib/statsPeriod';
 import { StatTile, PlaySplit } from './CardStatViews';
-import { usePastBuildButton } from './usePastBuildButton';
+import CardInsightsSections from './CardInsightsSections';
+import { cardDescription, topDeckSentence } from '../lib/topDeck';
 
 const VERSION_SLOT = { evo: 0, hero: 1, normal: undefined } as const;
 
@@ -83,7 +83,7 @@ export default function CardPage() {
   }
   if (!catalog.data) return null;
   if (!card) return <NotFound />;
-  return <CardDetails key={card.id} card={card} />;
+  return <CardDetails key={card.id} card={card} catalog={catalog.data} />;
 }
 
 const lockIcon = (
@@ -93,28 +93,28 @@ const lockIcon = (
   </svg>
 );
 
-function CardDetails({ card }: { card: CatalogCard }) {
+function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCard[] }) {
   const { activePlayerTag } = useApp();
   const theme = getTheme();
   const isMobile = useIsMobile();
-  const build = usePastBuildButton(isMobile);
   const statsQuery = useCardStats();
   const decksQuery = useCardDecks(card.id);
+  const insightsQuery = useCardInsights(card.id);
 
   const stats = statsQuery.data;
   const stat = stats?.cards.find((s) => s.id === card.id);
   const ranks = useMemo(() => (stats ? cardRanks(stats.cards) : null), [stats]);
   const deckNames = useMemo(() => distinctDeckNames((decksQuery.data?.decks ?? []).map((d) => d.cards)), [decksQuery.data]);
 
+  const rankedDecks = decksQuery.data?.decks;
+  const topDeck = useMemo(() => topDeckSentence(card.name, rankedDecks ?? []), [card.name, rankedDecks]);
+
   useEffect(() => {
     document.title = `Best ${card.name} Decks for Clash Royale War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`;
-    const numbers = stat
-      ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} play rate and its change`
-      : 'its win rate, play rate and change';
     document
       .querySelector('meta[name="description"]')
-      ?.setAttribute('content', `The best ${card.name} decks for Clash Royale Clan War, ranked on real war battles: ${numbers} since the last balance update.`);
-  }, [card.name, stat]);
+      ?.setAttribute('content', cardDescription(card.name, stat, rankedDecks ?? []));
+  }, [card.name, stat, rankedDecks]);
 
   const versions = specialVersions(card.maxEvolutionLevel);
   const isChampion = card.rarity === 'champion';
@@ -153,14 +153,13 @@ function CardDetails({ card }: { card: CatalogCard }) {
           )
         )}
       </StatTile>
-      <StatTile theme={theme} value={percent(stat.playRate)} label="play rate">
-        {playRank && <span style={{ color: theme.text.secondary }}>#{playRank} most played</span>}
-      </StatTile>
+      <StatTile theme={theme} value={percent(stat.playRate)} label="use rate" />
       {winRank && ranks ? (
         <StatTile theme={theme} value={`#${winRank}`} label={`win rate rank of ${ranks.rankedCount}`} />
       ) : (
         <StatTile theme={theme} value={stat.games.toLocaleString('en-US')} label="games" />
       )}
+      {playRank && ranks && <StatTile theme={theme} value={`#${playRank}`} label={`use rate rank of ${ranks.playRank.size}`} />}
     </div>
   );
 
@@ -192,10 +191,11 @@ function CardDetails({ card }: { card: CatalogCard }) {
               <div style={styles.facts}>{factChips}</div>
             </>
           )}
-          {statsQuery.isLoading && <span className="skeleton" style={styles.tilesSkeleton} />}
+          {topDeck && <p style={{ ...styles.topDeck, color: theme.text.secondary }}>{topDeck}</p>}
+          {statsQuery.isLoading && <span className="skeleton" style={{ ...styles.tilesSkeleton, ...(isMobile ? { height: '180px' } : {}) }} />}
           {statTiles}
           {stats && !stat && (
-            <p style={{ ...styles.note, color: theme.text.secondary }}>Nobody in the top war clans has played {card.name} in a war battle this patch.</p>
+            <p style={{ ...styles.note, color: theme.text.secondary }}>Nobody in the top war clans has played {card.name} in a war battle {stats.isLastPatch ? 'last patch' : 'this patch'}.</p>
           )}
           {stat && stats && (stats.isLastPatch || rough) && (
             <p style={{ ...styles.note, color: theme.text.secondary }}>
@@ -207,9 +207,9 @@ function CardDetails({ card }: { card: CatalogCard }) {
           {stat && (versions.evo || versions.hero) && !isChampion && <PlaySplit theme={theme} stat={stat} />}
           {isMobile && (
             <div style={styles.buildPanel}>
-              <Link ref={build.buttonRef} to={buildHref} style={{ ...styles.buildButton, ...styles.buildButtonWide, backgroundColor: theme.accent, color: theme.onAccent }}>
+              <Link to={buildHref} style={{ ...styles.buildButton, ...styles.buildButtonWide, backgroundColor: theme.accent, color: theme.onAccent }}>
                 {lockIcon}
-                Build my best war decks with {card.name}
+                <span style={styles.buildLabel}>Build war decks with {card.name}</span>
               </Link>
             </div>
           )}
@@ -248,31 +248,10 @@ function CardDetails({ card }: { card: CatalogCard }) {
             ))}
           </div>
         )}
-        <div ref={build.endRef} />
       </section>
 
-      {isMobile && (
-        <div style={styles.buildFloat}>
-          <Link
-            to={buildHref}
-            aria-hidden={!build.floating}
-            tabIndex={build.floating ? undefined : -1}
-            style={{
-              ...styles.buildButton,
-              ...styles.buildPill,
-              backgroundColor: theme.accent,
-              color: theme.onAccent,
-              opacity: build.floating ? 1 : 0,
-              transform: build.floating ? 'none' : 'translateY(16px)',
-              pointerEvents: build.floating ? 'auto' : 'none',
-              transition: prefersReducedMotion() ? 'none' : `opacity 200ms ${FOLD_EASING}, transform 200ms ${FOLD_EASING}`,
-            }}
-          >
-            {lockIcon}
-            Build with {card.name}
-          </Link>
-        </div>
-      )}
+      {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} catalog={catalog} theme={theme} isMobile={isMobile} />}
+
     </div>
   );
 }
@@ -355,18 +334,23 @@ const styles = {
   },
   tiles: {
     display: 'grid' as const,
-    gridTemplateColumns: 'repeat(3, minmax(0, 168px))',
+    gridTemplateColumns: 'repeat(4, minmax(0, 168px))',
     gap: '10px',
   },
   tilesMobile: {
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: '8px',
   },
   tilesSkeleton: {
     display: 'block' as const,
     height: '86px',
-    maxWidth: '520px',
+    maxWidth: '702px',
     borderRadius: '12px',
+  },
+  topDeck: {
+    margin: 0,
+    fontSize: '15px',
+    lineHeight: 1.5,
   },
   note: {
     margin: 0,
@@ -404,31 +388,18 @@ const styles = {
   buildPanel: {
     marginTop: '16px',
   },
+  buildLabel: {
+    minWidth: 0,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  },
   buildButtonWide: {
     display: 'flex' as const,
     width: '100%',
     boxSizing: 'border-box' as const,
     padding: '13px 16px',
     fontSize: '15px',
-    whiteSpace: 'normal' as const,
     textAlign: 'center' as const,
-  },
-  buildFloat: {
-    position: 'fixed' as const,
-    left: '12px',
-    right: '12px',
-    bottom: 'calc(16px + env(safe-area-inset-bottom))',
-    zIndex: 850,
-    display: 'flex' as const,
-    justifyContent: 'center' as const,
-    pointerEvents: 'none' as const,
-  },
-  buildPill: {
-    padding: '11px 20px',
-    borderRadius: '999px',
-    fontSize: '15px',
-    maxWidth: '100%',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
   },
   deckList: {
     display: 'flex' as const,
