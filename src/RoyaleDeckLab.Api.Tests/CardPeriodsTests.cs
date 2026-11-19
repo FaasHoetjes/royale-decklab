@@ -198,4 +198,14 @@ public sealed class CardPeriodsTests
         Assert.Null(card.EvoWinRate);
         Assert.Null(card.NormalWinRate);
     }
+
+    [Fact]
+    public void A_period_saved_without_version_wins_still_has_a_normal_win_rate_when_every_game_is_normal()
+    {
+        var period = new CardPeriod(0, long.MaxValue, 40_000, [new CardTally(1, 1_000, 520, EvoGames: 0, HeroGames: 0)]);
+
+        var card = Assert.Single(CardPeriods.Compare(period, null).Cards);
+
+        Assert.Equal(0.52, card.NormalWinRate!.Value, 10);
+    }
 }

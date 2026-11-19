@@ -141,7 +141,9 @@ public static class CardPeriods
             ChangeMargin: margin,
             ChangeIsClear: change is { } c && Math.Abs(c) >= margin)
         {
-            NormalWinRate = VersionWinRate(card.Games - card.EvoGames - card.HeroGames, card.Wins - card.EvoWins - card.HeroWins),
+            NormalWinRate = VersionWinRate(
+                card.Games - card.EvoGames - card.HeroGames,
+                card.EvoGames + card.HeroGames == 0 ? card.Wins : card.Wins - card.EvoWins - card.HeroWins),
             EvoWinRate = VersionWinRate(card.EvoGames, card.EvoWins),
             HeroWinRate = VersionWinRate(card.HeroGames, card.HeroWins),
         };

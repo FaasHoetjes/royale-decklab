@@ -20,6 +20,7 @@ import NotFound from './NotFound';
 import { periodNote } from '../lib/statsPeriod';
 import { StatTile, PlaySplit } from './CardStatViews';
 import CardInsightsSections from './CardInsightsSections';
+import { cardDescription, topDeckSentence } from '../lib/topDeck';
 
 const VERSION_SLOT = { evo: 0, hero: 1, normal: undefined } as const;
 
@@ -105,15 +106,15 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
   const ranks = useMemo(() => (stats ? cardRanks(stats.cards) : null), [stats]);
   const deckNames = useMemo(() => distinctDeckNames((decksQuery.data?.decks ?? []).map((d) => d.cards)), [decksQuery.data]);
 
+  const rankedDecks = decksQuery.data?.decks;
+  const topDeck = useMemo(() => topDeckSentence(card.name, rankedDecks ?? []), [card.name, rankedDecks]);
+
   useEffect(() => {
     document.title = `Best ${card.name} Decks for Clash Royale War (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})`;
-    const numbers = stat
-      ? `${percent(stat.winRate)} win rate, ${percent(stat.playRate)} use rate and its change`
-      : 'its win rate, use rate and change';
     document
       .querySelector('meta[name="description"]')
-      ?.setAttribute('content', `The best ${card.name} decks for Clash Royale Clan War, ranked on real war battles: ${numbers} since the last balance update.`);
-  }, [card.name, stat]);
+      ?.setAttribute('content', cardDescription(card.name, stat, rankedDecks ?? []));
+  }, [card.name, stat, rankedDecks]);
 
   const versions = specialVersions(card.maxEvolutionLevel);
   const isChampion = card.rarity === 'champion';
@@ -190,10 +191,11 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
               <div style={styles.facts}>{factChips}</div>
             </>
           )}
+          {topDeck && <p style={{ ...styles.topDeck, color: theme.text.secondary }}>{topDeck}</p>}
           {statsQuery.isLoading && <span className="skeleton" style={{ ...styles.tilesSkeleton, ...(isMobile ? { height: '180px' } : {}) }} />}
           {statTiles}
           {stats && !stat && (
-            <p style={{ ...styles.note, color: theme.text.secondary }}>Nobody in the top war clans has played {card.name} in a war battle this patch.</p>
+            <p style={{ ...styles.note, color: theme.text.secondary }}>Nobody in the top war clans has played {card.name} in a war battle {stats.isLastPatch ? 'last patch' : 'this patch'}.</p>
           )}
           {stat && stats && (stats.isLastPatch || rough) && (
             <p style={{ ...styles.note, color: theme.text.secondary }}>
@@ -248,7 +250,7 @@ function CardDetails({ card, catalog }: { card: CatalogCard; catalog: CatalogCar
         )}
       </section>
 
-      {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} cardWinRate={stat?.winRate} catalog={catalog} theme={theme} isMobile={isMobile} />}
+      {insightsQuery.data && <CardInsightsSections card={card} insights={insightsQuery.data} catalog={catalog} theme={theme} isMobile={isMobile} />}
 
     </div>
   );
@@ -344,6 +346,11 @@ const styles = {
     height: '86px',
     maxWidth: '702px',
     borderRadius: '12px',
+  },
+  topDeck: {
+    margin: 0,
+    fontSize: '15px',
+    lineHeight: 1.5,
   },
   note: {
     margin: 0,

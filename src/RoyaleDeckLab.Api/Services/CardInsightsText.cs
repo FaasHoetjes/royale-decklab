@@ -12,6 +12,7 @@ public sealed record CardInsightsResponse(
     IReadOnlyList<CardPartner> Partners,
     IReadOnlyList<CardCounter> Counters,
     double? MatchupWinRate,
+    double? WinRate,
     IReadOnlyList<CardPatchPoint> History);
 
 public static class CardInsightsText
@@ -19,6 +20,7 @@ public static class CardInsightsText
     // Mirrors isLowSample in client/src/lib/cardStats.ts.
     private const double MaxWinRateMargin = 0.026;
     public static readonly int MinReliableGames = (int)Math.Ceiling(1 / (MaxWinRateMargin * MaxWinRateMargin));
+    private const int MinCardsForVerdict = 4;
 
     // Mirrors TROOP_OVERRIDES in client/src/lib/cardInfo.ts.
     private static readonly HashSet<int> TroopOverrides = [27000010, 28000016, 28000025];
@@ -37,7 +39,7 @@ public static class CardInsightsText
         var counters = (insight?.Counters ?? []).Where(c => names.ContainsKey(c.CardId)).ToList();
         var styles = insight?.Styles ?? [];
         var stat = stats.Cards.FirstOrDefault(s => s.Id == card.Id);
-        var deckNames = DeckNames(decks);
+        var deckNames = DeckArchetypes.DistinctNames(decks);
         var usualPartners = (insight?.UsualPartners ?? []).Where(names.ContainsKey).ToList();
         var text = new Writer(card, names, stats, stat, usualPartners, decks, deckNames, updates);
         return new CardInsightsResponse(
@@ -46,6 +48,7 @@ public static class CardInsightsText
             partners,
             counters,
             counters.Count > 0 ? insight?.MatchupWinRate : null,
+            insight?.WinRate,
             History(card.Id, history));
     }
 
@@ -77,11 +80,6 @@ public static class CardInsightsText
         return (winRank > 0 ? winRank : null, playRank, ranked.Count);
     }
 
-    private static IReadOnlyList<string> DeckNames(IReadOnlyList<BestDeckEntry> decks)
-        => DeckArchetypes.DistinctNames(decks
-            .Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList())
-            .ToList());
-
     private sealed class Writer(
         CatalogCard card,
         IReadOnlyDictionary<int, string> names,
@@ -100,7 +98,7 @@ public static class CardInsightsText
         {
             if (stat is null)
             {
-                return [$"{Describe()}. Nobody in the top war clans has played it in a war battle {_period}."];
+                return [$"{Describe()}."];
             }
             var (winRank, playRank, rankedCount) = Ranks(stats.Cards, card.Id);
             var winRate = $"In Clan War {_period} it wins {Pct(stat.WinRate)} of its battles in the top war clans";
@@ -108,7 +106,9 @@ public static class CardInsightsText
             {
                 $"{Describe()}.",
                 winRank is { } rank
-                    ? $"{winRate}, which is {Verdict(rank, rankedCount)}: #{rank} of {rankedCount} cards by win rate."
+                    ? rankedCount >= MinCardsForVerdict
+                        ? $"{winRate}, which is {Verdict(rank, rankedCount)}: #{rank} of {rankedCount} cards by win rate."
+                        : $"{winRate}: #{rank} of {rankedCount} cards by win rate."
                     : $"{winRate}, but with only {Count(stat.Games)} games that's too few to rank it.",
                 $"It's in {Pct(stat.PlayRate)} of war decks, #{playRank} by use rate.",
             };
@@ -240,7 +240,7 @@ public static class CardInsightsText
             ? "an"
             : "a";
 
-    private static string List(IEnumerable<string> items)
+    internal static string List(IEnumerable<string> items)
     {
         var list = items.ToList();
         return list.Count switch

@@ -45,6 +45,33 @@ public sealed class SpaContentTests
     }
 
     [Fact]
+    public void CardPage_OpensWithItsTopDeck()
+    {
+        var html = SpaContent.Card(MegaKnight, MegaKnightStat, true, [Entry(Inferno, 0.55), Entry(BombTower, 0.53)]);
+
+        Assert.Contains(
+            "<h1>Mega Knight Decks</h1><p>Best Mega Knight war deck right now: Log Bait with Inferno Tower, Knight and Skeleton Army, 55.0% win rate in the top war clans.</p>",
+            html);
+    }
+
+    [Fact]
+    public void CardDescription_NamesTheTopDeckAndCountsTheRest()
+        => Assert.Equal(
+            "Best Mega Knight war deck right now: Log Bait with Inferno Tower, Knight and Skeleton Army, 55.0% win rate in the top war clans. Plus 2 more ranked war decks.",
+            SpaPages.CardDescription("Mega Knight", MegaKnightStat, [Entry(Inferno, 0.55), Entry(BombTower, 0.53), Entry(Hog, 0.51)]));
+
+    [Fact]
+    public void CardDescription_FitsTheSnippet()
+    {
+        (string, int)[] pricey = [("Elite Barbarians", 6), ("Elixir Collector", 6), ("Royal Recruits", 7), ("Goblin Giant", 6), ("Mini P.E.K.K.A", 4), ("Barbarian Barrel", 2), ("Giant Snowball", 2), ("Electro Spirit", 1)];
+
+        var description = SpaPages.CardDescription("Mini P.E.K.K.A", null, [Entry(pricey, 0.5), Entry(pricey, 0.5), Entry(pricey, 0.5)]);
+
+        Assert.True(description.Length <= 160, description);
+        Assert.StartsWith("Best Mini P.E.K.K.A war deck right now:", description);
+    }
+
+    [Fact]
     public void PatchPage_ListsTheBalanceChangesAndTheBiggestMovers()
     {
         var steady = new CardStat(1, 5000, 0.51, 0.08, 0, 0, 5000, 0.505, 0.081, 0.005, 0.02, false);

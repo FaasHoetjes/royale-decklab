@@ -8,13 +8,12 @@ import type { Theme } from '../theme';
 interface Props {
   card: CatalogCard;
   insights: CardInsights;
-  cardWinRate: number | undefined;
   catalog: CatalogCard[];
   theme: Theme;
   isMobile: boolean;
 }
 
-export default function CardInsightsSections({ card, insights, cardWinRate, catalog, theme, isMobile }: Props) {
+export default function CardInsightsSections({ card, insights, catalog, theme, isMobile }: Props) {
   const byId = new Map(catalog.map((c) => [c.id, c]));
   const partners = insights.partners.filter((p) => byId.has(p.cardId));
   const counters = insights.counters.filter((c) => byId.has(c.cardId));
@@ -40,7 +39,7 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
       {insights.styles.length > 0 &&
         section(
           `Deck styles with ${card.name}`,
-          <DeckStyles cardName={card.name} styleShares={insights.styles} cardWinRate={cardWinRate} theme={theme} isMobile={isMobile} />
+          <DeckStyles cardName={card.name} styleShares={insights.styles} cardWinRate={insights.winRate} theme={theme} isMobile={isMobile} />
         )}
 
       {partners.length > 0 && (
@@ -72,7 +71,7 @@ export default function CardInsightsSections({ card, insights, cardWinRate, cata
 interface DeckStylesProps {
   cardName: string;
   styleShares: CardInsights['styles'];
-  cardWinRate: number | undefined;
+  cardWinRate: number | null;
   theme: Theme;
   isMobile: boolean;
 }
@@ -100,7 +99,7 @@ function DeckStyles({ cardName, styleShares, cardWinRate, theme, isMobile }: Dec
               ) : (
                 <>
                   <span style={{ ...styles.styleWinRate, fontSize: isMobile ? '17px' : '20px', color: theme.text.primary }}>{percent(style.winRate)}</span>
-                  {cardWinRate != null && <ChangePill change={style.winRate - cardWinRate} />}
+                  {cardWinRate != null && <ChangePill change={style.winRate - cardWinRate} isClear={style.isClear} />}
                 </>
               )}
             </div>

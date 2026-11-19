@@ -24,9 +24,7 @@ public sealed class MetaCache(
     private readonly object _indexLock = new();
 
     private volatile List<DeckMeta> _meta = [];
-    private volatile CardStatsResponse _cardStats = new(null, null, 0, false, []);
-    private volatile IReadOnlyDictionary<int, CardInsight> _cardInsights = new Dictionary<int, CardInsight>();
-    private volatile IReadOnlyList<CardPeriod> _patchHistory = [];
+    private volatile CardData _cards = new(new(null, null, 0, false, []), new Dictionary<int, CardInsight>(), []);
     private long _lastCacheTime;
     private long _epochStart;
     private long _version;
@@ -37,11 +35,9 @@ public sealed class MetaCache(
     private long _metaIndexVersion = -1;
 
     public IReadOnlyList<DeckMeta> Meta => _meta;
-    public CardStatsResponse CardStats => _cardStats;
+    public CardStatsResponse CardStats => _cards.Stats;
 
-    public IReadOnlyDictionary<int, CardInsight> CardInsights => _cardInsights;
-
-    public IReadOnlyList<CardPeriod> PatchHistory => _patchHistory;
+    public CardData Cards => _cards;
 
     public const int PatchHistoryLength = 6;
 
@@ -128,7 +124,8 @@ public sealed class MetaCache(
         Interlocked.Exchange(ref _epochStart, epoch);
         (long, long)[] ranges = epoch > 0 ? [(previous, epoch), (epoch, long.MaxValue)] : [(0, long.MaxValue)];
         var tallier = new CardTallier(ranges);
-        var insights = new CardInsightsTallier(ranges, await ClassifierOrNullAsync(ct));
+        var classifier = ClassifierOrNullAsync(ct);
+        var insights = new CardInsightsTallier(ranges);
         var battles = 0;
         var decks = builder.AggregateBattles(
             Observe(store.AllBattles(), battle =>
@@ -143,9 +140,8 @@ public sealed class MetaCache(
             ? CardPeriods.Compare(periods[1], await KeepPreviousPeriodAsync(store, periods[0], ct))
             : CardPeriods.Compare(periods[0], null);
         var statsPeriod = epoch > 0 && !stats.IsLastPatch ? 1 : 0;
-        _cardInsights = insights.Insights()[statsPeriod];
-        _patchHistory = History(store.GetCardPeriods(), epoch > 0 ? periods[1] : null);
-        _cardStats = stats;
+        var cardInsights = insights.Insights(await classifier)[statsPeriod];
+        _cards = new CardData(stats, cardInsights, History(store.GetCardPeriods(), epoch > 0 ? periods[1] : null));
         _meta = decks;
         _isLoaded = true;
         Interlocked.Increment(ref _version);
@@ -448,3 +444,8 @@ public sealed class MetaCache(
     public static string IsoMs(long ms)
         => DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 }
+
+public sealed record CardData(
+    CardStatsResponse Stats,
+    IReadOnlyDictionary<int, CardInsight> Insights,
+    IReadOnlyList<CardPeriod> PatchHistory);

@@ -51,7 +51,7 @@ public static class SpaContent
             .Append(P("The strongest four deck war sets in the current meta. Assumes a maxed collection with all Evolutions and Heroes."));
         // A deck can show up in several sets; like the page, it keeps one name across all of them.
         var unique = sets.SelectMany(s => s.Decks).DistinctBy(d => MetaCache.DeckKey(d.CardIds)).ToList();
-        var names = DeckNames(unique);
+        var names = DeckArchetypes.DistinctNames(unique);
         var nameOf = unique
             .Select((d, i) => (Key: MetaCache.DeckKey(d.CardIds), Name: names[i]))
             .ToDictionary(x => x.Key, x => x.Name);
@@ -165,6 +165,10 @@ public static class SpaContent
     public static string Card(CatalogCard card, CardStat? stat, bool statsLoaded, IReadOnlyList<BestDeckEntry> decks, CardInsightsResponse? insights = null, IReadOnlyList<CatalogCard>? catalog = null)
     {
         var html = new StringBuilder("<p><a href=\"/cards\">All cards</a></p>").Append(H1($"{card.Name} Decks"));
+        if (SpaPages.TopDeckSentence(card.Name, decks) is { } topDeck)
+        {
+            html.Append(P(topDeck));
+        }
         var facts = new[]
         {
             card.ElixirCost is { } cost ? $"{cost} elixir" : null,
@@ -186,7 +190,7 @@ public static class SpaContent
         html.Append(H2($"Best war decks with {card.Name}"));
         if (decks.Count > 0)
         {
-            var names = DeckNames(decks);
+            var names = DeckArchetypes.DistinctNames(decks);
             html.Append(DeckList(decks.Select((d, i) => (d, names[i]))));
         }
         else if (statsLoaded)
@@ -219,8 +223,8 @@ public static class SpaContent
             html.Append("</ul>");
         }
 
-        var partners = insights.Partners.Select(p => (p.CardId, $"in {Share(p.Share)} of its games, win rate {Points(p.Lift)} above expected"));
-        var counters = insights.Counters.Select(c => (c.CardId, $"{SpaPages.Percent(c.WinRate)} win rate against it, {Points(-c.Lift)} below expected"));
+        var partners = insights.Partners.Select(p => (p.CardId, $"in {Share(p.Share)} of its games, win rate {Points(p.Lift)} points above expected"));
+        var counters = insights.Counters.Select(c => (c.CardId, $"{SpaPages.Percent(c.WinRate)} win rate against it, {Points(c.Lift)} points below expected"));
         html.Append(MatchupList($"{card.Name} plays well with", partners));
         html.Append(MatchupList($"{card.Name} struggles against", counters));
 
@@ -239,8 +243,7 @@ public static class SpaContent
 
         static string Share(double share) => (share * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 
-        static string Points(double difference)
-            => (difference >= 0 ? "+" : "−") + Math.Abs(difference * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+        static string Points(double difference) => Math.Abs(difference * 100).ToString("0.0", CultureInfo.InvariantCulture);
 
         string MatchupList(string heading, IEnumerable<(int CardId, string Detail)> rows)
         {
@@ -256,14 +259,6 @@ public static class SpaContent
             }
             return section.Append("</ul>").ToString();
         }
-    }
-
-    private static IReadOnlyList<string> DeckNames(IEnumerable<BestDeckEntry> decks)
-    {
-        var cardLists = decks
-            .Select(d => (IReadOnlyList<(string, int?)>)d.Cards.Select(c => (c.Name, c.ElixirCost)).ToList())
-            .ToList();
-        return DeckArchetypes.DistinctNames(cardLists);
     }
 
     private static string DeckList(IEnumerable<(BestDeckEntry Deck, string Name)> decks)

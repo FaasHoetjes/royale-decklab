@@ -14,6 +14,8 @@ export function StatTile({ theme, value, label, children }: { theme: Theme; valu
   );
 }
 
+const shareLabel = (whole: number | undefined) => (whole === 0 ? '<1%' : `${whole}%`);
+
 export function PlaySplit({ theme, stat }: { theme: Theme; stat: CardStat }) {
   const parts = [
     { label: 'Evo', share: stat.evoShare, winRate: stat.evoWinRate, color: SPECIAL_COLOR.evo },
@@ -25,7 +27,7 @@ export function PlaySplit({ theme, stat }: { theme: Theme; stat: CardStat }) {
   return (
     <div style={styles.split}>
       <div style={{ ...styles.splitTitle, color: theme.text.primary }}>How it's played</div>
-      <div style={styles.splitBar} role="img" aria-label={parts.map((p, i) => `${p.label} ${shown[i]}%`).join(', ')}>
+      <div style={styles.splitBar} role="img" aria-label={parts.map((p, i) => `${p.label} ${shareLabel(shown[i])}`).join(', ')}>
         {parts.map((p) => (
           <span key={p.label} style={{ width: `${p.share * 100}%`, backgroundColor: p.color }} />
         ))}
@@ -39,7 +41,7 @@ export function PlaySplit({ theme, stat }: { theme: Theme; stat: CardStat }) {
           <Fragment key={p.label}>
             <i style={{ ...styles.legendDot, backgroundColor: p.color }} />
             <span style={{ color: theme.text.secondary }}>{p.label}</span>
-            <span style={{ ...styles.rowShare, color: theme.text.primary }}>{shown[i]}%</span>
+            <span style={{ ...styles.rowShare, color: theme.text.primary }}>{shareLabel(shown[i])}</span>
             <span style={{ ...styles.rowWinRate, color: p.winRate != null ? theme.text.primary : theme.text.tertiary }}>
               {p.winRate != null ? percent(p.winRate) : '–'}
             </span>
@@ -97,8 +99,6 @@ const styles = {
   rowHeader: {
     fontSize: '11px',
     fontWeight: 600 as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.04em',
   },
   rowShare: {
     fontSize: '15px',

@@ -88,12 +88,15 @@ public sealed class CardsController(
 
     public static CardInsightsResponse InsightsFor(
         CatalogCard card, IReadOnlyList<CatalogCard> cards, MetaCache meta, BestDecksBuilder decks, BalanceUpdateStore balanceUpdates)
-        => CardInsightsText.Build(
+    {
+        var data = meta.Cards;
+        return CardInsightsText.Build(
             card,
             cards,
-            meta.CardStats,
-            meta.CardInsights.GetValueOrDefault(card.Id),
-            meta.PatchHistory,
+            data.Stats,
+            data.Insights.GetValueOrDefault(card.Id),
+            data.PatchHistory,
             decks.TopDecksWithCached(card.Id, meta.Version, meta.Meta, cards, DecksPerCard),
-            balanceUpdates.During(meta.CardStats, cards));
+            balanceUpdates.During(data.Stats, cards));
+    }
 }

@@ -125,8 +125,13 @@ public static partial class SpaHosting
             }
             try
             {
+                var cardDecks = await CardDecksOrEmpty(page, catalog, meta, decks, ctx.RequestAborted);
+                if (page is { Content: SpaContentKind.Card, Card: { } card })
+                {
+                    page = page with { Description = SpaPages.CardDescription(card.Name, meta.CardStats.Cards.FirstOrDefault(s => s.Id == card.Id), cardDecks) };
+                }
                 var insights = await CardInsightsOrNull(page, catalog, meta, decks, balanceUpdates, ctx.RequestAborted);
-                page = page with { Body = await PageBody(page, catalog, meta, decks, balanceUpdates, faqHtml, insights, ctx.RequestAborted) };
+                page = page with { Body = await PageBody(page, catalog, meta, decks, balanceUpdates, faqHtml, insights, cardDecks, ctx.RequestAborted) };
             }
             catch (Exception ex) when (!ctx.RequestAborted.IsCancellationRequested)
             {
@@ -162,7 +167,17 @@ public static partial class SpaHosting
         return cards.Count > 0 ? CardsController.InsightsFor(card, cards, meta, decks, balanceUpdates) : null;
     }
 
-    private static async Task<string?> PageBody(SpaPage page, CardCatalog catalog, MetaCache meta, BestDecksBuilder decks, BalanceUpdateStore balanceUpdates, string? faqHtml, CardInsightsResponse? insights, CancellationToken requestAborted)
+    private static async Task<IReadOnlyList<BestDeckEntry>> CardDecksOrEmpty(SpaPage page, CardCatalog catalog, MetaCache meta, BestDecksBuilder decks, CancellationToken requestAborted)
+    {
+        if (page is not { Content: SpaContentKind.Card, Card: { } card } || !meta.IsLoaded)
+        {
+            return [];
+        }
+        var cards = await CardsOrEmpty(catalog, requestAborted);
+        return cards.Count > 0 ? decks.TopDecksWithCached(card.Id, meta.Version, meta.Meta, cards, CardsController.DecksPerCard) : [];
+    }
+
+    private static async Task<string?> PageBody(SpaPage page, CardCatalog catalog, MetaCache meta, BestDecksBuilder decks, BalanceUpdateStore balanceUpdates, string? faqHtml, CardInsightsResponse? insights, IReadOnlyList<BestDeckEntry> cardDecks, CancellationToken requestAborted)
     {
         var heading = page.Heading ?? "";
         switch (page.Content)
@@ -193,7 +208,7 @@ public static partial class SpaHosting
                 page.Card!,
                 meta.CardStats.Cards.FirstOrDefault(s => s.Id == page.Card!.Id),
                 meta.IsLoaded,
-                loaded ? decks.TopDecksWithCached(page.Card!.Id, meta.Version, meta.Meta, cards, CardsController.DecksPerCard) : [],
+                cardDecks,
                 insights,
                 cards),
         };

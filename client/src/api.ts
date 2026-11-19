@@ -462,6 +462,7 @@ export interface CardStyle {
   games: number;
   share: number;
   winRate: number | null;
+  isClear: boolean;
 }
 
 export interface CardCounter {
@@ -485,6 +486,7 @@ export interface CardInsights {
   partners: CardPartner[];
   counters: CardCounter[];
   matchupWinRate: number | null;
+  winRate: number | null;
   history: CardPatchPoint[];
 }
 

@@ -11,7 +11,8 @@ public sealed class CardInsightsTests
 {
     private static readonly (long, long)[] AllTime = [(0, long.MaxValue)];
 
-    private static CardInsight InsightOf(CardInsightsTallier tallier, int cardId) => tallier.Insights()[0][cardId];
+    private static CardInsight InsightOf(CardInsightsTallier tallier, int cardId, Func<int[], string?>? classify = null)
+        => tallier.Insights(classify)[0][cardId];
 
     private static IEnumerable<BattleRecord> Repeat(int count, int[] deck, BattleResult result, string tag)
         => Enumerable.Range(0, count).Select(i => Build.Battle($"{tag}{i}", deck, result));
@@ -25,9 +26,9 @@ public sealed class CardInsightsTests
             return new[] { mine with { OpponentKey = theirs.Key }, theirs with { OpponentKey = mine.Key } };
         });
 
-    private static CardInsightsTallier Tally(IEnumerable<BattleRecord> battles, Func<int[], string?>? classify = null)
+    private static CardInsightsTallier Tally(IEnumerable<BattleRecord> battles)
     {
-        var tallier = new CardInsightsTallier(AllTime, classify);
+        var tallier = new CardInsightsTallier(AllTime);
         foreach (var battle in battles)
         {
             tallier.Add(battle);
@@ -45,12 +46,16 @@ public sealed class CardInsightsTests
         Assert.Equal([2, 3, 4], InsightOf(tallier, 1).UsualPartners);
     }
 
+    private const int FillerStart = 10_000;
+    private const int FillerPool = 500;
+
     private static List<BattleRecord> Games(int[] cards, int games, int wins, string tag, ref int nextFiller)
     {
         var battles = new List<BattleRecord>();
         for (var i = 0; i < games; i++)
         {
-            var deck = cards.Concat(Enumerable.Range(nextFiller, 8 - cards.Length)).ToArray();
+            var first = nextFiller;
+            var deck = cards.Concat(Enumerable.Range(0, 8 - cards.Length).Select(k => FillerStart + (first + k) % FillerPool)).ToArray();
             nextFiller += 8 - cards.Length;
             battles.Add(Build.Battle($"{tag}{i}", deck, i < wins ? BattleResult.Win : BattleResult.Loss));
         }
@@ -60,7 +65,7 @@ public sealed class CardInsightsTests
     [Fact]
     public void Partners_must_clearly_beat_what_both_cards_win_on_their_own_and_rank_with_few_games_counting_for_less()
     {
-        var filler = 10_000;
+        var filler = 0;
         var tallier = Tally(
             Games([1, 50], 1_000, 570, "#A", ref filler)
                 .Concat(Games([1, 60], 150, 90, "#B", ref filler))
@@ -76,7 +81,36 @@ public sealed class CardInsightsTests
         var partners = InsightOf(tallier, 1).Partners;
 
         Assert.Equal([50, 60], partners.Select(p => p.CardId));
-        Assert.Equal(0.57 - 2_070.0 / 4_000, partners[0].Lift, 10);
+        Assert.Equal(0.57 - 805.0 / 1_750, partners[0].Lift, 10);
+    }
+
+    [Fact]
+    public void A_partner_played_almost_only_with_the_card_is_measured_against_the_card_without_it()
+    {
+        var filler = 0;
+        var tallier = Tally(
+            Games([1, 50], 300, 180, "#A", ref filler)
+                .Concat(Games([1], 700, 370, "#B", ref filler))
+                .ToList());
+
+        var partner = Assert.Single(InsightOf(tallier, 1).Partners);
+
+        Assert.Equal(50, partner.CardId);
+        Assert.Equal(0.6 - 370.0 / 700, partner.Lift, 10);
+    }
+
+    [Fact]
+    public void A_deck_style_gap_within_chance_is_not_clear()
+    {
+        var tallier = Tally(
+            Repeat(80, Build.Eight(1), BattleResult.Win, "#A")
+                .Concat(Repeat(70, Build.Eight(1), BattleResult.Loss, "#B"))
+                .Concat(Repeat(70, [1, 30, 31, 32, 33, 34, 35, 36], BattleResult.Win, "#C"))
+                .Concat(Repeat(80, [1, 30, 31, 32, 33, 34, 35, 36], BattleResult.Loss, "#D")));
+
+        var styles = InsightOf(tallier, 1, deck => deck[1] == 2 ? "Beatdown" : "Cycle").Styles;
+
+        Assert.All(styles, s => Assert.False(s.IsClear));
     }
 
     [Fact]
@@ -88,14 +122,14 @@ public sealed class CardInsightsTests
         var tallier = Tally(
             Repeat(150, beatdown, BattleResult.Win, "#A")
                 .Concat(Repeat(48, cycle, BattleResult.Loss, "#B"))
-                .Concat(Repeat(2, rare, BattleResult.Win, "#C")),
-            deck => deck[1] switch { 2 => "Beatdown", 30 => "Cycle", _ => "Rare" });
+                .Concat(Repeat(2, rare, BattleResult.Win, "#C")));
 
-        var styles = InsightOf(tallier, 1).Styles;
+        var styles = InsightOf(tallier, 1, deck => deck[1] switch { 2 => "Beatdown", 30 => "Cycle", _ => "Rare" }).Styles;
 
         Assert.Equal(["Beatdown", "Cycle", CardInsightsTallier.OtherStyles], styles.Select(s => s.Name));
         Assert.Equal(0.75, styles[0].Share, 10);
         Assert.Equal(1.0, styles[0].WinRate);
+        Assert.True(styles[0].IsClear);
         Assert.Null(styles[1].WinRate);
         Assert.Equal(2, styles[2].Games);
     }
@@ -232,7 +266,8 @@ public sealed class CardInsightsTextTests
         [],
         counters,
         counters.Length > 0 ? 5_000 : 0,
-        counters.Length > 0 ? 0.56 : null);
+        counters.Length > 0 ? 0.56 : null,
+        0.56);
 
     private static CardInsightsResponse InsightsFor(CardStatsResponse stats, CardInsight? insight = null, CatalogCard? card = null)
         => CardInsightsText.Build(card ?? Catalog[0], Catalog, stats, insight, [], [], []);
@@ -247,6 +282,14 @@ public sealed class CardInsightsTextTests
             "which is among the strongest: #1 of 4 cards by win rate. It's in 10.0% of war decks, #3 by use rate.",
             summary[0]);
         Assert.Equal("It's most often played with Card2, Card3 and Card4.", summary[1]);
+    }
+
+    [Fact]
+    public void A_card_ranked_among_too_few_cards_gets_no_verdict()
+    {
+        var summary = InsightsFor(Stats(Stat(1, 2_000, 0.56, 0.10)), Insight()).Summary;
+
+        Assert.Contains("of its battles in the top war clans: #1 of 1 cards by win rate.", summary[0]);
     }
 
     [Fact]
@@ -304,5 +347,7 @@ public sealed class CardInsightsTextTests
             .ToList();
         Assert.DoesNotContain(-1, order);
         Assert.Equal(order.Order(), order);
+        Assert.Contains("12.0 points below expected", html);
+        Assert.Contains("6.0 points above expected", html);
     }
 }
