@@ -16,8 +16,7 @@ public sealed class PlayerController(
     MetaCache cache,
     PlayerDeckCache deckCache,
     WarDecksTodayReader warDecksToday,
-    CrownSeriesSchedule crownSeries,
-    TimeProvider time,
+    VisitorSeeds visitors,
     StatsRecorder stats,
     ILogger<PlayerController> logger) : ControllerBase
 {
@@ -108,7 +107,7 @@ public sealed class PlayerController(
 
             var lineup = await deckCache.GetAsync(player, cache.Version, cache.Meta, options, ct);
             stats.NoteServed(tag);
-            crownSeries.AddVisitor(player.Tag, time.GetUtcNow().ToUnixTimeMilliseconds());
+            visitors.Add(player.Tag);
 
             return Ok(new
             {

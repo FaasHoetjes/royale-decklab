@@ -172,6 +172,7 @@ public sealed class MetaCache(
             var crawl = await builder.CrawlTopWarClansAsync(ct);
             var fresh = crawl.WarBattles;
             await MergeCrownSeriesRoundsAsync(scope.ServiceProvider, crawl.CrownSeriesRounds, ct);
+            scope.ServiceProvider.GetRequiredService<LadderIntake>().PruneAndReport("war crawl", crawl.LadderFound, crawl.LadderAdded);
 
             if (fresh.Count == 0)
             {

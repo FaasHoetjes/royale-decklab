@@ -20,10 +20,13 @@ public sealed class PatchNotesTests : IDisposable
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"patchnotes-{Guid.NewGuid():N}.db");
 
+    private readonly TestLadder _ladder = new();
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
         File.Delete(_dbPath);
+        _ladder.Dispose();
     }
 
     private static long Ms(string iso) => DateTimeOffset.Parse(iso).ToUnixTimeMilliseconds();
@@ -169,6 +172,7 @@ public sealed class PatchNotesTests : IDisposable
         services.AddSingleton(new ClashRoyaleCrawlClient(
             new HttpClient(blog) { BaseAddress = new Uri("https://cr.test/v1/") }, new CrawlConcurrency()));
         services.AddScoped<MetaBuilder>();
+        _ladder.AddTo(services);
         services.AddSingleton(new ClashRoyaleClient(new HttpClient(blog) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddSingleton(new SupercellBlogClient(new HttpClient(blog) { BaseAddress = new Uri("https://blog.test/") }));
         services.AddSingleton<MetaCache>();

@@ -6,4 +6,6 @@ public sealed record CrBattleSide(
     List<CrBattleCard>? Cards,
     int Crowns,
     List<CrBattleRound>? Rounds,
-    ClanRef? Clan = null);
+    ClanRef? Clan = null,
+    int? StartingTrophies = null,
+    List<CrBattleCard>? SupportCards = null);

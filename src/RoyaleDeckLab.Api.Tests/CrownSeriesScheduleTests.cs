@@ -84,14 +84,14 @@ public sealed class CrownSeriesScheduleTests
     [Fact]
     public void Each_cap_keeps_its_share_and_drops_its_longest_idle_players_first()
     {
-        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerCap = 2 });
+        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerGroup = 2 });
         schedule.RecordRead("#OLD", [Duel(TimeSpan.FromHours(5), cap: 13)], NowMs);
         schedule.RecordRead("#MID", [Duel(TimeSpan.FromHours(3), cap: 13)], NowMs);
         schedule.RecordRead("#NEW", [Duel(TimeSpan.FromHours(1), cap: 13)], NowMs);
         schedule.RecordRead("#RANKED", [Duel(TimeSpan.FromHours(9), cap: 16)], NowMs);
         schedule.RecordRead("#NODUEL", [Battle(TimeSpan.FromHours(1), "Ladder")], NowMs);
 
-        Assert.Equal(0, schedule.RoomAt(13));
+        Assert.Equal(0, schedule.RoomIn(13));
         schedule.Trim(["#RANKED"]);
 
         Assert.False(schedule.IsKnown("#OLD"));
@@ -99,7 +99,7 @@ public sealed class CrownSeriesScheduleTests
         Assert.True(schedule.IsKnown("#NEW"));
         Assert.True(schedule.IsKnown("#RANKED"));
         Assert.False(schedule.IsKnown("#NODUEL"));
-        Assert.Equal(1, schedule.RoomAt(16));
+        Assert.Equal(1, schedule.RoomIn(16));
     }
 
     [Fact]
@@ -108,8 +108,8 @@ public sealed class CrownSeriesScheduleTests
         var schedule = Schedule();
         schedule.RecordRead("#A", [Duel(TimeSpan.FromDays(7), cap: 13), Duel(TimeSpan.FromHours(1), cap: 14)], NowMs);
 
-        Assert.Equal(0, schedule.PlayersAt(13));
-        Assert.Equal(1, schedule.PlayersAt(14));
+        Assert.Equal(0, schedule.PlayersIn(13));
+        Assert.Equal(1, schedule.PlayersIn(14));
     }
 
     private static CappedBattle StoredRound(string tag, TimeSpan ago, int cap)
@@ -127,7 +127,7 @@ public sealed class CrownSeriesScheduleTests
     [Fact]
     public void A_restart_tracks_the_stored_players_again_at_their_latest_cap_and_all_due()
     {
-        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerCap = 2 });
+        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerGroup = 2 });
 
         schedule.Restore(
         [
@@ -139,7 +139,7 @@ public sealed class CrownSeriesScheduleTests
         ], NowMs);
 
         Assert.Equal(["#MOVED", "#NEW"], schedule.KnownTags().Order());
-        Assert.Equal(0, schedule.PlayersAt(12));
+        Assert.Equal(0, schedule.PlayersIn(12));
         Assert.True(schedule.IsDue("#MOVED", NowMs));
     }
 
@@ -194,7 +194,7 @@ public sealed class CrownSeriesScheduleTests
     [Fact]
     public void A_visitor_whose_league_showed_is_not_read_again_after_being_dropped_from_tracking()
     {
-        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerCap = 1 });
+        var schedule = Schedule(new CrownSeriesOptions { MaxPlayersPerGroup = 1 });
         schedule.AddVisitor("#VISITOR", NowMs);
         schedule.RecordRead("#KEPT", [Duel(TimeSpan.Zero, cap: 16)], NowMs);
         schedule.RecordRead("#VISITOR", [Duel(TimeSpan.FromHours(1), cap: 16)], NowMs);

@@ -80,6 +80,23 @@ public static class CrownSeriesRounds
         return rounds;
     }
 
+    /// <summary>
+    /// The cap of the latest complete Duel in the log, and when the latest Duel of any kind was played; 0 when the
+    /// log has none.
+    /// </summary>
+    public static (int? Cap, long SeenMs) LatestCap(IReadOnlyList<CrBattle> log)
+    {
+        var duels = log
+            .Where(IsCrownSeries)
+            .Select(b => (TimeMs: BattleRepository.ParseBattleTime(b.BattleTime), Battle: b))
+            .OrderByDescending(d => d.TimeMs)
+            .ToList();
+        var cap = duels
+            .Select(d => CapOf(From(d.Battle)))
+            .FirstOrDefault(c => c is not null);
+        return (cap, duels.Count > 0 ? duels[0].TimeMs : 0);
+    }
+
     /// <summary>The cap a Duel was played at, from all its rounds; null when it has none.</summary>
     public static int? CapOf(IReadOnlyList<CrownSeriesRound> rounds)
         => rounds.Count == 0 ? null : CrownSeriesCaps.FromHighestLevel(rounds.Max(r => r.Cards.Max(c => c.Level)));
@@ -89,20 +106,9 @@ public static class CrownSeriesRounds
     private static CrownSeriesRound? ToRound(
         Duel duel, string playerTag, string opponentTag, int round, CrBattleRound played, int opponentCrowns)
     {
-        var playedCards = played.Cards ?? [];
-        if (playedCards.Count == 0)
+        if (PlayedCards.From(played.Cards) is not { } cards)
         {
             return null;
-        }
-
-        var cards = new List<CrownSeriesCard>(playedCards.Count);
-        foreach (var card in playedCards)
-        {
-            if (card is not { Level: int level, MaxLevel: int maxLevel })
-            {
-                return null;
-            }
-            cards.Add(new CrownSeriesCard(card.Id, LevelModel.DisplayLevel(level, maxLevel), MetaBuilder.FieldedVersion(card)));
         }
 
         return new CrownSeriesRound
@@ -112,9 +118,7 @@ public static class CrownSeriesRounds
             BattleTimeMs = duel.BattleTimeMs,
             Round = round,
             Result = BattleResultExtensions.FromCrowns(played.Crowns, opponentCrowns),
-            Cards = cards
-                .OrderBy(c => c.Id)
-                .ToList(),
+            Cards = cards,
             League = duel.League,
             EventTag = duel.EventTag,
             GameModeId = duel.GameModeId,
