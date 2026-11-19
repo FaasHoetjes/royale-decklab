@@ -166,6 +166,18 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_broken_ladder_db_skips_the_poll()
+    {
+        BreakLadderStore();
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#A", TimeSpan.FromHours(1))];
+
+        await CollectAsync();
+
+        Assert.Empty(Api.LogsRead);
+    }
+
+    [Fact]
     public async Task A_clan_asked_without_reads_left_for_its_members_is_asked_again()
     {
         LadderOptions.ReadsPerPoll = 2;

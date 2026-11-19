@@ -32,6 +32,8 @@ public abstract class CollectorFixture : IDisposable
 
     protected ServiceProvider Services => _services ??= Build();
 
+    protected void BreakLadderStore() => _ladder.Break();
+
     private ServiceProvider Build()
     {
         var services = new ServiceCollection();

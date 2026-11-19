@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
@@ -29,6 +30,10 @@ public sealed class LadderCollector(
 
     public async Task CollectAsync(CancellationToken ct = default)
     {
+        if (!IsStoreReadable())
+        {
+            return;
+        }
         var now = time.GetUtcNow().ToUnixTimeMilliseconds();
         var budget = IsDuelWeekendOn(now) ? _opt.ReadsPerPollDuringDuels : _opt.ReadsPerPoll;
         var harvest = new Harvest(_opt, schedule.TakeMet());
@@ -47,7 +52,7 @@ public sealed class LadderCollector(
         await poll.FlushAsync(ct);
         schedule.KeepMet(harvest.Opponents().Where(o => !harvest.WasMetEarlier(o.Tag)), now);
         poll.ReportLadder("ladder poll");
-        store.SetLastPollMs(now);
+        SaveLastPoll(now);
         logger.LogInformation(
             "Ladder poll: {Players} of {Budget} reads used ({Failed} failed), seeds tried: {@Seeds}, {Tracked} players tracked; "
             + "per range: {PlayersPerGroup}",
@@ -101,6 +106,32 @@ public sealed class LadderCollector(
             .OrderBy(g => g.Key.Mode)
             .ThenBy(g => g.Key.Floor)
             .Select(g => $"{g.Key}: {g.Value}"));
+
+    private bool IsStoreReadable()
+    {
+        try
+        {
+            store.GetLastPollMs();
+            return true;
+        }
+        catch (SqliteException ex)
+        {
+            logger.LogError(ex, "Ladder poll skipped: ladder.db can't be read");
+            return false;
+        }
+    }
+
+    private void SaveLastPoll(long now)
+    {
+        try
+        {
+            store.SetLastPollMs(now);
+        }
+        catch (SqliteException ex)
+        {
+            logger.LogError(ex, "Couldn't save when the ladder poll ran");
+        }
+    }
 
     public void RestoreSchedule()
     {

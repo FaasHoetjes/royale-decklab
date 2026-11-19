@@ -19,6 +19,8 @@ public sealed class TestLadder : IDisposable
         services.TryAddSingleton(TimeProvider.System);
     }
 
+    public void Break() => File.WriteAllText(_path, "not a database, but long enough to be read as one's header");
+
     public void Dispose()
     {
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
