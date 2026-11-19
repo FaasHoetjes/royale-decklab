@@ -12,7 +12,7 @@ public sealed class AggregateBattlesTests
     // AggregateBattles is pure CPU (no client/logger use), so a null client is safe
     // for this unit under test.
     private static MetaBuilder NewBuilder(MetaOptions? options = null)
-        => new(null!, Microsoft.Extensions.Options.Options.Create(options ?? new MetaOptions()), NullLogger<MetaBuilder>.Instance);
+        => new(null!, null!, Microsoft.Extensions.Options.Options.Create(options ?? new MetaOptions()), NullLogger<MetaBuilder>.Instance);
 
     private static double Cautious(double wins, double games)
     {

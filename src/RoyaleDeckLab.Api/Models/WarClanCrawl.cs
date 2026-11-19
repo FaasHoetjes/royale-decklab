@@ -7,7 +7,12 @@ public sealed class WarClanCrawl
 
     public List<CrownSeriesRound> CrownSeriesRounds { get; } = [];
 
+    /// <summary>Only the ones not stored yet: they're stored after each batch of clans.</summary>
     public List<LadderBattle> LadderBattles { get; } = [];
+
+    public int LadderFound { get; set; }
+
+    public int LadderAdded { get; set; }
 
     public void Add(WarClanCrawl other)
     {

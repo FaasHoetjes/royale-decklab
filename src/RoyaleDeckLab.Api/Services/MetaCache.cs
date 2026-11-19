@@ -172,7 +172,7 @@ public sealed class MetaCache(
             var crawl = await builder.CrawlTopWarClansAsync(ct);
             var fresh = crawl.WarBattles;
             await MergeCrownSeriesRoundsAsync(scope.ServiceProvider, crawl.CrownSeriesRounds, ct);
-            StoreLadderBattles(scope.ServiceProvider, crawl.LadderBattles);
+            scope.ServiceProvider.GetRequiredService<LadderIntake>().PruneAndReport("war crawl", crawl.LadderFound, crawl.LadderAdded);
 
             if (fresh.Count == 0)
             {
@@ -223,12 +223,6 @@ public sealed class MetaCache(
         {
             logger.LogError(ex, "Couldn't store the {Count} Crown Series rounds found by the war crawl", rounds.Count);
         }
-    }
-
-    private static void StoreLadderBattles(IServiceProvider services, List<LadderBattle> found)
-    {
-        var ladder = services.GetRequiredService<LadderIntake>();
-        ladder.PruneAndReport("war crawl", found.Count, ladder.Store(found));
     }
 
     private async Task LoadOrBuildAsync(CancellationToken ct)

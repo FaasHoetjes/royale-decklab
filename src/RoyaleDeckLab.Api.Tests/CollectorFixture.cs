@@ -19,7 +19,7 @@ public abstract class CollectorFixture : IDisposable
     protected static readonly DateTimeOffset Now = new(2026, 11, 15, 12, 0, 0, TimeSpan.Zero);
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"collector-{Guid.NewGuid():N}.db");
-    private readonly string _ladderDbPath = Path.Combine(Path.GetTempPath(), $"collector-ladder-{Guid.NewGuid():N}.db");
+    private readonly TestLadder _ladder = new();
     private ServiceProvider? _services;
 
     protected FakeApi Api { get; } = new();
@@ -38,10 +38,8 @@ public abstract class CollectorFixture : IDisposable
         services.AddLogging();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(CrownSeries));
-        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(LadderOptions));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
-        services.AddSingleton(_ => new LadderStore(_ladderDbPath, LadderOptions.TrophyBandWidth));
-        services.AddSingleton<LadderIntake>();
+        _ladder.AddTo(services, LadderOptions);
         services.AddScoped<CrownSeriesRepository>();
         services.AddScoped<BattleRepository>();
         services.AddSingleton(new ClashRoyaleCrawlClient(
@@ -96,8 +94,8 @@ public abstract class CollectorFixture : IDisposable
         foreach (var suffix in new[] { "", "-wal", "-shm" })
         {
             File.Delete(_dbPath + suffix);
-            File.Delete(_ladderDbPath + suffix);
         }
+        _ladder.Dispose();
         GC.SuppressFinalize(this);
     }
 

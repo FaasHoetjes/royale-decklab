@@ -10,6 +10,7 @@ namespace RoyaleDeckLab.Api.Services;
 
 public sealed class MetaBuilder(
     ClashRoyaleCrawlClient client,
+    LadderIntake ladder,
     IOptions<MetaOptions> options,
     ILogger<MetaBuilder> logger)
 {
@@ -34,7 +35,7 @@ public sealed class MetaBuilder(
 
         var elapsed = (DateTime.UtcNow - start).TotalSeconds;
         logger.LogInformation("Collected {Count} war battle records, {Rounds} Crown Series rounds and {Ladder} ladder battle sides in {Elapsed:F2}s",
-            crawl.WarBattles.Count, crawl.CrownSeriesRounds.Count, crawl.LadderBattles.Count, elapsed);
+            crawl.WarBattles.Count, crawl.CrownSeriesRounds.Count, crawl.LadderFound, elapsed);
         return crawl;
     }
 
@@ -72,6 +73,10 @@ public sealed class MetaBuilder(
                 logger.LogWarning("The CR API is refusing crawl requests; war crawl stopped after {Clans} clans", done);
                 break;
             }
+            finally
+            {
+                StoreLadderBattles(crawl);
+            }
             done += clanBatch.Length;
             logger.LogInformation("Processed {Done}/{Total} clans ({Players} players, {Records} records)",
                 done, clanTags.Count, seenPlayers.Count, crawl.WarBattles.Count);
@@ -83,6 +88,13 @@ public sealed class MetaBuilder(
             }
         }
         return crawl;
+    }
+
+    private void StoreLadderBattles(WarClanCrawl crawl)
+    {
+        crawl.LadderFound += crawl.LadderBattles.Count;
+        crawl.LadderAdded += ladder.Store(crawl.LadderBattles);
+        crawl.LadderBattles.Clear();
     }
 
     private async Task<IReadOnlyList<string>> FetchMembersAsync(string clanTag, CancellationToken ct)

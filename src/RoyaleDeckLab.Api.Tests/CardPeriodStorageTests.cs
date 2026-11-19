@@ -18,10 +18,13 @@ public sealed class CardPeriodStorageTests : IDisposable
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"cardperiods-{Guid.NewGuid():N}.db");
 
+    private readonly TestLadder _ladder = new();
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
         File.Delete(_dbPath);
+        _ladder.Dispose();
     }
 
     private sealed class NoApi : HttpMessageHandler
@@ -42,6 +45,7 @@ public sealed class CardPeriodStorageTests : IDisposable
             new HttpClient(new NoApi()) { BaseAddress = new Uri("https://cr.test/v1/") }, new CrawlConcurrency()));
         services.AddSingleton(new ClashRoyaleClient(new HttpClient(new NoApi()) { BaseAddress = new Uri("https://cr.test/v1/") }));
         services.AddScoped<MetaBuilder>();
+        _ladder.AddTo(services);
         services.AddSingleton<MetaCache>();
         return services.BuildServiceProvider();
     }
