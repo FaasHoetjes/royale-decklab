@@ -82,13 +82,13 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
     }
 
     /// <summary>
-    /// The next read waits half the time the log took to fill, so it comes long before the oldest battle drops out;
-    /// a log unchanged since the last read waits twice as long as before.
+    /// The next read waits <see cref="PlayerPollOptions.RereadSpanShare"/> of the time the log took to fill, so it comes
+    /// before the oldest battle drops out; a log unchanged since the last read waits twice as long as before.
     /// </summary>
     public void RecordRead(string tag, IReadOnlyList<CrBattle> log, TGroup? group, long seenMs, long nowMs)
     {
         var maxWait = Math.Max(_opt.PollIntervalMs, _opt.MaxRereadIntervalMs);
-        var spanWait = Math.Clamp(LogSpanMs(log) / 2, _opt.PollIntervalMs, maxWait);
+        var spanWait = Math.Clamp((long)(LogSpanMs(log) * _opt.RereadSpanShare), _opt.PollIntervalMs, maxWait);
         var newestBattleMs = log.Select(b => BattleRepository.ParseBattleTime(b.BattleTime)).DefaultIfEmpty(0).Max();
         lock (_lock)
         {

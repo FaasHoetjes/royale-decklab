@@ -30,5 +30,7 @@ public abstract class PlayerPollOptions
 
     public long MaxRereadIntervalMs { get; set; }
 
+    public double RereadSpanShare { get; set; } = 0.5;
+
     public long ForgetAfterMs { get; set; }
 }

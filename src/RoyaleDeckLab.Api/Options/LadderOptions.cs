@@ -30,7 +30,9 @@ public sealed class LadderOptions : PlayerPollOptions
         VisitorRereadMs = 4 * Hour;
         VisitorsPerPoll = 250;
 
-        MaxRereadIntervalMs = 24 * Hour;
+        // Stats need a fair sample, not every battle, so a reread waits until most of the log is new.
+        RereadSpanShare = 0.85;
+        MaxRereadIntervalMs = 48 * Hour;
 
         ForgetAfterMs = 3 * Day;
     }

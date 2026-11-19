@@ -154,6 +154,18 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_reread_waits_most_of_the_time_the_log_took_to_fill()
+    {
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#A", TimeSpan.FromHours(1)), TrophyRoadBattle("#V", "#B", TimeSpan.FromHours(11))];
+
+        await CollectAsync();
+
+        Assert.False(Schedule().IsDue("#V", Now.AddHours(7.5).ToUnixTimeMilliseconds()));
+        Assert.True(Schedule().IsDue("#V", Now.AddHours(8.5).ToUnixTimeMilliseconds()));
+    }
+
+    [Fact]
     public async Task A_clan_asked_without_reads_left_for_its_members_is_asked_again()
     {
         LadderOptions.ReadsPerPoll = 2;
@@ -168,7 +180,7 @@ public sealed class LadderCollectorTests : CollectorFixture
         Assert.Equal(["#CLAN"], Api.ClansRead);
 
         LadderOptions.ReadsPerPoll = 10;
-        Clock.Now = Now.AddHours(25);
+        Clock.Now = Now.AddHours(49);
         await CollectAsync();
 
         Assert.Contains("#MATE", Api.LogsRead);
