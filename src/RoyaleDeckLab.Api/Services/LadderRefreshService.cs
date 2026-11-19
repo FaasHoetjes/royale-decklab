@@ -22,7 +22,7 @@ public sealed class LadderRefreshService(
         try
         {
             RestoreSchedule();
-            var firstPoll = PollLoop.FirstPollDelay(store.GetLastPollMs(), _opt, time);
+            var firstPoll = PollLoop.FirstPollDelay(LastPollMs(), _opt, time);
             logger.LogInformation("Ladder poll scheduled every {Minutes} min, first in {FirstMinutes:F0} min",
                 _opt.PollIntervalMs / 60_000, firstPoll.TotalMinutes);
             await PollLoop.RunAsync(firstPoll, _opt, time, PollAsync, stoppingToken);
@@ -46,6 +46,19 @@ public sealed class LadderRefreshService(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Ladder poll failed");
+        }
+    }
+
+    private long LastPollMs()
+    {
+        try
+        {
+            return store.GetLastPollMs();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Couldn't read when the last ladder poll ran");
+            return 0;
         }
     }
 

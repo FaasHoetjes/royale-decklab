@@ -14,11 +14,16 @@ public sealed class LadderStore
 
     private readonly string _connectionString;
     private readonly Lock _writeLock = new();
+    private readonly Lock _createLock = new();
+    private volatile bool _created;
 
     public LadderStore(string path)
     {
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
-        using var connection = Open();
+    }
+
+    private void Create(SqliteConnection connection)
+    {
         Execute(connection,
             """
             PRAGMA journal_mode=WAL;
@@ -208,6 +213,17 @@ public sealed class LadderStore
     {
         var connection = new SqliteConnection(_connectionString);
         connection.Open();
+        if (!_created)
+        {
+            lock (_createLock)
+            {
+                if (!_created)
+                {
+                    Create(connection);
+                    _created = true;
+                }
+            }
+        }
         return connection;
     }
 
