@@ -5,6 +5,7 @@ public sealed class SeedPicks<TSource>(int limit, Func<string, bool> isDue) wher
 {
     private readonly List<string> _tags = [];
     private readonly Dictionary<string, TSource> _sourceByTag = new(StringComparer.Ordinal);
+    private int _taken;
 
     public IReadOnlyList<string> Tags => _tags;
 
@@ -34,5 +35,12 @@ public sealed class SeedPicks<TSource>(int limit, Func<string, bool> isDue) wher
             CountBySource[source] = CountBySource.GetValueOrDefault(source) + 1;
         }
         return true;
+    }
+
+    public IReadOnlyList<string> TakeNew()
+    {
+        var picked = _tags[_taken..];
+        _taken = _tags.Count;
+        return picked;
     }
 }

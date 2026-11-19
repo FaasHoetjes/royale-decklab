@@ -70,16 +70,16 @@ public sealed class LadderCollector(
         await poll.ReadAsync(schedule.DueTags(now).Take(poll.ReadsLeft - reserved), ct);
         schedule.Trim([]);
 
-        var seeds = new SeedPicks<SeedSource>(_opt.SeedsPerPoll, tag => !harvest.WasRead(tag));
+        var seeds = poll.Seeds<SeedSource>(_opt.SeedsPerPoll);
         seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(now, _opt.VisitorsPerPoll));
-        await poll.ReadSeedsAsync(seeds.Tags, ct);
+        await poll.ReadSeedsAsync(seeds, ct);
         var clans = harvest.LeadClans()
             .Select(clan => (clan.Tag, Room: schedule.RoomIn(clan.Group)))
             .Where(clan => clan.Room > 0)
             .OrderByDescending(clan => clan.Room)
             .Select(clan => clan.Tag);
         await poll.PickClanmatesAsync(seeds, SeedSource.Clanmate, clans, ct);
-        await poll.ReadSeedsAsync(seeds.Tags, ct);
+        await poll.ReadSeedsAsync(seeds, ct);
         schedule.Trim([]);
 
         await poll.FollowOpponentsAsync([], _ => true, ct);

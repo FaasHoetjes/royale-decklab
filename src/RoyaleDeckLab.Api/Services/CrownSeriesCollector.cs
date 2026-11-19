@@ -92,7 +92,7 @@ public sealed class CrownSeriesCollector(
     /// </summary>
     private async Task ReadSeedsAsync(PlayerPoll<int> poll, Harvest harvest, long now, CancellationToken ct)
     {
-        var seeds = new SeedPicks<SeedSource>(_opt.SeedsPerPoll, tag => !harvest.WasRead(tag));
+        var seeds = poll.Seeds<SeedSource>(_opt.SeedsPerPoll);
         seeds.Pick(SeedSource.Visitor, schedule.TakeVisitors(now, _opt.VisitorsPerPoll));
         var capsWithRoom = schedule.LowerCapsWithRoom();
         if (capsWithRoom.Count > 0)
@@ -115,7 +115,7 @@ public sealed class CrownSeriesCollector(
         }
 
         harvest.SeedsTried = seeds.CountBySource;
-        await poll.ReadSeedsAsync(seeds.Tags, ct);
+        await poll.ReadSeedsAsync(seeds, ct);
         harvest.SeedsBelowKings = seeds.CountBySource.Keys.ToDictionary(
             source => source,
             source => seeds.TagsFrom(source).Count(tag => schedule.GroupOf(tag) < LevelModel.MaxDisplayLevel));
