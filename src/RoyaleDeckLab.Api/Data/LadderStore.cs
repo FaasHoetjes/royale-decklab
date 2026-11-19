@@ -10,6 +10,8 @@ namespace RoyaleDeckLab.Api.Data;
 /// </summary>
 public sealed class LadderStore
 {
+    private const int MergeBatchSize = 5_000;
+    private const long JournalSizeLimit = 64L * 1024 * 1024;
     private const string Band = "CASE mode WHEN $trophyRoad THEN standing / $width * $width ELSE standing END";
     private const string LastPollKey = "last_poll_ms";
     private const string BandWidthKey = "band_width";
@@ -95,10 +97,15 @@ public sealed class LadderStore
             return 0;
         }
 
+        var inKeyOrder = battles
+            .OrderBy(b => b.Mode)
+            .ThenBy(b => b.Standing)
+            .ThenBy(b => b.BattleTimeMs)
+            .ThenBy(b => b.PlayerTag, StringComparer.Ordinal);
         lock (_writeLock)
         {
             using var connection = Open();
-            return MergeBatch(connection, battles.ToList());
+            return inKeyOrder.Chunk(MergeBatchSize).Sum(batch => MergeBatch(connection, batch));
         }
     }
 
@@ -306,6 +313,7 @@ public sealed class LadderStore
         try
         {
             connection.Open();
+            Execute(connection, $"PRAGMA synchronous=NORMAL; PRAGMA journal_size_limit={JournalSizeLimit};");
             if (!_created)
             {
                 lock (_createLock)
