@@ -31,6 +31,9 @@ stats.db-shm
 reminders.db
 reminders.db-wal
 reminders.db-shm
+ladder.db
+ladder.db-wal
+ladder.db-shm
 card-art/
 
 [Bb]in/

@@ -89,20 +89,9 @@ public static class CrownSeriesRounds
     private static CrownSeriesRound? ToRound(
         Duel duel, string playerTag, string opponentTag, int round, CrBattleRound played, int opponentCrowns)
     {
-        var playedCards = played.Cards ?? [];
-        if (playedCards.Count == 0)
+        if (PlayedCards.From(played.Cards) is not { } cards)
         {
             return null;
-        }
-
-        var cards = new List<CrownSeriesCard>(playedCards.Count);
-        foreach (var card in playedCards)
-        {
-            if (card is not { Level: int level, MaxLevel: int maxLevel })
-            {
-                return null;
-            }
-            cards.Add(new CrownSeriesCard(card.Id, LevelModel.DisplayLevel(level, maxLevel), MetaBuilder.FieldedVersion(card)));
         }
 
         return new CrownSeriesRound
@@ -112,9 +101,7 @@ public static class CrownSeriesRounds
             BattleTimeMs = duel.BattleTimeMs,
             Round = round,
             Result = BattleResultExtensions.FromCrowns(played.Crowns, opponentCrowns),
-            Cards = cards
-                .OrderBy(c => c.Id)
-                .ToList(),
+            Cards = cards,
             League = duel.League,
             EventTag = duel.EventTag,
             GameModeId = duel.GameModeId,

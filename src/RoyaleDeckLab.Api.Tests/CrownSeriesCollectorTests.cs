@@ -19,6 +19,7 @@ public sealed class CrownSeriesCollectorTests : IDisposable
     private static readonly DateTimeOffset Now = new(2026, 11, 15, 12, 0, 0, TimeSpan.Zero);
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"crownseries-{Guid.NewGuid():N}.db");
+    private readonly string _ladderDbPath = Path.Combine(Path.GetTempPath(), $"crownseries-ladder-{Guid.NewGuid():N}.db");
     private readonly FakeApi _api = new();
     private readonly FakeClock _clock = new();
     private readonly CrownSeriesOptions _options = new() { ProbePlayers = 1 };
@@ -31,6 +32,9 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(_options));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new LadderOptions()));
+        services.AddSingleton(_ => new LadderStore(_ladderDbPath));
+        services.AddSingleton<LadderIntake>();
         services.AddScoped<CrownSeriesRepository>();
         services.AddScoped<BattleRepository>();
         services.AddSingleton(new ClashRoyaleCrawlClient(
@@ -52,6 +56,10 @@ public sealed class CrownSeriesCollectorTests : IDisposable
         _services.Dispose();
         SqliteConnection.ClearAllPools();
         File.Delete(_dbPath);
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+        {
+            File.Delete(_ladderDbPath + suffix);
+        }
     }
 
     private sealed class FakeClock : TimeProvider

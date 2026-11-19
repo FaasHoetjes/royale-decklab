@@ -33,8 +33,8 @@ public sealed class MetaBuilder(
         var crawl = await ProcessWarClansAsync(clanTags, _opt.WarRecordTarget, ct);
 
         var elapsed = (DateTime.UtcNow - start).TotalSeconds;
-        logger.LogInformation("Collected {Count} war battle records and {Rounds} Crown Series rounds in {Elapsed:F2}s",
-            crawl.WarBattles.Count, crawl.CrownSeriesRounds.Count, elapsed);
+        logger.LogInformation("Collected {Count} war battle records, {Rounds} Crown Series rounds and {Ladder} ladder battle sides in {Elapsed:F2}s",
+            crawl.WarBattles.Count, crawl.CrownSeriesRounds.Count, crawl.LadderBattles.Count, elapsed);
         return crawl;
     }
 
@@ -122,6 +122,7 @@ public sealed class MetaBuilder(
             foreach (var battle in battles)
             {
                 crawl.CrownSeriesRounds.AddRange(CrownSeriesRounds.From(battle));
+                crawl.LadderBattles.AddRange(LadderBattles.From(battle));
                 var team = battle.Team?.FirstOrDefault();
                 var opponent = battle.Opponent?.FirstOrDefault();
                 if (team is null || opponent is null)

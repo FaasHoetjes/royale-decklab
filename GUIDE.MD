@@ -98,6 +98,17 @@ deck win rates and rankings at full weight until they age out of the 30-day
 window. In a backtest over Oct-Nov 2026, discounting them made deck win rates
 predict the following days worse at every boundary.
 
+### Ladder battles (`ladder.db`)
+
+Every battle log the war crawl and the Crown Series poll read also holds
+Trophy Road and Ranked battles. Both players' sides of each are stored in
+`ladder.db`, next to `meta.db`: the player's starting trophies on Trophy Road
+or their league in Ranked, the result, and each card with its level and
+version. A battle read from both players' logs is stored once. Sides older
+than 14 days are pruned, and after each crawl the log lists how many are
+stored per 1,000 trophies and per Ranked league. Like `meta.db`, it's derived
+data and can be deleted.
+
 ### Usage stats (`stats.db`)
 
 Anonymous visitor counts live in `stats.db`, next to `meta.db`. Unlike

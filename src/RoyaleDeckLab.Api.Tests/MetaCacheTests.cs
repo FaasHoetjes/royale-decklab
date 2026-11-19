@@ -26,11 +26,16 @@ public sealed class MetaCacheTests : IDisposable
     private static readonly long FortyDaysAgo = Now - 40L * 24 * 60 * 60 * 1000;
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"metacache-{Guid.NewGuid():N}.db");
+    private readonly string _ladderDbPath = Path.Combine(Path.GetTempPath(), $"metacache-ladder-{Guid.NewGuid():N}.db");
 
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
         File.Delete(_dbPath);
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+        {
+            File.Delete(_ladderDbPath + suffix);
+        }
     }
 
     /// <summary>
@@ -95,6 +100,9 @@ public sealed class MetaCacheTests : IDisposable
         services.AddLogging();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new MetaOptions()));
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new LadderOptions()));
+        services.AddSingleton(_ => new LadderStore(_ladderDbPath));
+        services.AddSingleton<LadderIntake>();
         services.AddScoped<BattleRepository>();
         services.AddScoped<CrownSeriesRepository>();
         services.AddSingleton(new ClashRoyaleCrawlClient(

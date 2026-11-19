@@ -19,6 +19,7 @@ public sealed class CrownSeriesCollector(
     CrownSeriesRepository store,
     BattleRepository battles,
     CrownSeriesSchedule schedule,
+    LadderIntake ladder,
     TimeProvider time,
     IOptions<CrownSeriesOptions> options,
     IOptions<MetaOptions> metaOptions,
@@ -47,6 +48,8 @@ public sealed class CrownSeriesCollector(
         }
 
         harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
+        harvest.LadderAdded += ladder.Store(harvest.TakePendingLadder());
+        ladder.PruneAndReport("Crown Series poll", harvest.LadderFound, harvest.LadderAdded);
         await store.SetLastPollMsAsync(now, ct);
         logger.LogInformation(
             "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned, "
@@ -284,6 +287,7 @@ public sealed class CrownSeriesCollector(
             finally
             {
                 harvest.Added += await store.MergeRoundsAsync(harvest.TakePending(), ct);
+                harvest.LadderAdded += ladder.Store(harvest.TakePendingLadder());
             }
         }
     }
@@ -317,6 +321,8 @@ public sealed class CrownSeriesCollector(
         private readonly Dictionary<int, int> _roundsPerCap = [];
         private readonly Dictionary<string, long> _newestBattleMs = new(StringComparer.Ordinal);
         private List<CrownSeriesRound> _pending = [];
+        private List<LadderBattle> _pendingLadder = [];
+        private int _ladderFound;
         private long _latestDuelMs;
         private int _failedReads;
         private int _roundsFound;
@@ -326,6 +332,19 @@ public sealed class CrownSeriesCollector(
         private readonly Dictionary<string, int> _leadClans = new(StringComparer.Ordinal);
 
         public int Added { get; set; }
+
+        public int LadderAdded { get; set; }
+
+        public int LadderFound
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _ladderFound;
+                }
+            }
+        }
         public Dictionary<SeedSource, int> SeedsTried { get; } = [];
 
         /// <summary>Per source, the seeds whose latest Duel was below King's League: what each source is worth.</summary>
@@ -467,6 +486,16 @@ public sealed class CrownSeriesCollector(
             }
         }
 
+        public List<LadderBattle> TakePendingLadder()
+        {
+            lock (_lock)
+            {
+                var pending = _pendingLadder;
+                _pendingLadder = [];
+                return pending;
+            }
+        }
+
         /// <summary>The newest battle in the player's log, of any mode; null when their log wasn't read this poll.</summary>
         public long? NewestBattleMs(string tag)
         {
@@ -488,6 +517,9 @@ public sealed class CrownSeriesCollector(
                     {
                         duels.Add(duel);
                     }
+                    var sides = LadderBattles.From(battle);
+                    _pendingLadder.AddRange(sides);
+                    _ladderFound += sides.Count;
                 }
                 if (duels.Count == 0)
                 {
