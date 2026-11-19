@@ -45,7 +45,7 @@ public sealed class LadderCollector(
         }
 
         await poll.FlushAsync(ct);
-        schedule.KeepMet(harvest.Opponents());
+        schedule.KeepMet(harvest.Opponents().Where(o => !harvest.WasMetEarlier(o.Tag)));
         poll.ReportLadder("ladder poll");
         store.SetLastPollMs(now);
         logger.LogInformation(
@@ -117,6 +117,7 @@ public sealed class LadderCollector(
     private sealed class Harvest : PollHarvest<LadderGroup>
     {
         private readonly LadderOptions _options;
+        private readonly HashSet<string> _metEarlier = new(StringComparer.Ordinal);
 
         public Harvest(LadderOptions options, IEnumerable<(string Tag, LadderGroup Group)> metEarlier)
         {
@@ -124,8 +125,11 @@ public sealed class LadderCollector(
             foreach (var (tag, group) in metEarlier)
             {
                 AddOpponent(tag, group);
+                _metEarlier.Add(tag);
             }
         }
+
+        public bool WasMetEarlier(string tag) => _metEarlier.Contains(tag);
 
         protected override (LadderGroup? Group, long SeenMs) AddLog(
             string tag, IReadOnlyList<CrBattle> log, IReadOnlyList<LadderBattle> ladderSides)

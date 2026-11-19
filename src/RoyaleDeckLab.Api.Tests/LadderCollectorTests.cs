@@ -103,6 +103,31 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task Opponents_are_carried_over_one_poll_only()
+    {
+        LadderOptions.ReadsPerPoll = 1;
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#A", TimeSpan.FromHours(1)), TrophyRoadBattle("#V", "#B", TimeSpan.FromHours(2))];
+
+        await CollectAsync();
+        await CollectAsync();
+
+        Assert.Empty(Schedule().TakeMet());
+    }
+
+    [Fact]
+    public async Task A_full_range_carries_no_opponents_over()
+    {
+        LadderOptions.MaxPlayersPerGroup = 1;
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#A", TimeSpan.FromHours(1))];
+
+        await CollectAsync();
+
+        Assert.Empty(Schedule().TakeMet());
+    }
+
+    [Fact]
     public async Task The_emptiest_range_gets_the_reads_first()
     {
         LadderOptions.ReadsPerPoll = 3;

@@ -5,10 +5,7 @@ using RoyaleDeckLab.Api.Services.Crawling;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// Also keeps the opponents a poll met but had no reads left for, at most a range's share per range, so the next
-/// poll starts from them instead of finding them again.
-/// </summary>
+// Opponents a poll had no reads left for are kept for one poll only, so none goes stale.
 public sealed class LadderSchedule(IOptions<LadderOptions> options) : PlayerTracker<LadderGroup>(options.Value)
 {
     private readonly object _metLock = new();
@@ -19,7 +16,7 @@ public sealed class LadderSchedule(IOptions<LadderOptions> options) : PlayerTrac
         var kept = opponents
             .Where(o => !IsKnown(o.Tag))
             .GroupBy(o => o.Group)
-            .SelectMany(inGroup => inGroup.Take(options.Value.MaxPlayersPerGroup))
+            .SelectMany(inGroup => inGroup.Take(RoomIn(inGroup.Key)))
             .ToDictionary(o => o.Tag, o => o.Group, StringComparer.Ordinal);
         lock (_metLock)
         {
