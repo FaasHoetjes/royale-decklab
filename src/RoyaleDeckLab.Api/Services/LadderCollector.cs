@@ -52,7 +52,7 @@ public sealed class LadderCollector(
         await poll.FlushAsync(ct);
         schedule.KeepMet(harvest.Opponents().Where(o => !harvest.WasMetEarlier(o.Tag)), now);
         poll.ReportLadder("ladder poll");
-        SaveLastPoll(now);
+        SaveSchedule(now);
         logger.LogInformation(
             "Ladder poll: {Players} of {Budget} reads used ({Failed} failed), seeds tried: {@Seeds}, {Tracked} players tracked; "
             + "per range: {PlayersPerGroup}",
@@ -121,26 +121,35 @@ public sealed class LadderCollector(
         }
     }
 
-    private void SaveLastPoll(long now)
+    private void SaveSchedule(long now)
     {
         try
         {
+            store.SaveTracked(schedule.Snapshot());
             store.SetLastPollMs(now);
         }
         catch (SqliteException ex)
         {
-            logger.LogError(ex, "Couldn't save when the ladder poll ran");
+            logger.LogError(ex, "Couldn't save the ladder schedule");
         }
     }
 
     public void RestoreSchedule()
     {
         var now = time.GetUtcNow().ToUnixTimeMilliseconds();
-        var latest = store.LatestPerPlayer(_opt.MaxPlayersPerGroup, now - _opt.ForgetAfterMs)
-            .Select(side => (side.PlayerTag, Group: LadderGroup.Of(side.Mode, side.Standing, _opt), side.BattleTimeMs))
-            .Where(p => p.Group is not null)
-            .Select(p => (p.PlayerTag, p.Group!.Value, p.BattleTimeMs));
-        schedule.Restore(latest, now);
+        var saved = store.LoadTracked();
+        if (saved.Count > 0)
+        {
+            schedule.Load(saved, now);
+        }
+        else
+        {
+            var latest = store.LatestPerPlayer(_opt.MaxPlayersPerGroup, now - _opt.ForgetAfterMs)
+                .Select(side => (side.PlayerTag, Group: LadderGroup.Of(side.Mode, side.Standing, _opt), side.BattleTimeMs))
+                .Where(p => p.Group is not null)
+                .Select(p => (p.PlayerTag, p.Group!.Value, p.BattleTimeMs));
+            schedule.Restore(latest, now);
+        }
         logger.LogInformation("Ladder schedule restored: {Tracked} players tracked; per range: {PlayersPerGroup}",
             schedule.KnownPlayers, PlayersPerGroup());
     }

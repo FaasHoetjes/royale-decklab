@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using RoyaleDeckLab.Api.Models;
+using RoyaleDeckLab.Api.Services.Crawling;
 
 namespace RoyaleDeckLab.Api.Data;
 
@@ -13,6 +14,7 @@ public sealed class LadderStore
     private const int MergeBatchSize = 5_000;
     private const long JournalSizeLimit = 64L * 1024 * 1024;
     private const string Band = "CASE mode WHEN $trophyRoad THEN standing / $width * $width ELSE standing END";
+    private const string PlayersTable = "ladder_players";
     private const string LastPollKey = "last_poll_ms";
     private const string BandWidthKey = "band_width";
 
@@ -263,6 +265,23 @@ public sealed class LadderStore
             sides.Add(new LatestLadderSide(reader.GetString(0), reader.GetInt64(1), (LadderMode)reader.GetInt32(2), reader.GetInt32(3)));
         }
         return sides;
+    }
+
+    public void SaveTracked(IReadOnlyCollection<TrackedPlayer<LadderGroup>> players)
+    {
+        lock (_writeLock)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            TrackedPlayerTable.Save(connection, transaction, PlayersTable, players, group => group.Key);
+            transaction.Commit();
+        }
+    }
+
+    public IReadOnlyList<TrackedPlayer<LadderGroup>> LoadTracked()
+    {
+        using var connection = Open();
+        return TrackedPlayerTable.Load(connection, PlayersTable, LadderGroup.FromKey);
     }
 
     public long GetLastPollMs()

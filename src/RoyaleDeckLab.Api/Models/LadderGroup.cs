@@ -15,5 +15,9 @@ public readonly record struct LadderGroup(LadderMode Mode, int Floor)
 
     public static LadderGroup? Of(LadderBattle side, LadderOptions options) => Of(side.Mode, side.Standing, options);
 
+    public long Key => (long)Mode << 32 | (uint)Floor;
+
+    public static LadderGroup FromKey(long key) => new((LadderMode)(key >> 32), (int)key);
+
     public override string ToString() => Mode == LadderMode.TrophyRoad ? $"{Floor}+" : $"league {Floor}";
 }

@@ -106,6 +106,21 @@ public sealed class CrownSeriesCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_poll_saves_the_schedule_for_the_next_start()
+    {
+        Api.Ranked.Add("#R1");
+        Api.Logs["#R1"] = [Duel("#R1", "#OPP", TimeSpan.FromHours(1), cap: 12)];
+
+        await CollectAsync();
+
+        using var scope = Services.CreateScope();
+        var saved = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().LoadTracked();
+        var r1 = Assert.Single(saved, p => p.Tag == "#R1");
+        Assert.Equal(12, r1.Group);
+        Assert.True(r1.NextReadMs > Now.ToUnixTimeMilliseconds());
+    }
+
+    [Fact]
     public async Task A_log_that_fills_slowly_is_not_read_again_next_hour()
     {
         Api.Ranked.Add("#R1");

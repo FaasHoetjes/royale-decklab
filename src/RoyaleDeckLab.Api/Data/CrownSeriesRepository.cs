@@ -3,11 +3,14 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using RoyaleDeckLab.Api.Models;
+using RoyaleDeckLab.Api.Services.Crawling;
 
 namespace RoyaleDeckLab.Api.Data;
 
 public sealed class CrownSeriesRepository(MetaDbContext db)
 {
+    private const string PlayersTable = "crown_series_players";
+
     /// <summary>Adds the rounds not stored yet and says how many that was; a round seen in an earlier poll is skipped.</summary>
     public async Task<int> MergeRoundsAsync(IReadOnlyCollection<CrownSeriesRound> rounds, CancellationToken ct = default)
     {
@@ -140,6 +143,35 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
             .AsNoTracking()
             .Select(s => s.LastCrownSeriesPollMs)
             .FirstOrDefault();
+
+    public async Task SaveTrackedAsync(IReadOnlyCollection<TrackedPlayer<int>> players, CancellationToken ct = default)
+    {
+        await MetaWriteGate.Instance.WaitAsync(ct);
+        try
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var conn = (SqliteConnection)db.Database.GetDbConnection();
+            TrackedPlayerTable.Save(conn, (SqliteTransaction)tx.GetDbTransaction(), PlayersTable, players, cap => cap);
+            await tx.CommitAsync(ct);
+        }
+        finally
+        {
+            MetaWriteGate.Instance.Release();
+        }
+    }
+
+    public IReadOnlyList<TrackedPlayer<int>> LoadTracked()
+    {
+        db.Database.OpenConnection();
+        try
+        {
+            return TrackedPlayerTable.Load((SqliteConnection)db.Database.GetDbConnection(), PlayersTable, key => (int)key);
+        }
+        finally
+        {
+            db.Database.CloseConnection();
+        }
+    }
 
     public async Task SetLastPollMsAsync(long ms, CancellationToken ct = default)
     {

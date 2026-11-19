@@ -166,6 +166,20 @@ public sealed class LadderCollectorTests : CollectorFixture
     }
 
     [Fact]
+    public async Task A_restart_picks_up_each_players_next_read_where_the_last_poll_left_it()
+    {
+        Visit("#V");
+        Api.Logs["#V"] = [TrophyRoadBattle("#V", "#A", TimeSpan.FromHours(1))];
+        await CollectAsync();
+
+        var restarted = new LadderSchedule(Microsoft.Extensions.Options.Options.Create(LadderOptions));
+        restarted.Load(Services.GetRequiredService<LadderStore>().LoadTracked(), Now.ToUnixTimeMilliseconds());
+
+        Assert.Equal(["#V"], restarted.KnownTags());
+        Assert.False(restarted.IsDue("#V", Now.ToUnixTimeMilliseconds()));
+    }
+
+    [Fact]
     public async Task A_broken_ladder_db_skips_the_poll()
     {
         BreakLadderStore();

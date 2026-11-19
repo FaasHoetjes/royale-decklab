@@ -50,6 +50,7 @@ public sealed class CrownSeriesCollector(
         await poll.FlushAsync(ct);
         poll.ReportLadder("Crown Series poll");
         await store.SetLastPollMsAsync(now, ct);
+        await store.SaveTrackedAsync(schedule.Snapshot(), ct);
         logger.LogInformation(
             "Crown Series poll: {Players} players read ({Failed} failed), {Rounds} rounds found, +{Added} new, {Pruned} pruned, "
             + "{Incomplete} incomplete Duels skipped, seeds tried: {@Seeds}, "

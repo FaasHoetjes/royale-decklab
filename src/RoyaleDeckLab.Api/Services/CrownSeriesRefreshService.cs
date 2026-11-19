@@ -72,13 +72,19 @@ public sealed class CrownSeriesRefreshService(
     // A schedule that can't be restored leaves the poll to start from the Ranked players and seeds, as on a first run.
     private void RestoreSchedule(IReadOnlyList<CappedBattle>? rounds)
     {
-        if (rounds is null)
-        {
-            return;
-        }
         try
         {
-            schedule.Restore(rounds, time.GetUtcNow().ToUnixTimeMilliseconds());
+            var now = time.GetUtcNow().ToUnixTimeMilliseconds();
+            using var scope = scopeFactory.CreateScope();
+            var saved = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().LoadTracked();
+            if (saved.Count > 0)
+            {
+                schedule.Load(saved, now);
+            }
+            else if (rounds is not null)
+            {
+                schedule.Restore(rounds, now);
+            }
             logger.LogInformation("Crown Series schedule restored: {Tracked} players tracked; per cap: {@PlayersPerCap}",
                 schedule.KnownPlayers, schedule.PlayersPerCap());
         }

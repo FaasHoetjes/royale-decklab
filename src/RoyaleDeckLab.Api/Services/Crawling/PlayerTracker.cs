@@ -156,6 +156,31 @@ public class PlayerTracker<TGroup>(PlayerPollOptions options) where TGroup : str
         Trim([]);
     }
 
+    public IReadOnlyList<TrackedPlayer<TGroup>> Snapshot()
+    {
+        lock (_lock)
+        {
+            return _players
+                .Where(p => p.Value.Group is not null)
+                .Select(p => new TrackedPlayer<TGroup>(
+                    p.Key, p.Value.Group!.Value, p.Value.NextReadMs, p.Value.LastSeenMs, p.Value.NewestBattleMs, p.Value.WaitMs))
+                .ToList();
+        }
+    }
+
+    public void Load(IEnumerable<TrackedPlayer<TGroup>> players, long nowMs)
+    {
+        lock (_lock)
+        {
+            foreach (var p in players)
+            {
+                _players.TryAdd(p.Tag, new Tracked(p.NextReadMs, p.LastSeenMs, p.Group, p.NewestBattleMs, p.WaitMs));
+            }
+        }
+        ForgetInactive([], nowMs);
+        Trim([]);
+    }
+
     public void AddVisitor(string tag, long nowMs)
     {
         lock (_lock)
