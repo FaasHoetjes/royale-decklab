@@ -14,7 +14,7 @@ public sealed class LadderOptions : PlayerPollOptions
         // Clear of the startup meta load, the Crown Series poll and the season boost check.
         StartupDelayMs = 10L * 60 * 1000;
 
-        MaxPlayersPerGroup = 1000;
+        MaxPlayersPerGroup = 500;
 
         SeedsPerPoll = 500;
         ClansPerPoll = 20;

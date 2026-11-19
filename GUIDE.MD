@@ -109,7 +109,7 @@ players' logs is stored once, and sides older than 14 days are pruned. Like
 
 The war crawl only reaches players above about 9,000 trophies, so an hourly
 ladder poll reads players in every 1,000-trophy range from 4,000 up and in
-every Ranked league, at most 1,000 tracked players each:
+every Ranked league, at most 500 tracked players each:
 
 - Ladder matches players on trophies, so following a player's opponents fills
   their own range. Opponents a poll had no reads left for are kept for the
@@ -119,7 +119,7 @@ every Ranked league, at most 1,000 tracked players each:
   clanmates of players in ranges with room.
 - A poll reads at most 2,000 logs, or 500 while a Crown Series weekend is on,
   clan member lists included, and waits for a war rebuild to finish before it
-  starts.
+  starts. 500 players per range keeps the rereads well within that budget.
 
 After each poll the log lists the battles stored and the players tracked per
 range and league. The stored counts are kept in `ladder_counts` as battles are
