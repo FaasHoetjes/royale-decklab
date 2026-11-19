@@ -39,8 +39,17 @@ public sealed class CrownSeriesRefreshService(
 
     private TimeSpan FirstPollDelay()
     {
-        using var scope = scopeFactory.CreateScope();
-        var lastPollMs = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().GetLastPollMs();
+        long lastPollMs;
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            lastPollMs = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>().GetLastPollMs();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Couldn't read when the last Crown Series poll ran");
+            lastPollMs = 0;
+        }
         return PollLoop.FirstPollDelay(lastPollMs, _opt, time);
     }
 
