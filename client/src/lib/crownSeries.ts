@@ -1,5 +1,12 @@
 import type { CrownSeriesLeagueId, DeckCardData } from '../api';
 import { cardIconUrl, displayLevel, versionOf, type CardVersionRef } from './cardDisplay';
+import { DEFAULT_OPTIONS, MAX_DECKS, parseOptions, type GeneratorOptions } from './generatorOptions';
+
+/** The included, excluded and locked cards from the URL; a Duel always takes four decks at the league's levels. */
+export function duelOptions(params: URLSearchParams): GeneratorOptions {
+  const { ban, require, lock } = parseOptions(params, { decks: MAX_DECKS, minLevel: null });
+  return { ...DEFAULT_OPTIONS, ban, require, lock };
+}
 
 export interface CrownSeriesLeague {
   id: CrownSeriesLeagueId;

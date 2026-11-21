@@ -26,8 +26,7 @@ const parseIdList = (raw: string | null) =>
   [...new Set((raw ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0))];
 
 /** Reads options from the URL, dropping anything the API would reject (hand-edited or stale links). */
-export function parseOptions(params: URLSearchParams): GeneratorOptions {
-  const stored = loadDefaults();
+export function parseOptions(params: URLSearchParams, stored: RememberedOptions = loadDefaults()): GeneratorOptions {
   const decksRaw = params.get('decks');
   const minRaw = params.get('minLevel');
   const decks = decksRaw != null ? Number(decksRaw) : stored.decks;
@@ -73,7 +72,7 @@ export function toQuery(options: GeneratorOptions): string {
 export const hasActiveOptions = (o: GeneratorOptions) =>
   o.decks !== MAX_DECKS || o.minLevel != null || o.ban.length > 0 || o.require.length > 0 || o.lock.length > 0 || !o.boosts;
 
-type RememberedOptions = Pick<GeneratorOptions, 'decks' | 'minLevel'>;
+export type RememberedOptions = Pick<GeneratorOptions, 'decks' | 'minLevel'>;
 
 // Number of decks and minimum level are personal preferences, so they carry over to the next search. Boosts aren't:
 // the switch is hidden for players without boosted cards, and a remembered "off" would leave them a Reset for nothing.

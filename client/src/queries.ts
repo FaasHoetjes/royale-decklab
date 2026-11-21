@@ -45,7 +45,8 @@ export const queryKeys = {
   playerCollection: (tag: string) => ['player', tag, 'collection'] as const,
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
-  playerCrownSeries: (tag: string, league: CrownSeriesLeagueId) => ['player', tag, 'crown-series', league] as const,
+  playerCrownSeries: (tag: string, league: CrownSeriesLeagueId, options = '') =>
+    ['player', tag, 'crown-series', league, options] as const,
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
   clanReminders: (clanTag: string) => ['clan', clanTag, 'discord-reminders'] as const,
   clanSearch: (name: string) => ['clan-search', name] as const,
@@ -275,12 +276,12 @@ export const useWarDecksToday = (playerTag: string | null) =>
     enabled: !!playerTag,
   });
 
-export function useCrownSeriesDecks(tag: string | null, league: CrownSeriesLeagueId) {
+export function useCrownSeriesDecks(tag: string | null, league: CrownSeriesLeagueId, options = '') {
   return useQuery({
-    queryKey: queryKeys.playerCrownSeries(tag ?? '', league),
-    queryFn: ({ signal }) => fetchCrownSeriesDecks(tag ?? '', league, signal),
+    queryKey: queryKeys.playerCrownSeries(tag ?? '', league, options),
+    queryFn: ({ signal }) => fetchCrownSeriesDecks(tag ?? '', league, options, signal),
     enabled: !!tag,
-    // Keep this player's decks on screen while another league loads.
+    // Keep this player's decks on screen while another league or other options load.
     placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === tag ? previous : undefined),
   });
 }
