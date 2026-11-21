@@ -3,9 +3,9 @@ using RoyaleDeckLab.Api.Models;
 namespace RoyaleDeckLab.Api.Services;
 
 /// <summary>
-/// How far a weekly refit may move Duel scoring. A fit outside the bounds points to a data error and is skipped; inside
-/// them each value moves toward the fit by at most its step, so a real shift is followed over a few weeks and one odd
-/// week can't swing it. Each step is three times the usual weekly change, from per-day fits of Nov 2026 and a refit
+/// How far a weekly refit may move Duel scoring. Each value moves toward the fit by at most its step, so a real shift is
+/// followed over a few weeks and one odd week can't swing it. A value up to one step past its bounds is noise near the
+/// edge and counts as the bound; further out it points to a data error, and the fit is skipped. Each step is three times the usual weekly change, from per-day fits of Nov 2026 and a refit
 /// spanning about four weekends.
 /// </summary>
 public static class DuelValueLimits
@@ -23,10 +23,10 @@ public static class DuelValueLimits
     public static (LevelFit Levels, SpecialValues Specials)? StepLevels(DuelValues current, DuelLevelFit fit, bool first)
     {
         var holds = fit.Duels >= MinLevelDuels
-            && PerLevel.Holds(fit.PerLevel.Value)
-            && WeakestCard.Holds(fit.WeakestCard.Value)
-            && Evo.Holds(fit.Evo.Value)
-            && Hero.Holds(fit.Hero.Value);
+            && PerLevel.Accepts(fit.PerLevel.Value)
+            && WeakestCard.Accepts(fit.WeakestCard.Value)
+            && Evo.Accepts(fit.Evo.Value)
+            && Hero.Accepts(fit.Hero.Value);
         if (!holds)
         {
             return null;
@@ -42,13 +42,16 @@ public static class DuelValueLimits
 
     /// <param name="first">The first fit applied replaces the default outright rather than stepping from it.</param>
     public static double? StepPriorRounds(DuelValues current, DuelCushionFit fit, bool first)
-        => PriorRounds.Holds(fit.PriorRounds) ? PriorRounds.Step(current.PriorRounds, fit.PriorRounds, first) : null;
+        => PriorRounds.Accepts(fit.PriorRounds) ? PriorRounds.Step(current.PriorRounds, fit.PriorRounds, first) : null;
 
     private sealed record Limit(double Min, double Max, double MaxStep)
     {
-        public bool Holds(double value) => value >= Min && value <= Max;
+        public bool Accepts(double value) => value >= Min - MaxStep && value <= Max + MaxStep;
 
         public double Step(double current, double fitted, bool first)
-            => first ? fitted : current + Math.Clamp(fitted - current, -MaxStep, MaxStep);
+        {
+            var target = Math.Clamp(fitted, Min, Max);
+            return first ? target : current + Math.Clamp(target - current, -MaxStep, MaxStep);
+        }
     }
 }

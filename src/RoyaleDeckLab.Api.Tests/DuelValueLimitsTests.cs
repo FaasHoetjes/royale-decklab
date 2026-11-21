@@ -31,11 +31,21 @@ public sealed class DuelValueLimitsTests
 
     [Theory]
     [InlineData(4.0, 0.07, 0.32, 0.12)]
-    [InlineData(1.80, -0.05, 0.32, 0.12)]
+    [InlineData(1.80, -0.2, 0.32, 0.12)]
     [InlineData(1.80, 0.07, 0.9, 0.12)]
     [InlineData(1.80, 0.07, 0.32, 0.5)]
     public void Skips_a_level_fit_outside_the_bounds(double perLevel, double weakestCard, double evo, double hero)
         => Assert.Null(DuelValueLimits.StepLevels(Current, Fit(perLevel, weakestCard, evo, hero), first: true));
+
+    [Fact]
+    public void A_value_just_past_its_bound_counts_as_the_bound_and_the_others_still_move()
+    {
+        var (levels, specials) = DuelValueLimits.StepLevels(Current, Fit(weakestCard: -0.004, evo: 0.33), first: false)!.Value;
+
+        Assert.Equal(0.02, levels.WeakestCard, 10);
+        Assert.Equal(0.33, specials.Evo, 10);
+        Assert.Equal(20, DuelValueLimits.StepPriorRounds(Current, Cushion(15), first: true));
+    }
 
     [Fact]
     public void Skips_a_level_fit_from_too_few_duels()
