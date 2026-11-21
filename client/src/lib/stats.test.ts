@@ -11,6 +11,7 @@ describe('toolForPath', () => {
     ['/faq', 'faq'],
     ['/patch', 'patch'],
     ['/crown-series', 'crown-series'],
+    ['/ladder', 'ladder'],
     ['/cards', 'cards'],
     ['/cards/hog-rider', 'card'],
     ['/clan', 'clan'],

@@ -2,8 +2,10 @@
 // repeats within a page load here and count each visitor once a day per event on the server.
 import { isValidTag } from './playerTag';
 
-export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq' | 'patch' | 'crown-series';
-type DeckExportTool = Extract<StatsTool, 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'crown-series'>;
+export type StatsTool = 'home' | 'generator' | 'builder' | 'upgrades' | 'best-decks' | 'cards' | 'card' | 'clan' | 'faq' | 'patch' | 'crown-series' | 'ladder';
+const DECK_EXPORT_TOOLS = ['generator', 'builder', 'upgrades', 'best-decks', 'crown-series', 'ladder'] as const;
+type DeckExportTool = (typeof DECK_EXPORT_TOOLS)[number];
+const PAGE_TOOLS = ['builder', 'upgrades', 'best-decks', 'faq', 'patch', 'crown-series', 'ladder'] as const;
 type DeckExportKind = 'deck_copy' | 'deck_open';
 
 export type StatsEvent =
@@ -76,7 +78,8 @@ export function toolForPath(pathname: string): StatsTool | null {
   if (first === 'cards') return second ? 'card' : 'cards';
   if (first === 'clan') return 'clan';
   if (second) return null;
-  if (first === 'builder' || first === 'upgrades' || first === 'best-decks' || first === 'faq' || first === 'patch' || first === 'crown-series') return first;
+  const page = PAGE_TOOLS.find((tool) => tool === first);
+  if (page) return page;
   return isValidTag(first) ? 'generator' : null;
 }
 
@@ -112,7 +115,6 @@ export function trackPageView(pathname: string, redirected: boolean): void {
 /** Only the page category is sent: no deck URL, cards, or player tag. */
 export function trackDeckExport(kind: DeckExportKind): void {
   const tool = toolForPath(window.location.pathname);
-  if (tool === 'generator' || tool === 'builder' || tool === 'upgrades' || tool === 'best-decks' || tool === 'crown-series') {
-    track({ kind, tool });
-  }
+  const exported = DECK_EXPORT_TOOLS.find((t) => t === tool);
+  if (exported) track({ kind, tool: exported });
 }

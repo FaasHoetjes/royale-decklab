@@ -34,6 +34,7 @@ const TOOL_LABELS: Record<string, string> = {
   faq: 'FAQ',
   patch: 'Patch link',
   'crown-series': 'Crown Series deck generator',
+  ladder: 'Ladder deck generator',
 };
 
 const DEVICE_LABELS: Record<string, string> = { phone: 'Phone', desktop: 'Desktop' };
