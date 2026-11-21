@@ -5,6 +5,7 @@ import { classifyDeck } from '../lib/archetypes';
 import { CARD_BACKDROP, SPECIAL_COLOR } from '../lib/slotStyles';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDialog } from '../hooks/useDialog';
+import type { WinRateSource } from './deckCard/DeckCardBanner';
 
 export interface SwapOption {
   master: number;
@@ -32,6 +33,7 @@ interface SwapDeckModalProps {
   currentCardOrder?: number[];
   onSelect: (master: number) => void;
   onClose: () => void;
+  source?: WinRateSource;
 }
 
 export default function SwapDeckModal({
@@ -41,7 +43,10 @@ export default function SwapDeckModal({
   currentCardOrder,
   onSelect,
   onClose,
+  source,
 }: SwapDeckModalProps) {
+  const duel = source === 'duel';
+  const unit = duel ? 'round' : 'game';
   const isMobile = useIsMobile();
   const [scrolled, setScrolled] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -83,7 +88,7 @@ export default function SwapDeckModal({
           <div>
             <h3 style={styles.title}>Swap deck {slotNumber}</h3>
             <p style={styles.subtitle}>
-              {others} deck{others === 1 ? '' : 's'} that don't share cards with your other decks. New and changed cards are outlined.
+              {others} deck{others === 1 ? " that doesn't" : "s that don't"} share cards with your other decks. New and changed cards are outlined.
             </p>
           </div>
           <button className="mobile-touch-target" type="button" onClick={onClose} aria-label="Close" style={styles.close}>
@@ -128,16 +133,18 @@ export default function SwapDeckModal({
                   ))}
                   <span style={{ ...styles.stats, ...(isMobile && styles.statsMobile) }}>
                     <span style={styles.stat}>
-                      Score <b style={styles.statValue}>{opt.playerScore.toFixed(3)}</b>
+                      {duel ? 'Win chance' : 'Score'}{' '}
+                      <b style={styles.statValue}>{duel ? `${Math.round(opt.playerScore * 100)}%` : opt.playerScore.toFixed(3)}</b>
                       {!isCurrent && current && (
                         <span style={{ ...styles.delta, color: delta >= 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                          {delta >= 0 ? '+' : '−'}{Math.abs(delta).toFixed(3)}
+                          {delta >= 0 ? '+' : '−'}
+                          {duel ? `${(Math.abs(delta) * 100).toFixed(1)} pts` : Math.abs(delta).toFixed(3)}
                         </span>
                       )}
                     </span>
                     <span style={styles.stat}>
                       Win rate <b style={styles.statValue}>{(opt.metaWinRate * 100).toFixed(1)}%</b>
-                      <span style={styles.games}>{opt.uses} game{opt.uses === 1 ? '' : 's'}</span>
+                      <span style={styles.games}>{opt.uses.toLocaleString()} {unit}{opt.uses === 1 ? '' : 's'}</span>
                     </span>
                     <span style={styles.stat}>
                       Elixir <b style={styles.statValue}>{avgElixir(opt.cards).toFixed(1)}</b>
