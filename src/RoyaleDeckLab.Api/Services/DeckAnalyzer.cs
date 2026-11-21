@@ -99,9 +99,8 @@ public sealed class DeckAnalyzer
             return null;
         }
         var levelLogit = CrownSeriesLevels.Fit.Logit(meanLevel, minLevel, opponentLevel);
-        var emptySlots = CardVersionRules.EmptySpecialSlots(deck.CardIds, deck.CardVersions, cardMap);
-        var specialsLogit = -CrownSeriesLevels.EmptySpecialSlot * emptySlots;
-        return LevelModel.WinProbability(deck.Confidence, levelLogit + specialsLogit);
+        var missing = CardVersionRules.MissingSpecialValue(deck.CardIds, deck.CardVersions, cardMap, CrownSeriesLevels.Specials);
+        return LevelModel.WinProbability(deck.Confidence, levelLogit - missing);
     }
 
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
