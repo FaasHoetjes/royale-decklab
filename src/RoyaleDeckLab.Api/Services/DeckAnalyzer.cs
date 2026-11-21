@@ -43,37 +43,28 @@ public sealed class DeckAnalyzer
             return null;
         }
 
-        var missing = 0;
-        var (evos, heroes, evoOnly, heroOnly, either) = (0, 0, 0, 0, 0);
+        var (missing, metaSpecials, champions, evoOnly, heroOnly, either) = (0, 0, 0, 0, 0, 0);
         foreach (var cardId in metaDeck.CardIds)
         {
             var playerCard = cardMap[cardId];
             if (playerCard.Rarity == Rarity.Champion)
             {
-                heroes++;
+                champions++;
                 continue;
             }
-            var meta = CardVersionKind.Normal;
+            var owned = playerCard.EvolutionLevel;
             if (cardVersions is not null)
             {
                 for (var v = 0; v < cardVersions.Count; v++)
                 {
                     if (cardVersions[v].CardId == cardId)
                     {
-                        meta = cardVersions[v].Version;
+                        var meta = cardVersions[v].Version;
+                        metaSpecials += meta == CardVersionKind.Normal ? 0 : 1;
+                        missing += meta != CardVersionKind.Normal && !EvolutionBits.Owns(owned, meta) ? 1 : 0;
                         break;
                     }
                 }
-            }
-            var owned = playerCard.EvolutionLevel;
-            if (meta != CardVersionKind.Normal && EvolutionBits.Owns(owned, meta))
-            {
-                (evos, heroes) = meta == CardVersionKind.Evo ? (evos + 1, heroes) : (evos, heroes + 1);
-                continue;
-            }
-            if (meta != CardVersionKind.Normal)
-            {
-                missing++;
             }
             (evoOnly, heroOnly, either) = (EvolutionBits.OwnsEvo(owned), EvolutionBits.OwnsHero(owned)) switch
             {
@@ -86,8 +77,9 @@ public sealed class DeckAnalyzer
         if (missing > 0 && creditSubstitutes)
         {
             // War battles where a deck swaps one special for another win as often as the usual setup (11k battles),
-            // so a special of the player's own in the slot a missing one leaves costs nothing.
-            missing = Math.Max(0, missing - CardVersionRules.FreeSlotsFilled(evos, heroes, evoOnly, heroOnly, either));
+            // so only the special slots the player's own can't fill cost anything.
+            var fielded = CardVersionRules.FreeSlotsFilled(0, champions, evoOnly, heroOnly, either);
+            missing = Math.Min(missing, Math.Max(0, metaSpecials - fielded));
         }
         var versionFit = Math.Pow(CardVersionRules.MissingSpecialMultiplier, missing);
 

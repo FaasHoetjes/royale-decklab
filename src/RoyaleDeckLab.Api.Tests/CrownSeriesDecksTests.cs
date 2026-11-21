@@ -185,6 +185,27 @@ public sealed class CrownSeriesDecksTests : IDisposable
     }
 
     [Fact]
+    public void An_owned_special_switches_to_the_version_worth_more()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id switch
+        {
+            1 => EvolutionBits.Evo | EvolutionBits.Hero,
+            4 => EvolutionBits.Evo,
+            _ => 0,
+        })));
+        var values = DuelValues.Default with { Specials = new SpecialValues(Evo: 0.32, Hero: 0.12) };
+        var meta = new[] { Build.Deck(Build.Eight(1), confidence: MetaConfidence, versions:
+            [new(1, CardVersionKind.Hero), new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo)]) };
+
+        var deck = Assert.Single(_analyzer.FindBestCrownSeriesDecks(
+            meta, cards, CrownSeriesLeague.Kings, new LineupOptions { DeckCount = 1 }, values).Decks);
+
+        Assert.Equal([CardVersionKind.Evo, CardVersionKind.Normal, CardVersionKind.Normal, CardVersionKind.Evo],
+            deck.CardVersions!.Take(4).Select(v => v.Version));
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -(0.76 - 0.64)), deck.PlayerScore, 10);
+    }
+
+    [Fact]
     public void A_missing_meta_special_costs_nothing_when_another_card_in_the_deck_fills_its_slot()
     {
         var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Evo : 0)));

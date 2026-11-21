@@ -111,6 +111,28 @@ public sealed class GeneratorOptionsTests
     }
 
     [Fact]
+    public void An_owned_special_switches_version_when_that_fields_one_more()
+    {
+        // The deck runs Evo 1, Evo 2 and Hero 3. The player has no Hero 3 but owns both of card 1's specials and Evo 4,
+        // so Hero 1 lets all three slots be filled.
+        List<DeckMeta> decks = [Build.Deck(Build.Eight(1), confidence: 0.60, versions:
+            [new(1, CardVersionKind.Evo), new(2, CardVersionKind.Evo), new(3, CardVersionKind.Hero)]), .. FiveDecks.Skip(1)];
+        var cards = Enumerable.Range(1, 48).Select(id => Build.Card(id, evo: id switch
+        {
+            1 => EvolutionBits.Evo | EvolutionBits.Hero,
+            2 or 4 => EvolutionBits.Evo,
+            _ => 0,
+        })).ToList();
+        var everything = cards.Select(c => c.Id == 3 ? Build.Card(3, evo: EvolutionBits.Hero) : c).ToList();
+
+        var deck = DeckWith(Run(decks, LineupOptions.Default, cards), 1);
+
+        Assert.Equal([CardVersionKind.Hero, CardVersionKind.Evo, CardVersionKind.Normal, CardVersionKind.Evo],
+            deck.CardVersions!.Take(4).Select(v => v.Version));
+        Assert.Equal(DeckWith(Run(decks, LineupOptions.Default, everything), 1).PlayerScore, deck.PlayerScore, 12);
+    }
+
+    [Fact]
     public void Versions_asked_for_that_break_the_slot_limits_fit_no_deck()
     {
         var result = Run(SpecialDecks, new LineupOptions
