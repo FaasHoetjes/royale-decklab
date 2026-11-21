@@ -249,143 +249,15 @@ public sealed class MetaBuilder(
     public List<DeckMeta> AggregateWeightedBattles(
         IEnumerable<(BattleRecord Record, double Weight)> records, long epochStartMs = 0, double? priorWinRate = null)
     {
-        var prior = priorWinRate ?? _opt.PriorWinRate;
-        var sampledPlayers = new HashSet<string>();
-
-        var byDeck = new Dictionary<int[], DeckAgg>(SameCards.Instance);
-        foreach (var (record, recordWeight) in records)
+        var tally = new DeckTally();
+        foreach (var (record, weight) in records)
         {
-            sampledPlayers.Add(record.PlayerTag);
-            if (!byDeck.TryGetValue(record.CardIds, out var agg))
-            {
-                agg = new DeckAgg { CardIds = record.CardIds };
-                byDeck[record.CardIds] = agg;
-            }
-
-            var isPreEpoch = epochStartMs > 0 && record.BattleTimeMs < epochStartMs;
-            var weight = (isPreEpoch ? _opt.PreEpochWeight : 1.0) * recordWeight;
-            agg.Games++;
-            agg.WeightedGames += weight;
-            agg.WeightedWins += weight * record.Result.WinShare();
-            agg.Players.Add(record.PlayerTag);
-
-            if (!agg.Loadouts.TryGetValue(record.CardVersions, out var loadout))
-            {
-                loadout = new LoadoutAgg { Versions = record.CardVersions };
-                agg.Loadouts[record.CardVersions] = loadout;
-            }
-            loadout.Count++;
-            if (string.CompareOrdinal(record.BattleTime, loadout.LatestTime) > 0)
-            {
-                loadout.LatestTime = record.BattleTime;
-            }
+            tally.Add(record.CardIds, record.CardVersions, record.BattleTimeMs, record.PlayerTag,
+                PatchWeight(record.BattleTimeMs, epochStartMs) * weight, record.Result.WinShare());
         }
-
-        var decks = new List<DeckMeta>(byDeck.Count);
-        foreach (var agg in byDeck.Values)
-        {
-            if (agg.Games < 2)
-            {
-                continue;
-            }
-
-            decks.Add(new DeckMeta
-            {
-                CardIds = agg.CardIds,
-                WinRate = agg.WeightedWins / agg.WeightedGames,
-                Confidence = DomainMath.PosteriorQuantile(
-                    agg.WeightedWins, agg.WeightedGames, _opt.PriorGames, prior, _opt.RankingQuantile),
-                Uses = agg.Games,
-                Players = agg.Players.Count,
-                PickRate = sampledPlayers.Count > 0 ? (double)agg.Players.Count / sampledPlayers.Count : 0,
-                CardVersions = agg.Loadouts.Values
-                    .OrderByDescending(l => l.Count)
-                    .ThenByDescending(l => l.LatestTime, StringComparer.Ordinal)
-                    .First().Versions,
-            });
-        }
-
-        decks.Sort((a, b) => b.Confidence.CompareTo(a.Confidence));
-        return decks;
+        return tally.Build(_opt.PriorGames, priorWinRate ?? _opt.PriorWinRate, _opt.RankingQuantile);
     }
 
-    // Battles are keyed by their cards and versions themselves: a text key for each of them was most of what a
-    // rebuild allocated.
-    internal sealed class SameCards : IEqualityComparer<int[]>
-    {
-        public static readonly SameCards Instance = new();
-
-        public bool Equals(int[]? a, int[]? b) => a is not null && b is not null && a.AsSpan().SequenceEqual(b);
-
-        public int GetHashCode(int[] cardIds)
-        {
-            var hash = new HashCode();
-            foreach (var id in cardIds)
-            {
-                hash.Add(id);
-            }
-            return hash.ToHashCode();
-        }
-    }
-
-    /// <summary>The same versions of the same cards, in whatever order the battle listed them.</summary>
-    private sealed class SameLoadout : IEqualityComparer<IReadOnlyList<CardVersion>>
-    {
-        public static readonly SameLoadout Instance = new();
-
-        public bool Equals(IReadOnlyList<CardVersion>? a, IReadOnlyList<CardVersion>? b)
-        {
-            if (a is null || b is null || a.Count != b.Count)
-            {
-                return false;
-            }
-            for (var i = 0; i < a.Count; i++)
-            {
-                if (!Holds(b, a[i]))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        public int GetHashCode(IReadOnlyList<CardVersion> versions)
-        {
-            var hash = 0;
-            for (var i = 0; i < versions.Count; i++)
-            {
-                hash += HashCode.Combine(versions[i].CardId, versions[i].Version);
-            }
-            return hash;
-        }
-
-        private static bool Holds(IReadOnlyList<CardVersion> versions, CardVersion wanted)
-        {
-            for (var i = 0; i < versions.Count; i++)
-            {
-                if (versions[i].CardId == wanted.CardId && versions[i].Version == wanted.Version)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    private sealed class DeckAgg
-    {
-        public int Games;
-        public double WeightedGames;
-        public double WeightedWins;
-        public HashSet<string> Players { get; } = [];
-        public required int[] CardIds { get; init; }
-        public Dictionary<IReadOnlyList<CardVersion>, LoadoutAgg> Loadouts { get; } = new(SameLoadout.Instance);
-    }
-
-    private sealed class LoadoutAgg
-    {
-        public int Count;
-        public string LatestTime = "";
-        public required IReadOnlyList<CardVersion> Versions { get; init; }
-    }
+    public double PatchWeight(long battleTimeMs, long epochStartMs)
+        => epochStartMs > 0 && battleTimeMs < epochStartMs ? _opt.PreEpochWeight : 1.0;
 }

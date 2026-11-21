@@ -152,7 +152,7 @@ public sealed class CardInsightsTallier((long From, long To)[] periods)
 
     public IReadOnlyDictionary<int, CardInsight>[] Insights(Func<int[], string?>? classify = null)
     {
-        var styleOf = new Dictionary<int[], string?>(MetaBuilder.SameCards.Instance);
+        var styleOf = new Dictionary<int[], string?>(DeckTally.SameCards.Instance);
         return _periods.Select(period =>
         {
             var styles = classify is null ? null : StylesByCard(period, deck =>
@@ -348,7 +348,7 @@ public sealed class CardInsightsTallier((long From, long To)[] periods)
         public int[] VersusGames = new int[capacity * capacity];
         public double[] VersusWins = new double[capacity * capacity];
 
-        public Dictionary<int[], Tally> Decks { get; } = new(MetaBuilder.SameCards.Instance);
+        public Dictionary<int[], Tally> Decks { get; } = new(DeckTally.SameCards.Instance);
         public Dictionary<string, (int[] Cards, double Win)> WaitingForOpponent { get; } = new(StringComparer.Ordinal);
 
         public void AddDeck(int[] cardIds, double win)
