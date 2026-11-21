@@ -187,19 +187,20 @@ public sealed class DeckAnalyzer
     /// specials in the slots still free, which is how the player fields the deck.
     /// </summary>
     private static (IReadOnlyList<CardVersion> Meta, IReadOnlyList<CardVersion> Owned, IReadOnlyList<CardVersion> Player) PlayerVersions(
-        DeckMeta deck, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        DeckMeta deck, IReadOnlyDictionary<int, PlayerItemLevel> cardMap, SpecialValues? values = null)
     {
         var versions = CardVersionRules.WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
         var metaVersions = CardVersionRules.CapEvolutions(versions)!;
         var owned = CardVersionRules.CapEvolutions(CardVersionRules.PersonalizeVersions(versions, cardMap))!;
-        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap, deck)!);
+        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap, deck, values)!);
     }
 
     private static ScoredDeck ToScoredDeck(
         DeckMeta deck,
         double score,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
-        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions = null)
+        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions = null,
+        SpecialValues? values = null)
     {
         var cards = new List<PlayerItemLevel>(deck.CardIds.Length);
         foreach (var id in deck.CardIds)
@@ -210,10 +211,10 @@ public sealed class DeckAnalyzer
             }
         }
 
-        var (metaVersions, _, personalized) = PlayerVersions(deck, cardMap);
-        if (forcedVersions is { Count: > 0 })
+        var (metaVersions, owned, personalized) = PlayerVersions(deck, cardMap, values);
+        if (forcedVersions is { Count: > 0 } && deck.CardIds.Any(forcedVersions.ContainsKey))
         {
-            personalized = CardVersionRules.ForceVersions(personalized, forcedVersions, cardMap);
+            personalized = CardVersionRules.PlayAsAsked(owned, forcedVersions, cardMap, deck, values);
         }
 
         return new ScoredDeck
@@ -251,6 +252,7 @@ public sealed class DeckAnalyzer
             ScoreFieldableDecks(metaDecks, cardMap, opponent).Where(c => IsAllowed(c.deck, cardMap, options, lockedCards)),
             forced,
             cardMap,
+            null,
             (candidate, versions, asked) =>
             {
                 int Unfilled(IReadOnlyList<CardVersion> played) => Math.Max(0, Specials(versions.Meta, cardMap) - Specials(played, cardMap));
@@ -287,14 +289,14 @@ public sealed class DeckAnalyzer
             }
         }
         var forced = ForcedVersions(options, lockedCards);
-        var candidates = WithForcedVersions(scored, forced, capped, (candidate, versions, asked) =>
+        var candidates = WithForcedVersions(scored, forced, capped, values.Specials, (candidate, versions, asked) =>
             ScoreDuelDeck(capped, candidate.deck, opponent, values, extraMissing: Math.Max(0,
                 SpecialValue(versions.Player, capped, values.Specials) - SpecialValue(asked, capped, values.Specials))));
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
 
         return SelectLineup(candidates, capped, includeAlternatives: true,
             deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked,
-            forcedVersions: forced, ct: ct);
+            forcedVersions: forced, specialValues: values.Specials, ct: ct);
     }
 
     // A locked deck that has left the Duel meta since is kept at an even win rate before levels; one with a card the
@@ -349,6 +351,7 @@ public sealed class DeckAnalyzer
         IEnumerable<(DeckMeta deck, double score)> candidates,
         IReadOnlyDictionary<int, CardVersionKind> forced,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        SpecialValues? values,
         Func<(DeckMeta deck, double score), (IReadOnlyList<CardVersion> Meta, IReadOnlyList<CardVersion> Owned, IReadOnlyList<CardVersion> Player), IReadOnlyList<CardVersion>, double?> rescore)
     {
         if (forced.Count == 0)
@@ -368,8 +371,9 @@ public sealed class DeckAnalyzer
             {
                 continue;
             }
-            var versions = PlayerVersions(candidate.deck, cardMap);
-            if (rescore(candidate, versions, CardVersionRules.ForceVersions(versions.Player, forced, cardMap)) is { } score)
+            var versions = PlayerVersions(candidate.deck, cardMap, values);
+            var asked = CardVersionRules.PlayAsAsked(versions.Owned, forced, cardMap, candidate.deck, values);
+            if (CardVersionRules.FitsSlots(asked) && rescore(candidate, versions, asked) is { } score)
             {
                 result.Add((candidate.deck, score));
             }
@@ -514,10 +518,6 @@ public sealed class DeckAnalyzer
     }
 
     /// <summary>
-    /// Best <paramref name="deckCount"/> decks with no shared cards (more decks first, then total score). Locked decks
-    /// come first as-is and count toward the total; the caller has already removed candidates that clash with them.
-    /// </summary>
-    /// <summary>
     /// For each deck in the lineup, the best decks that could take its place: ones that share no cards with the other
     /// decks. The best decks overall mostly share cards with several picked decks, so they'd fit no slot.
     /// </summary>
@@ -525,7 +525,8 @@ public sealed class DeckAnalyzer
         IReadOnlyList<(DeckMeta deck, double score)> sorted,
         IReadOnlyList<DeckMeta> lineup,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
-        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions)
+        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions,
+        SpecialValues? values)
     {
         var othersCards = lineup
             .Select((_, slot) => lineup.Where((_, other) => other != slot).SelectMany(d => d.CardIds).ToHashSet())
@@ -553,12 +554,16 @@ public sealed class DeckAnalyzer
             }
             if (fits)
             {
-                alternatives.Add(ToScoredDeck(deck, score, cardMap, forcedVersions));
+                alternatives.Add(ToScoredDeck(deck, score, cardMap, forcedVersions, values));
             }
         }
         return alternatives;
     }
 
+    /// <summary>
+    /// Best <paramref name="deckCount"/> decks with no shared cards (more decks first, then total score). Locked decks
+    /// come first as-is and count toward the total; the caller has already removed candidates that clash with them.
+    /// </summary>
     public WarDeckResult SelectLineup(
         IReadOnlyList<(DeckMeta deck, double score)> fieldable,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
@@ -568,6 +573,7 @@ public sealed class DeckAnalyzer
         IReadOnlySet<int>? requiredCards = null,
         IReadOnlyList<(DeckMeta deck, double score)>? locked = null,
         IReadOnlyDictionary<int, CardVersionKind>? forcedVersions = null,
+        SpecialValues? specialValues = null,
         CancellationToken ct = default)
     {
         var sorted = assumeSorted ? fieldable : SortCandidates(fieldable);
@@ -593,12 +599,10 @@ public sealed class DeckAnalyzer
             }
         }
 
-        var selected = new HashSet<DeckMeta>();
         var selectedDecks = new List<ScoredDeck>((locked?.Count ?? 0) + lineup.Count);
         foreach (var (deck, score) in (locked ?? []).Concat(lineup))
         {
-            selected.Add(deck);
-            selectedDecks.Add(ToScoredDeck(deck, score, cardMap, forcedVersions));
+            selectedDecks.Add(ToScoredDeck(deck, score, cardMap, forcedVersions, specialValues));
         }
 
         return new WarDeckResult
@@ -606,7 +610,7 @@ public sealed class DeckAnalyzer
             Decks = selectedDecks,
             TotalScore = selectedDecks.Sum(d => d.PlayerScore),
             Alternatives = includeAlternatives
-                ? Alternatives(sorted, [.. (locked ?? []).Concat(lineup).Select(p => p.deck)], cardMap, forcedVersions)
+                ? Alternatives(sorted, [.. (locked ?? []).Concat(lineup).Select(p => p.deck)], cardMap, forcedVersions, specialValues)
                 : [],
             PoolMinPlayers = poolMinPlayers,
         };

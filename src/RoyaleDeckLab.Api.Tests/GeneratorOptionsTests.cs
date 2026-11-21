@@ -79,7 +79,7 @@ public sealed class GeneratorOptionsTests
     }
 
     [Fact]
-    public void A_required_card_played_without_its_evo_costs_the_empty_slot_in_war()
+    public void A_required_card_played_without_its_evo_frees_its_slot_for_another_evo()
     {
         var best = DeckWith(Run(SpecialDecks, LineupOptions.Default, SpecialCards()), 2);
 
@@ -90,7 +90,41 @@ public sealed class GeneratorOptionsTests
         }, SpecialCards()), 2);
 
         Assert.Equal(CardVersionKind.Normal, VersionOf(asked, 2));
+        Assert.Equal(CardVersionKind.Evo, VersionOf(asked, 1));
+        Assert.Equal(best.PlayerScore, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void A_required_card_played_without_its_evo_costs_the_empty_slot_in_war()
+    {
+        var cards = SpecialCards().Select(c => c.Id == 1 ? Build.Card(1) : c).ToList();
+        var best = DeckWith(Run(SpecialDecks, LineupOptions.Default, cards), 2);
+
+        var asked = DeckWith(Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 2 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [2] = CardVersionKind.Normal },
+        }, cards), 2);
+
+        Assert.Equal(CardVersionKind.Normal, VersionOf(asked, 2));
         Assert.Equal(best.PlayerScore * MissingSpecialMultiplier, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void Versions_asked_for_that_break_the_slot_limits_fit_no_deck()
+    {
+        var result = Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 1, 2, 3 },
+            RequiredVersions = new Dictionary<int, CardVersionKind>
+            {
+                [1] = CardVersionKind.Evo,
+                [2] = CardVersionKind.Evo,
+                [3] = CardVersionKind.Evo,
+            },
+        }, SpecialCards());
+
+        Assert.DoesNotContain(result.Decks.Concat(result.Alternatives), d => d.CardIds.Contains(1));
     }
 
     [Fact]

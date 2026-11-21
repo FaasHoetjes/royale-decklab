@@ -170,6 +170,20 @@ public sealed class CrownSeriesDecksTests : IDisposable
         Assert.Equal(Logit(bestDeck.PlayerScore) - values.Specials.Hero, Logit(askedDeck.PlayerScore), 10);
     }
 
+    [Theory]
+    [InlineData(0.5, 0.1, CardVersionKind.Evo)]
+    [InlineData(0.1, 0.5, CardVersionKind.Hero)]
+    public void A_card_with_both_specials_is_played_as_the_one_worth_more(double evo, double hero, CardVersionKind shown)
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Evo | EvolutionBits.Hero : 0)));
+        var values = DuelValues.Default with { Specials = new SpecialValues(evo, hero) };
+        var meta = new[] { Build.Deck(Build.Eight(1), confidence: MetaConfidence) };
+
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, new LineupOptions { DeckCount = 1 }, values);
+
+        Assert.Equal(shown, Assert.Single(result.Decks).CardVersions!.Single(v => v.CardId == 2).Version);
+    }
+
     [Fact]
     public void A_missing_meta_special_costs_nothing_when_another_card_in_the_deck_fills_its_slot()
     {
