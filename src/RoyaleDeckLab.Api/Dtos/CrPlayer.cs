@@ -7,7 +7,12 @@ public sealed record CrPlayer(
     string Name,
     List<CrPlayerCard>? Cards,
     ClanRef? Clan,
-    int KingTowerLevel)
+    int KingTowerLevel,
+    int Trophies = 0,
+    CrRankedSeason? CurrentPathOfLegendSeasonResult = null,
+    CrRankedSeason? LastPathOfLegendSeasonResult = null)
 {
     public CrPlayer WithDisplayNames() => this with { Name = DisplayName.Clean(Name, Tag), Clan = Clan?.WithDisplayName() };
 }
+
+public sealed record CrRankedSeason(int LeagueNumber);

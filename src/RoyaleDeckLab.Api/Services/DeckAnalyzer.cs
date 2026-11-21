@@ -92,16 +92,17 @@ public sealed class DeckAnalyzer
         return ((double)totalLevel / cardIds.Length, minLevel);
     }
 
-    private static double? ScoreDuelDeck(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel)
+    /// <summary>A deck's odds in a 1v1 mode, where an empty special slot costs <paramref name="emptySpecialSlot"/> log-odds.</summary>
+    private static double? ScoreOneOnOneDeck(
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel, LevelFit fit, double emptySpecialSlot)
     {
         if (DeckLevels(cardMap, deck.CardIds) is not var (meanLevel, minLevel))
         {
             return null;
         }
-        var levelLogit = CrownSeriesLevels.Fit.Logit(meanLevel, minLevel, opponentLevel);
+        var levelLogit = fit.Logit(meanLevel, minLevel, opponentLevel);
         var emptySlots = CardVersionRules.EmptySpecialSlots(deck.CardIds, deck.CardVersions, cardMap);
-        var specialsLogit = -CrownSeriesLevels.EmptySpecialSlot * emptySlots;
-        return LevelModel.WinProbability(deck.Confidence, levelLogit + specialsLogit);
+        return LevelModel.WinProbability(deck.Confidence, levelLogit - emptySpecialSlot * emptySlots);
     }
 
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
@@ -232,15 +233,38 @@ public sealed class DeckAnalyzer
         ct.ThrowIfCancellationRequested();
         var capped = league.CapLevels(cardMap);
         var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
+        var candidates = ScoreOneOnOneDecks(duelMeta, capped, opponent, CrownSeriesLevels.Fit, CrownSeriesLevels.EmptySpecialSlot);
+        return SelectLineup(candidates, capped, includeAlternatives: true, deckCount: deckCount, ct: ct);
+    }
+
+    /// <summary>The best Trophy Road or Ranked deck from the player's range, against that range's card levels.</summary>
+    public WarDeckResult FindBestLadderDeck(
+        IReadOnlyList<DeckMeta> rangeMeta,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        double opponentLevel,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        var candidates = ScoreOneOnOneDecks(rangeMeta, cardMap, opponentLevel, LadderLevels.Fit, LadderLevels.EmptySpecialSlot);
+        return SelectLineup(candidates, cardMap, includeAlternatives: true, deckCount: 1, gateAlternatives: true, ct: ct);
+    }
+
+    private static List<(DeckMeta deck, double score)> ScoreOneOnOneDecks(
+        IReadOnlyList<DeckMeta> meta,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        double opponentLevel,
+        LevelFit fit,
+        double emptySpecialSlot)
+    {
         var candidates = new List<(DeckMeta deck, double score)>();
-        foreach (var deck in duelMeta)
+        foreach (var deck in meta)
         {
-            if (ScoreDuelDeck(capped, deck, opponent) is { } score)
+            if (ScoreOneOnOneDeck(cardMap, deck, opponentLevel, fit, emptySpecialSlot) is { } score)
             {
                 candidates.Add((deck, score));
             }
         }
-        return SelectLineup(candidates, capped, includeAlternatives: true, deckCount: deckCount, ct: ct);
+        return candidates;
     }
 
     private static bool IsAllowed(
@@ -370,6 +394,7 @@ public sealed class DeckAnalyzer
     /// Best <paramref name="deckCount"/> decks with no shared cards (more decks first, then total score). Locked decks
     /// come first as-is and count toward the total; the caller has already removed candidates that clash with them.
     /// </summary>
+    /// <param name="gateAlternatives">Alternatives need as many players as the lineup's decks did.</param>
     public WarDeckResult SelectLineup(
         IReadOnlyList<(DeckMeta deck, double score)> fieldable,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
@@ -378,6 +403,7 @@ public sealed class DeckAnalyzer
         int deckCount = DecksPerLineup,
         IReadOnlySet<int>? requiredCards = null,
         IReadOnlyList<(DeckMeta deck, double score)>? locked = null,
+        bool gateAlternatives = false,
         CancellationToken ct = default)
     {
         var sorted = assumeSorted ? fieldable : SortCandidates(fieldable);
@@ -420,7 +446,7 @@ public sealed class DeckAnalyzer
                 {
                     break;
                 }
-                if (selected.Contains(deck))
+                if (selected.Contains(deck) || (gateAlternatives && deck.Players < poolMinPlayers))
                 {
                     continue;
                 }

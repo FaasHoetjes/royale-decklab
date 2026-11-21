@@ -8,6 +8,7 @@ namespace RoyaleDeckLab.Api.Services;
 public sealed class LadderRefreshService(
     IServiceScopeFactory scopeFactory,
     LadderStore store,
+    LadderMeta ladderMeta,
     MetaCache meta,
     TimeProvider time,
     IOptions<LadderOptions> options,
@@ -22,6 +23,7 @@ public sealed class LadderRefreshService(
         try
         {
             RestoreSchedule();
+            await RebuildMetaAsync(stoppingToken);
             var firstPoll = PollLoop.FirstPollDelay(LastPollMs(), _opt, time);
             logger.LogInformation("Ladder poll scheduled every {Minutes} min, first in {FirstMinutes:F0} min",
                 _opt.PollIntervalMs / 60_000, firstPoll.TotalMinutes);
@@ -46,6 +48,19 @@ public sealed class LadderRefreshService(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Ladder poll failed");
+        }
+        await RebuildMetaAsync(ct);
+    }
+
+    private async Task RebuildMetaAsync(CancellationToken ct)
+    {
+        try
+        {
+            await ladderMeta.RebuildAsync(ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Ladder meta rebuild failed");
         }
     }
 

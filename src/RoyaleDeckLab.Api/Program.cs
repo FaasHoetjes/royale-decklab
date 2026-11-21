@@ -117,6 +117,8 @@ builder.Services.AddSingleton<CalculationScheduler>();
 builder.Services.AddSingleton<PlayerDeckCache>();
 builder.Services.AddSingleton<CrownSeriesMeta>();
 builder.Services.AddSingleton<CrownSeriesDeckCache>();
+builder.Services.AddSingleton<LadderMeta>();
+builder.Services.AddSingleton<LadderDeckCache>();
 builder.Services.AddSingleton<BestDecksBuilder>();
 builder.Services.AddSingleton<UpgradeAdvisor>();
 builder.Services.AddSingleton<UpgradeAdviceCache>();

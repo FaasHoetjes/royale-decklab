@@ -50,4 +50,12 @@ public sealed class LadderOptions : PlayerPollOptions
 
     // Crown Series weekends need the key most.
     public int ReadsPerPollDuringDuels { get; set; } = 500;
+
+    // How much a side in a neighbouring range or league counts in a range's decks at most, compounding per step
+    // further away.
+    public double OtherRangeWeight { get; set; } = 0.5;
+
+    // A range borrows at most as many weighted sides from others as it has of its own, and at least this many, so a
+    // thin range still gets decks. A judgement value, as in Crown Series, until the ranges can be compared.
+    public int MinBorrowedSides { get; set; } = 2000;
 }

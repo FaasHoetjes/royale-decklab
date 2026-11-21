@@ -267,6 +267,38 @@ public sealed class LadderStore
         return sides;
     }
 
+    /// <summary>
+    /// One mode's sides since <paramref name="sinceMs"/>, read as they're used, each with its opponent's card levels
+    /// when the opponent's side is stored.
+    /// </summary>
+    public IEnumerable<LadderStatSide> ReadSides(LadderMode mode, long sinceMs)
+    {
+        using var connection = Open();
+        using var select = connection.CreateCommand();
+        select.CommandText =
+            """
+            SELECT a.standing, a.battle_time_ms, a.player_tag, a.result, a.deck, a.levels, b.levels
+            FROM ladder_battles a
+            LEFT JOIN ladder_battles b ON b.player_tag = a.opponent_tag AND b.battle_time_ms = a.battle_time_ms
+            WHERE a.mode = $mode AND a.battle_time_ms >= $since
+            """;
+        select.Parameters.AddWithValue("$mode", (int)mode);
+        select.Parameters.AddWithValue("$since", sinceMs);
+
+        using var reader = select.ExecuteReader();
+        while (reader.Read())
+        {
+            yield return new LadderStatSide(
+                reader.GetInt32(0),
+                reader.GetInt64(1),
+                reader.GetString(2),
+                (BattleResult)reader.GetInt32(3),
+                reader.GetString(4),
+                (byte[])reader.GetValue(5),
+                reader.IsDBNull(6) ? null : (byte[])reader.GetValue(6));
+        }
+    }
+
     public void SaveTracked(IReadOnlyCollection<TrackedPlayer<LadderGroup>> players)
     {
         lock (_writeLock)
@@ -375,3 +407,7 @@ public sealed record LadderCounts(
     IReadOnlyDictionary<int, int> PerRankedLeague);
 
 public sealed record LatestLadderSide(string PlayerTag, long BattleTimeMs, LadderMode Mode, int Standing);
+
+/// <param name="Levels">One display level per card, in the deck's order.</param>
+public sealed record LadderStatSide(
+    int Standing, long BattleTimeMs, string PlayerTag, BattleResult Result, string Deck, byte[] Levels, byte[]? OpponentLevels);
