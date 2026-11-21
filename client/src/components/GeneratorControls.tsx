@@ -25,6 +25,8 @@ interface GeneratorControlsProps {
   /** Options are set or decks were swapped, so there is something to reset. */
   canReset: boolean;
   onReset: () => void;
+  /** Just Include and Exclude, for a lineup whose size and levels are fixed. */
+  rulesOnly?: boolean;
 }
 
 type Menu = 'decks' | 'level';
@@ -51,7 +53,17 @@ function ruleIcon(kind: PickerKind) {
   return kind === 'require' ? <PlusIcon /> : <BanIcon />;
 }
 
-export default function GeneratorControls({ options, onChange, cards, seasonBoosts, isUpdating, isMobile, canReset, onReset }: GeneratorControlsProps) {
+export default function GeneratorControls({
+  options,
+  onChange,
+  cards,
+  seasonBoosts,
+  isUpdating,
+  isMobile,
+  canReset,
+  onReset,
+  rulesOnly,
+}: GeneratorControlsProps) {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [picker, setPicker] = useState<PickerKind | null>(null);
@@ -208,7 +220,15 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
 
   return (
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
-      {isMobile ? (
+      {rulesOnly ? (
+        <div role="group" aria-label="Customize your decks" style={styles.row}>
+          {rulePills}
+          <span style={styles.status}>
+            {isUpdating && !isMobile && <span style={styles.updating}>Updating…</span>}
+            {reset}
+          </span>
+        </div>
+      ) : isMobile ? (
         <div role="group" aria-label="Customize your decks" style={styles.row}>
           <button
             type="button"
