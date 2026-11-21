@@ -271,7 +271,8 @@ public sealed class DeckAnalyzer
             null,
             (candidate, versions, asked) =>
             {
-                int Unfilled(IReadOnlyList<CardVersion> played) => Math.Max(0, Specials(versions.Meta, cardMap) - Specials(played, cardMap));
+                var meta = Specials(versions.Meta, cardMap);
+                int Unfilled(IReadOnlyList<CardVersion> played) => Math.Max(0, meta - Specials(played, cardMap));
                 return candidate.score * Math.Pow(CardVersionRules.MissingSpecialMultiplier, Unfilled(asked) - Unfilled(versions.Player));
             });
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();

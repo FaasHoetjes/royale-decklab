@@ -331,14 +331,28 @@ internal static class CardVersionRules
         IReadOnlyDictionary<int, CardVersionKind> forced,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
     {
-        if (!versions.Any(v => forced.ContainsKey(v.CardId) && !IsChampion(v.CardId, cardMap)))
+        List<CardVersion>? result = null;
+        for (var i = 0; i < versions.Count; i++)
+        {
+            if (forced.TryGetValue(versions[i].CardId, out var kind) && !IsChampion(versions[i].CardId, cardMap))
+            {
+                result ??= [.. versions];
+                result[i] = new CardVersion(versions[i].CardId, kind);
+            }
+        }
+        if (result is null)
         {
             return versions;
         }
-        var result = versions
-            .Select(v => forced.TryGetValue(v.CardId, out var kind) && !IsChampion(v.CardId, cardMap) ? new CardVersion(v.CardId, kind) : v)
-            .ToList();
-        int Count(CardVersionKind kind) => result.Count(v => v.Version == kind);
+        int Count(CardVersionKind kind)
+        {
+            var n = 0;
+            foreach (var v in result)
+            {
+                n += v.Version == kind ? 1 : 0;
+            }
+            return n;
+        }
         bool Demote(CardVersionKind kind)
         {
             var i = result.FindLastIndex(v => v.Version == kind && !forced.ContainsKey(v.CardId) && !IsChampion(v.CardId, cardMap));
@@ -364,8 +378,21 @@ internal static class CardVersionRules
     /// <summary>How many Evos and Heroes the player fields, leaving out champions, which are always played.</summary>
     internal static (int Evos, int Heroes) SpecialsPlayed(
         IReadOnlyList<CardVersion> versions, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-        => (versions.Count(v => v.Version == CardVersionKind.Evo),
-            versions.Count(v => v.Version == CardVersionKind.Hero && !IsChampion(v.CardId, cardMap)));
+    {
+        var (evos, heroes) = (0, 0);
+        for (var i = 0; i < versions.Count; i++)
+        {
+            if (versions[i].Version == CardVersionKind.Evo)
+            {
+                evos++;
+            }
+            else if (versions[i].Version == CardVersionKind.Hero && !IsChampion(versions[i].CardId, cardMap))
+            {
+                heroes++;
+            }
+        }
+        return (evos, heroes);
+    }
 
     private static bool SlotCanField(CardVersionKind version, int slotIndex)
         => version == CardVersionKind.Hero ? slotIndex is 1 or 2 : slotIndex is 0 or 2;
@@ -437,12 +464,35 @@ internal static class CardVersionRules
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         SpecialValues values)
     {
-        var champions = cardIds.Count(id => IsChampion(id, cardMap));
-        var metaEvos = cardIds.Count(id => !IsChampion(id, cardMap) && VersionOf(metaVersions, id) == CardVersionKind.Evo);
-        var metaHeroes = cardIds.Count(id => !IsChampion(id, cardMap) && VersionOf(metaVersions, id) == CardVersionKind.Hero);
+        var (champions, metaEvos, metaHeroes, evoOnly, heroOnly, either) = (0, 0, 0, 0, 0, 0);
+        for (var i = 0; i < cardIds.Count; i++)
+        {
+            var cardId = cardIds[i];
+            if (IsChampion(cardId, cardMap))
+            {
+                champions++;
+                continue;
+            }
+            switch (VersionOf(metaVersions, cardId))
+            {
+                case CardVersionKind.Evo:
+                    metaEvos++;
+                    break;
+                case CardVersionKind.Hero:
+                    metaHeroes++;
+                    break;
+            }
+            var owned = cardMap.TryGetValue(cardId, out var card) ? card.EvolutionLevel : 0;
+            (evoOnly, heroOnly, either) = (EvolutionBits.OwnsEvo(owned), EvolutionBits.OwnsHero(owned)) switch
+            {
+                (true, true) => (evoOnly, heroOnly, either + 1),
+                (true, false) => (evoOnly + 1, heroOnly, either),
+                (false, true) => (evoOnly, heroOnly + 1, either),
+                _ => (evoOnly, heroOnly, either),
+            };
+        }
         var meta = BestFielded(metaEvos, metaHeroes, 0, champions, values);
-        var own = OwnSpecials(cardIds, cardMap);
-        var player = BestFielded(own.EvoOnly, own.HeroOnly, own.Either, champions, values);
+        var player = BestFielded(evoOnly, heroOnly, either, champions, values);
         return Math.Max(0, meta - player);
     }
 
@@ -476,24 +526,6 @@ internal static class CardVersionRules
             }
         }
         return CardVersionKind.Normal;
-    }
-
-    private static (int EvoOnly, int HeroOnly, int Either) OwnSpecials(
-        IReadOnlyList<int> cardIds, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-    {
-        var (evoOnly, heroOnly, either) = (0, 0, 0);
-        foreach (var cardId in cardIds.Where(id => !IsChampion(id, cardMap)))
-        {
-            var owned = cardMap.TryGetValue(cardId, out var card) ? card.EvolutionLevel : 0;
-            (evoOnly, heroOnly, either) = (EvolutionBits.OwnsEvo(owned), EvolutionBits.OwnsHero(owned)) switch
-            {
-                (true, true) => (evoOnly, heroOnly, either + 1),
-                (true, false) => (evoOnly + 1, heroOnly, either),
-                (false, true) => (evoOnly, heroOnly + 1, either),
-                _ => (evoOnly, heroOnly, either),
-            };
-        }
-        return (evoOnly, heroOnly, either);
     }
 
     private static int IndexOf(IReadOnlyList<int?> slots, int cardId)
