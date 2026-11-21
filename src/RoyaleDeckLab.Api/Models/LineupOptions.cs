@@ -19,13 +19,19 @@ public sealed record LineupOptions
     /// <summary>Every one of these cards must appear in some deck of the lineup.</summary>
     public IReadOnlySet<int> RequiredCards { get; init; } = new HashSet<int>();
 
+    /// <summary>Required cards the player wants played as a set version; the others are played however is best.</summary>
+    public IReadOnlyDictionary<int, CardVersionKind> RequiredVersions { get; init; } = new Dictionary<int, CardVersionKind>();
+
     /// <summary>Decks kept as-is; the remaining slots are optimized around their cards.</summary>
     public IReadOnlyList<int[]> LockedDecks { get; init; } = [];
 
     /// <summary>Score the season's boosted cards at the level they're played at this season rather than the one owned.</summary>
     public bool IncludeSeasonBoosts { get; init; } = true;
 
-    /// <summary>Parses the generator's query string: decks=3, minLevel=14, ban=1,2, require=3, lock=8 ids (repeatable).</summary>
+    /// <summary>
+    /// Parses the generator's query string: decks=3, minLevel=14, ban=1,2, require=3,4:evo (a version is normal, evo
+    /// or hero), lock=8 ids (repeatable).
+    /// </summary>
     public static bool TryParse(
         string? decks, string? minLevel, string? ban, string? require, IReadOnlyList<string>? locks,
         out LineupOptions options, out string? error)
@@ -59,7 +65,7 @@ public sealed record LineupOptions
         {
             return false;
         }
-        if (!TryParseIds(require, "require", out var required, out error))
+        if (!TryParseRequired(require, out var required, out var requiredVersions, out error))
         {
             return false;
         }
@@ -107,8 +113,39 @@ public sealed record LineupOptions
             MinLevel = min,
             BannedCards = banned,
             RequiredCards = required,
+            RequiredVersions = requiredVersions,
             LockedDecks = locked,
         };
+        return true;
+    }
+
+    private static bool TryParseRequired(
+        string? raw, out HashSet<int> ids, out Dictionary<int, CardVersionKind> versions, out string? error)
+    {
+        versions = [];
+        var cards = raw?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+        var idsOnly = string.Join(',', cards.Select(card => card.Split(':', 2)[0]));
+        if (!TryParseIds(idsOnly, "require", out ids, out error))
+        {
+            return false;
+        }
+        foreach (var card in cards.Where(c => c.Contains(':')))
+        {
+            var (id, version) = (card.Split(':', 2)[0], card.Split(':', 2)[1]);
+            CardVersionKind? kind = version.ToLowerInvariant() switch
+            {
+                "normal" => CardVersionKind.Normal,
+                "evo" => CardVersionKind.Evo,
+                "hero" => CardVersionKind.Hero,
+                _ => null,
+            };
+            if (kind is null)
+            {
+                error = "a required card's version must be normal, evo or hero";
+                return false;
+            }
+            versions[int.Parse(id)] = kind.Value;
+        }
         return true;
     }
 

@@ -149,6 +149,28 @@ public sealed class CrownSeriesDecksTests : IDisposable
     }
 
     [Fact]
+    public void A_required_card_played_without_its_hero_costs_the_hero_value_in_a_duel()
+    {
+        var cards = Build.CardMap(Enumerable.Range(1, 48).Select(id => Build.Card(id, evo: id == 4 ? EvolutionBits.Hero : 0)));
+        var meta = new[] { 1, 9, 17, 25 }.Select(s => Build.Deck(Build.Eight(s), confidence: 0.55,
+            versions: s == 1 ? [new CardVersion(4, CardVersionKind.Hero)] : null)).ToArray();
+        var values = DuelValues.Default;
+        double Logit(double p) => Math.Log(p / (1 - p));
+
+        var best = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, LineupOptions.Default, values);
+        var asked = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 4 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [4] = CardVersionKind.Normal },
+        }, values);
+
+        var bestDeck = Assert.Single(best.Decks, d => d.CardIds.Contains(4));
+        var askedDeck = Assert.Single(asked.Decks, d => d.CardIds.Contains(4));
+        Assert.Equal(CardVersionKind.Normal, askedDeck.CardVersions!.Single(v => v.CardId == 4).Version);
+        Assert.Equal(Logit(bestDeck.PlayerScore) - values.Specials.Hero, Logit(askedDeck.PlayerScore), 10);
+    }
+
+    [Fact]
     public void A_missing_meta_special_costs_nothing_when_another_card_in_the_deck_fills_its_slot()
     {
         var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Evo : 0)));

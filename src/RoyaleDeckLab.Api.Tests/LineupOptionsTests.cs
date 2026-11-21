@@ -25,6 +25,26 @@ public sealed class LineupOptionsTests
     }
 
     [Fact]
+    public void A_required_card_can_ask_for_a_version()
+    {
+        var (ok, options, _) = Parse(require: "5:evo, 6, 7:Hero, 8:normal");
+
+        Assert.True(ok);
+        Assert.Equal([5, 6, 7, 8], options.RequiredCards.Order());
+        Assert.Equal(
+            [(5, CardVersionKind.Evo), (7, CardVersionKind.Hero), (8, CardVersionKind.Normal)],
+            options.RequiredVersions.OrderBy(v => v.Key).Select(v => (v.Key, v.Value)));
+    }
+
+    [Theory]
+    [InlineData("5:gold")]
+    [InlineData("5:1")]
+    [InlineData("5:")]
+    [InlineData("x:evo")]
+    public void Rejects_an_unknown_version(string require)
+        => Assert.False(Parse(require: require).ok);
+
+    [Fact]
     public void ParsesEveryOption()
     {
         var (ok, options, _) = Parse("3", "14", "1, 2", "9", "17,18,19,20,21,22,23,24");

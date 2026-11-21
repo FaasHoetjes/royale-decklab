@@ -169,6 +169,55 @@ internal static class CardVersionRules
         return changed ? upgraded : personalized;
     }
 
+    internal static bool CanPlay(int cardId, CardVersionKind version, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        => IsChampion(cardId, cardMap)
+            || (cardMap.TryGetValue(cardId, out var card) && EvolutionBits.Owns(card.EvolutionLevel, version));
+
+    /// <summary>
+    /// The versions with each forced card played as asked. Where that leaves too many specials for the slots, another
+    /// card's special goes, a Hero before an Evo since a Hero is worth less. Champions are always played as Heroes.
+    /// </summary>
+    internal static IReadOnlyList<CardVersion> ForceVersions(
+        IReadOnlyList<CardVersion> versions,
+        IReadOnlyDictionary<int, CardVersionKind> forced,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        if (!versions.Any(v => forced.ContainsKey(v.CardId) && !IsChampion(v.CardId, cardMap)))
+        {
+            return versions;
+        }
+        var result = versions
+            .Select(v => forced.TryGetValue(v.CardId, out var kind) && !IsChampion(v.CardId, cardMap) ? new CardVersion(v.CardId, kind) : v)
+            .ToList();
+        int Count(CardVersionKind kind) => result.Count(v => v.Version == kind);
+        bool Demote(CardVersionKind kind)
+        {
+            var i = result.FindLastIndex(v => v.Version == kind && !forced.ContainsKey(v.CardId) && !IsChampion(v.CardId, cardMap));
+            if (i >= 0)
+            {
+                result[i] = new CardVersion(result[i].CardId, CardVersionKind.Normal);
+            }
+            return i >= 0;
+        }
+        while (Count(CardVersionKind.Evo) > MaxEvo && Demote(CardVersionKind.Evo))
+        {
+        }
+        while (Count(CardVersionKind.Hero) > MaxHero && Demote(CardVersionKind.Hero))
+        {
+        }
+        while (Count(CardVersionKind.Evo) + Count(CardVersionKind.Hero) > MaxSpecials
+            && (Demote(CardVersionKind.Hero) || Demote(CardVersionKind.Evo)))
+        {
+        }
+        return result;
+    }
+
+    /// <summary>How many Evos and Heroes the player fields, leaving out champions, which are always played.</summary>
+    internal static (int Evos, int Heroes) SpecialsPlayed(
+        IReadOnlyList<CardVersion> versions, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        => (versions.Count(v => v.Version == CardVersionKind.Evo),
+            versions.Count(v => v.Version == CardVersionKind.Hero && !IsChampion(v.CardId, cardMap)));
+
     private static bool SlotCanField(CardVersionKind version, int slotIndex)
         => version == CardVersionKind.Hero ? slotIndex is 1 or 2 : slotIndex is 0 or 2;
 

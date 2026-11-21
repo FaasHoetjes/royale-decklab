@@ -14,6 +14,7 @@ public static class PlayerCalculationKey
             player.Tag, Cards = player.Cards?.OrderBy(c => c.Id), metaVersion,
             options?.DeckCount, options?.MinLevel,
             Banned = options?.BannedCards.Order(), Required = options?.RequiredCards.Order(),
+            RequiredVersions = options?.RequiredVersions.OrderBy(v => v.Key).Select(v => $"{v.Key}:{v.Value}"),
             // Locked deck order controls their order in the returned lineup.
             Locked = options?.LockedDecks.Select(ids => ids.Order()),
             BoostLevel = appliedBoosts?.Level, Boosted = appliedBoosts?.CardIds,

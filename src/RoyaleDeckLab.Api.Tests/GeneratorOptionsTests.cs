@@ -33,6 +33,66 @@ public sealed class GeneratorOptionsTests
         Assert.Equal(plain.TotalScore, withDefaults.TotalScore, 12);
     }
 
+    // Cards 1-3 have their Evo unlocked and card 4 its Hero; deck 1 is played with Evo 2 and 3 and Hero 4.
+    private static readonly List<DeckMeta> SpecialDecks =
+    [
+        Build.Deck(Build.Eight(1), confidence: 0.60, versions: [new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo), new(4, CardVersionKind.Hero)]),
+        .. FiveDecks.Skip(1),
+    ];
+
+    // The war score's cost per special slot left without one.
+    private const double MissingSpecialMultiplier = 0.94;
+
+    private static List<PlayerItemLevel> SpecialCards()
+        => [.. Enumerable.Range(1, 48).Select(id => Build.Card(id, evo: id is >= 1 and <= 3 ? EvolutionBits.Evo : id == 4 ? EvolutionBits.Hero : 0))];
+
+    private static ScoredDeck DeckWith(WarDeckResult result, int cardId) => Assert.Single(result.Decks, d => d.CardIds.Contains(cardId));
+
+    private static CardVersionKind VersionOf(ScoredDeck deck, int cardId) => deck.CardVersions!.Single(v => v.CardId == cardId).Version;
+
+    [Fact]
+    public void A_required_evo_takes_another_evo_slot_at_no_cost_in_war()
+    {
+        var best = DeckWith(Run(SpecialDecks, new LineupOptions { RequiredCards = new HashSet<int> { 1 } }, SpecialCards()), 1);
+
+        var asked = DeckWith(Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 1 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [1] = CardVersionKind.Evo },
+        }, SpecialCards()), 1);
+
+        Assert.Equal(CardVersionKind.Normal, VersionOf(best, 1));
+        Assert.Equal([CardVersionKind.Evo, CardVersionKind.Evo, CardVersionKind.Normal, CardVersionKind.Hero], asked.CardVersions!.Take(4).Select(v => v.Version));
+        Assert.Equal(best.PlayerScore, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void A_required_card_played_without_its_evo_costs_the_empty_slot_in_war()
+    {
+        var best = DeckWith(Run(SpecialDecks, LineupOptions.Default, SpecialCards()), 2);
+
+        var asked = DeckWith(Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 2 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [2] = CardVersionKind.Normal },
+        }, SpecialCards()), 2);
+
+        Assert.Equal(CardVersionKind.Normal, VersionOf(asked, 2));
+        Assert.Equal(best.PlayerScore * MissingSpecialMultiplier, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void A_required_version_the_player_has_not_unlocked_fits_no_deck()
+    {
+        var result = Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 5 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [5] = CardVersionKind.Hero },
+        }, SpecialCards());
+
+        Assert.DoesNotContain(result.Decks.Concat(result.Alternatives), d => d.CardIds.Contains(5));
+    }
+
     [Fact]
     public void DeckCount_ReturnsOnlyThatManyDecks_TheStrongestOnes()
     {

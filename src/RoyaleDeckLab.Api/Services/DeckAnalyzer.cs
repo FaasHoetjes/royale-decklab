@@ -92,8 +92,13 @@ public sealed class DeckAnalyzer
         return ((double)totalLevel / cardIds.Length, minLevel);
     }
 
+    /// <param name="extraMissing">Log-odds the player gives up by fielding fewer specials than they could.</param>
     private static double? ScoreDuelDeck(
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel, DuelValues values)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        DeckMeta deck,
+        double opponentLevel,
+        DuelValues values,
+        double extraMissing = 0)
     {
         if (DeckLevels(cardMap, deck.CardIds) is not var (meanLevel, minLevel))
         {
@@ -101,7 +106,7 @@ public sealed class DeckAnalyzer
         }
         var levelLogit = values.Levels.Logit(meanLevel, minLevel, opponentLevel);
         var missing = CardVersionRules.MissingSpecialValue(deck.CardIds, deck.CardVersions, cardMap, values.Specials);
-        return LevelModel.WinProbability(deck.Confidence, levelLogit - missing);
+        return LevelModel.WinProbability(deck.Confidence, levelLogit - missing - extraMissing);
     }
 
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
@@ -165,10 +170,24 @@ public sealed class DeckAnalyzer
         return new BuilderScore(neutral, NeutralWinRate, fieldability.Value, IsMeta: false, Players: 0, MetaCards: false);
     }
 
+    /// <summary>
+    /// The versions the deck's players use; the ones of those this player owns; and those plus the player's other
+    /// specials in slots the deck leaves free, which is how the player fields the deck.
+    /// </summary>
+    private static (IReadOnlyList<CardVersion> Meta, IReadOnlyList<CardVersion> Owned, IReadOnlyList<CardVersion> Player) PlayerVersions(
+        DeckMeta deck, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        var versions = CardVersionRules.WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
+        var metaVersions = CardVersionRules.CapEvolutions(versions)!;
+        var owned = CardVersionRules.CapEvolutions(CardVersionRules.PersonalizeVersions(versions, cardMap))!;
+        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, metaVersions, cardMap)!);
+    }
+
     private static ScoredDeck ToScoredDeck(
         DeckMeta deck,
         double score,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions = null)
     {
         var cards = new List<PlayerItemLevel>(deck.CardIds.Length);
         foreach (var id in deck.CardIds)
@@ -179,10 +198,11 @@ public sealed class DeckAnalyzer
             }
         }
 
-        var versions = CardVersionRules.WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
-        var metaVersions = CardVersionRules.CapEvolutions(versions);
-        var personalized = CardVersionRules.UpgradeIntoFreeSlots(
-            CardVersionRules.CapEvolutions(CardVersionRules.PersonalizeVersions(versions, cardMap)), metaVersions, cardMap);
+        var (metaVersions, _, personalized) = PlayerVersions(deck, cardMap);
+        if (forcedVersions is { Count: > 0 })
+        {
+            personalized = CardVersionRules.ForceVersions(personalized, forcedVersions, cardMap);
+        }
 
         return new ScoredDeck
         {
@@ -212,13 +232,23 @@ public sealed class DeckAnalyzer
         var locked = ScoreLockedDecks(metaDecks, cardMap, options.LockedDecks, opponent);
         var lockedCards = locked.SelectMany(l => l.deck.CardIds).ToHashSet();
 
-        var candidates = ScoreFieldableDecks(metaDecks, cardMap, opponent)
-            .Where(c => IsAllowed(c.deck, cardMap, options, lockedCards))
-            .ToList();
+        var forced = ForcedVersions(options, lockedCards);
+        // The war score counts the deck's own specials the player owns; only fewer of them played costs anything,
+        // since swapping one special for another wins as often.
+        var candidates = WithForcedVersions(
+            ScoreFieldableDecks(metaDecks, cardMap, opponent).Where(c => IsAllowed(c.deck, cardMap, options, lockedCards)),
+            forced,
+            cardMap,
+            (candidate, versions, asked) =>
+            {
+                var lost = Specials(versions.Owned, cardMap) - Specials(asked, cardMap);
+                return candidate.score * Math.Pow(CardVersionRules.MissingSpecialMultiplier, Math.Max(0, lost));
+            });
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
 
         return SelectLineup(candidates, cardMap, includeAlternatives: true,
-            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked, ct: ct);
+            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked,
+            forcedVersions: forced, ct: ct);
     }
 
     /// <summary>The best Duel Deck from the Crown Series meta, with every card at the level the league lets it play at.</summary>
@@ -236,18 +266,23 @@ public sealed class DeckAnalyzer
         var locked = ScoreLockedDuelDecks(duelMeta, capped, options.LockedDecks, opponent, values);
         var lockedCards = locked.SelectMany(l => l.deck.CardIds).ToHashSet();
 
-        var candidates = new List<(DeckMeta deck, double score)>();
+        var scored = new List<(DeckMeta deck, double score)>();
         foreach (var deck in duelMeta)
         {
             if (IsAllowed(deck, capped, options, lockedCards) && ScoreDuelDeck(capped, deck, opponent, values) is { } score)
             {
-                candidates.Add((deck, score));
+                scored.Add((deck, score));
             }
         }
+        var forced = ForcedVersions(options, lockedCards);
+        var candidates = WithForcedVersions(scored, forced, capped, (candidate, versions, asked) =>
+            ScoreDuelDeck(capped, candidate.deck, opponent, values, extraMissing: Math.Max(0,
+                SpecialValue(versions.Player, capped, values.Specials) - SpecialValue(asked, capped, values.Specials))));
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
 
         return SelectLineup(candidates, capped, includeAlternatives: true,
-            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked, ct: ct);
+            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked,
+            forcedVersions: forced, ct: ct);
     }
 
     // A locked deck that has left the Duel meta since is kept at an even win rate before levels; one with a card the
@@ -285,6 +320,62 @@ public sealed class DeckAnalyzer
             }
         }
         return locked;
+    }
+
+    // A locked deck is kept as it was locked, so a version asked for one of its cards doesn't apply.
+    private static Dictionary<int, CardVersionKind> ForcedVersions(LineupOptions options, HashSet<int> lockedCards)
+        => options.RequiredVersions
+            .Where(v => options.RequiredCards.Contains(v.Key) && !lockedCards.Contains(v.Key))
+            .ToDictionary(v => v.Key, v => v.Value);
+
+    /// <summary>
+    /// Decks holding a card the player wants in a set version, rescored as played that way; a deck goes when the
+    /// player hasn't unlocked that version. <paramref name="rescore"/> gets the deck's usual versions and the ones
+    /// asked for.
+    /// </summary>
+    private static List<(DeckMeta deck, double score)> WithForcedVersions(
+        IEnumerable<(DeckMeta deck, double score)> candidates,
+        IReadOnlyDictionary<int, CardVersionKind> forced,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        Func<(DeckMeta deck, double score), (IReadOnlyList<CardVersion> Meta, IReadOnlyList<CardVersion> Owned, IReadOnlyList<CardVersion> Player), IReadOnlyList<CardVersion>, double?> rescore)
+    {
+        if (forced.Count == 0)
+        {
+            return candidates.ToList();
+        }
+        var result = new List<(DeckMeta deck, double score)>();
+        foreach (var candidate in candidates)
+        {
+            var asks = candidate.deck.CardIds.Where(forced.ContainsKey).ToList();
+            if (asks.Count == 0)
+            {
+                result.Add(candidate);
+                continue;
+            }
+            if (!asks.All(id => CardVersionRules.CanPlay(id, forced[id], cardMap)))
+            {
+                continue;
+            }
+            var versions = PlayerVersions(candidate.deck, cardMap);
+            if (rescore(candidate, versions, CardVersionRules.ForceVersions(versions.Player, forced, cardMap)) is { } score)
+            {
+                result.Add((candidate.deck, score));
+            }
+        }
+        return result;
+    }
+
+    private static int Specials(IReadOnlyList<CardVersion> versions, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        var (evos, heroes) = CardVersionRules.SpecialsPlayed(versions, cardMap);
+        return evos + heroes;
+    }
+
+    private static double SpecialValue(
+        IReadOnlyList<CardVersion> versions, IReadOnlyDictionary<int, PlayerItemLevel> cardMap, SpecialValues values)
+    {
+        var (evos, heroes) = CardVersionRules.SpecialsPlayed(versions, cardMap);
+        return evos * values.Evo + heroes * values.Hero;
     }
 
     private static bool IsAllowed(
@@ -421,7 +512,8 @@ public sealed class DeckAnalyzer
     private List<ScoredDeck> Alternatives(
         IReadOnlyList<(DeckMeta deck, double score)> sorted,
         IReadOnlyList<DeckMeta> lineup,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions)
     {
         var othersCards = lineup
             .Select((_, slot) => lineup.Where((_, other) => other != slot).SelectMany(d => d.CardIds).ToHashSet())
@@ -449,7 +541,7 @@ public sealed class DeckAnalyzer
             }
             if (fits)
             {
-                alternatives.Add(ToScoredDeck(deck, score, cardMap));
+                alternatives.Add(ToScoredDeck(deck, score, cardMap, forcedVersions));
             }
         }
         return alternatives;
@@ -463,6 +555,7 @@ public sealed class DeckAnalyzer
         int deckCount = DecksPerLineup,
         IReadOnlySet<int>? requiredCards = null,
         IReadOnlyList<(DeckMeta deck, double score)>? locked = null,
+        IReadOnlyDictionary<int, CardVersionKind>? forcedVersions = null,
         CancellationToken ct = default)
     {
         var sorted = assumeSorted ? fieldable : SortCandidates(fieldable);
@@ -493,14 +586,16 @@ public sealed class DeckAnalyzer
         foreach (var (deck, score) in (locked ?? []).Concat(lineup))
         {
             selected.Add(deck);
-            selectedDecks.Add(ToScoredDeck(deck, score, cardMap));
+            selectedDecks.Add(ToScoredDeck(deck, score, cardMap, forcedVersions));
         }
 
         return new WarDeckResult
         {
             Decks = selectedDecks,
             TotalScore = selectedDecks.Sum(d => d.PlayerScore),
-            Alternatives = includeAlternatives ? Alternatives(sorted, [.. (locked ?? []).Concat(lineup).Select(p => p.deck)], cardMap) : [],
+            Alternatives = includeAlternatives
+                ? Alternatives(sorted, [.. (locked ?? []).Concat(lineup).Select(p => p.deck)], cardMap, forcedVersions)
+                : [],
             PoolMinPlayers = poolMinPlayers,
         };
     }
