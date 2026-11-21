@@ -142,6 +142,31 @@ The ladder poll and the Crown Series poll share their scheduling, seeding and
 opponent following (`Services/Crawling`); each only decides what group a
 player belongs to.
 
+### Ladder decks (`/ladder`)
+
+After each ladder poll, and on start, the decks for every Trophy Road range and
+Ranked league are built again from `ladder.db`:
+
+- Each side's result is adjusted for the level gap with its opponent: a side
+  counts as winning its result minus what its levels alone would have won, plus
+  a half. A deck isn't credited for being played by players with higher levels.
+  The level model (`LadderLevels`) borrows the war fit until it's fitted on
+  ladder battles.
+- A range with few battles of its own leans on the ranges next to it, like the
+  Crown Series caps do (`GroupBorrowing`).
+- A player gets one deck plus alternatives from their own range, scored against
+  the average card level played there. Below 4,000 trophies they get the 4,000
+  range's decks; in Ranked, this season's league or else last season's. A range
+  without decks yet falls back to the nearest one.
+
+Ranked doesn't cap card levels: its battles show level 16 cards for players
+who own them. Alternatives need as many players as the deck picked, so a
+deck one player spammed can't outrank it. The page is unlisted until it ships.
+
+The page shows the player's arena, or their Ranked league shield, from
+`client/public/arenas/{arena number}.webp` and `client/public/ranked/{league}.webp`.
+A missing image shows the arena's name instead.
+
 ### Usage stats (`stats.db`)
 
 Anonymous visitor counts live in `stats.db`, next to `meta.db`. Unlike
