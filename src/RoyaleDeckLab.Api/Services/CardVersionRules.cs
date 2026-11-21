@@ -226,6 +226,7 @@ internal static class CardVersionRules
         }
 
         var asMeta = true;
+        var unowned = 0;
         var unplayed = 0;
         var playedAsMeta = new HashSet<int>();
         foreach (var v in metaVersions)
@@ -242,10 +243,13 @@ internal static class CardVersionRules
                 continue;
             }
             asMeta = false;
-            // An unowned special is already priced in by the deck's own score.
             if (EvolutionBits.Owns(owned, v.Version))
             {
                 unplayed++;
+            }
+            else
+            {
+                unowned++;
             }
         }
 
@@ -260,7 +264,8 @@ internal static class CardVersionRules
             }
         }
 
-        return new Placement(Math.Pow(MissingSpecialMultiplier, Math.Max(0, unplayed - substitutes)), asMeta);
+        // The deck's own score already charges for each unowned special, so only the difference is applied here.
+        return new Placement(Math.Pow(MissingSpecialMultiplier, Math.Max(0, unowned + unplayed - substitutes) - unowned), asMeta);
     }
 
     private const int SpecialSlots = 3;

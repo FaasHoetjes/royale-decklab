@@ -78,7 +78,18 @@ public sealed class DeckAnalyzerScoringTests
     }
 
     [Fact]
-    public void PlayerScore_AppliesTheMissingSpecialPenalty_ForAMetaEvo_WhenOnlyTheHeroIsOwned()
+    public void PlayerScore_LetsAnotherCardsOwnedEvoStandInForAMissingMetaEvo()
+    {
+        var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 1) }
+            .Concat(Build.Collection(1, 3, 4, 5, 6, 7, 8)).ToList();
+        var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
+        var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
+
+        Assert.Equal(Expected(0.55, MaxedDeckEdge), _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, versions)!.Value, 10);
+    }
+
+    [Fact]
+    public void PlayerScore_LetsAnOwnedHeroStandInForTheMetaEvo()
     {
         // evolutionLevel is a bitmask (1 = Evo, 2 = Hero): 2 alone is the Hero without the Evo.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
@@ -86,7 +97,7 @@ public sealed class DeckAnalyzerScoringTests
         var versions = new List<CardVersion> { new(1, CardVersionKind.Evo) };
         var deck = Build.Deck(Build.Eight(1), confidence: 0.55, players: 20, versions: versions);
 
-        var expected = Expected(0.55, MaxedDeckEdge) * 0.94;
+        var expected = Expected(0.55, MaxedDeckEdge);
         Assert.Equal(expected, _analyzer.ScoreDeckForPlayer(Build.CardMap(cards), deck, versions)!.Value, 10);
     }
 

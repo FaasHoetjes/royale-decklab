@@ -35,14 +35,15 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         DeckMeta metaDeck,
         IReadOnlyList<CardVersion>? cardVersions,
-        double opponentLevel)
+        double opponentLevel,
+        bool creditSubstitutes = true)
     {
         if (DeckLevels(cardMap, metaDeck.CardIds) is not var (meanLevel, minLevel))
         {
             return null;
         }
 
-        var versionFit = 1.0;
+        var missing = 0;
         foreach (var cardId in metaDeck.CardIds)
         {
             var playerCard = cardMap[cardId];
@@ -57,12 +58,22 @@ public sealed class DeckAnalyzer
                     }
                     if (!EvolutionBits.Owns(playerCard.EvolutionLevel, version.Version))
                     {
-                        versionFit *= CardVersionRules.MissingSpecialMultiplier;
+                        missing++;
                     }
                     break;
                 }
             }
         }
+        if (missing > 0 && creditSubstitutes)
+        {
+            // War battles where a deck swaps one special for another win as often as the usual setup (11k battles),
+            // so a special of the player's own in the slot a missing one leaves costs nothing.
+            var owned = CardVersionRules.PersonalizeVersions(
+                CardVersionRules.WithChampionVersions(metaDeck.CardIds, cardVersions, cardMap), cardMap)!;
+            var substitutes = Specials(CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap)!, cardMap) - Specials(owned, cardMap);
+            missing = Math.Max(0, missing - substitutes);
+        }
+        var versionFit = Math.Pow(CardVersionRules.MissingSpecialMultiplier, missing);
 
         var levelLogit = LevelFit.War.Logit(meanLevel, minLevel, opponentLevel);
         var expectedWinRate = LevelModel.WinProbability(metaDeck.Confidence, levelLogit);
@@ -147,7 +158,8 @@ public sealed class DeckAnalyzer
 
         if (meta is not null)
         {
-            var score = ScoreDeckForPlayer(cardMap, meta, meta.CardVersions, opponent);
+            // Where the player has placed the cards, only the slots say which specials stand in for missing ones.
+            var score = ScoreDeckForPlayer(cardMap, meta, meta.CardVersions, opponent, creditSubstitutes: slots is null);
             if (score is null)
             {
                 return null;
@@ -233,16 +245,16 @@ public sealed class DeckAnalyzer
         var lockedCards = locked.SelectMany(l => l.deck.CardIds).ToHashSet();
 
         var forced = ForcedVersions(options, lockedCards);
-        // The war score counts the deck's own specials the player owns; only fewer of them played costs anything,
-        // since swapping one special for another wins as often.
+        // The war score counts the specials the player fields; only fewer of them played costs anything, since
+        // swapping one special for another wins as often.
         var candidates = WithForcedVersions(
             ScoreFieldableDecks(metaDecks, cardMap, opponent).Where(c => IsAllowed(c.deck, cardMap, options, lockedCards)),
             forced,
             cardMap,
             (candidate, versions, asked) =>
             {
-                var lost = Specials(versions.Owned, cardMap) - Specials(asked, cardMap);
-                return candidate.score * Math.Pow(CardVersionRules.MissingSpecialMultiplier, Math.Max(0, lost));
+                int Unfilled(IReadOnlyList<CardVersion> played) => Math.Max(0, Specials(versions.Meta, cardMap) - Specials(played, cardMap));
+                return candidate.score * Math.Pow(CardVersionRules.MissingSpecialMultiplier, Unfilled(asked) - Unfilled(versions.Player));
             });
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
 
