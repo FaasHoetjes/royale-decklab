@@ -1,14 +1,15 @@
+using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Tests;
 
-public sealed class CrownSeriesBorrowingTests
+public sealed class GroupBorrowingTests
 {
     private const double OtherCapWeight = 0.5;
     private const int MinBorrowed = 2000;
 
     private static IReadOnlyDictionary<int, double> WeightsFor(int cap, Dictionary<int, int> roundsPerCap)
-        => CrownSeriesBorrowing.WeightsFor(cap, roundsPerCap, OtherCapWeight, MinBorrowed);
+        => GroupBorrowing.WeightsFor(cap, CrownSeriesCaps.All, roundsPerCap, OtherCapWeight, MinBorrowed);
 
     private static double Borrowed(int cap, Dictionary<int, int> roundsPerCap, IReadOnlyDictionary<int, double> weights)
         => roundsPerCap

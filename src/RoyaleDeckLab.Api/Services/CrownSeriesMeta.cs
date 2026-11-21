@@ -79,15 +79,15 @@ public sealed class CrownSeriesMeta(
     }
 
     /// <summary>
-    /// A cap with few rounds of its own leans on the caps next to it, as <see cref="CrownSeriesBorrowing"/> weighs them.
+    /// A cap with few rounds of its own leans on the caps next to it, as <see cref="GroupBorrowing"/> weighs them.
     /// One weekend of data couldn't yet show caps favouring different decks, so the weights stay settings rather than
     /// fitted values.
     /// </summary>
     private CrownSeriesCapMeta BuildCap(
         MetaBuilder builder, IReadOnlyList<CappedBattle> rounds, IReadOnlyDictionary<int, int> roundsPerCap, int cap, long patchStartMs)
     {
-        var capWeights = CrownSeriesBorrowing.WeightsFor(
-            cap, roundsPerCap, options.Value.OtherCapWeight, options.Value.MinBorrowedRounds);
+        var capWeights = GroupBorrowing.WeightsFor(
+            cap, CrownSeriesCaps.All, roundsPerCap, options.Value.OtherCapWeight, options.Value.MinBorrowedRounds);
         var weighted = rounds
             .Select(r => (r.Record, Weight: capWeights.GetValueOrDefault(r.Cap)))
             .Where(r => r.Weight > 0);
