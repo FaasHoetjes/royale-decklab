@@ -70,9 +70,13 @@ public sealed class DuelLevelRefitService(
         using var scope = scopeFactory.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<DuelLevelRefit>()
             .RunAsync(dueMs, now.ToUnixTimeMilliseconds(), champions, ct);
-        if (result.Outcome == DuelLevelRefitOutcome.TooFewDuels)
+        if (result.Levels == DuelLevelRefitOutcome.TooFewDuels)
         {
-            logger.LogInformation("Too few Duels for a level or cushion refit");
+            logger.LogInformation("Too few Duels went to a third round for a level refit");
+        }
+        if (result.Cushion == DuelLevelRefitOutcome.TooFewDuels)
+        {
+            logger.LogInformation("No cap had enough Duel decks with spread beyond luck for a cushion refit");
         }
         foreach (var f in result.Fits)
         {

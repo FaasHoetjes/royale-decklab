@@ -6,6 +6,8 @@ namespace RoyaleDeckLab.Api.Data;
 public sealed record StoredDuelLevelFits(
     long FittedAtMs, long LatestRoundMs, IReadOnlyList<DuelLevelFit> Fits, IReadOnlyList<DuelCushionFit> Cushions);
 
+public sealed record StoredRefit(long FittedAtMs, long LatestRoundMs);
+
 public sealed class DuelLevelFitRepository(MetaDbContext db)
 {
     public async Task SaveAsync(StoredDuelLevelFits fits, CancellationToken ct = default)
@@ -44,6 +46,16 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
     }
 
     public StoredDuelLevelFits? Latest() => History(1).FirstOrDefault();
+
+    public StoredRefit? LatestLevelRefit() => db.DuelLevelFits
+        .OrderByDescending(f => f.FittedAtMs)
+        .Select(f => new StoredRefit(f.FittedAtMs, f.LatestRoundMs))
+        .FirstOrDefault();
+
+    public StoredRefit? LatestCushionRefit() => db.DuelCushionFits
+        .OrderByDescending(c => c.FittedAtMs)
+        .Select(c => new StoredRefit(c.FittedAtMs, c.LatestRoundMs))
+        .FirstOrDefault();
 
     private static DuelLevelFitEntity ToEntity(StoredDuelLevelFits fits, DuelLevelFit f) => new()
     {
