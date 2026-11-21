@@ -282,10 +282,31 @@ public sealed class CrownSeriesDecksTests : IDisposable
         Assert.Equal(built + 1, meta.Current.Version);
     }
 
-    private CrownSeriesMeta Meta() => new(
+    [Fact]
+    public async Task The_meta_builds_with_the_applied_cushion_and_again_when_it_changes()
+    {
+        var rounds = Enumerable.Range(0, 30).SelectMany(i => new[]
+        {
+            Round($"#A{i}", $"#B{i}", i, Build.Eight(1), BattleResult.Win),
+            Round($"#B{i}", $"#A{i}", i, Build.Eight(9), BattleResult.Loss),
+        }).ToArray();
+        await StoreAsync(rounds);
+        var store = new DuelValuesStore(_services.GetRequiredService<IServiceScopeFactory>());
+        var meta = Meta(store);
+        await meta.RebuildAsync();
+        var withDefault = meta.Current.ForCap(16).Decks[0].Confidence;
+
+        store.Set(new AppliedDuelValues(DuelValues.Default with { PriorRounds = 20 }, 1, 0, 1));
+        await meta.RebuildAsync(roundsChanged: false, rounds: null);
+
+        Assert.Equal(20, meta.Current.Values.PriorRounds);
+        Assert.True(meta.Current.ForCap(16).Decks[0].Confidence > withDefault);
+    }
+
+    private CrownSeriesMeta Meta(DuelValuesStore? store = null) => new(
         _services.GetRequiredService<IServiceScopeFactory>(),
         Microsoft.Extensions.Options.Options.Create(new CrownSeriesOptions()),
-        new DuelValuesStore(_services.GetRequiredService<IServiceScopeFactory>()),
+        store ?? new DuelValuesStore(_services.GetRequiredService<IServiceScopeFactory>()),
         NullLogger<CrownSeriesMeta>.Instance);
 
     private async Task StoreAsync(params CrownSeriesRound[] rounds)

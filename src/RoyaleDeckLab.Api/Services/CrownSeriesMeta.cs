@@ -58,7 +58,8 @@ public sealed class CrownSeriesMeta(
         {
             using var scope = scopeFactory.CreateScope();
             var patchStartMs = scope.ServiceProvider.GetRequiredService<BattleRepository>().GetEpochStart();
-            if (!roundsChanged && IsBuilt && patchStartMs == _builtPatchStartMs)
+            // Values applied while a rebuild failed still reach the decks at the next poll.
+            if (!roundsChanged && IsBuilt && patchStartMs == _builtPatchStartMs && Current.Values == duelValues.Current.Values)
             {
                 return;
             }
