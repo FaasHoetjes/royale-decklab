@@ -392,17 +392,38 @@ public sealed class MetaBuilder(
         public Dictionary<IReadOnlyList<CardVersion>, LoadoutAgg> Loadouts { get; } = new(SameLoadout.Instance);
     }
 
+    // A setup's record is weighed against hundreds of imaginary games, so one this short barely moves it.
+    private const double MinGamesForSetup = 10;
+
     private static List<SpecialSetup>? SetupsOf(DeckAgg agg)
     {
         if (agg.Loadouts.Count < 2)
         {
             return null;
         }
-        return agg.Loadouts.Values
-            .Select(l => (Specials: l.Versions.Where(v => v.Version != CardVersionKind.Normal).OrderBy(v => v.CardId).ToList(), l))
-            .GroupBy(s => string.Join(',', s.Specials.Select(v => $"{v.CardId}:{v.Version}")))
-            .Select(g => new SpecialSetup(g.First().Specials, g.Sum(s => s.l.WeightedGames), g.Sum(s => s.l.WeightedWins)))
-            .ToList();
+        var bySpecials = new Dictionary<IReadOnlyList<CardVersion>, (double Games, double Wins)>(SameLoadout.Instance);
+        foreach (var loadout in agg.Loadouts.Values)
+        {
+            var specials = new List<CardVersion>();
+            foreach (var v in loadout.Versions)
+            {
+                if (v.Version != CardVersionKind.Normal)
+                {
+                    specials.Add(v);
+                }
+            }
+            ref var total = ref CollectionsMarshal.GetValueRefOrAddDefault(bySpecials, specials, out _);
+            total = (total.Games + loadout.WeightedGames, total.Wins + loadout.WeightedWins);
+        }
+        var setups = new List<SpecialSetup>();
+        foreach (var (specials, (games, wins)) in bySpecials)
+        {
+            if (games >= MinGamesForSetup)
+            {
+                setups.Add(new SpecialSetup(specials, games, wins));
+            }
+        }
+        return setups.Count > 1 ? setups : null;
     }
 
     // Below this many games a card's win rate as a version says too little to compare it with.

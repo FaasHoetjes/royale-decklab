@@ -256,23 +256,22 @@ public sealed class AggregateBattlesTests
     }
 
     [Fact]
-    public void KeepsTheRecordOfEachSetOfSpecials_WhenADeckHasBeenPlayedMoreThanOneWay()
+    public void KeepsTheRecordOfEachSetOfSpecialsPlayedOften_WhenADeckHasBeenPlayedMoreThanOneWay()
     {
         var deck = Build.Eight(1);
         IReadOnlyList<CardVersion> Evo(int id) => [.. deck.Select(c => new CardVersion(c, c == id ? CardVersionKind.Evo : CardVersionKind.Normal))];
-        var battles = new[]
-        {
-            Build.Battle("#P1", deck, BattleResult.Win, versions: Evo(1)),
-            Build.Battle("#P2", deck, BattleResult.Win, versions: Evo(1)),
-            Build.Battle("#P3", deck, BattleResult.Loss, versions: Evo(2)),
-        };
+        var battles = Enumerable.Range(0, 12).Select(i => Build.Battle($"#A{i}", deck, BattleResult.Win, versions: Evo(1)))
+            .Concat(Enumerable.Range(0, 10).Select(i => Build.Battle($"#B{i}", deck, BattleResult.Loss, versions: Evo(2))))
+            .Append(Build.Battle("#C", deck, BattleResult.Win, versions: Evo(3)))
+            .ToArray();
 
         var setups = Assert.Single(NewBuilder().AggregateBattles(battles)).Setups!;
 
+        Assert.Equal(2, setups.Count);
         var first = Assert.Single(setups, s => s.Specials.Single().CardId == 1);
-        Assert.Equal((2, 2), (first.Games, first.Wins));
+        Assert.Equal((12, 12), (first.Games, first.Wins));
         var second = Assert.Single(setups, s => s.Specials.Single().CardId == 2);
-        Assert.Equal((1, 0), (second.Games, second.Wins));
+        Assert.Equal((10, 0), (second.Games, second.Wins));
     }
 
     [Fact]
