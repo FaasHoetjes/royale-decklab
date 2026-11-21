@@ -226,22 +226,65 @@ public sealed class DeckAnalyzer
         IReadOnlyList<DeckMeta> duelMeta,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         CrownSeriesLeague league,
-        int deckCount,
+        LineupOptions options,
         DuelValues values,
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         var capped = league.CapLevels(cardMap);
         var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
+        var locked = ScoreLockedDuelDecks(duelMeta, capped, options.LockedDecks, opponent, values);
+        var lockedCards = locked.SelectMany(l => l.deck.CardIds).ToHashSet();
+
         var candidates = new List<(DeckMeta deck, double score)>();
         foreach (var deck in duelMeta)
         {
-            if (ScoreDuelDeck(capped, deck, opponent, values) is { } score)
+            if (IsAllowed(deck, capped, options, lockedCards) && ScoreDuelDeck(capped, deck, opponent, values) is { } score)
             {
                 candidates.Add((deck, score));
             }
         }
-        return SelectLineup(candidates, capped, includeAlternatives: true, deckCount: deckCount, ct: ct);
+        var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
+
+        return SelectLineup(candidates, capped, includeAlternatives: true,
+            deckCount: options.DeckCount - locked.Count, requiredCards: required, locked: locked, ct: ct);
+    }
+
+    // A locked deck that has left the Duel meta since is kept at an even win rate before levels; one with a card the
+    // player doesn't own can't be fielded and is skipped.
+    private static List<(DeckMeta deck, double score)> ScoreLockedDuelDecks(
+        IReadOnlyList<DeckMeta> duelMeta,
+        IReadOnlyDictionary<int, PlayerItemLevel> capped,
+        IReadOnlyList<int[]> lockedDecks,
+        double opponentLevel,
+        DuelValues values)
+    {
+        var locked = new List<(DeckMeta deck, double score)>(lockedDecks.Count);
+        if (lockedDecks.Count == 0)
+        {
+            return locked;
+        }
+        var byKey = new Dictionary<string, DeckMeta>();
+        foreach (var deck in duelMeta)
+        {
+            byKey.TryAdd(MetaCache.DeckKey(deck.CardIds), deck);
+        }
+        foreach (var ids in lockedDecks)
+        {
+            var deck = byKey.GetValueOrDefault(MetaCache.DeckKey(ids)) ?? new DeckMeta
+            {
+                CardIds = ids,
+                WinRate = CrownSeriesMeta.DuelPriorWinRate,
+                Confidence = CrownSeriesMeta.DuelPriorWinRate,
+                Uses = 0,
+                Players = 0,
+            };
+            if (ScoreDuelDeck(capped, deck, opponentLevel, values) is { } score)
+            {
+                locked.Add((deck, score));
+            }
+        }
+        return locked;
     }
 
     private static bool IsAllowed(
