@@ -18,6 +18,7 @@ function versionPublicScripts(): Plugin {
 export default defineConfig({
   plugins: [react(), versionPublicScripts()],
   build: {
+    assetsInlineLimit: (filePath) => (filePath.endsWith('.woff2') ? false : undefined),
     rolldownOptions: {
       output: {
         // The framework changes far less often than the app, so deploys leave returning visitors' copy of it cached.
