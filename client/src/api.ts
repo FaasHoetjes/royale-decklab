@@ -646,6 +646,41 @@ export interface StatsReport {
   months: StatsMonth[];
 }
 
+export interface DuelLevelEstimate {
+  value: number;
+  standardError: number;
+}
+
+export interface DuelLevelFit {
+  /** 0 for the fit across every cap. */
+  cap: number;
+  duels: number;
+  perLevel: DuelLevelEstimate;
+  weakestCard: DuelLevelEstimate;
+  evo: DuelLevelEstimate;
+  hero: DuelLevelEstimate;
+}
+
+export interface DuelLevelRefit {
+  fittedAtMs: number;
+  latestRoundMs: number;
+  fits: DuelLevelFit[];
+}
+
+export interface DuelLevelsReport {
+  inUse: { perLevel: number; weakestCard: number; evo: number; hero: number };
+  /** Newest first. */
+  refits: DuelLevelRefit[];
+}
+
+export async function fetchDuelLevels(token: string, signal?: AbortSignal): Promise<DuelLevelsReport> {
+  const response = await fetch('/api/admin/duel-levels', { headers: { 'X-Admin-Token': token }, signal, cache: 'no-store' });
+  if (!response.ok) {
+    throw await responseError(response, 'Failed to fetch the Duel level fits');
+  }
+  return response.json();
+}
+
 /** The token goes in a header, never the URL, where logs and history would keep it. */
 export async function fetchAdminStats(token: string, filters: StatsFilters, signal?: AbortSignal): Promise<StatsReport> {
   const query = new URLSearchParams(Object.entries(filters).filter((entry): entry is [string, string] => !!entry[1])).toString();

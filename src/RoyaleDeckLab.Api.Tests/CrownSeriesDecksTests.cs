@@ -114,13 +114,13 @@ public sealed class CrownSeriesDecksTests : IDisposable
     }
 
     [Fact]
-    public void Each_special_slot_left_empty_costs_the_fitted_log_odds()
+    public void Each_missing_evo_and_hero_costs_its_fitted_log_odds()
     {
         var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id)));
 
         var score = DuelScore(cards, (1, CardVersionKind.Evo), (2, CardVersionKind.Hero));
 
-        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -2 * CrownSeriesLevels.EmptySpecialSlot), score, 10);
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -(CrownSeriesLevels.Specials.Evo + CrownSeriesLevels.Specials.Hero)), score, 10);
     }
 
     [Fact]
@@ -145,7 +145,18 @@ public sealed class CrownSeriesDecksTests : IDisposable
 
         var score = DuelScore(cards, (1, CardVersionKind.Evo), (2, CardVersionKind.Evo), (4, CardVersionKind.Hero));
 
-        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -CrownSeriesLevels.EmptySpecialSlot), score, 10);
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -CrownSeriesLevels.Specials.Hero), score, 10);
+    }
+
+    [Fact]
+    public void A_hero_in_place_of_a_meta_evo_costs_the_difference()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Hero : 0)));
+
+        var score = DuelScore(cards, (1, CardVersionKind.Evo));
+
+        var difference = CrownSeriesLevels.Specials.Evo - CrownSeriesLevels.Specials.Hero;
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -difference), score, 10);
     }
 
     private const double MetaConfidence = 0.55;

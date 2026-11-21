@@ -2,13 +2,13 @@ namespace RoyaleDeckLab.Api.Models;
 
 /// <summary>
 /// How card levels move Trophy Road and Ranked odds. Not fitted on ladder battles yet: until it is, it borrows the war
-/// fit and the Duel cost of an empty special slot.
+/// fit and the Duel value of evos and heroes.
 /// </summary>
 public static class LadderLevels
 {
     public static LevelFit Fit { get; } = LevelFit.War;
 
-    public const double EmptySpecialSlot = CrownSeriesLevels.EmptySpecialSlot;
+    public static SpecialValues Specials => CrownSeriesLevels.Specials;
 
     /// <summary>What a side wins on levels alone against an equally strong deck; even when the opponent's are unknown.</summary>
     public static double ExpectedWinShare(byte[] levels, byte[]? opponentLevels)

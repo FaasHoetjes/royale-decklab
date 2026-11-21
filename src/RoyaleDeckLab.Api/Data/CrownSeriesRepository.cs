@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using RoyaleDeckLab.Api.Models;
+using RoyaleDeckLab.Api.Services;
 using RoyaleDeckLab.Api.Services.Crawling;
 
 namespace RoyaleDeckLab.Api.Data;
@@ -103,6 +104,41 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
         return rounds
             .Select(r => new CappedBattle(r.Record, CrownSeriesCaps.FromHighestLevel(highestByDuel[r.Duel])))
             .ToList();
+    }
+
+    // Each round's first side is the player with the lower tag; a Duel missing either player's deck is left out.
+    public IReadOnlyList<Duel> ReadDuels()
+    {
+        var byDuel = new Dictionary<string, List<CrownSeriesRoundEntity>>(StringComparer.Ordinal);
+        foreach (var r in db.CrownSeriesRounds.AsNoTracking())
+        {
+            var key = DuelKey(r.PlayerTag, r.OpponentTag, r.BattleTimeMs);
+            if (!byDuel.TryGetValue(key, out var rows))
+            {
+                byDuel[key] = rows = [];
+            }
+            rows.Add(r);
+        }
+        return byDuel.Values.Select(ToDuel).OfType<Duel>().ToList();
+    }
+
+    private static Duel? ToDuel(List<CrownSeriesRoundEntity> rows)
+    {
+        var first = rows.Select(r => r.PlayerTag).Order(StringComparer.Ordinal).First();
+        var rounds = new List<PairedRound>();
+        foreach (var round in rows.GroupBy(r => r.Round).OrderBy(g => g.Key))
+        {
+            var own = round.FirstOrDefault(r => r.PlayerTag == first);
+            var other = round.FirstOrDefault(r => r.PlayerTag != first);
+            if (own is null || other is null || own.Result == BattleResult.Draw || own.Cards.Count == 0 || other.Cards.Count == 0)
+            {
+                return null;
+            }
+            rounds.Add(new PairedRound(
+                new DuelSide(own.PlayerTag, own.Cards), new DuelSide(other.PlayerTag, other.Cards), own.Result == BattleResult.Win));
+        }
+        var highest = rows.Max(r => r.Cards.Max(c => c.Level));
+        return new Duel(CrownSeriesCaps.FromHighestLevel(highest), rounds);
     }
 
     private static string DuelKey(string playerTag, string opponentTag, long battleTimeMs)

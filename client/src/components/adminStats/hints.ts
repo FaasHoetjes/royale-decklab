@@ -25,4 +25,9 @@ export const HINTS = {
   sources: 'Visitors per site they came from, or a campaign link\'s utm_source. "Looked up" is the share who became active users; the time is their median time on site.',
   pages: 'Visitors who opened each page at least once in the period.',
   inView: 'Visitors with the site open in a visible tab right now.',
+  duelDuels: 'Duels that went to a third round: only those show which of the first two rounds each player won.',
+  perLevel: "Log-odds a Duel deck gains per level its cards average above the opponent's.",
+  weakestCard: "Log-odds lost on top per level the weakest card sits below the deck's average.",
+  evo: "Log-odds an evo adds. Scoring charges it when the player can't field the meta deck's evo.",
+  hero: "Log-odds a hero adds. Scoring charges it when the player can't field the meta deck's hero.",
 } as const;

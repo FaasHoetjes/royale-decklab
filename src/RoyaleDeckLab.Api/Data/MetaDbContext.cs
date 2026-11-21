@@ -16,6 +16,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
     public DbSet<SeenPatchNoteEntity> SeenPatchNotes => Set<SeenPatchNoteEntity>();
     public DbSet<BalanceUpdateEntity> BalanceUpdates => Set<BalanceUpdateEntity>();
     public DbSet<SeasonBoostEntity> SeasonBoosts => Set<SeasonBoostEntity>();
+    public DbSet<DuelLevelFitEntity> DuelLevelFits => Set<DuelLevelFitEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -132,6 +133,24 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             b.ToTable("season_boosts");
             b.HasKey(x => x.CardId);
             b.Property(x => x.CardId).HasColumnName("card_id").ValueGeneratedNever();
+        });
+
+        modelBuilder.Entity<DuelLevelFitEntity>(f =>
+        {
+            f.ToTable("duel_level_fits");
+            f.HasKey(x => new { x.FittedAtMs, x.Cap });
+            f.Property(x => x.FittedAtMs).HasColumnName("fitted_at_ms");
+            f.Property(x => x.Cap).HasColumnName("cap");
+            f.Property(x => x.LatestRoundMs).HasColumnName("latest_round_ms").IsRequired();
+            f.Property(x => x.Duels).HasColumnName("duels").IsRequired();
+            f.Property(x => x.PerLevel).HasColumnName("per_level").IsRequired();
+            f.Property(x => x.PerLevelError).HasColumnName("per_level_error").IsRequired();
+            f.Property(x => x.WeakestCard).HasColumnName("weakest_card").IsRequired();
+            f.Property(x => x.WeakestCardError).HasColumnName("weakest_card_error").IsRequired();
+            f.Property(x => x.Evo).HasColumnName("evo").IsRequired();
+            f.Property(x => x.EvoError).HasColumnName("evo_error").IsRequired();
+            f.Property(x => x.Hero).HasColumnName("hero").IsRequired();
+            f.Property(x => x.HeroError).HasColumnName("hero_error").IsRequired();
         });
 
         modelBuilder.Entity<CardPeriodEntity>(c =>

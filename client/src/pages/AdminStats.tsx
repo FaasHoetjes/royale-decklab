@@ -4,6 +4,7 @@ import { ApiError, fetchAdminStats, type StatsCount, type StatsDuration, type St
 import { ActivityChart } from '../components/adminStats/ActivityChart';
 import { Breakdown } from '../components/adminStats/Breakdown';
 import { DeckExports } from '../components/adminStats/DeckExports';
+import { DuelLevelsSection } from '../components/adminStats/DuelLevelsSection';
 import { FilterBar } from '../components/adminStats/FilterBar';
 import { countryLabel, deviceLabel, hourLabel, number, sourceLabel, toolLabel } from '../components/adminStats/format';
 import { Gate, TokenForm } from '../components/adminStats/Gate';
@@ -222,6 +223,8 @@ export default function AdminStats() {
       </section>
 
       {report.months.length > 0 && <MonthsTable months={report.months} />}
+
+      <DuelLevelsSection token={token} />
 
       <p style={{ ...statsStyles.note, color: theme.text.tertiary }}>
         Visits are kept for {report.retentionDays} days, then only the totals remain. Bots, and browsers that opened this page, aren't counted. Click a country, device, source, campaign, page or one of today's hour bars to filter the page by it.

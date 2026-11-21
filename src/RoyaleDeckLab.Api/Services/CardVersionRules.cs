@@ -227,28 +227,40 @@ internal static class CardVersionRules
 
     private const int SpecialSlots = 3;
 
-    /// <summary>The special slots the meta deck fills that the player's own evos and heroes among its cards can't.</summary>
-    internal static int EmptySpecialSlots(
+    // Fielding a different evo or hero than the meta deck's costs nothing; only the value the player can't field counts.
+    internal static double MissingSpecialValue(
         IReadOnlyList<int> cardIds,
         IReadOnlyList<CardVersion>? metaVersions,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
-        => Math.Max(0, MetaSpecials(cardIds, metaVersions, cardMap) - FillableSpecials(cardIds, cardMap));
-
-    private static int MetaSpecials(
-        IReadOnlyList<int> cardIds,
-        IReadOnlyList<CardVersion>? metaVersions,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        SpecialValues values)
     {
-        var specials = 0;
-        foreach (var cardId in cardIds)
+        var champions = cardIds.Count(id => IsChampion(id, cardMap));
+        var metaEvos = cardIds.Count(id => !IsChampion(id, cardMap) && VersionOf(metaVersions, id) == CardVersionKind.Evo);
+        var metaHeroes = cardIds.Count(id => !IsChampion(id, cardMap) && VersionOf(metaVersions, id) == CardVersionKind.Hero);
+        var meta = BestFielded(metaEvos, metaHeroes, 0, champions, values);
+        var own = OwnSpecials(cardIds, cardMap);
+        var player = BestFielded(own.EvoOnly, own.HeroOnly, own.Either, champions, values);
+        return Math.Max(0, meta - player);
+    }
+
+    private static double BestFielded(int evoOnly, int heroOnly, int either, int champions, SpecialValues values)
+    {
+        var best = 0.0;
+        for (var evos = 0; evos <= MaxEvo; evos++)
         {
-            var isSpecial = IsChampion(cardId, cardMap) || VersionOf(metaVersions, cardId) != CardVersionKind.Normal;
-            if (isSpecial)
+            for (var heroes = 0; heroes + champions <= MaxHero; heroes++)
             {
-                specials++;
+                var fits = evos + heroes + champions <= MaxSpecials
+                    && evos <= evoOnly + either
+                    && heroes <= heroOnly + either
+                    && evos + heroes <= evoOnly + heroOnly + either;
+                if (fits)
+                {
+                    best = Math.Max(best, evos * values.Evo + heroes * values.Hero);
+                }
             }
         }
-        return Math.Min(MaxSpecials, specials);
+        return best;
     }
 
     private static CardVersionKind VersionOf(IReadOnlyList<CardVersion>? versions, int cardId)
@@ -263,32 +275,22 @@ internal static class CardVersionRules
         return CardVersionKind.Normal;
     }
 
-    private static int FillableSpecials(IReadOnlyList<int> cardIds, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    private static (int EvoOnly, int HeroOnly, int Either) OwnSpecials(
+        IReadOnlyList<int> cardIds, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
     {
-        var evoOnly = 0;
-        var heroOnly = 0;
-        var either = 0;
-        foreach (var cardId in cardIds)
+        var (evoOnly, heroOnly, either) = (0, 0, 0);
+        foreach (var cardId in cardIds.Where(id => !IsChampion(id, cardMap)))
         {
             var owned = cardMap.TryGetValue(cardId, out var card) ? card.EvolutionLevel : 0;
-            var ownsHero = IsChampion(cardId, cardMap) || EvolutionBits.OwnsHero(owned);
-            var ownsEvo = !IsChampion(cardId, cardMap) && EvolutionBits.OwnsEvo(owned);
-            if (ownsEvo && ownsHero)
+            (evoOnly, heroOnly, either) = (EvolutionBits.OwnsEvo(owned), EvolutionBits.OwnsHero(owned)) switch
             {
-                either++;
-            }
-            else if (ownsEvo)
-            {
-                evoOnly++;
-            }
-            else if (ownsHero)
-            {
-                heroOnly++;
-            }
+                (true, true) => (evoOnly, heroOnly, either + 1),
+                (true, false) => (evoOnly + 1, heroOnly, either),
+                (false, true) => (evoOnly, heroOnly + 1, either),
+                _ => (evoOnly, heroOnly, either),
+            };
         }
-        var evos = Math.Min(MaxEvo, evoOnly + either);
-        var heroes = Math.Min(MaxHero, heroOnly + either);
-        return Math.Min(MaxSpecials, Math.Min(evoOnly + heroOnly + either, evos + heroes));
+        return (evoOnly, heroOnly, either);
     }
 
     private static int IndexOf(IReadOnlyList<int?> slots, int cardId)

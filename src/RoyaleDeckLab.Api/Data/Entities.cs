@@ -76,6 +76,33 @@ public sealed class SeenPatchNoteEntity
     public string Key { get; set; } = "";
 }
 
+public sealed class DuelLevelFitEntity
+{
+    public long FittedAtMs { get; set; }
+
+    public int Cap { get; set; }
+
+    public long LatestRoundMs { get; set; }
+
+    public int Duels { get; set; }
+
+    public double PerLevel { get; set; }
+
+    public double PerLevelError { get; set; }
+
+    public double WeakestCard { get; set; }
+
+    public double WeakestCardError { get; set; }
+
+    public double Evo { get; set; }
+
+    public double EvoError { get; set; }
+
+    public double Hero { get; set; }
+
+    public double HeroError { get; set; }
+}
+
 public sealed class SeasonBoostEntity
 {
     public int CardId { get; set; }

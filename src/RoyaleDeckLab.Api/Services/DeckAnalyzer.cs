@@ -92,17 +92,16 @@ public sealed class DeckAnalyzer
         return ((double)totalLevel / cardIds.Length, minLevel);
     }
 
-    /// <summary>A deck's odds in a 1v1 mode, where an empty special slot costs <paramref name="emptySpecialSlot"/> log-odds.</summary>
     private static double? ScoreOneOnOneDeck(
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel, LevelFit fit, double emptySpecialSlot)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel, LevelFit fit, SpecialValues specials)
     {
         if (DeckLevels(cardMap, deck.CardIds) is not var (meanLevel, minLevel))
         {
             return null;
         }
         var levelLogit = fit.Logit(meanLevel, minLevel, opponentLevel);
-        var emptySlots = CardVersionRules.EmptySpecialSlots(deck.CardIds, deck.CardVersions, cardMap);
-        return LevelModel.WinProbability(deck.Confidence, levelLogit - emptySpecialSlot * emptySlots);
+        var missing = CardVersionRules.MissingSpecialValue(deck.CardIds, deck.CardVersions, cardMap, specials);
+        return LevelModel.WinProbability(deck.Confidence, levelLogit - missing);
     }
 
     public double? FieldabilityScore(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, IReadOnlyList<int> cardIds)
@@ -233,7 +232,7 @@ public sealed class DeckAnalyzer
         ct.ThrowIfCancellationRequested();
         var capped = league.CapLevels(cardMap);
         var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
-        var candidates = ScoreOneOnOneDecks(duelMeta, capped, opponent, CrownSeriesLevels.Fit, CrownSeriesLevels.EmptySpecialSlot);
+        var candidates = ScoreOneOnOneDecks(duelMeta, capped, opponent, CrownSeriesLevels.Fit, CrownSeriesLevels.Specials);
         return SelectLineup(candidates, capped, includeAlternatives: true, deckCount: deckCount, ct: ct);
     }
 
@@ -245,7 +244,7 @@ public sealed class DeckAnalyzer
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        var candidates = ScoreOneOnOneDecks(rangeMeta, cardMap, opponentLevel, LadderLevels.Fit, LadderLevels.EmptySpecialSlot);
+        var candidates = ScoreOneOnOneDecks(rangeMeta, cardMap, opponentLevel, LadderLevels.Fit, LadderLevels.Specials);
         return SelectLineup(candidates, cardMap, includeAlternatives: true, deckCount: 1, gateAlternatives: true, ct: ct);
     }
 
@@ -254,12 +253,12 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         double opponentLevel,
         LevelFit fit,
-        double emptySpecialSlot)
+        SpecialValues specials)
     {
         var candidates = new List<(DeckMeta deck, double score)>();
         foreach (var deck in meta)
         {
-            if (ScoreOneOnOneDeck(cardMap, deck, opponentLevel, fit, emptySpecialSlot) is { } score)
+            if (ScoreOneOnOneDeck(cardMap, deck, opponentLevel, fit, specials) is { } score)
             {
                 candidates.Add((deck, score));
             }
