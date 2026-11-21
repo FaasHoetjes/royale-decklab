@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
 using RoyaleDeckLab.Api.Clients;
@@ -416,9 +417,17 @@ public sealed class MetaBuilder(
             {
                 foreach (var cardId in agg.CardIds)
                 {
-                    var version = loadout.Versions.FirstOrDefault(v => v.CardId == cardId)?.Version ?? CardVersionKind.Normal;
-                    var (games, wins) = totals.GetValueOrDefault((cardId, version));
-                    totals[(cardId, version)] = (games + loadout.WeightedGames, wins + loadout.WeightedWins);
+                    var version = CardVersionKind.Normal;
+                    for (var i = 0; i < loadout.Versions.Count; i++)
+                    {
+                        if (loadout.Versions[i].CardId == cardId)
+                        {
+                            version = loadout.Versions[i].Version;
+                            break;
+                        }
+                    }
+                    ref var total = ref CollectionsMarshal.GetValueRefOrAddDefault(totals, (cardId, version), out _);
+                    total = (total.Games + loadout.WeightedGames, total.Wins + loadout.WeightedWins);
                 }
             }
         }
