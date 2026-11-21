@@ -74,7 +74,7 @@ export default function CardWall({ isMobile }: { isMobile: boolean }) {
     <div className="card-wall" style={{ ...styles.wall, ...(isMobile ? styles.phoneWall : styles.desktopWall) }}>
       <div style={{ ...styles.columns, gap: `${layout.gap}px` }}>
         {Array.from({ length: layout.columns }, (_, c) => {
-          const cards = Array.from({ length: CARDS_PER_COLUMN }, (_, i) => art[(c * 5 + i) % art.length]);
+          const cards = Array.from({ length: CARDS_PER_COLUMN }, (_, i) => art[(c * CARDS_PER_COLUMN + i) % art.length]);
           return (
             // Each column holds its cards twice and drifts by half its height, so the loop has no seam.
             <div
