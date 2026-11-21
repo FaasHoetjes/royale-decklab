@@ -12,8 +12,9 @@ const usersDetail = (range: StatsRange) => {
 
 const timeDetail = (range: StatsRange) => {
   if (range.timeMedian === null) return 'Not measured yet';
+  const average = range.timeMean === null ? undefined : `average ${duration(range.timeMean)}`;
   const change = changeFrom(range.timeMedian, range.previousTimeMedian);
-  return change ? `Median · ${change}` : 'Median';
+  return ['Median', average, change].filter(Boolean).join(' · ');
 };
 
 const pageviewsDetail = (range: StatsRange) => {

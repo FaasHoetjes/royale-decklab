@@ -9,7 +9,7 @@ export const HINTS = {
   lookups: 'Players looked up, counting each player once per visitor per day.',
   uniquePlayers: `Different player tags looked up, whoever looked them up. ${MONTHLY} a player looked up in both counts twice.`,
   returning: `Active users who looked up a player on more than one day in this period. ${MONTHLY} days in different months don't link up.`,
-  timeOnSite: 'Median time a visitor had the site open in a visible tab over the period, capped at 4 hours a day. Visitors from before this was measured are left out.',
+  timeOnSite: 'Median time a visitor had the site open in a visible tab over the period, capped at 4 hours a day. The average is pulled up more by a few long visits. Visitors from before this was measured are left out.',
   deckCopies: 'Every time a deck link was copied.',
   deckOpens: 'Every click on "open in game". Shows intent; it doesn\'t confirm the deck was imported.',
   exporters: 'Visitors who copied or opened at least one deck.',
