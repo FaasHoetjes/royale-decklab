@@ -30,4 +30,8 @@ export const HINTS = {
   weakestCard: "Log-odds lost on top per level the weakest card sits below the deck's average.",
   evo: "Log-odds an evo adds. Scoring charges it when the player can't field the meta deck's evo.",
   hero: "Log-odds a hero adds. Scoring charges it when the player can't field the meta deck's hero.",
+  cushionDecks: 'Duel decks with at least 10 rounds at the cap; only those are measured.',
+  cushionRounds: 'Rounds those decks played, each side of a round counted.',
+  spread: "How far apart the decks' true win rates sit (one standard deviation), once luck is taken out.",
+  cushion: "Imaginary rounds at the average that each deck's record is weighed against. A wider spread calls for fewer.",
 } as const;

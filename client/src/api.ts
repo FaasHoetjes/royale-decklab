@@ -632,14 +632,25 @@ export interface DuelLevelFit {
   hero: DuelLevelEstimate;
 }
 
+export interface DuelCushionFit {
+  /** 0 for the fit across every cap. */
+  cap: number;
+  decks: number;
+  rounds: number;
+  /** Standard deviation of the decks' true win rates, as a fraction. */
+  spread: number;
+  priorRounds: number;
+}
+
 export interface DuelLevelRefit {
   fittedAtMs: number;
   latestRoundMs: number;
   fits: DuelLevelFit[];
+  cushions: DuelCushionFit[];
 }
 
 export interface DuelLevelsReport {
-  inUse: { perLevel: number; weakestCard: number; evo: number; hero: number };
+  inUse: { perLevel: number; weakestCard: number; evo: number; hero: number; priorRounds: number };
   /** Newest first. */
   refits: DuelLevelRefit[];
 }
