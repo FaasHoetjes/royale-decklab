@@ -73,6 +73,8 @@ export function DuelLevelsSection({ token }: { token: string }) {
 
   const { inUse, refits } = levels.data;
   const latest = refits[0];
+  const latestLevels = refits.find((r) => r.fits.length > 0);
+  const latestCushions = refits.find((r) => r.cushions.length > 0);
   const currentLevels: Row<LevelField>[] = [
     {
       key: 'in-use',
@@ -83,15 +85,15 @@ export function DuelLevelsSection({ token }: { token: string }) {
       evo: inUse.evo.toFixed(2),
       hero: inUse.hero.toFixed(2),
     },
-    ...(latest?.fits.map((f) => levelRow(`cap-${f.cap}`, capLabel(f.cap), f)) ?? []),
+    ...(latestLevels?.fits.map((f) => levelRow(`cap-${f.cap}`, capLabel(f.cap), f)) ?? []),
   ];
   const weeklyLevels = refits.flatMap((r) => {
     const all = r.fits.find((f) => f.cap === ALL_CAPS);
     return all ? [levelRow(String(r.fittedAtMs), day(r.fittedAtMs), all)] : [];
   });
   const currentCushions: Row<CushionField>[] = [
-    { key: 'in-use', label: 'In use', decks: '–', rounds: '–', spread: '–', cushion: `${inUse.priorRounds} rounds` },
-    ...(latest?.cushions.map((c) => cushionRow(`cap-${c.cap}`, capLabel(c.cap), c)) ?? []),
+    { key: 'in-use', label: 'In use', decks: '–', rounds: '–', spread: '–', cushion: `${Math.round(inUse.priorRounds)} rounds` },
+    ...(latestCushions?.cushions.map((c) => cushionRow(`cap-${c.cap}`, capLabel(c.cap), c)) ?? []),
   ];
   const weeklyCushions = refits.flatMap((r) => {
     const all = r.cushions.find((c) => c.cap === ALL_CAPS);
