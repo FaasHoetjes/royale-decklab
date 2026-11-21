@@ -67,6 +67,18 @@ public sealed class GeneratorOptionsTests
     }
 
     [Fact]
+    public void An_owned_evo_fills_the_slot_of_an_evo_the_player_does_not_own()
+    {
+        var cards = SpecialCards().Select(c => c.Id == 2 ? Build.Card(2) : c).ToList();
+        var deck = DeckWith(Run(SpecialDecks, new LineupOptions { RequiredCards = new HashSet<int> { 1 } }, cards), 1);
+
+        Assert.Equal(CardVersionKind.Evo, VersionOf(deck, 1));
+        Assert.Equal(CardVersionKind.Normal, VersionOf(deck, 2));
+        Assert.Equal(CardVersionKind.Evo, VersionOf(deck, 3));
+        Assert.Equal(CardVersionKind.Hero, VersionOf(deck, 4));
+    }
+
+    [Fact]
     public void A_required_card_played_without_its_evo_costs_the_empty_slot_in_war()
     {
         var best = DeckWith(Run(SpecialDecks, LineupOptions.Default, SpecialCards()), 2);

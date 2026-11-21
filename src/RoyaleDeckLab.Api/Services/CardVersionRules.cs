@@ -111,29 +111,18 @@ internal static class CardVersionRules
         return changed ? personalized : cardVersions;
     }
 
+    // A slot left free by a special the player doesn't own is filled with one they do: fielding any special beats none.
     internal static IReadOnlyList<CardVersion>? UpgradeIntoFreeSlots(
         IReadOnlyList<CardVersion>? personalized,
-        IReadOnlyList<CardVersion>? metaVersions,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
     {
-        if (personalized is null || metaVersions is null)
+        if (personalized is null)
         {
-            return personalized;
+            return null;
         }
 
-        var evo = 0;
-        var hero = 0;
-        foreach (var v in metaVersions)
-        {
-            if (v.Version == CardVersionKind.Evo)
-            {
-                evo++;
-            }
-            else if (v.Version == CardVersionKind.Hero)
-            {
-                hero++;
-            }
-        }
+        var evo = personalized.Count(v => v.Version == CardVersionKind.Evo);
+        var hero = personalized.Count(v => v.Version == CardVersionKind.Hero);
         var total = evo + hero;
 
         var changed = false;
@@ -141,7 +130,7 @@ internal static class CardVersionRules
         for (var i = 0; i < personalized.Count; i++)
         {
             var v = personalized[i];
-            if (v.Version != CardVersionKind.Normal || metaVersions[i].Version != CardVersionKind.Normal)
+            if (v.Version != CardVersionKind.Normal)
             {
                 upgraded.Add(v);
                 continue;

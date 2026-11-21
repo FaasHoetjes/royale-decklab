@@ -172,7 +172,7 @@ public sealed class DeckAnalyzer
 
     /// <summary>
     /// The versions the deck's players use; the ones of those this player owns; and those plus the player's other
-    /// specials in slots the deck leaves free, which is how the player fields the deck.
+    /// specials in the slots still free, which is how the player fields the deck.
     /// </summary>
     private static (IReadOnlyList<CardVersion> Meta, IReadOnlyList<CardVersion> Owned, IReadOnlyList<CardVersion> Player) PlayerVersions(
         DeckMeta deck, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
@@ -180,7 +180,7 @@ public sealed class DeckAnalyzer
         var versions = CardVersionRules.WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
         var metaVersions = CardVersionRules.CapEvolutions(versions)!;
         var owned = CardVersionRules.CapEvolutions(CardVersionRules.PersonalizeVersions(versions, cardMap))!;
-        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, metaVersions, cardMap)!);
+        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap)!);
     }
 
     private static ScoredDeck ToScoredDeck(
