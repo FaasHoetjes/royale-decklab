@@ -135,6 +135,18 @@ public sealed class CrownSeriesDecksTests : IDisposable
     }
 
     [Fact]
+    public void A_locked_deck_is_found_in_the_meta_whatever_the_order_of_its_cards()
+    {
+        var cards = Build.CardMap(Build.Collection(Enumerable.Range(1, 48).ToArray()));
+        var meta = new[] { Build.Deck([8, 7, 6, 5, 4, 3, 2, 1], confidence: 0.60) };
+
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings,
+            new LineupOptions { DeckCount = 1, LockedDecks = [Build.Eight(1)] }, DuelValues.Default);
+
+        Assert.NotEqual(0, Assert.Single(result.Decks).Uses);
+    }
+
+    [Fact]
     public void A_locked_deck_no_longer_in_the_meta_counts_at_an_even_win_rate()
     {
         var cards = Build.CardMap(Build.Collection(Enumerable.Range(1, 48).ToArray()));

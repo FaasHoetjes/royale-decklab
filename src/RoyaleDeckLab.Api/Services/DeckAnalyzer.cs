@@ -315,15 +315,30 @@ public sealed class DeckAnalyzer
 
     private static DeckMeta? FindDeck(IReadOnlyList<DeckMeta> meta, int[] cardIds)
     {
-        int[] sorted = [.. cardIds.Order()];
-        for (var i = 0; i < meta.Count; i++)
+        foreach (var deck in meta)
         {
-            if (meta[i].CardIds.AsSpan().SequenceEqual(sorted))
+            if (HasCards(deck.CardIds, cardIds))
             {
-                return meta[i];
+                return deck;
             }
         }
         return null;
+    }
+
+    private static bool HasCards(int[] deck, int[] cardIds)
+    {
+        if (deck.Length != cardIds.Length)
+        {
+            return false;
+        }
+        foreach (var id in cardIds)
+        {
+            if (Array.IndexOf(deck, id) < 0)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     // A locked deck that has left the Duel meta since is kept at an even win rate before levels; one with a card the
