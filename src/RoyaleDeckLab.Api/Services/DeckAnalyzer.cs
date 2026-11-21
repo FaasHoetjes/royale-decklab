@@ -299,8 +299,13 @@ public sealed class DeckAnalyzer
         }
         var forced = ForcedVersions(options, lockedCards);
         var candidates = WithForcedVersions(scored, forced, capped, values.Specials, (candidate, versions, asked) =>
-            ScoreDuelDeck(capped, candidate.deck, opponent, values, extraMissing: Math.Max(0,
-                SpecialValue(versions.Player, capped, values.Specials) - SpecialValue(asked, capped, values.Specials))));
+        {
+            // Only value below the meta's costs anything, as in the score itself.
+            var meta = SpecialValue(versions.Meta, capped, values.Specials);
+            double Short(IReadOnlyList<CardVersion> played) => Math.Max(0, meta - SpecialValue(played, capped, values.Specials));
+            return ScoreDuelDeck(capped, candidate.deck, opponent, values,
+                extraMissing: Math.Max(0, Short(asked) - Short(versions.Player)));
+        });
         var required = options.RequiredCards.Where(id => !lockedCards.Contains(id)).ToHashSet();
 
         return SelectLineup(candidates, capped, includeAlternatives: true,
