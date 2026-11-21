@@ -17,6 +17,7 @@ public static class SpaContent
     [
         ("/", "War Deck Generator"),
         ("/crown-series", "Crown Series"),
+        ("/ladder", "Ladder Decks"),
         ("/best-decks", "Best War Decks"),
         ("/cards", "Cards"),
         ("/patch", "Patch Overview"),
@@ -37,6 +38,9 @@ public static class SpaContent
 
     public static string CrownSeries(string heading)
         => Page($"{H1(heading)}{P("The 4 best decks for your Crown Series Duel, optimized for your card collection and league's level cap.")}");
+
+    public static string Ladder(string heading)
+        => Page($"{H1(heading)}{P("Your best deck for Trophy Road or Ranked, from the cards you own and the decks winning where you play.")}");
 
     public static string Clan(string heading)
         => Page($"{H1(heading)}{P("Who in your clan still has war decks to play today, and each member's best four war decks.")}");

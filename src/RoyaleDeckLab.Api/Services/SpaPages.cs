@@ -25,7 +25,7 @@ public sealed record SpaPage(int StatusCode, string Title, string Description, s
     public string? Body { get; init; }
 }
 
-public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Patch, Builder, Upgrades, Clan, Faq, CrownSeries }
+public enum SpaContentKind { None, Home, BestDecks, Cards, Card, Patch, Builder, Upgrades, Clan, Faq, CrownSeries, Ladder }
 
 /// <summary>
 /// The status and head tags the server sends with index.html for each route, so crawlers and link previews that
@@ -49,6 +49,7 @@ public static partial class SpaPages
     public static IReadOnlySet<string> UnlistedPaths { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "/crown-series",
+        "/ladder",
     };
 
     /// <summary>Heading is the page's h1 as the app shows it.</summary>
@@ -59,6 +60,7 @@ public static partial class SpaPages
         (CardsPath, "Clash Royale Card Win Rates in Clan War", "Cards", "How every Clash Royale card does in Clan War right now: win rate, use rate, the change since the last balance update and its best war decks.", SpaContentKind.Cards),
         ("/builder", "Clash Royale War Deck Builder", "War Deck Builder", "Build four Clash Royale war decks with no shared cards, or rate a single deck, and see how each one scores in the current war meta.", SpaContentKind.Builder),
         ("/crown-series", "Clash Royale Crown Series Deck Generator", "Crown Series Deck Generator", "Your best four Clash Royale Crown Series Duel decks from the cards you own, at the level cap of your league.", SpaContentKind.CrownSeries),
+        ("/ladder", "Clash Royale Trophy Road and Ranked Deck Generator", "Ladder Deck Generator", "Your best Clash Royale deck for Trophy Road or Ranked, from the cards you own and the decks winning at your trophies.", SpaContentKind.Ladder),
         ("/upgrades", "What to Upgrade Next in Clash Royale", "Upgrade Advisor", "Find the card upgrade that raises your Clash Royale war lineup the most.", SpaContentKind.Upgrades),
         (ClanPath, "Clash Royale Clan War Planner", "Clan War Planner", "See who in your Clash Royale clan still has war decks to play today, and give every member their best four war decks.", SpaContentKind.Clan),
         ("/faq", "Clash Royale War Deck FAQ", "FAQ", "How Royale DeckLab picks and scores Clash Royale war decks, and where its data comes from.", SpaContentKind.Faq),

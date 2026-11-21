@@ -186,6 +186,35 @@ export function isNoDuelData(error: unknown): boolean {
   return error instanceof ApiError && error.status === 503 && error.code === 'no_duel_data';
 }
 
+export type LadderModeId = 'trophy-road' | 'ranked';
+
+export interface LadderResponse {
+  player: PlayerResponse['player'];
+  mode: LadderModeId;
+  trophies: number;
+  /** The lowest trophies of the range the decks came from, or the Ranked league. */
+  rangeFloor: number;
+  /** False when the player's own range had no decks yet and the nearest one's are shown. */
+  ownRange: boolean;
+  rangeBattles: number;
+  /** Other ranges' battles behind the decks, weighted by how much they count. */
+  otherRangeBattles: number;
+  /** The average card level played in the range. */
+  rangeLevel: number;
+  /** Every range of the mode with the battles collected there, lowest first. */
+  ranges: Array<{ floor: number; battles: number }>;
+  ladderDecks: PlayerResponse['warDecks'];
+}
+
+/** The server answers 503 with this code until it has collected any Trophy Road or Ranked battles. */
+export function isNoLadderData(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 503 && error.code === 'no_ladder_data';
+}
+
+export function fetchLadderDecks(playerTag: string, mode: LadderModeId, signal?: AbortSignal): Promise<LadderResponse> {
+  return getJson(`/api/player/${encodeURIComponent(playerTag)}/ladder?mode=${mode}`, 'Failed to fetch ladder decks', signal);
+}
+
 export function fetchCrownSeriesDecks(
   playerTag: string,
   league: CrownSeriesLeagueId,

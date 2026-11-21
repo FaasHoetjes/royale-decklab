@@ -25,6 +25,7 @@ const Cards = lazy(pageLoaders.cards)
 const CardPage = lazy(pageLoaders.cardPage)
 const ClanWarPlanner = lazy(pageLoaders.clan)
 const CrownSeries = lazy(pageLoaders.crownSeries)
+const Ladder = lazy(pageLoaders.ladder)
 const AdminStats = lazy(() => import('./pages/AdminStats'))
 
 // Any single-segment path lands here, so one that isn't a player tag is an unknown page.
@@ -78,6 +79,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/cards/:slug" element={<CardPage />} />
               <Route path="/patch" element={<Landing />} />
               <Route path="/crown-series" element={<CrownSeries />} />
+              <Route path="/ladder" element={<Ladder />} />
               <Route path="/clan" element={<ClanWarPlanner />} />
               <Route path="/clan/:clanTag" element={<ClanWarPlanner />} />
               <Route path="/admin/stats" element={<AdminStats />} />

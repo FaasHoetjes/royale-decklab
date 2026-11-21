@@ -25,6 +25,8 @@ import {
   scoreBuilderDecks,
   isMetaLoading,
   fetchCrownSeriesDecks,
+  fetchLadderDecks,
+  type LadderModeId,
   type CrownSeriesLeagueId,
   type ScoreDeckCard,
 } from './api';
@@ -46,6 +48,7 @@ export const queryKeys = {
   playerUpgrades: (tag: string) => ['player', tag, 'upgrades'] as const,
   playerWarToday: (tag: string) => ['player', tag, 'war-today'] as const,
   playerCrownSeries: (tag: string, league: CrownSeriesLeagueId) => ['player', tag, 'crown-series', league] as const,
+  playerLadder: (tag: string, mode: LadderModeId) => ['player', tag, 'ladder', mode] as const,
   clanWar: (clanTag: string) => ['clan', clanTag, 'war'] as const,
   clanReminders: (clanTag: string) => ['clan', clanTag, 'discord-reminders'] as const,
   clanSearch: (name: string) => ['clan-search', name] as const,
@@ -281,6 +284,16 @@ export function useCrownSeriesDecks(tag: string | null, league: CrownSeriesLeagu
     queryFn: ({ signal }) => fetchCrownSeriesDecks(tag ?? '', league, signal),
     enabled: !!tag,
     // Keep this player's decks on screen while another league loads.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === tag ? previous : undefined),
+  });
+}
+
+export function useLadderDecks(tag: string | null, mode: LadderModeId) {
+  return useQuery({
+    queryKey: queryKeys.playerLadder(tag ?? '', mode),
+    queryFn: ({ signal }) => fetchLadderDecks(tag ?? '', mode, signal),
+    enabled: !!tag,
+    // Keep this player's deck on screen while the other mode loads.
     placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === tag ? previous : undefined),
   });
 }

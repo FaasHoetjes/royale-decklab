@@ -6,6 +6,7 @@ describe('sidebarItems', () => {
     const unlisted = toolItems(null).filter((item) => item.unlisted).map((item) => item.to);
 
     expect(unlisted).toContain('/crown-series');
+    expect(unlisted).toContain('/ladder');
     expect(sidebarItems(null).map((item) => item.to)).not.toContain('/crown-series');
     expect(sidebarItems(null).map((item) => item.to)).toContain('/faq');
   });

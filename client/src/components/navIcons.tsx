@@ -53,6 +53,18 @@ export function TrophyIcon() {
   );
 }
 
+export function LadderIcon() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M7 2v20" />
+      <path d="M17 2v20" />
+      <path d="M7 6h10" />
+      <path d="M7 12h10" />
+      <path d="M7 18h10" />
+    </svg>
+  );
+}
+
 export function CardsIcon() {
   return (
     <svg {...iconProps()}>

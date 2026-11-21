@@ -797,6 +797,42 @@ input:disabled {
   to { transform: rotate(360deg); }
 }
 
+.ladder-number {
+  font-family: 'Lilita One', system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.ladder-float {
+  animation: ladder-float 5s ease-in-out infinite;
+}
+.ladder-deal {
+  animation: ladder-deal 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  transition: transform 0.25s ease;
+}
+.ladder-deal:hover {
+  position: relative;
+  z-index: 1;
+  transform: translateY(-14px) scale(1.07);
+}
+.ladder-rays {
+  position: absolute;
+  inset: -50%;
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 40%, color-mix(in srgb, var(--accent) 12%, transparent) 0 6deg, transparent 6deg 18deg);
+  mask-image: radial-gradient(circle at 50% 40%, #000 0, transparent 45%);
+  animation: spin 60s linear infinite;
+}
+
+@keyframes ladder-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes ladder-deal {
+  from { opacity: 0; transform: translateY(18px) rotate(-4deg) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+
 .boost-clock-hand {
   transform-box: view-box;
   transform-origin: 12px 19px;
@@ -836,7 +872,10 @@ input:disabled {
   }
   .ua-float,
   .card-wall,
-  .card-wall-column {
+  .card-wall-column,
+  .ladder-float,
+  .ladder-deal,
+  .ladder-rays {
     animation: none;
   }
   .skeleton {

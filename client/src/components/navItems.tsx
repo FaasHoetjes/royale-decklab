@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ZapIcon, CrownIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon } from './navIcons';
+import { ZapIcon, CrownIcon, GridIcon, TrophyIcon, CardsIcon, TrendingUpIcon, ShieldIcon, HelpIcon, ChangesIcon, LadderIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
@@ -45,6 +45,15 @@ export function toolItems(activePlayerTag: string | null): NavItem[] {
       isNew: Date.now() < CROWN_SERIES_NEW_UNTIL,
       unlisted: true,
       icon: <CrownIcon />,
+    },
+    {
+      to: '/ladder',
+      label: 'Ladder Decks',
+      title: 'Clash Royale Trophy Road and Ranked Deck Generator',
+      description: 'Your best Clash Royale deck for Trophy Road or Ranked, from the cards you own and the decks winning at your trophies.',
+      end: false,
+      unlisted: true,
+      icon: <LadderIcon />,
     },
     {
       to: '/best-decks',

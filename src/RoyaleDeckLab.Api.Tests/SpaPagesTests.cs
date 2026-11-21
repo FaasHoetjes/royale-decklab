@@ -35,14 +35,16 @@ public sealed class SpaPagesTests
         Assert.False(page.NoIndex);
     }
 
-    [Fact]
-    public void AnUnlistedPage_IsServedButNotIndexedOrLinkedForCrawlers()
+    [Theory]
+    [InlineData("/crown-series")]
+    [InlineData("/ladder")]
+    public void AnUnlistedPage_IsServedButNotIndexedOrLinkedForCrawlers(string path)
     {
-        var page = Resolve("/crown-series");
+        var page = Resolve(path);
 
         Assert.Equal(200, page.StatusCode);
         Assert.True(page.NoIndex);
-        Assert.DoesNotContain("href=\"/crown-series\"", SpaContent.Faq("FAQ", null));
+        Assert.DoesNotContain($"href=\"{path}\"", SpaContent.Faq("FAQ", null));
     }
 
     [Fact]
@@ -207,6 +209,7 @@ public sealed class SpaPagesTests
         Assert.Contains("<loc>https://royaledecklab.com/clan</loc>", xml);
         Assert.Contains("<loc>https://royaledecklab.com/patch</loc>", xml);
         Assert.DoesNotContain("/crown-series", xml);
+        Assert.DoesNotContain("/ladder", xml);
         Assert.Equal(10, Count(xml, "<loc>"));
     }
 
