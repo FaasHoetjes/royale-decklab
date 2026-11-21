@@ -227,11 +227,10 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         CrownSeriesLeague league,
         int deckCount,
-        DuelValues? values = null,
+        DuelValues values,
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        values ??= DuelValues.Default;
         var capped = league.CapLevels(cardMap);
         var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
         var candidates = new List<(DeckMeta deck, double score)>();

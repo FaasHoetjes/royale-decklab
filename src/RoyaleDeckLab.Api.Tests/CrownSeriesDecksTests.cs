@@ -96,8 +96,8 @@ public sealed class CrownSeriesDecksTests : IDisposable
             Build.Deck(Build.Eight(30), confidence: 0.50),
         };
 
-        var kings = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 3);
-        var hammer = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Hammer, deckCount: 3);
+        var kings = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 3, DuelValues.Default);
+        var hammer = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Hammer, deckCount: 3, DuelValues.Default);
 
         Assert.Contains(kings.Decks, d => d.CardIds.SequenceEqual(maxedDeck));
         Assert.Contains(hammer.Decks, d => d.CardIds.SequenceEqual(lowerDeck));
@@ -162,7 +162,22 @@ public sealed class CrownSeriesDecksTests : IDisposable
 
     private const double MetaConfidence = 0.55;
 
+    [Fact]
+    public void Scores_with_the_values_it_is_given()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id)));
+        var values = DuelValues.Default with { Specials = new SpecialValues(Evo: 0.5, Hero: 0.1) };
+
+        var score = DuelScoreWith(values, cards, (1, CardVersionKind.Evo));
+
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -0.5), score, 10);
+    }
+
     private double DuelScore(Dictionary<int, PlayerItemLevel> cards, params (int Id, CardVersionKind Version)[] specials)
+        => DuelScoreWith(DuelValues.Default, cards, specials);
+
+    private double DuelScoreWith(
+        DuelValues values, Dictionary<int, PlayerItemLevel> cards, params (int Id, CardVersionKind Version)[] specials)
     {
         var deck = Build.Eight(1);
         var versions = deck
@@ -170,7 +185,7 @@ public sealed class CrownSeriesDecksTests : IDisposable
             .ToList();
         var meta = new[] { Build.Deck(deck, confidence: MetaConfidence, versions: versions) };
 
-        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 1);
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 1, values);
 
         return Assert.Single(result.Decks).PlayerScore;
     }
