@@ -103,6 +103,25 @@ public sealed class DuelLevelFitEntity
     public double HeroError { get; set; }
 }
 
+public sealed class DuelAppliedValuesEntity
+{
+    public long AppliedAtMs { get; set; }
+
+    public double PerLevel { get; set; }
+
+    public double WeakestCard { get; set; }
+
+    public double Evo { get; set; }
+
+    public double Hero { get; set; }
+
+    public double PriorRounds { get; set; }
+
+    public long LevelsFittedAtMs { get; set; }
+
+    public long CushionFittedAtMs { get; set; }
+}
+
 public sealed class DuelCushionFitEntity
 {
     public long FittedAtMs { get; set; }

@@ -22,6 +22,7 @@ public sealed class CrownSeriesDecksTests : IDisposable
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<BattleRepository>();
         services.AddScoped<CrownSeriesRepository>();
+        services.AddScoped<DuelLevelFitRepository>();
         services.AddScoped(sp => new MetaBuilder(null!, null!, sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaOptions>>(),
             NullLogger<MetaBuilder>.Instance));
         _services = services.BuildServiceProvider();
@@ -269,6 +270,7 @@ public sealed class CrownSeriesDecksTests : IDisposable
     private CrownSeriesMeta Meta() => new(
         _services.GetRequiredService<IServiceScopeFactory>(),
         Microsoft.Extensions.Options.Options.Create(new CrownSeriesOptions()),
+        new DuelValuesStore(_services.GetRequiredService<IServiceScopeFactory>()),
         NullLogger<CrownSeriesMeta>.Instance);
 
     private async Task StoreAsync(params CrownSeriesRound[] rounds)

@@ -247,9 +247,10 @@ public sealed class MetaBuilder(
 
     /// <param name="records">Each battle with how much it counts next to a full one.</param>
     /// <param name="rankingQuantile">Which quantile of a deck's posterior win rate it ranks by; the cautious war setting by default.</param>
+    /// <param name="priorGames">How many imaginary games at the prior a deck's record is weighed against; war's by default.</param>
     public List<DeckMeta> AggregateWeightedBattles(
         IEnumerable<(BattleRecord Record, double Weight)> records, long epochStartMs = 0, double? priorWinRate = null,
-        double? rankingQuantile = null)
+        double? rankingQuantile = null, double? priorGames = null)
     {
         var prior = priorWinRate ?? _opt.PriorWinRate;
         var quantile = rankingQuantile ?? _opt.RankingQuantile;
@@ -297,7 +298,7 @@ public sealed class MetaBuilder(
                 CardIds = agg.CardIds,
                 WinRate = agg.WeightedWins / agg.WeightedGames,
                 Confidence = DomainMath.PosteriorQuantile(
-                    agg.WeightedWins, agg.WeightedGames, _opt.PriorGames, prior, quantile),
+                    agg.WeightedWins, agg.WeightedGames, priorGames ?? _opt.PriorGames, prior, quantile),
                 Uses = agg.Games,
                 Players = agg.Players.Count,
                 PickRate = sampledPlayers.Count > 0 ? (double)agg.Players.Count / sampledPlayers.Count : 0,

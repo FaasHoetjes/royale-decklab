@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Data;
@@ -7,6 +8,8 @@ public sealed record StoredDuelLevelFits(
     long FittedAtMs, long LatestRoundMs, IReadOnlyList<DuelLevelFit> Fits, IReadOnlyList<DuelCushionFit> Cushions);
 
 public sealed record StoredRefit(long FittedAtMs, long LatestRoundMs);
+
+public sealed record Fitted<T>(long FittedAtMs, T Fit);
 
 public sealed class DuelLevelFitRepository(MetaDbContext db)
 {
@@ -46,6 +49,40 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
     }
 
     public StoredDuelLevelFits? Latest() => History(1).FirstOrDefault();
+
+    public AppliedDuelValues? LatestApplied()
+        => db.DuelAppliedValues.AsNoTracking().OrderByDescending(v => v.AppliedAtMs).FirstOrDefault() is { } e
+            ? new AppliedDuelValues(
+                new DuelValues(new LevelFit(e.PerLevel, e.WeakestCard), new SpecialValues(e.Evo, e.Hero), e.PriorRounds),
+                e.AppliedAtMs,
+                e.LevelsFittedAtMs,
+                e.CushionFittedAtMs)
+            : null;
+
+    public async Task SaveAppliedAsync(AppliedDuelValues applied, CancellationToken ct = default)
+    {
+        await MetaWriteGate.Instance.WaitAsync(ct);
+        try
+        {
+            var v = applied.Values;
+            db.DuelAppliedValues.Add(new DuelAppliedValuesEntity
+            {
+                AppliedAtMs = applied.AppliedAtMs,
+                PerLevel = v.Levels.PerLevel,
+                WeakestCard = v.Levels.WeakestCard,
+                Evo = v.Specials.Evo,
+                Hero = v.Specials.Hero,
+                PriorRounds = v.PriorRounds,
+                LevelsFittedAtMs = applied.LevelsFittedAtMs,
+                CushionFittedAtMs = applied.CushionFittedAtMs,
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            MetaWriteGate.Instance.Release();
+        }
+    }
 
     public StoredRefit? LatestLevelRefit() => db.DuelLevelFits
         .OrderByDescending(f => f.FittedAtMs)

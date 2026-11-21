@@ -92,14 +92,15 @@ public sealed class DeckAnalyzer
         return ((double)totalLevel / cardIds.Length, minLevel);
     }
 
-    private static double? ScoreDuelDeck(IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel)
+    private static double? ScoreDuelDeck(
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap, DeckMeta deck, double opponentLevel, DuelValues values)
     {
         if (DeckLevels(cardMap, deck.CardIds) is not var (meanLevel, minLevel))
         {
             return null;
         }
-        var levelLogit = CrownSeriesLevels.Fit.Logit(meanLevel, minLevel, opponentLevel);
-        var missing = CardVersionRules.MissingSpecialValue(deck.CardIds, deck.CardVersions, cardMap, CrownSeriesLevels.Specials);
+        var levelLogit = values.Levels.Logit(meanLevel, minLevel, opponentLevel);
+        var missing = CardVersionRules.MissingSpecialValue(deck.CardIds, deck.CardVersions, cardMap, values.Specials);
         return LevelModel.WinProbability(deck.Confidence, levelLogit - missing);
     }
 
@@ -226,15 +227,17 @@ public sealed class DeckAnalyzer
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
         CrownSeriesLeague league,
         int deckCount,
+        DuelValues? values = null,
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
+        values ??= DuelValues.Default;
         var capped = league.CapLevels(cardMap);
         var opponent = CrownSeriesLevels.OpponentLevel(capped.Values, league);
         var candidates = new List<(DeckMeta deck, double score)>();
         foreach (var deck in duelMeta)
         {
-            if (ScoreDuelDeck(capped, deck, opponent) is { } score)
+            if (ScoreDuelDeck(capped, deck, opponent, values) is { } score)
             {
                 candidates.Add((deck, score));
             }

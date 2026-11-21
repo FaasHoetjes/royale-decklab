@@ -12,9 +12,11 @@ public sealed record CrownSeriesCapMeta(IReadOnlyList<DeckMeta> Decks, int Round
     public static CrownSeriesCapMeta Empty { get; } = new([], 0);
 }
 
-public sealed record CrownSeriesMetaSnapshot(IReadOnlyDictionary<int, CrownSeriesCapMeta> ByCap, int Rounds, long Version)
+/// <param name="Values">The values the decks were built with and are scored by, so a lineup never mixes two sets.</param>
+public sealed record CrownSeriesMetaSnapshot(
+    IReadOnlyDictionary<int, CrownSeriesCapMeta> ByCap, int Rounds, long Version, DuelValues Values)
 {
-    public static CrownSeriesMetaSnapshot Empty { get; } = new(new Dictionary<int, CrownSeriesCapMeta>(), 0, 0);
+    public static CrownSeriesMetaSnapshot Empty { get; } = new(new Dictionary<int, CrownSeriesCapMeta>(), 0, 0, DuelValues.Default);
 
     public CrownSeriesCapMeta ForCap(int cap) => ByCap.GetValueOrDefault(cap) ?? CrownSeriesCapMeta.Empty;
 }
@@ -23,6 +25,7 @@ public sealed record CrownSeriesMetaSnapshot(IReadOnlyDictionary<int, CrownSerie
 public sealed class CrownSeriesMeta(
     IServiceScopeFactory scopeFactory,
     IOptions<CrownSeriesOptions> options,
+    DuelValuesStore duelValues,
     ILogger<CrownSeriesMeta> logger)
 {
     // Every round has a winner and a loser, so the average Duel deck wins half; war's prior sits above that.
@@ -66,13 +69,14 @@ public sealed class CrownSeriesMeta(
                 .GroupBy(r => r.Cap)
                 .ToDictionary(g => g.Key, g => g.Count());
 
+            var values = duelValues.Current.Values;
             var byCap = new Dictionary<int, CrownSeriesCapMeta>();
             foreach (var cap in CrownSeriesCaps.All)
             {
                 ct.ThrowIfCancellationRequested();
-                byCap[cap] = BuildCap(builder, rounds, roundsPerCap, cap, patchStartMs);
+                byCap[cap] = BuildCap(builder, rounds, roundsPerCap, cap, patchStartMs, values.PriorRounds);
             }
-            Volatile.Write(ref _current, new CrownSeriesMetaSnapshot(byCap, rounds.Count, Current.Version + 1));
+            Volatile.Write(ref _current, new CrownSeriesMetaSnapshot(byCap, rounds.Count, Current.Version + 1, values));
             _builtPatchStartMs = patchStartMs;
             logger.LogInformation("Crown Series meta from {Rounds} rounds; rounds per cap: {@RoundsPerCap}",
                 rounds.Count, byCap.ToDictionary(c => c.Key, c => c.Value.Rounds));
@@ -89,14 +93,15 @@ public sealed class CrownSeriesMeta(
     /// fitted values.
     /// </summary>
     private CrownSeriesCapMeta BuildCap(
-        MetaBuilder builder, IReadOnlyList<CappedBattle> rounds, IReadOnlyDictionary<int, int> roundsPerCap, int cap, long patchStartMs)
+        MetaBuilder builder, IReadOnlyList<CappedBattle> rounds, IReadOnlyDictionary<int, int> roundsPerCap, int cap, long patchStartMs,
+        double priorRounds)
     {
         var capWeights = CrownSeriesBorrowing.WeightsFor(
             cap, roundsPerCap, options.Value.OtherCapWeight, options.Value.MinBorrowedRounds);
         var weighted = rounds
             .Select(r => (r.Record, Weight: capWeights.GetValueOrDefault(r.Cap)))
             .Where(r => r.Weight > 0);
-        var decks = builder.AggregateWeightedBattles(weighted, patchStartMs, DuelPriorWinRate, DuelRankingQuantile);
+        var decks = builder.AggregateWeightedBattles(weighted, patchStartMs, DuelPriorWinRate, DuelRankingQuantile, priorRounds);
 
         var ownRounds = rounds.Where(r => r.Cap == cap).ToList();
         var ownUses = ownRounds

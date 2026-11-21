@@ -129,6 +129,19 @@ public static class MetaSchema
             );
             """);
         db.Database.ExecuteSqlRaw(
+            """
+            CREATE TABLE IF NOT EXISTS duel_applied_values (
+                applied_at_ms INTEGER NOT NULL CONSTRAINT PK_duel_applied_values PRIMARY KEY,
+                per_level REAL NOT NULL,
+                weakest_card REAL NOT NULL,
+                evo REAL NOT NULL,
+                hero REAL NOT NULL,
+                prior_rounds REAL NOT NULL,
+                levels_fitted_at_ms INTEGER NOT NULL,
+                cushion_fitted_at_ms INTEGER NOT NULL
+            );
+            """);
+        db.Database.ExecuteSqlRaw(
             "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
     }
 
