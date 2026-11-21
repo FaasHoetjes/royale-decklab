@@ -144,7 +144,12 @@ public sealed record LineupOptions
                 error = "a required card's version must be normal, evo or hero";
                 return false;
             }
-            versions[int.Parse(id)] = kind.Value;
+            if (!int.TryParse(id, out var cardId) || !ids.Contains(cardId))
+            {
+                error = "require must be a comma-separated list of card ids";
+                return false;
+            }
+            versions[cardId] = kind.Value;
         }
         return true;
     }

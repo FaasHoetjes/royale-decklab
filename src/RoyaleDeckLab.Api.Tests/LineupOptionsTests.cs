@@ -41,6 +41,8 @@ public sealed class LineupOptionsTests
     [InlineData("5:1")]
     [InlineData("5:")]
     [InlineData("x:evo")]
+    [InlineData(":evo")]
+    [InlineData("5,:hero")]
     public void Rejects_an_unknown_version(string require)
         => Assert.False(Parse(require: require).ok);
 
