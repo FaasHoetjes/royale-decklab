@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import WarDeckResult from '../components/WarDeckResult';
 import { useAllCards, usePlayerCollection, usePlayerWarDecks } from '../queries';
 import { ApiError, type SeasonBoosts } from '../api';
 import { toBuilderCards } from '../lib/builderCards';
 import { withSeasonBoosts } from '../lib/seasonBoosts';
-import { deckKey, hasActiveOptions, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
+import { deckKey, saveDefaults, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
 import { playerLinkOptions } from '../lib/shareLink';
 import { track } from '../lib/stats';
 import { routeFlag } from '../lib/routeState';
@@ -15,6 +15,7 @@ import { homePath } from '../components/navItems';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
 import PlayedToday from '../components/warDeck/PlayedToday';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useOptionsQuery } from '../hooks/useOptionsQuery';
 
 export default function WarDeckGenerator() {
   const { playerId } = useParams();
@@ -33,15 +34,7 @@ export default function WarDeckGenerator() {
   const { shared, options } = useMemo(() => playerLinkOptions(searchParams), [searchParams]);
   const query = toQuery(options);
 
-  // Locking or unlocking a deck doesn't change the lineup on screen, so it doesn't fetch: the locks
-  // go along with the next request that does (a different level, include or exclude). Clearing every
-  // option does fetch, so Reset always gets the plain lineup even if the one shown was built around a lock.
-  const [fetched, setFetched] = useState({ options, query });
-  let apiQuery = fetched.query;
-  if (fetched.options !== options) {
-    if (!onlyLocksChanged(fetched.options, options) || !hasActiveOptions(options)) apiQuery = query;
-    setFetched({ options, query: apiQuery });
-  }
+  const apiQuery = useOptionsQuery(options, query);
 
   // Write remembered defaults and cleaned-up values back, so the address bar always matches what is shown.
   const showOptions = (next: string) => navigate({ search: next ? `?${next}` : '' }, { replace: true, state: location.state });
@@ -161,15 +154,3 @@ export default function WarDeckGenerator() {
 }
 
 const NO_BOOSTS: SeasonBoosts = { level: 0, cardIds: [] };
-
-const sameIds = (a: number[], b: number[]) => a.length === b.length && a.every((id, i) => id === b[i]);
-
-function onlyLocksChanged(a: GeneratorOptions, b: GeneratorOptions): boolean {
-  return (
-    a.decks === b.decks &&
-    a.minLevel === b.minLevel &&
-    a.boosts === b.boosts &&
-    sameIds(a.ban, b.ban) &&
-    sameIds(a.require, b.require)
-  );
-}
