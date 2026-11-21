@@ -75,7 +75,8 @@ public sealed class DuelLevelRefitTests : IDisposable
         Assert.NotNull(latest);
         Assert.Equal(1_900, latest.LatestRoundMs);
         Assert.Equal([0.32, 0.2], latest.Fits.Select(f => f.Evo.Value));
-        Assert.Equal([2_000L, 1_000L], fits.History().Select(h => h.FittedAtMs));
+        Assert.Equal([2_000L, 1_000L], fits.History(5).Select(h => h.FittedAtMs));
+        Assert.Equal([2_000L], fits.History(1).Select(h => h.FittedAtMs));
     }
 
     private static DuelLevelFit Fit(int cap, double evo)

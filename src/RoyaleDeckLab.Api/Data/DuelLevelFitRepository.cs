@@ -21,15 +21,19 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         }
     }
 
-    /// <summary>Every refit, newest first.</summary>
-    public IReadOnlyList<StoredDuelLevelFits> History()
-        => db.DuelLevelFits
+    /// <summary>The latest refits, newest first.</summary>
+    public IReadOnlyList<StoredDuelLevelFits> History(int refits)
+    {
+        var times = db.DuelLevelFits.Select(f => f.FittedAtMs).Distinct().OrderByDescending(t => t).Take(refits).ToList();
+        return db.DuelLevelFits
             .AsNoTracking()
+            .Where(f => times.Contains(f.FittedAtMs))
             .AsEnumerable()
             .GroupBy(f => (f.FittedAtMs, f.LatestRoundMs))
             .OrderByDescending(g => g.Key.FittedAtMs)
             .Select(g => new StoredDuelLevelFits(g.Key.FittedAtMs, g.Key.LatestRoundMs, g.OrderBy(f => f.Cap).Select(ToFit).ToList()))
             .ToList();
+    }
 
     public StoredDuelLevelFits? Latest()
     {
