@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ScoredDeck } from '../api';
 import type { SwapOption } from '../components/SwapDeckModal';
 import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
+import { swapCandidates } from '../lib/swapCandidates';
 
 interface KeptOrder {
   master: number;
@@ -49,17 +50,7 @@ export function useSwappableLineup(decks: ScoredDeck[], alternatives: ScoredDeck
 
   const [swapSlot, setSwapSlot] = useState<number | null>(null);
 
-  const candidatesForSlot = (slotPos: number): number[] => {
-    const otherCards = new Set<number>();
-    slots.forEach((master, pos) => {
-      if (pos !== slotPos) deckAt(master).cardIds.forEach((id) => otherCards.add(id));
-    });
-
-    const base = [slots[slotPos]!, ...alternatives.map((_, k) => decks.length + k)];
-    const valid = base.filter((master) => !deckAt(master).cardIds.some((id) => otherCards.has(id)));
-    valid.sort((a, b) => deckAt(b).playerScore - deckAt(a).playerScore);
-    return valid;
-  };
+  const candidatesForSlot = (slotPos: number): number[] => swapCandidates([...decks, ...alternatives], slots, slotPos);
 
   const swapOptions = (slotPos: number): SwapOption[] =>
     candidatesForSlot(slotPos).map((master) => {
