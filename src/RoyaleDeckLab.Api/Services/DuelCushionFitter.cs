@@ -12,7 +12,7 @@ public static class DuelCushionFitter
 {
     public const int MinDeckRounds = 10;
 
-    public const int MinDecks = 50;
+    public const int MinDecks = 200;
 
     public static IReadOnlyList<DuelCushionFit> Fit(IEnumerable<Duel> duels)
     {
@@ -64,7 +64,9 @@ public static class DuelCushionFitter
             var luck = average * (1 - average);
             var between = decks.Sum(d => d.Rounds * Math.Pow((double)d.Wins / d.Rounds - average, 2));
             var scale = total - decks.Sum(d => (double)d.Rounds * d.Rounds) / total;
-            return new(decks.Count, total, between - decks.Count * luck, scale, total * luck);
+            // Between-deck variation is expected at (decks - 1)(luck - variance) + variance * scale, since the average is
+            // fitted from the same decks and each deck's own luck is p(1 - p), which averages to luck - variance.
+            return new(decks.Count, total, between - (decks.Count - 1) * luck, scale - (decks.Count - 1), total * luck);
         }
 
         public DuelCushionFit? ToFit(int cap)

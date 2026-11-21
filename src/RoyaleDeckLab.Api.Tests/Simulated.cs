@@ -82,4 +82,31 @@ internal static class Simulated
         EventTag = "",
         GameModeId = 0,
     };
+
+    /// <summary>
+    /// One-round Duels in which decks with win rates spread evenly around the average each meet a deck seen only once,
+    /// so only the spread decks reach the rounds a cushion fit counts.
+    /// </summary>
+    /// <param name="exact">Win exactly the deck's share of its rounds, leaving no luck at all.</param>
+    public static List<Duel> SpreadDecks(
+        int cap, double spread, int decks, int roundsPerDeck, double average = 0.5, int seed = 0, int firstDeck = 0, bool exact = false)
+    {
+        var random = new Random(seed);
+        var duels = new List<Duel>();
+        var opponent = 1_000_000 + firstDeck * 1_000;
+        for (var d = 0; d < decks; d++)
+        {
+            var winRate = average + (d % 2 == 0 ? spread : -spread);
+            var deck = SpreadSide($"#P{firstDeck + d}", 8 * (firstDeck + d), cap);
+            for (var r = 0; r < roundsPerDeck; r++)
+            {
+                var won = exact ? r < Math.Round(winRate * roundsPerDeck) : random.NextDouble() < winRate;
+                duels.Add(new Duel(cap, [new PairedRound(deck, SpreadSide("#O", 8 * opponent++, cap), won)]));
+            }
+        }
+        return duels;
+    }
+
+    private static DuelSide SpreadSide(string tag, int firstCard, int level)
+        => new(tag, Enumerable.Range(firstCard, 8).Select(id => new CrownSeriesCard(id, level, CardVersionKind.Normal)).ToList());
 }
