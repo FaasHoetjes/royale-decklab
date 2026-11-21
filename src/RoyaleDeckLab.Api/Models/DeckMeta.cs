@@ -5,7 +5,10 @@ public sealed class DeckMeta
     public required int[] CardIds { get; init; }
     public required double WinRate { get; init; }
 
-    /// <summary>Cautious win rate (<see cref="DomainMath.PosteriorQuantile"/>); what scoring ranks by.</summary>
+    /// <summary>
+    /// The win rate scoring ranks by (<see cref="DomainMath.PosteriorQuantile"/>): cautious for war decks, the median
+    /// for Crown Series Duel decks.
+    /// </summary>
     public required double Confidence { get; init; }
     public required int Uses { get; init; }
 
