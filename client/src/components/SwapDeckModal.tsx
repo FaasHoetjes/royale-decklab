@@ -23,7 +23,9 @@ const SPECIAL_LABEL = { evo: 'Evo', hero: 'Hero' } as const;
 /** The Evolution or Hero the meta deck runs on this card that the player hasn't unlocked. */
 function missingVersion(opt: SwapOption, cardId: number): Exclude<CardVersion, 'normal'> | null {
   const meta = versionOf(opt.metaCardVersions, cardId);
-  return meta !== 'normal' && versionOf(opt.cardVersions, cardId) !== meta ? meta : null;
+  if (meta === 'normal' || versionOf(opt.cardVersions, cardId) === meta) return null;
+  const owned = opt.cards.find((c) => c.id === cardId)?.evolutionLevel ?? 0;
+  return (owned & (meta === 'evo' ? 1 : 2)) === 0 ? meta : null;
 }
 
 interface SwapDeckModalProps {
@@ -62,7 +64,7 @@ export default function SwapDeckModal({
     ? []
     : currentCardOrder
       ? inOrder(current.cards, currentCardOrder)
-      : orderBySlots(current.cards, slotVersionOf(current.metaCardVersions, current.cardVersions));
+      : orderBySlots(current.cards, slotVersionOf(current.metaCardVersions, current.cardVersions, current.cards));
   const currentIds = new Set(currentOrder.map((c) => c.id));
   const sameAsCurrent = (opt: SwapOption, cardId: number) =>
     current != null &&
@@ -152,7 +154,7 @@ export default function SwapDeckModal({
                   </span>
                 </div>
                 <div style={{ ...styles.cards, gap: isMobile ? '4px' : '6px' }}>
-                  {(isCurrent ? currentOrder : alignToReference(opt.cards, slotVersionOf(opt.metaCardVersions, opt.cardVersions), currentOrder)).map((card) => {
+                  {(isCurrent ? currentOrder : alignToReference(opt.cards, slotVersionOf(opt.metaCardVersions, opt.cardVersions, opt.cards), currentOrder)).map((card) => {
                     const icon = cardIconUrl(card.iconUrls, versionOf(opt.cardVersions, card.id));
                     const isNew = !isCurrent && current != null && !sameAsCurrent(opt, card.id);
                     const isSame = !isCurrent && current != null && !isNew;

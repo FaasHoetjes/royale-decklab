@@ -68,13 +68,19 @@ describe('slotVersionOf', () => {
   const refs = (map: Record<number, CardVersion>) => Object.entries(map).map(([id, version]) => ({ cardId: Number(id), version }));
 
   test("puts the player's own evo in the slot of an evo they lack", () => {
-    const slot = slotVersionOf(refs({ 1: 'evo', 2: 'hero', 3: 'evo' }), refs({ 2: 'hero', 3: 'evo', 8: 'evo' }));
+    const slot = slotVersionOf(refs({ 1: 'evo', 2: 'hero', 3: 'evo' }), refs({ 2: 'hero', 3: 'evo', 8: 'evo' }), deck(1, 2, 3, 4, 5, 6, 7, 8));
     expect(ids(orderBySlots(deck(1, 2, 3, 4, 5, 6, 7, 8), slot)).slice(0, 3)).toEqual([3, 2, 8]);
     expect(slot(1)).toBe('normal');
   });
 
   test('keeps a special the player lacks in a slot that is still free', () => {
-    const slot = slotVersionOf(refs({ 1: 'evo', 2: 'hero' }), refs({ 2: 'hero' }));
+    const slot = slotVersionOf(refs({ 1: 'evo', 2: 'hero' }), refs({ 2: 'hero' }), deck(1, 2, 3, 4, 5, 6, 7, 8));
     expect(slot(1)).toBe('evo');
+  });
+
+  test('keeps a special the player owns but plays as itself out of the slots', () => {
+    const cards = [{ id: 1, evolutionLevel: 1 }, ...deck(2, 3, 4, 5, 6, 7, 8)];
+    const slot = slotVersionOf(refs({ 1: 'evo', 2: 'hero' }), refs({ 2: 'hero' }), cards);
+    expect(slot(1)).toBe('normal');
   });
 });

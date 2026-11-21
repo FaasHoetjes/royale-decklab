@@ -90,7 +90,7 @@ export function useSwappableLineup(
     const kept = slotState.orders[slotPos];
     if (kept?.master === master) return kept.ids;
     const deck = deckAt(master);
-    return shownOrder?.(deck) ?? orderBySlots(deck.cards, slotVersionOf(deck.metaCardVersions, deck.cardVersions)).map((c) => c.id);
+    return shownOrder?.(deck) ?? orderBySlots(deck.cards, slotVersionOf(deck.metaCardVersions, deck.cardVersions, deck.cards)).map((c) => c.id);
   };
 
   const selectForSlot = (slotPos: number, master: number) => {
@@ -98,7 +98,7 @@ export function useSwappableLineup(
     const next = deckAt(master);
     const ids = alignToReference(
       next.cards,
-      slotVersionOf(next.metaCardVersions, next.cardVersions),
+      slotVersionOf(next.metaCardVersions, next.cardVersions, next.cards),
       inOrder(current.cards, cardOrderAt(slotPos))
     ).map((c) => c.id);
     setSlotState((prev) => ({

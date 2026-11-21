@@ -40,6 +40,8 @@ export interface DeckCardData {
   name: string;
   level: number;
   maxLevel: number;
+  /** Which specials the player has unlocked: 1 = Evo, 2 = Hero. */
+  evolutionLevel?: number;
   elixirCost?: number;
   iconUrls?: CardIconUrls;
   /** The player's own level when this season's boost raises `level`. */
