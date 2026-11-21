@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import type { ScoredDeck, SeasonBoosts } from '../api';
 import type { BuilderCard } from '../lib/builderCards';
 import { DEFAULT_OPTIONS, deckKey, hasActiveOptions, type GeneratorOptions } from '../lib/generatorOptions';
@@ -9,8 +9,8 @@ import ShareLineupButton from './ShareLineupButton';
 import SwapDeckModal from './SwapDeckModal';
 import NoDecks from './warDeck/NoDecks';
 import Shortfall from './warDeck/Shortfall';
-import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useSwappableLineup } from '../hooks/useSwappableLineup';
 import { encodeShare } from '../lib/shareLink';
 
 interface WarDeckResultProps {
@@ -37,18 +37,6 @@ interface WarDeckResultProps {
   playedToday?: ReactNode;
 }
 
-interface KeptOrder {
-  master: number;
-  ids: number[];
-}
-
-interface LineupState {
-  decks: ScoredDeck[];
-  arranged: number[];
-  slots: number[];
-  orders: Record<number, KeptOrder>;
-}
-
 export default function WarDeckResult({
   playerName,
   playerTag,
@@ -69,13 +57,6 @@ export default function WarDeckResult({
   const lockedKeys = useMemo(() => new Set(options.lock.map(deckKey)), [options.lock]);
   // Where each deck was when it was locked: the API returns locked decks first, but they should stay put.
   const lockPositions = useRef(new Map<string, number>());
-  const allDecks = useMemo(() => [...decks, ...alternatives], [decks, alternatives]);
-  const deckAt = (master: number): ScoredDeck => {
-    const deck = allDecks[master];
-    if (!deck) throw new Error(`No deck at index ${master}`);
-    return deck;
-  };
-
   const arrange = (): number[] => {
     const order: (number | null)[] = decks.map(() => null);
     const rest: number[] = [];
@@ -87,19 +68,11 @@ export default function WarDeckResult({
     });
     return order.map((master) => master ?? rest.shift()!);
   };
-
-  // Re-arranged in the same render a new result arrives, so old positions never index into the new list.
-  // `arranged` is the lineup as generated; `slots` also reflects swaps made since.
-  const [slotState, setSlotState] = useState<LineupState>(() => {
-    const arranged = arrange();
-    return { decks, arranged, slots: arranged, orders: {} };
+  const lineup = useSwappableLineup(decks, alternatives, {
+    arrange,
+    shownOrder: (deck) => shared?.decks.find((ids) => deckKey(ids) === deckKey(deck.cardIds)),
   });
-  let slots = slotState.slots;
-  if (slotState.decks !== decks) {
-    slots = arrange();
-    setSlotState({ decks, arranged: slots, slots, orders: {} });
-  }
-  const swapped = slots.some((master, pos) => master !== slotState.arranged[pos]);
+  const { slots, deckAt, swapped, cardOrderAt } = lineup;
 
   const toggleLock = (slotPos: number) => {
     const deck = deckAt(slots[slotPos]!);
@@ -113,54 +86,12 @@ export default function WarDeckResult({
     }
   };
 
-  const [swapSlot, setSwapSlot] = useState<number | null>(null);
-
-  const candidatesForSlot = (slotPos: number): number[] => {
-    const otherCards = new Set<number>();
-    slots.forEach((master, pos) => {
-      if (pos !== slotPos) deckAt(master).cardIds.forEach((id) => otherCards.add(id));
-    });
-
-    const base = [slots[slotPos]!, ...alternatives.map((_, k) => decks.length + k)];
-    const valid = base.filter(
-      (master) => !deckAt(master).cardIds.some((id) => otherCards.has(id))
-    );
-    valid.sort((a, b) => deckAt(b).playerScore - deckAt(a).playerScore);
-    return valid;
-  };
-
-  const cardOrderAt = (slotPos: number): number[] => {
-    const master = slots[slotPos]!;
-    const kept = slotState.orders[slotPos];
-    if (kept?.master === master) return kept.ids;
-    const deck = deckAt(master);
-    const asShared = shared?.decks.find((ids) => deckKey(ids) === deckKey(deck.cardIds));
-    if (asShared) return asShared;
-    return orderBySlots(deck.cards, slotVersionOf(deck.metaCardVersions, deck.cardVersions)).map((c) => c.id);
-  };
-
-  const selectForSlot = (slotPos: number, master: number) => {
-    const current = deckAt(slots[slotPos]!);
-    const next = deckAt(master);
-    const ids = alignToReference(
-      next.cards,
-      slotVersionOf(next.metaCardVersions, next.cardVersions),
-      inOrder(current.cards, cardOrderAt(slotPos))
-    ).map((c) => c.id);
-    setSlotState((prev) => ({
-      ...prev,
-      slots: prev.slots.map((m, pos) => (pos === slotPos ? master : m)),
-      orders: { ...prev.orders, [slotPos]: { master, ids } },
-    }));
-    setSwapSlot(null);
-  };
-
   const liveTotalScore = slots.reduce((sum, master) => sum + deckAt(master).playerScore, 0);
   const customized = hasActiveOptions(options);
 
   // Back to the plain generated lineup: undo swaps, and clear any options (which fetches it again).
   const resetLineup = () => {
-    setSlotState((prev) => ({ ...prev, slots: prev.arranged, orders: {} }));
+    lineup.undoSwaps();
     if (customized) {
       lockPositions.current.clear();
       onOptionsChange(DEFAULT_OPTIONS);
@@ -244,7 +175,7 @@ export default function WarDeckResult({
         {slots.map((master, slotPos) => {
           const deck = deckAt(master);
           const locked = lockedKeys.has(deckKey(deck.cardIds));
-          const swapOptions = candidatesForSlot(slotPos);
+          const swapOptions = lineup.swapOptions(slotPos);
           return (
             <DeckCard
               key={slotPos}
@@ -259,7 +190,7 @@ export default function WarDeckResult({
               playerScore={deck.playerScore}
               deckNumber={slotPos + 1}
               canSwap={!shared && !locked && swapOptions.length > 1}
-              onSwap={() => setSwapSlot(slotPos)}
+              onSwap={() => lineup.openSwap(slotPos)}
               priority={slotPos === 0}
               locked={!shared && locked}
               onToggleLock={shared ? undefined : () => toggleLock(slotPos)}
@@ -268,25 +199,14 @@ export default function WarDeckResult({
         })}
       </div>
 
-      {swapSlot != null && (
+      {lineup.swapSlot != null && (
         <SwapDeckModal
-          slotNumber={swapSlot + 1}
-          currentMaster={slots[swapSlot] ?? -1}
-          currentCardOrder={cardOrderAt(swapSlot)}
-          options={candidatesForSlot(swapSlot).map((master) => {
-            const d = deckAt(master);
-            return {
-              master,
-              cards: d.cards,
-              metaWinRate: d.metaWinRate,
-              playerScore: d.playerScore,
-              uses: d.uses,
-              cardVersions: d.cardVersions,
-              metaCardVersions: d.metaCardVersions,
-            };
-          })}
-          onSelect={(master) => selectForSlot(swapSlot, master)}
-          onClose={() => setSwapSlot(null)}
+          slotNumber={lineup.swapSlot + 1}
+          currentMaster={slots[lineup.swapSlot] ?? -1}
+          currentCardOrder={cardOrderAt(lineup.swapSlot)}
+          options={lineup.swapOptions(lineup.swapSlot)}
+          onSelect={(master) => lineup.selectForSlot(lineup.swapSlot!, master)}
+          onClose={lineup.closeSwap}
         />
       )}
     </div>
