@@ -18,6 +18,8 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
     public DbSet<SeasonBoostEntity> SeasonBoosts => Set<SeasonBoostEntity>();
     public DbSet<DuelLevelFitEntity> DuelLevelFits => Set<DuelLevelFitEntity>();
 
+    public DbSet<DuelCushionFitEntity> DuelCushionFits => Set<DuelCushionFitEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var cardIdsConverter = new ValueConverter<int[], string>(
@@ -151,6 +153,19 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             f.Property(x => x.EvoError).HasColumnName("evo_error").IsRequired();
             f.Property(x => x.Hero).HasColumnName("hero").IsRequired();
             f.Property(x => x.HeroError).HasColumnName("hero_error").IsRequired();
+        });
+
+        modelBuilder.Entity<DuelCushionFitEntity>(f =>
+        {
+            f.ToTable("duel_cushion_fits");
+            f.HasKey(x => new { x.FittedAtMs, x.Cap });
+            f.Property(x => x.FittedAtMs).HasColumnName("fitted_at_ms");
+            f.Property(x => x.Cap).HasColumnName("cap");
+            f.Property(x => x.LatestRoundMs).HasColumnName("latest_round_ms").IsRequired();
+            f.Property(x => x.Decks).HasColumnName("decks").IsRequired();
+            f.Property(x => x.Rounds).HasColumnName("rounds").IsRequired();
+            f.Property(x => x.Spread).HasColumnName("spread").IsRequired();
+            f.Property(x => x.PriorRounds).HasColumnName("prior_rounds").IsRequired();
         });
 
         modelBuilder.Entity<CardPeriodEntity>(c =>
