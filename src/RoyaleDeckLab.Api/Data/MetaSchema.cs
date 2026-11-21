@@ -98,6 +98,26 @@ public static class MetaSchema
             );
             """);
         db.Database.ExecuteSqlRaw(
+            """
+            CREATE TABLE IF NOT EXISTS duel_level_fits (
+                fitted_at_ms INTEGER NOT NULL,
+                cap INTEGER NOT NULL,
+                latest_round_ms INTEGER NOT NULL,
+                duels INTEGER NOT NULL,
+                per_level REAL NOT NULL,
+                per_level_error REAL NOT NULL,
+                weakest_card REAL NOT NULL,
+                weakest_card_error REAL NOT NULL,
+                evo REAL NOT NULL,
+                evo_error REAL NOT NULL,
+                hero REAL NOT NULL,
+                hero_error REAL NOT NULL,
+                champion REAL NOT NULL,
+                champion_error REAL NOT NULL,
+                CONSTRAINT PK_duel_level_fits PRIMARY KEY (fitted_at_ms, cap)
+            );
+            """);
+        db.Database.ExecuteSqlRaw(
             "INSERT OR IGNORE INTO meta_state (id, epoch_start_ms, last_build_ms) VALUES (1, 0, 0);");
     }
 
