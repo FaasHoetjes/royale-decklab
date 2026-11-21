@@ -30,6 +30,14 @@ public sealed class DuelLevelRefitTests : IDisposable
         File.Delete(_dbPath);
     }
 
+    [Theory]
+    [InlineData("2026-11-24T06:00:00Z", "2026-11-24T06:00:00Z")]
+    [InlineData("2026-11-24T05:59:00Z", "2026-11-17T06:00:00Z")]
+    [InlineData("2026-11-23T20:00:00Z", "2026-11-17T06:00:00Z")]
+    [InlineData("2026-11-29T12:00:00Z", "2026-11-24T06:00:00Z")]
+    public void Is_due_on_tuesday_morning(string now, string due)
+        => Assert.Equal(DateTimeOffset.Parse(due), DuelLevelRefitService.LastDue(DateTimeOffset.Parse(now)));
+
     [Fact]
     public async Task Reads_each_duel_once_with_the_lower_tag_first_and_the_cap_from_its_highest_card()
     {
