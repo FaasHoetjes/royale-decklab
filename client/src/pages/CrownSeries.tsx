@@ -59,7 +59,7 @@ export default function CrownSeries() {
         <LeaguePicker league={league} onPick={pickLeague} />
       </div>
       {lineup.swapped && (
-        <button type="button" onClick={lineup.undoSwaps} title="Back to the decks as generated" className="mobile-touch-target" style={styles.reset}>
+        <button type="button" onClick={lineup.reset} title="Back to the decks as generated" className="mobile-touch-target" style={styles.reset}>
           Reset
         </button>
       )}

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ScoredDeck } from '../api';
 import type { SwapOption } from '../components/SwapDeckModal';
 import { alignToReference, inOrder, orderBySlots, slotVersionOf } from '../lib/cardDisplay';
+import { deckKey } from '../lib/generatorOptions';
 import { swapCandidates } from '../lib/swapCandidates';
 
 interface KeptOrder {
@@ -17,8 +18,9 @@ interface LineupState {
 }
 
 interface Arrangement {
-  /** Which deck goes in each slot when a new lineup arrives, as indexes into `decks`. */
-  arrange?: () => number[];
+  /** Decks kept while the others are re-picked around them; each stays in the slot it was locked in. */
+  locks?: number[][];
+  onLocksChange?: (locks: number[][]) => void;
   /** A deck's card order to show before the player swaps anything, if not the usual one. */
   shownOrder?: (deck: ScoredDeck) => number[] | undefined;
 }
@@ -27,8 +29,25 @@ interface Arrangement {
  * A generated lineup the player can swap decks in. Decks are addressed by index into `decks` followed by
  * `alternatives`; a swap keeps the cards of the new deck lined up with the ones of the deck it replaces.
  */
-export function useSwappableLineup(decks: ScoredDeck[], alternatives: ScoredDeck[], { arrange, shownOrder }: Arrangement = {}) {
-  const arrangeSlots = arrange ?? (() => decks.map((_, i) => i));
+export function useSwappableLineup(
+  decks: ScoredDeck[],
+  alternatives: ScoredDeck[],
+  { locks, onLocksChange, shownOrder }: Arrangement = {}
+) {
+  const lockedKeys = useMemo(() => new Set((locks ?? []).map(deckKey)), [locks]);
+  // Where each deck was when it was locked: the API returns locked decks first, but they should stay put.
+  const lockPositions = useRef(new Map<string, number>());
+  const arrangeSlots = (): number[] => {
+    const order: (number | null)[] = decks.map(() => null);
+    const rest: number[] = [];
+    decks.forEach((deck, i) => {
+      const key = deckKey(deck.cardIds);
+      const pos = lockedKeys.has(key) ? lockPositions.current.get(key) : undefined;
+      if (pos != null && pos < order.length && order[pos] == null) order[pos] = i;
+      else rest.push(i);
+    });
+    return order.map((master) => master ?? rest.shift()!);
+  };
   const deckAt = (master: number): ScoredDeck => {
     const deck = master < decks.length ? decks[master] : alternatives[master - decks.length];
     if (!deck) throw new Error(`No deck at index ${master}`);
@@ -90,7 +109,24 @@ export function useSwappableLineup(decks: ScoredDeck[], alternatives: ScoredDeck
     setSwapSlot(null);
   };
 
-  const undoSwaps = () => setSlotState((prev) => ({ ...prev, slots: prev.arranged, orders: {} }));
+  const isLocked = (slotPos: number) => lockedKeys.has(deckKey(deckAt(slots[slotPos]!).cardIds));
+  const toggleLock = (slotPos: number) => {
+    const deck = deckAt(slots[slotPos]!);
+    const key = deckKey(deck.cardIds);
+    if (lockedKeys.has(key)) {
+      lockPositions.current.delete(key);
+      onLocksChange?.((locks ?? []).filter((d) => deckKey(d) !== key));
+    } else {
+      lockPositions.current.set(key, slotPos);
+      onLocksChange?.([...(locks ?? []), deck.cardIds]);
+    }
+  };
+
+  /** Back to the lineup as generated; clearing the locks themselves is up to the caller. */
+  const reset = () => {
+    setSlotState((prev) => ({ ...prev, slots: prev.arranged, orders: {} }));
+    lockPositions.current.clear();
+  };
 
   return {
     slots,
@@ -103,6 +139,8 @@ export function useSwappableLineup(decks: ScoredDeck[], alternatives: ScoredDeck
     swapOptions,
     cardOrderAt,
     selectForSlot,
-    undoSwaps,
+    isLocked,
+    toggleLock,
+    reset,
   };
 }
