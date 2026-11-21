@@ -64,7 +64,7 @@ const cushionRow = (key: string, label: string, fit: DuelCushionFit): Row<Cushio
 function applyingNote({ levels, cushion }: { levels: boolean; cushion: boolean }) {
   const followed = [levels && 'level values', cushion && 'cushion'].filter(Boolean).join(' and ');
   if (!followed) return 'Scoring keeps the values in use; the refits are only recorded.';
-  return `Scoring follows each refit's all-caps ${followed}, moving at most a set step per refit and skipping a refit outside the limits.`;
+  return `Scoring follows each refit's all-caps ${followed}: the first refit applied replaces the starting values, later ones move each value at most a set step, and a refit far outside the limits is skipped. Switching this off keeps the values in use rather than going back to the starting ones.`;
 }
 
 export function DuelLevelsSection({ token }: { token: string }) {
