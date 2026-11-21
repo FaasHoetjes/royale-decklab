@@ -6,6 +6,7 @@ namespace RoyaleDeckLab.Api.Services;
 public sealed class DuelLevelRefitService(
     IServiceScopeFactory scopeFactory,
     CardCatalog catalog,
+    CrownSeriesMeta meta,
     TimeProvider clock,
     ILogger<DuelLevelRefitService> logger) : BackgroundService
 {
@@ -91,6 +92,13 @@ public sealed class DuelLevelRefitService(
                 "Duel cushion refit, cap {Cap}: {Decks} decks over {Rounds} rounds, spread {Spread:P1}, cushion {PriorRounds:F0} rounds",
                 c.Cap == DuelLevelFitter.AllCaps ? "all" : c.Cap.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 c.Decks, c.Rounds, c.Spread, c.PriorRounds);
+        }
+
+        var changed = await scope.ServiceProvider.GetRequiredService<DuelValuesApplier>()
+            .ApplyAsync(clock.GetUtcNow().ToUnixTimeMilliseconds(), ct);
+        if (changed)
+        {
+            await meta.RebuildAsync(ct);
         }
     }
 }

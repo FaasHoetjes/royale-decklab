@@ -60,4 +60,9 @@ public sealed class CrownSeriesOptions : PlayerPollOptions
     public int ProbePlayers { get; set; } = 20;
 
     public long LiveDuelWindowMs { get; set; } = 2 * Hour;
+
+    // Whether Duel scoring follows the weekly refits, within DuelValueLimits, or keeps the values it runs on now.
+    public bool ApplyLevelRefits { get; set; } = true;
+
+    public bool ApplyCushionRefits { get; set; } = true;
 }

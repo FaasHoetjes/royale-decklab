@@ -50,6 +50,22 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
 
     public StoredDuelLevelFits? Latest() => History(1).FirstOrDefault();
 
+    public Fitted<DuelLevelFit>? LatestAllCapsLevelFit()
+        => db.DuelLevelFits.AsNoTracking()
+            .Where(f => f.Cap == DuelLevelFitter.AllCaps)
+            .OrderByDescending(f => f.FittedAtMs)
+            .FirstOrDefault() is { } e
+            ? new(e.FittedAtMs, ToFit(e))
+            : null;
+
+    public Fitted<DuelCushionFit>? LatestAllCapsCushion()
+        => db.DuelCushionFits.AsNoTracking()
+            .Where(c => c.Cap == DuelLevelFitter.AllCaps)
+            .OrderByDescending(c => c.FittedAtMs)
+            .FirstOrDefault() is { } e
+            ? new(e.FittedAtMs, ToFit(e))
+            : null;
+
     public AppliedDuelValues? LatestApplied()
         => db.DuelAppliedValues.AsNoTracking().OrderByDescending(v => v.AppliedAtMs).FirstOrDefault() is { } e
             ? new AppliedDuelValues(
