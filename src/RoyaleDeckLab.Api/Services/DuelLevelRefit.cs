@@ -10,30 +10,46 @@ public enum DuelLevelRefitOutcome
     Saved,
 }
 
-public sealed record DuelLevelRefitResult(DuelLevelRefitOutcome Outcome, IReadOnlyList<DuelLevelFit> Fits);
+public sealed record DuelLevelRefitResult(
+    DuelLevelRefitOutcome Levels,
+    DuelLevelRefitOutcome Cushion,
+    IReadOnlyList<DuelLevelFit> Fits,
+    IReadOnlyList<DuelCushionFit> Cushions);
 
+/// <summary>Refits the level values and the deck cushion each week, each on its own, so one failing doesn't hold back the other.</summary>
 public sealed class DuelLevelRefit(CrownSeriesRepository rounds, DuelLevelFitRepository fits)
 {
     public async Task<DuelLevelRefitResult> RunAsync(long dueMs, long nowMs, IReadOnlySet<int> champions, CancellationToken ct = default)
     {
-        var last = fits.Latest();
-        if (last is not null && last.FittedAtMs >= dueMs)
-        {
-            return new(DuelLevelRefitOutcome.AlreadyFitted, []);
-        }
-        // Without new rounds the fit would come out the same.
+        // Without new rounds a fit would come out the same.
         var latestRoundMs = rounds.LatestBattleTimeMs();
-        if (last is not null && latestRoundMs <= last.LatestRoundMs)
+        var levelsDue = Due(fits.LatestLevelRefit(), dueMs, latestRoundMs);
+        var cushionDue = Due(fits.LatestCushionRefit(), dueMs, latestRoundMs);
+        if (levelsDue is not null && cushionDue is not null)
         {
-            return new(DuelLevelRefitOutcome.NoNewRounds, []);
+            return new(levelsDue.Value, cushionDue.Value, [], []);
         }
 
-        var fitted = DuelLevelFitter.Fit(rounds.ReadDuels(), champions);
-        if (fitted.Count == 0)
+        var duels = rounds.ReadDuels();
+        var fitted = levelsDue is null ? DuelLevelFitter.Fit(duels, champions) : [];
+        var cushions = cushionDue is null ? DuelCushionFitter.Fit(duels) : [];
+        if (fitted.Count > 0 || cushions.Count > 0)
         {
-            return new(DuelLevelRefitOutcome.TooFewDuels, []);
+            await fits.SaveAsync(new StoredDuelLevelFits(nowMs, latestRoundMs, fitted, cushions), ct);
         }
-        await fits.SaveAsync(new StoredDuelLevelFits(nowMs, latestRoundMs, fitted), ct);
-        return new(DuelLevelRefitOutcome.Saved, fitted);
+        return new(
+            levelsDue ?? Fitted(fitted.Count),
+            cushionDue ?? Fitted(cushions.Count),
+            fitted,
+            cushions);
     }
+
+    private static DuelLevelRefitOutcome? Due(StoredRefit? last, long dueMs, long latestRoundMs) => last switch
+    {
+        { FittedAtMs: var at } when at >= dueMs => DuelLevelRefitOutcome.AlreadyFitted,
+        { LatestRoundMs: var seen } when latestRoundMs <= seen => DuelLevelRefitOutcome.NoNewRounds,
+        _ => null,
+    };
+
+    private static DuelLevelRefitOutcome Fitted(int count) => count > 0 ? DuelLevelRefitOutcome.Saved : DuelLevelRefitOutcome.TooFewDuels;
 }

@@ -103,6 +103,23 @@ public sealed class DuelLevelFitEntity
     public double HeroError { get; set; }
 }
 
+public sealed class DuelCushionFitEntity
+{
+    public long FittedAtMs { get; set; }
+
+    public int Cap { get; set; }
+
+    public long LatestRoundMs { get; set; }
+
+    public int Decks { get; set; }
+
+    public int Rounds { get; set; }
+
+    public double Spread { get; set; }
+
+    public double PriorRounds { get; set; }
+}
+
 public sealed class SeasonBoostEntity
 {
     public int CardId { get; set; }

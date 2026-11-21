@@ -3,7 +3,10 @@ using RoyaleDeckLab.Api.Services;
 
 namespace RoyaleDeckLab.Api.Data;
 
-public sealed record StoredDuelLevelFits(long FittedAtMs, long LatestRoundMs, IReadOnlyList<DuelLevelFit> Fits);
+public sealed record StoredDuelLevelFits(
+    long FittedAtMs, long LatestRoundMs, IReadOnlyList<DuelLevelFit> Fits, IReadOnlyList<DuelCushionFit> Cushions);
+
+public sealed record StoredRefit(long FittedAtMs, long LatestRoundMs);
 
 public sealed class DuelLevelFitRepository(MetaDbContext db)
 {
@@ -13,6 +16,7 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         try
         {
             db.DuelLevelFits.AddRange(fits.Fits.Select(f => ToEntity(fits, f)));
+            db.DuelCushionFits.AddRange(fits.Cushions.Select(c => ToEntity(fits, c)));
             await db.SaveChangesAsync(ct);
         }
         finally
@@ -23,27 +27,35 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
 
     public IReadOnlyList<StoredDuelLevelFits> History(int refits)
     {
-        var times = db.DuelLevelFits.Select(f => f.FittedAtMs).Distinct().OrderByDescending(t => t).Take(refits).ToList();
-        return db.DuelLevelFits
-            .AsNoTracking()
-            .Where(f => times.Contains(f.FittedAtMs))
-            .AsEnumerable()
-            .GroupBy(f => (f.FittedAtMs, f.LatestRoundMs))
-            .OrderByDescending(g => g.Key.FittedAtMs)
-            .Select(g => new StoredDuelLevelFits(g.Key.FittedAtMs, g.Key.LatestRoundMs, g.OrderBy(f => f.Cap).Select(ToFit).ToList()))
+        var times = db.DuelLevelFits.Select(f => f.FittedAtMs)
+            .Union(db.DuelCushionFits.Select(c => c.FittedAtMs))
+            .OrderByDescending(t => t)
+            .Take(refits)
+            .ToList();
+        var levels = db.DuelLevelFits.AsNoTracking().Where(f => times.Contains(f.FittedAtMs)).ToList();
+        var cushions = db.DuelCushionFits.AsNoTracking().Where(c => times.Contains(c.FittedAtMs)).ToList();
+        return times
+            .Select(t =>
+            {
+                var levelRows = levels.Where(f => f.FittedAtMs == t).OrderBy(f => f.Cap).ToList();
+                var cushionRows = cushions.Where(c => c.FittedAtMs == t).OrderBy(c => c.Cap).ToList();
+                var latestRoundMs = levelRows.Select(f => f.LatestRoundMs).Concat(cushionRows.Select(c => c.LatestRoundMs)).Max();
+                return new StoredDuelLevelFits(t, latestRoundMs, levelRows.Select(ToFit).ToList(), cushionRows.Select(ToFit).ToList());
+            })
             .ToList();
     }
 
-    public StoredDuelLevelFits? Latest()
-    {
-        var fittedAtMs = db.DuelLevelFits.Select(f => (long?)f.FittedAtMs).Max();
-        if (fittedAtMs is not { } latest)
-        {
-            return null;
-        }
-        var rows = db.DuelLevelFits.AsNoTracking().Where(f => f.FittedAtMs == latest).OrderBy(f => f.Cap).ToList();
-        return new StoredDuelLevelFits(latest, rows[0].LatestRoundMs, rows.Select(ToFit).ToList());
-    }
+    public StoredDuelLevelFits? Latest() => History(1).FirstOrDefault();
+
+    public StoredRefit? LatestLevelRefit() => db.DuelLevelFits
+        .OrderByDescending(f => f.FittedAtMs)
+        .Select(f => new StoredRefit(f.FittedAtMs, f.LatestRoundMs))
+        .FirstOrDefault();
+
+    public StoredRefit? LatestCushionRefit() => db.DuelCushionFits
+        .OrderByDescending(c => c.FittedAtMs)
+        .Select(c => new StoredRefit(c.FittedAtMs, c.LatestRoundMs))
+        .FirstOrDefault();
 
     private static DuelLevelFitEntity ToEntity(StoredDuelLevelFits fits, DuelLevelFit f) => new()
     {
@@ -61,6 +73,17 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         HeroError = f.Hero.StandardError,
     };
 
+    private static DuelCushionFitEntity ToEntity(StoredDuelLevelFits fits, DuelCushionFit c) => new()
+    {
+        FittedAtMs = fits.FittedAtMs,
+        Cap = c.Cap,
+        LatestRoundMs = fits.LatestRoundMs,
+        Decks = c.Decks,
+        Rounds = c.Rounds,
+        Spread = c.Spread,
+        PriorRounds = c.PriorRounds,
+    };
+
     private static DuelLevelFit ToFit(DuelLevelFitEntity e) => new(
         e.Cap,
         e.Duels,
@@ -68,4 +91,6 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         new Estimate(e.WeakestCard, e.WeakestCardError),
         new Estimate(e.Evo, e.EvoError),
         new Estimate(e.Hero, e.HeroError));
+
+    private static DuelCushionFit ToFit(DuelCushionFitEntity e) => new(e.Cap, e.Decks, e.Rounds, e.Spread, e.PriorRounds);
 }

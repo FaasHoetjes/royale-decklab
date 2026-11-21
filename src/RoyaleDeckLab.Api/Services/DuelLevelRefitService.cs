@@ -70,9 +70,13 @@ public sealed class DuelLevelRefitService(
         using var scope = scopeFactory.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<DuelLevelRefit>()
             .RunAsync(dueMs, now.ToUnixTimeMilliseconds(), champions, ct);
-        if (result.Outcome == DuelLevelRefitOutcome.TooFewDuels)
+        if (result.Levels == DuelLevelRefitOutcome.TooFewDuels)
         {
             logger.LogInformation("Too few Duels went to a third round for a level refit");
+        }
+        if (result.Cushion == DuelLevelRefitOutcome.TooFewDuels)
+        {
+            logger.LogInformation("No cap had enough Duel decks with spread beyond luck for a cushion refit");
         }
         foreach (var f in result.Fits)
         {
@@ -80,6 +84,13 @@ public sealed class DuelLevelRefitService(
                 "Duel level refit, cap {Cap}: {Duels} Duels, level {PerLevel:F2} ± {PerLevelError:F2}, evo {Evo:F2} ± {EvoError:F2}, hero {Hero:F2} ± {HeroError:F2}",
                 f.Cap == DuelLevelFitter.AllCaps ? "all" : f.Cap.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 f.Duels, f.PerLevel.Value, f.PerLevel.StandardError, f.Evo.Value, f.Evo.StandardError, f.Hero.Value, f.Hero.StandardError);
+        }
+        foreach (var c in result.Cushions)
+        {
+            logger.LogInformation(
+                "Duel cushion refit, cap {Cap}: {Decks} decks over {Rounds} rounds, spread {Spread:P1}, cushion {PriorRounds:F0} rounds",
+                c.Cap == DuelLevelFitter.AllCaps ? "all" : c.Cap.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                c.Decks, c.Rounds, c.Spread, c.PriorRounds);
         }
     }
 }

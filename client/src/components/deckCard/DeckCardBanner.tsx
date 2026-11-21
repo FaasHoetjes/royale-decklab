@@ -68,7 +68,7 @@ export default function DeckCardBanner({
                   <>
                     <strong>Your chance to win a round with this deck.</strong>
                     <br />
-                    Starts from the deck's win rate in Crown Series Duels, then factors in how your card levels at the league's cap compare to your opponents'. Missing Evolutions and Heroes lower it. Win rates are rated cautiously, so a deck with only a few rounds can't ride a lucky streak.
+                    Starts from the deck's win rate in Crown Series Duels, then factors in how your card levels at the league's cap compare to your opponents'. Missing Evolutions and Heroes lower it. A deck with only a few rounds is pulled toward 50% until it has more.
                   </>
                 ) : (
                   <>

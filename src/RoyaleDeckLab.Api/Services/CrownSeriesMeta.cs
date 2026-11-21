@@ -28,6 +28,11 @@ public sealed class CrownSeriesMeta(
     // Every round has a winner and a loser, so the average Duel deck wins half; war's prior sits above that.
     private const double DuelPriorWinRate = 0.5;
 
+    // Shown to the player as their win chance, so it is the deck's likeliest win rate rather than the cautious one.
+    // Weekend 1 predicting weekend 2 (Nov 2026, 64k rounds): the cautious value came out 5 points low, the median
+    // within 2, and the median's top decks per cap went on to win more than the cautious ones' did.
+    private const double DuelRankingQuantile = 0.5;
+
     private readonly SemaphoreSlim _rebuildGate = new(1, 1);
     private CrownSeriesMetaSnapshot _current = CrownSeriesMetaSnapshot.Empty;
     private long _builtPatchStartMs;
@@ -91,7 +96,7 @@ public sealed class CrownSeriesMeta(
         var weighted = rounds
             .Select(r => (r.Record, Weight: capWeights.GetValueOrDefault(r.Cap)))
             .Where(r => r.Weight > 0);
-        var decks = builder.AggregateWeightedBattles(weighted, patchStartMs, DuelPriorWinRate);
+        var decks = builder.AggregateWeightedBattles(weighted, patchStartMs, DuelPriorWinRate, DuelRankingQuantile);
 
         var ownRounds = rounds.Where(r => r.Cap == cap).ToList();
         var ownUses = ownRounds

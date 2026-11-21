@@ -68,16 +68,22 @@ public sealed class DuelLevelRefitTests : IDisposable
     {
         using var scope = _services.CreateScope();
         var fits = scope.ServiceProvider.GetRequiredService<DuelLevelFitRepository>();
-        await fits.SaveAsync(new StoredDuelLevelFits(1_000, 900, [Fit(DuelLevelFitter.AllCaps, evo: 0.30)]));
-        await fits.SaveAsync(new StoredDuelLevelFits(2_000, 1_900, [Fit(DuelLevelFitter.AllCaps, evo: 0.32), Fit(14, evo: 0.2)]));
+        await fits.SaveAsync(new StoredDuelLevelFits(1_000, 900, [Fit(DuelLevelFitter.AllCaps, evo: 0.30)], []));
+        await fits.SaveAsync(new StoredDuelLevelFits(
+            2_000, 1_900, [Fit(DuelLevelFitter.AllCaps, evo: 0.32), Fit(14, evo: 0.2)], [new(DuelLevelFitter.AllCaps, 300, 9_000, 0.07, 50)]));
+        await fits.SaveAsync(new StoredDuelLevelFits(3_000, 2_900, [], [new(DuelLevelFitter.AllCaps, 320, 9_500, 0.08, 38)]));
 
         var latest = fits.Latest();
 
         Assert.NotNull(latest);
-        Assert.Equal(1_900, latest.LatestRoundMs);
-        Assert.Equal([0.32, 0.2], latest.Fits.Select(f => f.Evo.Value));
-        Assert.Equal([2_000L, 1_000L], fits.History(5).Select(h => h.FittedAtMs));
-        Assert.Equal([2_000L], fits.History(1).Select(h => h.FittedAtMs));
+        Assert.Equal(2_900, latest.LatestRoundMs);
+        Assert.Empty(latest.Fits);
+        Assert.Equal([38.0], latest.Cushions.Select(c => c.PriorRounds));
+        var history = fits.History(5);
+        Assert.Equal([3_000L, 2_000L, 1_000L], history.Select(h => h.FittedAtMs));
+        Assert.Equal([0.32, 0.2], history[1].Fits.Select(f => f.Evo.Value));
+        Assert.Equal([50.0], history[1].Cushions.Select(c => c.PriorRounds));
+        Assert.Equal([3_000L], fits.History(1).Select(h => h.FittedAtMs));
     }
 
     [Fact]
@@ -87,23 +93,44 @@ public sealed class DuelLevelRefitTests : IDisposable
         const long nextTuesday = 2_000_000;
         await MergeAsync(SimulatedRounds(count: 4_000, firstBattleMs: 0));
 
-        Assert.Equal(DuelLevelRefitOutcome.Saved, (await RefitAsync(firstTuesday, nowMs: firstTuesday + 1)).Outcome);
-        Assert.Equal(DuelLevelRefitOutcome.AlreadyFitted, (await RefitAsync(firstTuesday, nowMs: firstTuesday + 2)).Outcome);
-        Assert.Equal(DuelLevelRefitOutcome.NoNewRounds, (await RefitAsync(nextTuesday, nowMs: nextTuesday + 1)).Outcome);
+        Assert.Equal(DuelLevelRefitOutcome.Saved, (await RefitAsync(firstTuesday, nowMs: firstTuesday + 1)).Levels);
+        Assert.Equal(DuelLevelRefitOutcome.AlreadyFitted, (await RefitAsync(firstTuesday, nowMs: firstTuesday + 2)).Levels);
+        Assert.Equal(DuelLevelRefitOutcome.NoNewRounds, (await RefitAsync(nextTuesday, nowMs: nextTuesday + 1)).Levels);
 
         await MergeAsync(SimulatedRounds(count: 1, firstBattleMs: firstTuesday + 10));
 
         var refit = await RefitAsync(nextTuesday, nowMs: nextTuesday + 2);
-        Assert.Equal(DuelLevelRefitOutcome.Saved, refit.Outcome);
+        Assert.Equal(DuelLevelRefitOutcome.Saved, refit.Levels);
         Assert.Equal(nextTuesday + 2, LatestFits()?.FittedAtMs);
+    }
+
+    [Fact]
+    public async Task Refits_the_levels_again_the_same_week_when_only_the_cushion_could_be_fitted()
+    {
+        const long tuesday = 1_000_000;
+        await MergeAsync(Simulated.SpreadDecks(cap: 12, spread: 0.07, decks: 250, roundsPerDeck: 12)
+            .SelectMany((d, i) => Simulated.Rounds(d, i))
+            .ToArray());
+
+        var cushionOnly = await RefitAsync(tuesday, nowMs: tuesday + 1);
+        Assert.Equal(DuelLevelRefitOutcome.TooFewDuels, cushionOnly.Levels);
+        Assert.Equal(DuelLevelRefitOutcome.Saved, cushionOnly.Cushion);
+
+        await MergeAsync(SimulatedRounds(count: 4_000, firstBattleMs: 10_000));
+
+        var both = await RefitAsync(tuesday, nowMs: tuesday + 2);
+        Assert.Equal(DuelLevelRefitOutcome.Saved, both.Levels);
+        Assert.Equal(DuelLevelRefitOutcome.AlreadyFitted, both.Cushion);
     }
 
     [Fact]
     public async Task Saves_nothing_with_too_few_duels()
     {
-        await MergeAsync(SimulatedRounds(count: 500, firstBattleMs: 0));
+        await MergeAsync(SimulatedRounds(count: 20, firstBattleMs: 0));
 
-        Assert.Equal(DuelLevelRefitOutcome.TooFewDuels, (await RefitAsync(1_000_000, nowMs: 1_000_001)).Outcome);
+        var refit = await RefitAsync(1_000_000, nowMs: 1_000_001);
+        Assert.Equal(DuelLevelRefitOutcome.TooFewDuels, refit.Levels);
+        Assert.Equal(DuelLevelRefitOutcome.TooFewDuels, refit.Cushion);
         Assert.Null(LatestFits());
     }
 

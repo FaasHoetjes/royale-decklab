@@ -246,8 +246,10 @@ public sealed class MetaBuilder(
         => AggregateWeightedBattles(records.Select(r => (r, 1.0)), epochStartMs, priorWinRate);
 
     /// <param name="records">Each battle with how much it counts next to a full one.</param>
+    /// <param name="rankingQuantile">Which quantile of a deck's posterior win rate it ranks by; the cautious war setting by default.</param>
     public List<DeckMeta> AggregateWeightedBattles(
-        IEnumerable<(BattleRecord Record, double Weight)> records, long epochStartMs = 0, double? priorWinRate = null)
+        IEnumerable<(BattleRecord Record, double Weight)> records, long epochStartMs = 0, double? priorWinRate = null,
+        double? rankingQuantile = null)
     {
         var tally = new DeckTally();
         foreach (var (record, weight) in records)
@@ -255,7 +257,7 @@ public sealed class MetaBuilder(
             tally.Add(record.CardIds, record.CardVersions, record.BattleTimeMs, record.PlayerTag,
                 PatchWeight(record.BattleTimeMs, epochStartMs) * weight, record.Result.WinShare());
         }
-        return tally.Build(_opt.PriorGames, priorWinRate ?? _opt.PriorWinRate, _opt.RankingQuantile);
+        return tally.Build(_opt.PriorGames, priorWinRate ?? _opt.PriorWinRate, rankingQuantile ?? _opt.RankingQuantile);
     }
 
     public double PatchWeight(long battleTimeMs, long epochStartMs)

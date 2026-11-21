@@ -77,6 +77,23 @@ public sealed class AggregateBattlesTests
     }
 
     [Fact]
+    public void ConfidenceUsesTheGivenQuantile()
+    {
+        var deck = Build.Eight(1);
+        var battles = new[]
+        {
+            (Build.Battle("#P1", deck, BattleResult.Win), 1.0),
+            (Build.Battle("#P2", deck, BattleResult.Win), 1.0),
+            (Build.Battle("#P3", deck, BattleResult.Loss), 1.0),
+        };
+
+        var result = Assert.Single(NewBuilder().AggregateWeightedBattles(battles, priorWinRate: 0.5, rankingQuantile: 0.5));
+
+        var o = new MetaOptions();
+        Assert.Equal(DomainMath.PosteriorQuantile(2, 3, o.PriorGames, 0.5, 0.5), result.Confidence, 10);
+    }
+
+    [Fact]
     public void RanksByCautiousWinRate()
     {
         var deckA = Build.Eight(1);
