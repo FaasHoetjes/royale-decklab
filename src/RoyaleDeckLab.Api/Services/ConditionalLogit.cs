@@ -1,9 +1,5 @@
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>
-/// A conditional logit, fitted by Newton's method: each choice picks one of its alternatives with odds that grow by
-/// exp(coefficient) per unit of each variable.
-/// </summary>
 public static class ConditionalLogit
 {
     public sealed record Choice(IReadOnlyList<double[]> Alternatives, int Chosen);

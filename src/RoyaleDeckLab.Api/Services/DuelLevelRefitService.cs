@@ -3,7 +3,7 @@ using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
 
-/// <summary>Refits how levels, evos and heroes move Duel odds each Tuesday morning, after a Crown Series weekend.</summary>
+// Tuesday morning, so the fit takes in the whole Crown Series weekend that ended on Monday.
 public sealed class DuelLevelRefitService(
     IServiceScopeFactory scopeFactory,
     CardCatalog catalog,
@@ -39,7 +39,6 @@ public sealed class DuelLevelRefitService(
         }
     }
 
-    /// <summary>The latest Tuesday fit time at or before <paramref name="now"/>.</summary>
     public static DateTimeOffset LastDue(DateTimeOffset now)
     {
         var utc = now.ToUniversalTime();

@@ -15,7 +15,6 @@ public sealed class DuelLevelsController(DuelLevelFitRepository fits) : Controll
 
     public sealed record Report(Values InUse, IReadOnlyList<StoredDuelLevelFits> Refits);
 
-    /// <summary>The level and special values Duel scoring uses, next to the latest weekly refits.</summary>
     [HttpGet("api/admin/duel-levels")]
     [RequireAdminToken]
     [EnableRateLimiting(RateLimitPolicies.AdminStats)]

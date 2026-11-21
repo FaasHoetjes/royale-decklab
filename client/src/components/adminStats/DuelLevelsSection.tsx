@@ -47,7 +47,6 @@ const fitRow = (key: string, label: string, fit: DuelLevelFit): Row => ({
   hero: estimate(fit.hero),
 });
 
-/** The values Duel scoring uses next to what the weekly refits measure. */
 export function DuelLevelsSection({ token }: { token: string }) {
   const theme = getTheme();
   const levels = useQuery({

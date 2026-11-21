@@ -11,7 +11,6 @@ public sealed record Duel(int Cap, IReadOnlyList<PairedRound> Rounds);
 
 public readonly record struct Estimate(double Value, double StandardError);
 
-/// <param name="Cap"><see cref="DuelLevelFitter.AllCaps"/> for the fit across every cap.</param>
 public sealed record DuelLevelFit(
     int Cap, int Duels, Estimate PerLevel, Estimate WeakestCard, Estimate Evo, Estimate Hero);
 
@@ -47,7 +46,7 @@ public static class DuelLevelFitter
             .ToList();
     }
 
-    // A deck's strength is its record at the same cap; a sequence of results no Duel could produce is a logging error.
+    // A sequence of results no Duel could produce is a logging error.
     private static List<ConditionalLogit.Choice> Choices(List<Duel> duels, IReadOnlySet<int> champions)
     {
         var decks = new DeckRecords(duels.SelectMany(d => d.Rounds));

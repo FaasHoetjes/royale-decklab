@@ -106,7 +106,7 @@ public sealed class CrownSeriesRepository(MetaDbContext db)
             .ToList();
     }
 
-    /// <summary>Every stored Duel whose rounds have both players' decks, the player with the lower tag first.</summary>
+    // Each round's first side is the player with the lower tag; a Duel missing either player's deck is left out.
     public IReadOnlyList<Duel> ReadDuels()
     {
         var byDuel = new Dictionary<string, List<CrownSeriesRoundEntity>>(StringComparer.Ordinal);

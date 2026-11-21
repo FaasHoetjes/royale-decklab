@@ -227,10 +227,7 @@ internal static class CardVersionRules
 
     private const int SpecialSlots = 3;
 
-    /// <summary>
-    /// What the meta deck's evos and heroes are worth beyond the best the player's own can field in the same cards; a
-    /// different special in the same kind of slot costs nothing.
-    /// </summary>
+    // Fielding a different evo or hero than the meta deck's costs nothing; only the value the player can't field counts.
     internal static double MissingSpecialValue(
         IReadOnlyList<int> cardIds,
         IReadOnlyList<CardVersion>? metaVersions,

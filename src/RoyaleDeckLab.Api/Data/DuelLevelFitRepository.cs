@@ -21,7 +21,6 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         }
     }
 
-    /// <summary>The latest refits, newest first.</summary>
     public IReadOnlyList<StoredDuelLevelFits> History(int refits)
     {
         var times = db.DuelLevelFits.Select(f => f.FittedAtMs).Distinct().OrderByDescending(t => t).Take(refits).ToList();
