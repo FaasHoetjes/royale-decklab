@@ -256,6 +256,20 @@ public sealed class AggregateBattlesTests
     }
 
     [Fact]
+    public void KeepsTheOneSetupPlayedOften_AndDropsTheRest()
+    {
+        var deck = Build.Eight(1);
+        IReadOnlyList<CardVersion> Evo(int id) => [.. deck.Select(c => new CardVersion(c, c == id ? CardVersionKind.Evo : CardVersionKind.Normal))];
+        var battles = Enumerable.Range(0, 10).Select(i => Build.Battle($"#A{i}", deck, BattleResult.Win, versions: Evo(1)))
+            .Append(Build.Battle("#B", deck, BattleResult.Loss, versions: Evo(2)))
+            .ToArray();
+
+        var setup = Assert.Single(Assert.Single(NewBuilder().AggregateBattles(battles)).Setups!);
+
+        Assert.Equal((1, 10, 10), (setup.Specials.Single().CardId, setup.Games, setup.Wins));
+    }
+
+    [Fact]
     public void KeepsTheRecordOfEachSetOfSpecialsPlayedOften_WhenADeckHasBeenPlayedMoreThanOneWay()
     {
         var deck = Build.Eight(1);

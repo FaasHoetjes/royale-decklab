@@ -423,7 +423,7 @@ public sealed class MetaBuilder(
                 setups.Add(new SpecialSetup(specials, games, wins));
             }
         }
-        return setups.Count > 1 ? setups : null;
+        return setups.Count > 0 ? setups : null;
     }
 
     // Below this many games a card's win rate as a version says too little to compare it with.
