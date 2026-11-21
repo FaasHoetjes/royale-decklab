@@ -48,6 +48,25 @@ public sealed class FindBestWarDecksTests
     }
 
     [Fact]
+    public void Alternatives_AreTheBestDecksThatFitASlot_NotTheBestOverall()
+    {
+        var cards = Build.Collection(Enumerable.Range(1, 40).ToArray());
+        var lineup = new[] { 1, 9, 17, 25 }.Select(s => Build.Deck(Build.Eight(s), confidence: 0.60));
+        // Each shares cards with both deck 1 and deck 2, so it can replace neither.
+        var clashing = Combinations(Build.Eight(1), 4).Select(four => Build.Deck([.. four, 9, 10, 11, 12], confidence: 0.55));
+        var fitsSlotOne = Build.Deck([1, 2, 3, 4, 33, 34, 35, 36], confidence: 0.45);
+
+        var result = Run(cards, [.. lineup, .. clashing, fitsSlotOne]);
+
+        Assert.Equal([1, 9, 17, 25], result.Decks.Select(d => d.CardIds.Min()));
+        Assert.Equal([36], result.Alternatives.Select(d => d.CardIds.Max()));
+    }
+
+    private static IEnumerable<int[]> Combinations(int[] from, int size) => size == 0
+        ? [[]]
+        : from.SelectMany((first, i) => Combinations(from[(i + 1)..], size - 1).Select(rest => (int[])[first, .. rest]));
+
+    [Fact]
     public void SkipsTheStrongestDeck_WhenItBlocksABetterTotal()
     {
         // Deck 0.60 blocks both 0.58 decks; greedy takes it, the exact search benches it for a better total.

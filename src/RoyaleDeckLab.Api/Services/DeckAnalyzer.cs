@@ -13,7 +13,7 @@ public sealed class DeckAnalyzer
 
     // A hand-built deck nobody on record plays: damped so it ranks below any proven meta deck.
     private const double UnprovenDeckDampener = 1.0 / 9;
-    private const int AlternativePoolSize = 60;
+    private const int AlternativesPerSlot = 15;
 
     private static readonly int[] PopularityGateLadder = [MinDistinctPlayers, 3, 2, 1];
 
@@ -371,6 +371,47 @@ public sealed class DeckAnalyzer
     /// Best <paramref name="deckCount"/> decks with no shared cards (more decks first, then total score). Locked decks
     /// come first as-is and count toward the total; the caller has already removed candidates that clash with them.
     /// </summary>
+    /// <summary>
+    /// For each deck in the lineup, the best decks that could take its place: ones that share no cards with the other
+    /// decks. The best decks overall mostly share cards with several picked decks, so they'd fit no slot.
+    /// </summary>
+    private List<ScoredDeck> Alternatives(
+        IReadOnlyList<(DeckMeta deck, double score)> sorted,
+        IReadOnlyList<DeckMeta> lineup,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        var othersCards = lineup
+            .Select((_, slot) => lineup.Where((_, other) => other != slot).SelectMany(d => d.CardIds).ToHashSet())
+            .ToArray();
+        var found = new int[lineup.Count];
+        var alternatives = new List<ScoredDeck>();
+        foreach (var (deck, score) in sorted)
+        {
+            if (found.All(n => n >= AlternativesPerSlot))
+            {
+                break;
+            }
+            if (lineup.Contains(deck))
+            {
+                continue;
+            }
+            var fits = false;
+            for (var slot = 0; slot < lineup.Count; slot++)
+            {
+                if (found[slot] < AlternativesPerSlot && !deck.CardIds.Any(othersCards[slot].Contains))
+                {
+                    found[slot]++;
+                    fits = true;
+                }
+            }
+            if (fits)
+            {
+                alternatives.Add(ToScoredDeck(deck, score, cardMap));
+            }
+        }
+        return alternatives;
+    }
+
     public WarDeckResult SelectLineup(
         IReadOnlyList<(DeckMeta deck, double score)> fieldable,
         IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
@@ -412,28 +453,11 @@ public sealed class DeckAnalyzer
             selectedDecks.Add(ToScoredDeck(deck, score, cardMap));
         }
 
-        var alternatives = new List<ScoredDeck>();
-        if (includeAlternatives)
-        {
-            foreach (var (deck, score) in sorted)
-            {
-                if (alternatives.Count >= AlternativePoolSize)
-                {
-                    break;
-                }
-                if (selected.Contains(deck))
-                {
-                    continue;
-                }
-                alternatives.Add(ToScoredDeck(deck, score, cardMap));
-            }
-        }
-
         return new WarDeckResult
         {
             Decks = selectedDecks,
             TotalScore = selectedDecks.Sum(d => d.PlayerScore),
-            Alternatives = alternatives,
+            Alternatives = includeAlternatives ? Alternatives(sorted, [.. (locked ?? []).Concat(lineup).Select(p => p.deck)], cardMap) : [],
             PoolMinPlayers = poolMinPlayers,
         };
     }
