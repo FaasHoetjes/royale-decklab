@@ -61,6 +61,12 @@ const cushionRow = (key: string, label: string, fit: DuelCushionFit): Row<Cushio
   cushion: `${Math.round(fit.priorRounds)} rounds`,
 });
 
+function applyingNote({ levels, cushion }: { levels: boolean; cushion: boolean }) {
+  const followed = [levels && 'level values', cushion && 'cushion'].filter(Boolean).join(' and ');
+  if (!followed) return 'Scoring keeps the values in use; the refits are only recorded.';
+  return `Scoring follows each refit's all-caps ${followed}, moving at most a set step per refit and skipping a refit outside the limits.`;
+}
+
 export function DuelLevelsSection({ token }: { token: string }) {
   const theme = getTheme();
   const levels = useQuery({
@@ -71,7 +77,7 @@ export function DuelLevelsSection({ token }: { token: string }) {
   });
   if (!levels.data) return null;
 
-  const { inUse, refits } = levels.data;
+  const { inUse, applying, refits } = levels.data;
   const latest = refits[0];
   const latestLevels = refits.find((r) => r.fits.length > 0);
   const latestCushions = refits.find((r) => r.cushions.length > 0);
@@ -105,8 +111,9 @@ export function DuelLevelsSection({ token }: { token: string }) {
       <h2 style={{ ...statsStyles.heading, color: theme.text.primary }}>Duel level fit</h2>
       <p style={{ ...statsStyles.note, ...styles.intro, color: theme.text.tertiary }}>
         {latest
-          ? `Refitted ${day(latest.fittedAtMs)} from the Duels of the last 30 days. Scoring still uses the values in use; the refits are only recorded.`
+          ? `Refitted ${day(latest.fittedAtMs)} from the Duels of the last 30 days. ${applyingNote(applying)}`
           : 'No refit yet. The first runs 10 minutes after the server starts, then every Tuesday at 06:00 UTC.'}
+        {inUse.appliedAtMs > 0 && ` The values in use were applied ${day(inUse.appliedAtMs)}.`}
       </p>
       <FitTable first="Cap" columns={LEVEL_COLUMNS} rows={currentLevels} />
       {weeklyLevels.length > 1 && (

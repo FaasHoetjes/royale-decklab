@@ -650,7 +650,10 @@ export interface DuelLevelRefit {
 }
 
 export interface DuelLevelsReport {
-  inUse: { perLevel: number; weakestCard: number; evo: number; hero: number; priorRounds: number };
+  /** appliedAtMs is 0 while scoring still runs on the starting values. */
+  inUse: { perLevel: number; weakestCard: number; evo: number; hero: number; priorRounds: number; appliedAtMs: number };
+  /** Whether scoring follows the refits, within limits, or only records them. */
+  applying: { levels: boolean; cushion: boolean };
   /** Newest first. */
   refits: DuelLevelRefit[];
 }
