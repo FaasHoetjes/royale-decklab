@@ -44,34 +44,50 @@ public sealed class DeckAnalyzer
         }
 
         var missing = 0;
+        var (evos, heroes, evoOnly, heroOnly, either) = (0, 0, 0, 0, 0);
         foreach (var cardId in metaDeck.CardIds)
         {
             var playerCard = cardMap[cardId];
-            if (cardVersions is not null && playerCard.Rarity != Rarity.Champion)
+            if (playerCard.Rarity == Rarity.Champion)
+            {
+                heroes++;
+                continue;
+            }
+            var meta = CardVersionKind.Normal;
+            if (cardVersions is not null)
             {
                 for (var v = 0; v < cardVersions.Count; v++)
                 {
-                    var version = cardVersions[v];
-                    if (version.CardId != cardId)
+                    if (cardVersions[v].CardId == cardId)
                     {
-                        continue;
+                        meta = cardVersions[v].Version;
+                        break;
                     }
-                    if (!EvolutionBits.Owns(playerCard.EvolutionLevel, version.Version))
-                    {
-                        missing++;
-                    }
-                    break;
                 }
             }
+            var owned = playerCard.EvolutionLevel;
+            if (meta != CardVersionKind.Normal && EvolutionBits.Owns(owned, meta))
+            {
+                (evos, heroes) = meta == CardVersionKind.Evo ? (evos + 1, heroes) : (evos, heroes + 1);
+                continue;
+            }
+            if (meta != CardVersionKind.Normal)
+            {
+                missing++;
+            }
+            (evoOnly, heroOnly, either) = (EvolutionBits.OwnsEvo(owned), EvolutionBits.OwnsHero(owned)) switch
+            {
+                (true, true) => (evoOnly, heroOnly, either + 1),
+                (true, false) => (evoOnly + 1, heroOnly, either),
+                (false, true) => (evoOnly, heroOnly + 1, either),
+                _ => (evoOnly, heroOnly, either),
+            };
         }
         if (missing > 0 && creditSubstitutes)
         {
             // War battles where a deck swaps one special for another win as often as the usual setup (11k battles),
             // so a special of the player's own in the slot a missing one leaves costs nothing.
-            var owned = CardVersionRules.PersonalizeVersions(
-                CardVersionRules.WithChampionVersions(metaDeck.CardIds, cardVersions, cardMap), cardMap)!;
-            var substitutes = Specials(CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap)!, cardMap) - Specials(owned, cardMap);
-            missing = Math.Max(0, missing - substitutes);
+            missing = Math.Max(0, missing - CardVersionRules.FreeSlotsFilled(evos, heroes, evoOnly, heroOnly, either));
         }
         var versionFit = Math.Pow(CardVersionRules.MissingSpecialMultiplier, missing);
 

@@ -287,6 +287,19 @@ internal static class CardVersionRules
         SpecialValues? values = null)
         => UpgradeIntoFreeSlots(ForceVersions(owned, forced, cardMap), cardMap, deck, values, keep: forced)!;
 
+    /// <summary>How many of the special slots left free the player's other Evos and Heroes can fill.</summary>
+    internal static int FreeSlotsFilled(int evos, int heroes, int evoOnly, int heroOnly, int either)
+    {
+        var free = MaxSpecials - evos - heroes;
+        if (free <= 0)
+        {
+            return 0;
+        }
+        var asEvos = Math.Min(Math.Max(0, MaxEvo - evos), evoOnly + either);
+        var asHeroes = Math.Min(Math.Max(0, MaxHero - heroes), heroOnly + either);
+        return Math.Min(Math.Min(free, evoOnly + heroOnly + either), asEvos + asHeroes);
+    }
+
     /// <summary>Whether the versions fit the game's slots, champions counted as Heroes.</summary>
     internal static bool FitsSlots(IReadOnlyList<CardVersion> versions)
     {
@@ -455,11 +468,11 @@ internal static class CardVersionRules
 
     private static CardVersionKind VersionOf(IReadOnlyList<CardVersion>? versions, int cardId)
     {
-        foreach (var v in versions ?? [])
+        for (var i = 0; i < (versions?.Count ?? 0); i++)
         {
-            if (v.CardId == cardId)
+            if (versions![i].CardId == cardId)
             {
-                return v.Version;
+                return versions[i].Version;
             }
         }
         return CardVersionKind.Normal;
