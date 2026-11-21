@@ -315,6 +315,19 @@ public sealed class DeckAnalyzer
             forcedVersions: forced, specialValues: values.Specials, ct: ct);
     }
 
+    private static DeckMeta? FindDeck(IReadOnlyList<DeckMeta> meta, int[] cardIds)
+    {
+        int[] sorted = [.. cardIds.Order()];
+        for (var i = 0; i < meta.Count; i++)
+        {
+            if (meta[i].CardIds.AsSpan().SequenceEqual(sorted))
+            {
+                return meta[i];
+            }
+        }
+        return null;
+    }
+
     // A locked deck that has left the Duel meta since is kept at an even win rate before levels; one with a card the
     // player doesn't own can't be fielded and is skipped.
     private static List<(DeckMeta deck, double score)> ScoreLockedDuelDecks(
@@ -329,14 +342,9 @@ public sealed class DeckAnalyzer
         {
             return locked;
         }
-        var byKey = new Dictionary<string, DeckMeta>();
-        foreach (var deck in duelMeta)
-        {
-            byKey.TryAdd(MetaCache.DeckKey(deck.CardIds), deck);
-        }
         foreach (var ids in lockedDecks)
         {
-            var deck = byKey.GetValueOrDefault(MetaCache.DeckKey(ids)) ?? new DeckMeta
+            var deck = FindDeck(duelMeta, ids) ?? new DeckMeta
             {
                 CardIds = ids,
                 WinRate = CrownSeriesMeta.DuelPriorWinRate,
