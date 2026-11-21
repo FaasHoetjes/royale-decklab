@@ -11,6 +11,7 @@ public sealed record Duel(int Cap, IReadOnlyList<PairedRound> Rounds);
 
 public readonly record struct Estimate(double Value, double StandardError);
 
+/// <param name="Cap"><see cref="DuelLevelFitter.AllCaps"/> for the fit across every cap.</param>
 public sealed record DuelLevelFit(
     int Cap, int Duels, Estimate PerLevel, Estimate WeakestCard, Estimate Evo, Estimate Hero, Estimate Champion);
 
@@ -23,6 +24,8 @@ public static class DuelLevelFitter
 {
     public const int MinDuels = 1000;
 
+    public const int AllCaps = 0;
+
     private const double DeckPriorRounds = 80;
 
     private const int WinsNeeded = 2;
@@ -30,19 +33,33 @@ public static class DuelLevelFitter
     private const int Variables = 6;
 
     public static IReadOnlyList<DuelLevelFit> Fit(IEnumerable<Duel> duels, IReadOnlySet<int> champions)
-        => duels
-            .GroupBy(d => d.Cap)
-            .Select(g => (Cap: g.Key, All: g.ToList(), Split: g.Where(d => d.Rounds.Count == 2 * WinsNeeded - 1).ToList()))
-            .Where(g => g.Split.Count >= MinDuels)
-            .OrderBy(g => g.Cap)
-            .Select(g => FitCap(g.Cap, g.All, g.Split, champions))
-            .ToList();
-
-    private static DuelLevelFit FitCap(int cap, List<Duel> all, List<Duel> split, IReadOnlySet<int> champions)
     {
-        var decks = new DeckRecords(all.SelectMany(d => d.Rounds));
-        var choices = split.Select(duel => Choice(duel, decks, champions)).ToList();
+        var caps = duels
+            .GroupBy(d => d.Cap)
+            .OrderBy(g => g.Key)
+            .Select(g => (Cap: g.Key, Choices: Choices(g.ToList(), champions)))
+            .ToList();
+        var everyCap = caps.SelectMany(c => c.Choices).ToList();
+        return caps
+            .Prepend((Cap: AllCaps, Choices: everyCap))
+            .Where(c => c.Choices.Count >= MinDuels)
+            .Select(c => FitChoices(c.Cap, c.Choices))
+            .ToList();
+    }
 
+    // A deck's strength is its record at the same cap; a sequence of results no Duel could produce is a logging error.
+    private static List<ConditionalLogit.Choice> Choices(List<Duel> duels, IReadOnlySet<int> champions)
+    {
+        var decks = new DeckRecords(duels.SelectMany(d => d.Rounds));
+        return duels
+            .Where(d => d.Rounds.Count == 2 * WinsNeeded - 1)
+            .Select(duel => Choice(duel, decks, champions))
+            .Where(choice => choice.Chosen >= 0)
+            .ToList();
+    }
+
+    private static DuelLevelFit FitChoices(int cap, List<ConditionalLogit.Choice> choices)
+    {
         var (coefficients, covariance) = ConditionalLogit.Fit(choices);
 
         // LevelFit scores PerLevel * mean gap - WeakestCard * (mean - weakest), which is (PerLevel - WeakestCard) on the
@@ -52,7 +69,7 @@ public static class DuelLevelFitter
         var perLevelVariance = covariance[0, 0] + covariance[1, 1] + 2 * covariance[0, 1];
         return new DuelLevelFit(
             cap,
-            split.Count,
+            choices.Count,
             new Estimate(perLevel, Math.Sqrt(perLevelVariance)),
             new Estimate(weakestCard, Math.Sqrt(covariance[1, 1])),
             Coefficient(coefficients, covariance, 2),

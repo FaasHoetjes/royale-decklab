@@ -15,7 +15,7 @@ public sealed class DuelLevelFitterTests
     [Fact]
     public void Recovers_the_level_evo_and_hero_effects_the_duels_were_played_with()
     {
-        var fit = Assert.Single(DuelLevelFitter.Fit(SimulatedDuels(cap: 11, count: 40_000), Champions));
+        var fit = DuelLevelFitter.Fit(SimulatedDuels(cap: 11, count: 40_000), Champions).Single(f => f.Cap == 11);
 
         Assert.Equal(11, fit.Cap);
         Assert.Equal(PerLevel, fit.PerLevel.Value, 0.15);
@@ -28,20 +28,34 @@ public sealed class DuelLevelFitterTests
     [Fact]
     public void Isnt_fooled_when_stronger_players_own_more_evos_and_heroes()
     {
-        var fit = Assert.Single(DuelLevelFitter.Fit(SimulatedDuels(cap: 14, count: 40_000, specialsFollowSkill: true), Champions));
+        var fit = DuelLevelFitter.Fit(SimulatedDuels(cap: 14, count: 40_000, specialsFollowSkill: true), Champions)
+            .Single(f => f.Cap == 14);
 
         Assert.Equal(PerEvo, fit.Evo.Value, 0.05);
         Assert.Equal(PerHero, fit.Hero.Value, 0.05);
     }
 
     [Fact]
-    public void Skips_a_cap_with_too_few_duels_that_went_to_a_third_round()
+    public void Skips_a_cap_with_too_few_duels_that_went_to_a_third_round_but_counts_them_across_every_cap()
     {
-        var duels = SimulatedDuels(cap: 12, count: 10_000).Concat(SimulatedDuels(cap: 13, count: 1_000));
+        var duels = SimulatedDuels(cap: 12, count: 10_000).Concat(SimulatedDuels(cap: 13, count: 1_000)).ToList();
 
-        var fit = Assert.Single(DuelLevelFitter.Fit(duels, Champions));
+        var fits = DuelLevelFitter.Fit(duels, Champions);
 
-        Assert.Equal(12, fit.Cap);
+        Assert.Equal([DuelLevelFitter.AllCaps, 12], fits.Select(f => f.Cap));
+        Assert.Equal(duels.Count(d => d.Rounds.Count == 3), fits[0].Duels);
+    }
+
+    [Fact]
+    public void Leaves_out_a_duel_whose_results_couldnt_have_been_played()
+    {
+        var duels = SimulatedDuels(cap: 15, count: 5_000).ToList();
+        var played = duels.First(d => d.Rounds.Count == 3);
+        var impossible = played with { Rounds = played.Rounds.Select(r => r with { FirstWon = true }).ToList() };
+
+        var fit = DuelLevelFitter.Fit([.. duels, impossible], Champions).Single(f => f.Cap == 15);
+
+        Assert.Equal(duels.Count(d => d.Rounds.Count == 3), fit.Duels);
     }
 
     private static IEnumerable<Duel> SimulatedDuels(int cap, int count, bool specialsFollowSkill = false)
