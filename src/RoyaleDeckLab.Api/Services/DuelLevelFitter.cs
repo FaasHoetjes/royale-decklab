@@ -43,6 +43,7 @@ public static class DuelLevelFitter
             .Prepend((Cap: AllCaps, Choices: everyCap))
             .Where(c => c.Choices.Count >= MinDuels)
             .Select(c => FitChoices(c.Cap, c.Choices))
+            .OfType<DuelLevelFit>()
             .ToList();
     }
 
@@ -57,9 +58,13 @@ public static class DuelLevelFitter
             .ToList();
     }
 
-    private static DuelLevelFit FitChoices(int cap, List<ConditionalLogit.Choice> choices)
+    private static DuelLevelFit? FitChoices(int cap, List<ConditionalLogit.Choice> choices)
     {
-        var (coefficients, covariance) = ConditionalLogit.Fit(choices);
+        if (ConditionalLogit.Fit(choices) is not { } fit)
+        {
+            return null;
+        }
+        var (coefficients, covariance) = fit;
 
         // LevelFit scores PerLevel * mean gap - WeakestCard * (mean - weakest), which is (PerLevel - WeakestCard) on the
         // mean gap and WeakestCard on the weakest-card gap.

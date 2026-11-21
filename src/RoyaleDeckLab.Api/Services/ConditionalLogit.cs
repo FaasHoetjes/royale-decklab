@@ -7,31 +7,42 @@ public static class ConditionalLogit
     private const int MaxIterations = 30;
     private const double Tolerance = 1e-9;
 
-    public static (double[] Coefficients, double[,] Covariance) Fit(IReadOnlyList<Choice> choices)
+    // Relative to the largest pivot: below it a variable is (nearly) a mix of the others, so its coefficient is noise.
+    private const double SingularPivot = 1e-10;
+
+    /// <returns>Null when a variable never varies on its own or the fit doesn't settle.</returns>
+    public static (double[] Coefficients, double[,] Covariance)? Fit(IReadOnlyList<Choice> choices)
     {
         var k = choices[0].Alternatives[0].Length;
         var coefficients = new double[k];
-        var information = new double[k, k];
         for (var iteration = 0; iteration < MaxIterations; iteration++)
         {
             var gradient = new double[k];
-            information = new double[k, k];
+            var information = new double[k, k];
             foreach (var choice in choices)
             {
                 Accumulate(choice, coefficients, gradient, information);
             }
+            if (Invert(information) is not { } covariance)
+            {
+                return null;
+            }
 
-            var step = Multiply(Invert(information), gradient);
+            var step = Multiply(covariance, gradient);
             for (var j = 0; j < k; j++)
             {
                 coefficients[j] += step[j];
             }
+            if (!coefficients.All(double.IsFinite))
+            {
+                return null;
+            }
             if (step.Max(Math.Abs) < Tolerance)
             {
-                break;
+                return covariance.Cast<double>().All(double.IsFinite) ? (coefficients, covariance) : null;
             }
         }
-        return (coefficients, Invert(information));
+        return null;
     }
 
     private static void Accumulate(Choice choice, double[] coefficients, double[] gradient, double[,] information)
@@ -79,9 +90,14 @@ public static class ConditionalLogit
         return result;
     }
 
-    private static double[,] Invert(double[,] matrix)
+    private static double[,]? Invert(double[,] matrix)
     {
         var n = matrix.GetLength(0);
+        var largest = 0.0;
+        for (var i = 0; i < n; i++)
+        {
+            largest = Math.Max(largest, Math.Abs(matrix[i, i]));
+        }
         var work = new double[n, 2 * n];
         for (var i = 0; i < n; i++)
         {
@@ -102,9 +118,9 @@ public static class ConditionalLogit
                     pivot = row;
                 }
             }
-            if (work[pivot, col] == 0)
+            if (!(Math.Abs(work[pivot, col]) > SingularPivot * largest))
             {
-                throw new InvalidOperationException("The variables don't vary independently");
+                return null;
             }
             for (var j = 0; j < 2 * n; j++)
             {
