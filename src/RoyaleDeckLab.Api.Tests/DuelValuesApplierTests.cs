@@ -89,6 +89,19 @@ public sealed class DuelValuesApplierTests : IDisposable
         Assert.Equal(0, _store.Current.CushionFittedAtMs);
     }
 
+    [Fact]
+    public async Task Takes_the_first_level_refit_outright_even_after_the_cushion_was_applied()
+    {
+        await SaveRefitAsync(1_000, perLevel: 1.60, priorRounds: 43);
+        await ApplyAsync(nowMs: 1_100, new CrownSeriesOptions { ApplyLevelRefits = false });
+        await SaveRefitAsync(2_000, perLevel: 1.40, priorRounds: 20);
+
+        Assert.True(await ApplyAsync(nowMs: 2_100));
+
+        Assert.Equal(1.40, _store.Current.Values.Levels.PerLevel, 10);
+        Assert.Equal(35, _store.Current.Values.PriorRounds, 10);
+    }
+
     private async Task<bool> ApplyAsync(long nowMs, CrownSeriesOptions? options = null)
     {
         using var scope = _services.CreateScope();

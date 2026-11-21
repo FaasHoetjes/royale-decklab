@@ -56,9 +56,13 @@ public sealed class DuelValuesApplier(
         var next = new AppliedDuelValues(values, nowMs, levelsAt, cushionAt);
         await fits.SaveAppliedAsync(next, ct);
         store.Set(next);
+        if (values == applied.Values)
+        {
+            return false;
+        }
         logger.LogInformation(
             "Duel scoring now runs on level {PerLevel:F2}, weakest card {WeakestCard:F2}, evo {Evo:F2}, hero {Hero:F2}, cushion {PriorRounds:F0} rounds",
             values.Levels.PerLevel, values.Levels.WeakestCard, values.Specials.Evo, values.Specials.Hero, values.PriorRounds);
-        return values != applied.Values;
+        return true;
     }
 }
