@@ -24,6 +24,7 @@ function onlyLocksChanged(a: GeneratorOptions, b: GeneratorOptions): boolean {
     a.minLevel === b.minLevel &&
     a.boosts === b.boosts &&
     sameIds(a.ban, b.ban) &&
-    sameIds(a.require, b.require)
+    sameIds(a.require, b.require) &&
+    a.require.every((id) => a.requireAs[id] === b.requireAs[id])
   );
 }

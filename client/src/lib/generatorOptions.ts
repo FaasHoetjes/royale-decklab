@@ -8,17 +8,23 @@ export const LOWEST_LEVEL_CHOICE = 10;
 const CARDS_PER_DECK = 8;
 const DEFAULTS_KEY = 'generator_defaults';
 
+/** How an included card is played; a card without one is played however is best. */
+export type IncludedVersion = 'normal' | 'evo' | 'hero';
+const INCLUDED_VERSIONS: readonly string[] = ['normal', 'evo', 'hero'];
+
 export interface GeneratorOptions {
   decks: number;
   minLevel: number | null;
   ban: number[];
   require: number[];
+  /** Included cards the player wants in a set version. */
+  requireAs: Record<number, IncludedVersion>;
   lock: number[][];
   /** Score this season's boosted cards at the level they're played at. */
   boosts: boolean;
 }
 
-export const DEFAULT_OPTIONS: GeneratorOptions = { decks: MAX_DECKS, minLevel: null, ban: [], require: [], lock: [], boosts: true };
+export const DEFAULT_OPTIONS: GeneratorOptions = { decks: MAX_DECKS, minLevel: null, ban: [], require: [], requireAs: {}, lock: [], boosts: true };
 
 export const deckKey = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',');
 
@@ -35,7 +41,12 @@ export function parseOptions(params: URLSearchParams, stored: RememberedOptions 
   const boosts = boostsRaw !== 'false';
 
   const ban = parseIdList(params.get('ban'));
-  const require = parseIdList(params.get('require')).filter((id) => !ban.includes(id));
+  const requireAs: Record<number, IncludedVersion> = {};
+  for (const entry of (params.get('require') ?? '').split(',')) {
+    const [id, version] = entry.split(':');
+    if (version && INCLUDED_VERSIONS.includes(version)) requireAs[Number(id)] = version as IncludedVersion;
+  }
+  const require = parseIdList(params.get('require')?.replace(/:[a-z]*/g, '') ?? null).filter((id) => !ban.includes(id));
   const lock: number[][] = [];
   const lockedCards = new Set<number>();
   for (const raw of params.getAll('lock')) {
@@ -51,6 +62,7 @@ export function parseOptions(params: URLSearchParams, stored: RememberedOptions 
     minLevel: minLevel != null && Number.isInteger(minLevel) && minLevel >= 1 && minLevel <= MAX_LEVEL ? minLevel : null,
     ban,
     require,
+    requireAs: onlyFor(require, requireAs),
     lock: lock.slice(0, validDecks),
     boosts,
   };
@@ -62,11 +74,13 @@ export function toQuery(options: GeneratorOptions): string {
   if (options.decks !== MAX_DECKS) params.set('decks', String(options.decks));
   if (options.minLevel != null) params.set('minLevel', String(options.minLevel));
   if (options.ban.length) params.set('ban', options.ban.join(','));
-  if (options.require.length) params.set('require', options.require.join(','));
+  if (options.require.length) {
+    params.set('require', options.require.map((id) => (options.requireAs[id] ? `${id}:${options.requireAs[id]}` : id)).join(','));
+  }
   options.lock.forEach((deck) => params.append('lock', deck.join(',')));
   if (!options.boosts) params.set('boosts', 'false');
-  // Commas are legal in a query string and keep the URL readable.
-  return params.toString().replace(/%2C/g, ',');
+  // Commas and colons are legal in a query string and keep the URL readable.
+  return params.toString().replace(/%2C/g, ',').replace(/%3A/g, ':');
 }
 
 export const hasActiveOptions = (o: GeneratorOptions) =>
@@ -97,6 +111,16 @@ export function saveDefaults(options: GeneratorOptions): void {
   }
 }
 
+/** The versions of just these cards. */
+export function onlyFor(ids: number[], versions: Record<number, IncludedVersion>): Record<number, IncludedVersion> {
+  const kept: Record<number, IncludedVersion> = {};
+  for (const id of ids) {
+    const version = versions[id];
+    if (version) kept[id] = version;
+  }
+  return kept;
+}
+
 /** The API takes at most this many cards in one ban or require list. */
 const MAX_LISTED_CARDS = 40;
 
@@ -113,6 +137,7 @@ export function planRestOfToday(options: GeneratorOptions, decksUsed: number, pl
     decks: decksLeft,
     ban: [...new Set([...playedCards, ...options.ban])].slice(0, MAX_LISTED_CARDS),
     require: options.require.filter((id) => !played.has(id)),
+    requireAs: onlyFor(options.require.filter((id) => !played.has(id)), options.requireAs),
     lock: options.lock.filter((deck) => deck.every((id) => !played.has(id))).slice(0, decksLeft),
   };
 }

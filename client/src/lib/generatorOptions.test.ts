@@ -74,3 +74,28 @@ describe('season boosts option', () => {
     expect(next.boosts).toBe(true);
   });
 });
+
+describe('included card versions', () => {
+  const parse = (query: string) => parseOptions(new URLSearchParams(query), { decks: 4, minLevel: null });
+
+  test('read from the link and written back the same way', () => {
+    const options = parse('require=26000008:evo,26000001,26000003:normal');
+
+    expect(options.require).toEqual([26000008, 26000001, 26000003]);
+    expect(options.requireAs).toEqual({ 26000008: 'evo', 26000003: 'normal' });
+    expect(toQuery(options)).toBe('require=26000008:evo,26000001,26000003:normal');
+  });
+
+  test('an unknown version counts as best, and a banned card keeps none', () => {
+    const options = parse('ban=5&require=5:evo,6:gold');
+
+    expect(options.require).toEqual([6]);
+    expect(options.requireAs).toEqual({});
+  });
+
+  test('a card played today loses its version with its place in the list', () => {
+    const plan = planRestOfToday({ ...DEFAULT_OPTIONS, require: [3, 50], requireAs: { 3: 'evo', 50: 'hero' } }, 1, [3]);
+
+    expect(plan?.requireAs).toEqual({ 50: 'hero' });
+  });
+});

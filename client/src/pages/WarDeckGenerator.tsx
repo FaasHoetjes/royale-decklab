@@ -39,7 +39,7 @@ export default function WarDeckGenerator() {
   // Write remembered defaults and cleaned-up values back, so the address bar always matches what is shown.
   const showOptions = (next: string) => navigate({ search: next ? `?${next}` : '' }, { replace: true, state: location.state });
   useEffect(() => {
-    if (playerId && !shared && searchParams.toString().replace(/%2C/g, ',') !== query) showOptions(query);
+    if (playerId && !shared && searchParams.toString().replace(/%2C/g, ',').replace(/%3A/g, ':') !== query) showOptions(query);
   }, [playerId, query, shared]);
 
   const handleOptionsChange = (next: GeneratorOptions) => {

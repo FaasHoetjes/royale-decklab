@@ -43,8 +43,8 @@ describe('upgradeTargets', () => {
 
 describe('duelOptions', () => {
   test('keeps the card rules and leaves the war-only options at their defaults', () => {
-    const options = duelOptions(new URLSearchParams('league=kings&decks=2&minLevel=14&boosts=false&ban=5&require=6&lock=1,2,3,4,7,8,9,10'));
+    const options = duelOptions(new URLSearchParams('league=kings&decks=2&minLevel=14&boosts=false&ban=5&require=6:evo,7&lock=1,2,3,4,7,8,9,10'));
 
-    expect(options).toEqual({ decks: 4, minLevel: null, boosts: true, ban: [5], require: [6], lock: [[1, 2, 3, 4, 7, 8, 9, 10]] });
+    expect(options).toEqual({ decks: 4, minLevel: null, boosts: true, ban: [5], require: [6, 7], requireAs: { 6: 'evo' }, lock: [[1, 2, 3, 4, 7, 8, 9, 10]] });
   });
 });
