@@ -48,10 +48,22 @@ export function slotVersionOf(
   metaVersions: CardVersionRef[] | undefined,
   playerVersions: CardVersionRef[] | undefined
 ): (cardId: number) => CardVersion {
-  return (cardId) => {
-    const meta = metaVersions?.find((v) => v.cardId === cardId)?.version;
-    return meta && meta !== 'normal' ? meta : versionOf(playerVersions, cardId);
+  // The player's own specials take the slots first; a special the deck usually runs but the player lacks keeps a
+  // slot only where one is still free, so it shows as missing rather than pushing a fielded special out.
+  const slots = new Map<number, CardVersion>();
+  const count = { evo: 0, hero: 0 };
+  const take = (cardId: number, version: 'evo' | 'hero') => {
+    slots.set(cardId, version);
+    count[version]++;
   };
+  for (const v of playerVersions ?? []) {
+    if (v.version !== 'normal') take(v.cardId, v.version);
+  }
+  for (const v of metaVersions ?? []) {
+    if (v.version === 'normal' || slots.has(v.cardId)) continue;
+    if (count[v.version] < 2 && count.evo + count.hero < 3) take(v.cardId, v.version);
+  }
+  return (cardId) => slots.get(cardId) ?? 'normal';
 }
 
 /** In-game slots are positional: 1 = evo, 2 = hero, 3 = whichever is left. */
