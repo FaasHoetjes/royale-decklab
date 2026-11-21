@@ -2,12 +2,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCrownSeriesDecks } from '../queries';
-import { isNoDuelData, type CrownSeriesLeagueId } from '../api';
+import { isNoDuelData, type CrownSeriesLeagueId, type ScoredDeck } from '../api';
 import { leagueFor, saveLeague, upgradeTargets } from '../lib/crownSeries';
 import CrownSeriesBanner from '../components/CrownSeriesBanner';
 import LeaguePicker from '../components/LeaguePicker';
 import UpgradeFirst from '../components/UpgradeFirst';
 import DeckCard from '../components/DeckCard';
+import SwapDeckModal from '../components/SwapDeckModal';
+import { useSwappableLineup } from '../hooks/useSwappableLineup';
 import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
 import { SearchIcon } from '../components/navIcons';
@@ -20,7 +22,8 @@ export default function CrownSeries() {
 
   const duelDecks = useCrownSeriesDecks(activePlayerTag, league.id);
   const data = duelDecks.data;
-  const decks = data?.duelDecks.decks ?? [];
+  const lineup = useSwappableLineup(data?.duelDecks.decks ?? NO_DECKS, data?.duelDecks.alternatives ?? NO_DECKS);
+  const decks = lineup.shownDecks;
   const isUpdating = duelDecks.isPlaceholderData;
 
   const pickLeague = (id: CrownSeriesLeagueId) => {
@@ -52,7 +55,14 @@ export default function CrownSeries() {
 
   const controls = (
     <div style={styles.controls}>
-      <LeaguePicker league={league} onPick={pickLeague} />
+      <div style={styles.picker}>
+        <LeaguePicker league={league} onPick={pickLeague} />
+      </div>
+      {lineup.swapped && (
+        <button type="button" onClick={lineup.undoSwaps} title="Back to the decks as generated" className="mobile-touch-target" style={styles.reset}>
+          Reset
+        </button>
+      )}
     </div>
   );
 
@@ -125,7 +135,7 @@ export default function CrownSeries() {
       <div style={{ ...styles.decks, gap: isMobile ? '16px' : '30px', opacity: isUpdating ? 0.55 : 1 }} aria-busy={isUpdating}>
         {decks.map((deck, i) => (
           <DeckCard
-            key={deck.cardIds.join(',')}
+            key={i}
             cards={deck.cards}
             metaWinRate={deck.metaWinRate}
             uses={deck.uses}
@@ -134,17 +144,33 @@ export default function CrownSeries() {
             leagueUses={deck.leagueUses}
             cardVersions={deck.cardVersions}
             metaCardVersions={deck.metaCardVersions}
+            cardOrder={lineup.cardOrderAt(i)}
             playerScore={deck.playerScore}
             deckNumber={i + 1}
+            canSwap={lineup.swapOptions(i).length > 1}
+            onSwap={() => lineup.openSwap(i)}
             priority={i === 0}
             source="duel"
             levelCap={data.levelCap}
           />
         ))}
       </div>
+      {lineup.swapSlot != null && (
+        <SwapDeckModal
+          slotNumber={lineup.swapSlot + 1}
+          currentMaster={lineup.slots[lineup.swapSlot] ?? -1}
+          currentCardOrder={lineup.cardOrderAt(lineup.swapSlot)}
+          options={lineup.swapOptions(lineup.swapSlot)}
+          onSelect={(master) => lineup.selectForSlot(lineup.swapSlot!, master)}
+          onClose={lineup.closeSwap}
+          source="duel"
+        />
+      )}
     </div>
   );
 }
+
+const NO_DECKS: ScoredDeck[] = [];
 
 // Below this share of their rounds played in the league itself, the picks mostly reflect other leagues.
 const MIN_LEAGUE_SHARE = 0.5;
@@ -200,9 +226,24 @@ const styles = {
     color: 'var(--text-secondary)',
   },
   controls: {
-    display: 'grid' as const,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
     gap: '12px',
     marginBottom: '20px',
+  },
+  picker: {
+    flex: 1,
+    minWidth: 0,
+  },
+  reset: {
+    flexShrink: 0,
+    border: 0,
+    background: 'none',
+    color: 'var(--accent)',
+    fontSize: '14px',
+    fontWeight: 600 as const,
+    cursor: 'pointer',
+    padding: '4px 6px',
   },
   thinNote: {
     margin: '0 0 12px',
