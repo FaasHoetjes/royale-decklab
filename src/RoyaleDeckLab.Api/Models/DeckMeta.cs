@@ -18,4 +18,10 @@ public sealed class DeckMeta
     public double? PickRate { get; init; }
 
     public IReadOnlyList<CardVersion>? CardVersions { get; init; }
+
+    /// <summary>Each set of specials the deck has been played with, when there's been more than one.</summary>
+    public IReadOnlyList<SpecialSetup>? Setups { get; init; }
+
+    /// <summary>Shared by every deck of the same meta.</summary>
+    public SpecialGains? SpecialGains { get; init; }
 }

@@ -111,10 +111,18 @@ internal static class CardVersionRules
         return changed ? personalized : cardVersions;
     }
 
-    // A slot left free by a special the player doesn't own is filled with one they do: fielding any special beats none.
+    // How many imaginary games at the deck's own win rate a setup's record is weighed against. Setups of one deck
+    // barely differ beyond what the players behind them explain (508k war battles), so only a long record counts.
+    private const double SetupPriorGames = 300;
+
+    /// <summary>
+    /// The player's own specials in the slots still free, as many as fit: fielding any special beats none. Where they
+    /// fit more than one way, the way the deck's record favours wins, or failing a record, the cards that gain most.
+    /// </summary>
     internal static IReadOnlyList<CardVersion>? UpgradeIntoFreeSlots(
         IReadOnlyList<CardVersion>? personalized,
-        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap,
+        DeckMeta? deck = null)
     {
         if (personalized is null)
         {
@@ -123,39 +131,108 @@ internal static class CardVersionRules
 
         var evo = personalized.Count(v => v.Version == CardVersionKind.Evo);
         var hero = personalized.Count(v => v.Version == CardVersionKind.Hero);
-        var total = evo + hero;
-
-        var changed = false;
-        var upgraded = new List<CardVersion>(personalized.Count);
+        var options = new List<(int Index, CardVersionKind[] Versions)>();
         for (var i = 0; i < personalized.Count; i++)
         {
-            var v = personalized[i];
-            if (v.Version != CardVersionKind.Normal)
+            if (personalized[i].Version != CardVersionKind.Normal)
             {
-                upgraded.Add(v);
                 continue;
             }
-            var owned = cardMap.TryGetValue(v.CardId, out var c) ? c.EvolutionLevel : 0;
-            if (EvolutionBits.OwnsHero(owned) && hero < MaxHero && total < MaxSpecials)
+            var owned = cardMap.TryGetValue(personalized[i].CardId, out var c) ? c.EvolutionLevel : 0;
+            CardVersionKind[] versions = (EvolutionBits.OwnsHero(owned), EvolutionBits.OwnsEvo(owned)) switch
             {
-                hero++;
-                total++;
-                changed = true;
-                upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Hero));
-            }
-            else if (EvolutionBits.OwnsEvo(owned) && evo < MaxEvo && total < MaxSpecials)
+                (true, true) => [CardVersionKind.Hero, CardVersionKind.Evo],
+                (true, false) => [CardVersionKind.Hero],
+                (false, true) => [CardVersionKind.Evo],
+                _ => [],
+            };
+            if (versions.Length > 0)
             {
-                evo++;
-                total++;
-                changed = true;
-                upgraded.Add(new CardVersion(v.CardId, CardVersionKind.Evo));
-            }
-            else
-            {
-                upgraded.Add(v);
+                options.Add((i, versions));
             }
         }
-        return changed ? upgraded : personalized;
+        if (options.Count == 0 || evo + hero >= MaxSpecials)
+        {
+            return personalized;
+        }
+
+        var chosen = new CardVersionKind[options.Count];
+        var best = chosen;
+        var bestCount = 0;
+        var bestRank = double.NegativeInfinity;
+        void Search(int at, int evos, int heroes, int added)
+        {
+            if (added + options.Count - at < bestCount)
+            {
+                return;
+            }
+            if (at == options.Count)
+            {
+                var rank = deck is null || added == 0 ? 0 : SetupRank(personalized, options, chosen, deck, cardMap);
+                if (added > bestCount || rank > bestRank)
+                {
+                    (best, bestCount, bestRank) = ((CardVersionKind[])chosen.Clone(), added, rank);
+                }
+                return;
+            }
+            foreach (var kind in options[at].Versions)
+            {
+                var fits = evos + heroes < MaxSpecials && (kind == CardVersionKind.Hero ? heroes < MaxHero : evos < MaxEvo);
+                if (fits)
+                {
+                    chosen[at] = kind;
+                    Search(at + 1, evos + (kind == CardVersionKind.Evo ? 1 : 0), heroes + (kind == CardVersionKind.Hero ? 1 : 0), added + 1);
+                }
+            }
+            chosen[at] = CardVersionKind.Normal;
+            Search(at + 1, evos, heroes, added);
+        }
+        Search(0, evo, hero, 0);
+
+        if (bestCount == 0)
+        {
+            return personalized;
+        }
+        var upgraded = personalized.ToList();
+        for (var k = 0; k < options.Count; k++)
+        {
+            if (best[k] != CardVersionKind.Normal)
+            {
+                upgraded[options[k].Index] = new CardVersion(upgraded[options[k].Index].CardId, best[k]);
+            }
+        }
+        return upgraded;
+    }
+
+    private static double SetupRank(
+        IReadOnlyList<CardVersion> personalized,
+        List<(int Index, CardVersionKind[] Versions)> options,
+        CardVersionKind[] chosen,
+        DeckMeta deck,
+        IReadOnlyDictionary<int, PlayerItemLevel> cardMap)
+    {
+        var fielded = new HashSet<(int, CardVersionKind)>();
+        foreach (var v in personalized)
+        {
+            if (v.Version != CardVersionKind.Normal && !IsChampion(v.CardId, cardMap))
+            {
+                fielded.Add((v.CardId, v.Version));
+            }
+        }
+        var prior = deck.WinRate;
+        for (var k = 0; k < options.Count; k++)
+        {
+            if (chosen[k] != CardVersionKind.Normal)
+            {
+                var cardId = personalized[options[k].Index].CardId;
+                fielded.Add((cardId, chosen[k]));
+                prior += deck.SpecialGains?.Of(cardId, chosen[k]) ?? 0;
+            }
+        }
+
+        var record = deck.Setups?.FirstOrDefault(s => fielded.SetEquals(
+            s.Specials.Where(v => !IsChampion(v.CardId, cardMap)).Select(v => (v.CardId, v.Version))));
+        return (prior * SetupPriorGames + (record?.Wins ?? 0)) / (SetupPriorGames + (record?.Games ?? 0));
     }
 
     internal static bool CanPlay(int cardId, CardVersionKind version, IReadOnlyDictionary<int, PlayerItemLevel> cardMap)

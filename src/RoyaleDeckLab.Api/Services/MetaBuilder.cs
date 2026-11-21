@@ -279,12 +279,15 @@ public sealed class MetaBuilder(
                 agg.Loadouts[record.CardVersions] = loadout;
             }
             loadout.Count++;
+            loadout.WeightedGames += weight;
+            loadout.WeightedWins += weight * record.Result.WinShare();
             if (string.CompareOrdinal(record.BattleTime, loadout.LatestTime) > 0)
             {
                 loadout.LatestTime = record.BattleTime;
             }
         }
 
+        var gains = SpecialGainsOf(byDeck.Values);
         var decks = new List<DeckMeta>(byDeck.Count);
         foreach (var agg in byDeck.Values)
         {
@@ -306,6 +309,8 @@ public sealed class MetaBuilder(
                     .OrderByDescending(l => l.Count)
                     .ThenByDescending(l => l.LatestTime, StringComparer.Ordinal)
                     .First().Versions,
+                Setups = SetupsOf(agg),
+                SpecialGains = gains,
             });
         }
 
@@ -386,9 +391,57 @@ public sealed class MetaBuilder(
         public Dictionary<IReadOnlyList<CardVersion>, LoadoutAgg> Loadouts { get; } = new(SameLoadout.Instance);
     }
 
+    private static List<SpecialSetup>? SetupsOf(DeckAgg agg)
+    {
+        if (agg.Loadouts.Count < 2)
+        {
+            return null;
+        }
+        return agg.Loadouts.Values
+            .Select(l => (Specials: l.Versions.Where(v => v.Version != CardVersionKind.Normal).OrderBy(v => v.CardId).ToList(), l))
+            .GroupBy(s => string.Join(',', s.Specials.Select(v => $"{v.CardId}:{v.Version}")))
+            .Select(g => new SpecialSetup(g.First().Specials, g.Sum(s => s.l.WeightedGames), g.Sum(s => s.l.WeightedWins)))
+            .ToList();
+    }
+
+    // Below this many games a card's win rate as a version says too little to compare it with.
+    private const double MinGamesForSpecialGain = 50;
+
+    private static SpecialGains SpecialGainsOf(IEnumerable<DeckAgg> decks)
+    {
+        var totals = new Dictionary<(int CardId, CardVersionKind Version), (double Games, double Wins)>();
+        foreach (var agg in decks)
+        {
+            foreach (var loadout in agg.Loadouts.Values)
+            {
+                foreach (var cardId in agg.CardIds)
+                {
+                    var version = loadout.Versions.FirstOrDefault(v => v.CardId == cardId)?.Version ?? CardVersionKind.Normal;
+                    var (games, wins) = totals.GetValueOrDefault((cardId, version));
+                    totals[(cardId, version)] = (games + loadout.WeightedGames, wins + loadout.WeightedWins);
+                }
+            }
+        }
+
+        var gains = new Dictionary<(int CardId, CardVersionKind Version), double>();
+        foreach (var ((cardId, version), (games, wins)) in totals)
+        {
+            if (version != CardVersionKind.Normal
+                && games >= MinGamesForSpecialGain
+                && totals.TryGetValue((cardId, CardVersionKind.Normal), out var plain)
+                && plain.Games >= MinGamesForSpecialGain)
+            {
+                gains[(cardId, version)] = wins / games - plain.Wins / plain.Games;
+            }
+        }
+        return new SpecialGains(gains);
+    }
+
     private sealed class LoadoutAgg
     {
         public int Count;
+        public double WeightedGames;
+        public double WeightedWins;
         public string LatestTime = "";
         public required IReadOnlyList<CardVersion> Versions { get; init; }
     }

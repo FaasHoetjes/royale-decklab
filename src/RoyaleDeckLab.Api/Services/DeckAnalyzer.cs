@@ -192,7 +192,7 @@ public sealed class DeckAnalyzer
         var versions = CardVersionRules.WithChampionVersions(deck.CardIds, deck.CardVersions, cardMap);
         var metaVersions = CardVersionRules.CapEvolutions(versions)!;
         var owned = CardVersionRules.CapEvolutions(CardVersionRules.PersonalizeVersions(versions, cardMap))!;
-        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap)!);
+        return (metaVersions, owned, CardVersionRules.UpgradeIntoFreeSlots(owned, cardMap, deck)!);
     }
 
     private static ScoredDeck ToScoredDeck(

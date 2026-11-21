@@ -127,5 +127,7 @@ public sealed class CrownSeriesMeta(
         Players = deck.Players,
         PickRate = deck.PickRate,
         CardVersions = deck.CardVersions,
+        Setups = deck.Setups,
+        SpecialGains = deck.SpecialGains,
     };
 }

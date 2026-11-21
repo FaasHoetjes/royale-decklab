@@ -254,4 +254,41 @@ public sealed class AggregateBattlesTests
         var result = Assert.Single(NewBuilder().AggregateBattles(battles));
         Assert.Equal(CardVersionKind.Evo, result.CardVersions!.Single(v => v.CardId == 1).Version);
     }
+
+    [Fact]
+    public void KeepsTheRecordOfEachSetOfSpecials_WhenADeckHasBeenPlayedMoreThanOneWay()
+    {
+        var deck = Build.Eight(1);
+        IReadOnlyList<CardVersion> Evo(int id) => [.. deck.Select(c => new CardVersion(c, c == id ? CardVersionKind.Evo : CardVersionKind.Normal))];
+        var battles = new[]
+        {
+            Build.Battle("#P1", deck, BattleResult.Win, versions: Evo(1)),
+            Build.Battle("#P2", deck, BattleResult.Win, versions: Evo(1)),
+            Build.Battle("#P3", deck, BattleResult.Loss, versions: Evo(2)),
+        };
+
+        var setups = Assert.Single(NewBuilder().AggregateBattles(battles)).Setups!;
+
+        var first = Assert.Single(setups, s => s.Specials.Single().CardId == 1);
+        Assert.Equal((2, 2), (first.Games, first.Wins));
+        var second = Assert.Single(setups, s => s.Specials.Single().CardId == 2);
+        Assert.Equal((1, 0), (second.Games, second.Wins));
+    }
+
+    [Fact]
+    public void MeasuresHowMuchMoreACardWinsAsAnEvo()
+    {
+        var deck = Build.Eight(1);
+        IReadOnlyList<CardVersion> evo = [.. deck.Select(c => new CardVersion(c, c == 1 ? CardVersionKind.Evo : CardVersionKind.Normal))];
+        var battles = Enumerable.Range(0, 60).SelectMany(i => new[]
+        {
+            Build.Battle($"#E{i}", deck, i < 40 ? BattleResult.Win : BattleResult.Loss, versions: evo),
+            Build.Battle($"#N{i}", deck, i < 30 ? BattleResult.Win : BattleResult.Loss),
+        });
+
+        var gains = Assert.Single(NewBuilder().AggregateBattles(battles)).SpecialGains!;
+
+        Assert.Equal(40.0 / 60 - 30.0 / 60, gains.Of(1, CardVersionKind.Evo), 10);
+        Assert.Equal(0, gains.Of(2, CardVersionKind.Evo));
+    }
 }

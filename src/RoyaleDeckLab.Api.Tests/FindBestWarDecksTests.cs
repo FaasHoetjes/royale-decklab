@@ -286,6 +286,80 @@ public sealed class FindBestWarDecksTests
         Assert.Equal(CardVersionKind.Hero, deck.CardVersions!.Single(v => v.CardId == 1).Version);
     }
 
+    // Card 1's Hero is locked, so one hero slot is free, and the player owns the Heroes of cards 4 and 5.
+    private static readonly List<PlayerItemLevel> TwoSpareHeroes =
+    [
+        Build.Card(2, evo: 2), Build.Card(3, evo: 1), Build.Card(4, evo: 2), Build.Card(5, evo: 2),
+        .. Build.Collection(1, 6, 7, 8),
+    ];
+
+    private static DeckMeta SpareHeroDeck(IReadOnlyList<SpecialSetup>? setups = null, SpecialGains? gains = null) => new()
+    {
+        CardIds = Build.Eight(1),
+        WinRate = 0.60,
+        Confidence = 0.55,
+        Uses = 100,
+        Players = 20,
+        CardVersions = [new(1, CardVersionKind.Hero), new(2, CardVersionKind.Hero), new(3, CardVersionKind.Evo)],
+        Setups = setups,
+        SpecialGains = gains,
+    };
+
+    private static CardVersionKind FieldedAs(ScoredDeck deck, int cardId) => deck.CardVersions!.Single(v => v.CardId == cardId).Version;
+
+    [Fact]
+    public void ASpareHero_GoesToTheCardWhoseSetupHasTheBetterRecord()
+    {
+        var setups = new List<SpecialSetup>
+        {
+            new([new(2, CardVersionKind.Hero), new(3, CardVersionKind.Evo), new(4, CardVersionKind.Hero)], Games: 200, Wins: 100),
+            new([new(2, CardVersionKind.Hero), new(3, CardVersionKind.Evo), new(5, CardVersionKind.Hero)], Games: 200, Wins: 150),
+        };
+
+        var deck = Assert.Single(Run(TwoSpareHeroes, [SpareHeroDeck(setups)]).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, FieldedAs(deck, 4));
+        Assert.Equal(CardVersionKind.Hero, FieldedAs(deck, 5));
+    }
+
+    [Fact]
+    public void ASpareHero_GoesToTheCardThatGainsMost_WhenNeitherSetupHasBeenPlayed()
+    {
+        var gains = new SpecialGains(new Dictionary<(int, CardVersionKind), double>
+        {
+            [(4, CardVersionKind.Hero)] = 0.01,
+            [(5, CardVersionKind.Hero)] = 0.04,
+        });
+
+        var deck = Assert.Single(Run(TwoSpareHeroes, [SpareHeroDeck(gains: gains)]).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, FieldedAs(deck, 4));
+        Assert.Equal(CardVersionKind.Hero, FieldedAs(deck, 5));
+    }
+
+    [Fact]
+    public void ASpareHero_GoesToJustOneCard()
+    {
+        var deck = Assert.Single(Run(TwoSpareHeroes, [SpareHeroDeck()]).Decks);
+
+        Assert.Equal(1, new[] { 4, 5 }.Count(id => FieldedAs(deck, id) == CardVersionKind.Hero));
+    }
+
+    [Fact]
+    public void FillsBothFreeSlots_WhenOnlyOneWayFitsTwoSpecials()
+    {
+        // Card 2's Hero leaves one hero slot. Card 4 owns both versions and card 5 only its Hero, so Hero 4 would
+        // leave card 5 out while Evo 4 fits both.
+        var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 2), Build.Card(4, evo: 3), Build.Card(5, evo: 2) }
+            .Concat(Build.Collection(1, 3, 6, 7, 8)).ToList();
+        var meta = Build.Deck(Build.Eight(1), versions: [new(1, CardVersionKind.Evo), new(2, CardVersionKind.Hero)]);
+
+        var deck = Assert.Single(Run(cards, [meta]).Decks);
+
+        Assert.Equal(CardVersionKind.Evo, FieldedAs(deck, 4));
+        Assert.Equal(CardVersionKind.Hero, FieldedAs(deck, 5));
+    }
+
     [Fact]
     public void AHeroOwner_NeverClaimsAnEvoSlot()
     {
