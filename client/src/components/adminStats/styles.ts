@@ -77,4 +77,33 @@ export const statsStyles = {
     height: '100%',
     borderRadius: '3px',
   },
+  tableWrap: {
+    overflowX: 'auto' as const,
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    fontSize: '14px',
+  },
+  th: {
+    textAlign: 'left' as const,
+    fontWeight: 600 as const,
+    padding: '6px 8px',
+    whiteSpace: 'nowrap' as const,
+  },
+  thNumber: {
+    textAlign: 'right' as const,
+    fontWeight: 600 as const,
+    padding: '6px 8px',
+    whiteSpace: 'nowrap' as const,
+  },
+  td: {
+    padding: '8px',
+    whiteSpace: 'nowrap' as const,
+  },
+  tdNumber: {
+    padding: '8px',
+    textAlign: 'right' as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
 };
