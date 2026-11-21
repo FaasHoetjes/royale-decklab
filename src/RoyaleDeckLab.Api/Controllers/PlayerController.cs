@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RoyaleDeckLab.Api.Clients;
+using RoyaleDeckLab.Api.Dtos;
 using RoyaleDeckLab.Api.Models;
 using RoyaleDeckLab.Api.Security;
 using RoyaleDeckLab.Api.Services;
@@ -111,14 +112,7 @@ public sealed class PlayerController(
 
             return Ok(new
             {
-                player = new
-                {
-                    tag = player.Tag,
-                    name = player.Name,
-                    clanTag = player.Clan?.Tag,
-                    clanName = player.Clan?.Name,
-                    clanBadgeId = player.Clan?.BadgeId,
-                },
+                player = PlayerHeader.From(player),
                 warDecks = lineup.Lineup,
                 lineup.SeasonBoosts,
             });
