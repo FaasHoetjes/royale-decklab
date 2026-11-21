@@ -49,6 +49,18 @@ export function specialChoices(card: BuilderCard | undefined): SpecialChoice[] {
 /** An included card can be asked to play as a set version only when the player has one of its specials. */
 export const hasVersionChoice = (card: BuilderCard | undefined) => specialChoices(card).some((c) => c.owned);
 
+/** The asked-for versions the player can play: a shared link may ask for an Evo or Hero they haven't unlocked. */
+export function unlockedVersions<V extends 'normal' | 'evo' | 'hero'>(
+  versions: Record<number, V>,
+  cardById: Map<number, BuilderCard>
+): Record<number, V> {
+  return Object.fromEntries(
+    Object.entries(versions).filter(
+      ([id, version]) => version === 'normal' || specialChoices(cardById.get(Number(id))).some((c) => c.version === version && c.owned)
+    )
+  ) as Record<number, V>;
+}
+
 /** Every card at max level with every Evolution and Hero unlocked, for building without a player's own cards. */
 export function maxedCollection(catalog: CatalogCard[]): OwnedCard[] {
   return catalog.map((c) => ({

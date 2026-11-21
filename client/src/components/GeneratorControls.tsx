@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { SeasonBoosts } from '../api';
-import { hasVersionChoice, type BuilderCard } from '../lib/builderCards';
+import { hasVersionChoice, unlockedVersions, type BuilderCard } from '../lib/builderCards';
 import { displayLevel } from '../lib/cardDisplay';
 import { MAX_DECKS, onlyFor, type GeneratorOptions, type IncludedVersion } from '../lib/generatorOptions';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
@@ -81,6 +81,12 @@ export default function GeneratorControls({
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
   const ownedLevels = useMemo(() => cards.map(levelOf).filter((l): l is number => l != null), [cards]);
   const cardsLoaded = cards.length > 0;
+
+  useEffect(() => {
+    if (!cardsLoaded) return;
+    const requireAs = unlockedVersions(options.requireAs, cardById);
+    if (Object.keys(requireAs).length !== Object.keys(options.requireAs).length) onChange({ ...options, requireAs });
+  }, [cardsLoaded, cardById, options, onChange]);
 
   // Menus close on a click outside them or on Escape, which also returns focus to the pill.
   const anchors = useRef<Record<Menu, HTMLSpanElement | null>>({ decks: null, level: null });
