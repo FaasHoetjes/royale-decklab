@@ -617,7 +617,6 @@ export interface StatsReport {
   months: StatsMonth[];
 }
 
-/** The token goes in a header, never the URL, where logs and history would keep it. */
 export interface DuelLevelEstimate {
   value: number;
   standardError: number;
@@ -653,6 +652,7 @@ export async function fetchDuelLevels(token: string, signal?: AbortSignal): Prom
   return response.json();
 }
 
+/** The token goes in a header, never the URL, where logs and history would keep it. */
 export async function fetchAdminStats(token: string, filters: StatsFilters, signal?: AbortSignal): Promise<StatsReport> {
   const query = new URLSearchParams(Object.entries(filters).filter((entry): entry is [string, string] => !!entry[1])).toString();
   const response = await fetch(`/api/admin/stats${query ? `?${query}` : ''}`, { headers: { 'X-Admin-Token': token }, signal, cache: 'no-store' });
