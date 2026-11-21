@@ -48,6 +48,25 @@ public sealed class FindBestWarDecksTests
     }
 
     [Fact]
+    public void Alternatives_AreTheBestDecksThatFitASlot_NotTheBestOverall()
+    {
+        var cards = Build.Collection(Enumerable.Range(1, 40).ToArray());
+        var lineup = new[] { 1, 9, 17, 25 }.Select(s => Build.Deck(Build.Eight(s), confidence: 0.60));
+        // Each shares cards with both deck 1 and deck 2, so it can replace neither.
+        var clashing = Combinations(Build.Eight(1), 4).Select(four => Build.Deck([.. four, 9, 10, 11, 12], confidence: 0.55));
+        var fitsSlotOne = Build.Deck([1, 2, 3, 4, 33, 34, 35, 36], confidence: 0.45);
+
+        var result = Run(cards, [.. lineup, .. clashing, fitsSlotOne]);
+
+        Assert.Equal([1, 9, 17, 25], result.Decks.Select(d => d.CardIds.Min()));
+        Assert.Equal([36], result.Alternatives.Select(d => d.CardIds.Max()));
+    }
+
+    private static IEnumerable<int[]> Combinations(int[] from, int size) => size == 0
+        ? [[]]
+        : from.SelectMany((first, i) => Combinations(from[(i + 1)..], size - 1).Select(rest => (int[])[first, .. rest]));
+
+    [Fact]
     public void SkipsTheStrongestDeck_WhenItBlocksABetterTotal()
     {
         // Deck 0.60 blocks both 0.58 decks; greedy takes it, the exact search benches it for a better total.
@@ -210,7 +229,7 @@ public sealed class FindBestWarDecksTests
     }
 
     [Fact]
-    public void AHeroOnlyOwner_IsNotToldToFieldTheMetaEvo()
+    public void AHeroOnlyOwner_FieldsTheHeroInsteadOfTheMetaEvo()
     {
         // evolutionLevel 2 is the Hero bit alone: the Evo this meta deck runs is still locked.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
@@ -221,7 +240,7 @@ public sealed class FindBestWarDecksTests
         var deck = Assert.Single(Run(cards, meta).Decks);
 
         Assert.Equal(CardVersionKind.Evo, deck.MetaCardVersions!.Single(v => v.CardId == 1).Version);
-        Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+        Assert.Equal(CardVersionKind.Hero, deck.CardVersions!.Single(v => v.CardId == 1).Version);
     }
 
     [Fact]
@@ -252,9 +271,8 @@ public sealed class FindBestWarDecksTests
     }
 
     [Fact]
-    public void NeverUpgrades_WhenTheMetaSpecialsAlreadyFillTheSlots()
+    public void AnOwnedHero_TakesASlotLeftByMetaSpecialsThePlayerLacks()
     {
-        // Unowned specials still occupy their slots, so the owned hero has nowhere free to go.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
             .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion>
@@ -265,7 +283,81 @@ public sealed class FindBestWarDecksTests
 
         var deck = Assert.Single(Run(cards, meta).Decks);
 
-        Assert.Equal(CardVersionKind.Normal, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+        Assert.Equal(CardVersionKind.Hero, deck.CardVersions!.Single(v => v.CardId == 1).Version);
+    }
+
+    // Card 1's Hero is locked, so one hero slot is free, and the player owns the Heroes of cards 4 and 5.
+    private static readonly List<PlayerItemLevel> TwoSpareHeroes =
+    [
+        Build.Card(2, evo: 2), Build.Card(3, evo: 1), Build.Card(4, evo: 2), Build.Card(5, evo: 2),
+        .. Build.Collection(1, 6, 7, 8),
+    ];
+
+    private static DeckMeta SpareHeroDeck(IReadOnlyList<SpecialSetup>? setups = null, SpecialGains? gains = null) => new()
+    {
+        CardIds = Build.Eight(1),
+        WinRate = 0.60,
+        Confidence = 0.55,
+        Uses = 100,
+        Players = 20,
+        CardVersions = [new(1, CardVersionKind.Hero), new(2, CardVersionKind.Hero), new(3, CardVersionKind.Evo)],
+        Setups = setups,
+        SpecialGains = gains,
+    };
+
+    private static CardVersionKind FieldedAs(ScoredDeck deck, int cardId) => deck.CardVersions!.Single(v => v.CardId == cardId).Version;
+
+    [Fact]
+    public void ASpareHero_GoesToTheCardWhoseSetupHasTheBetterRecord()
+    {
+        var setups = new List<SpecialSetup>
+        {
+            new([new(2, CardVersionKind.Hero), new(3, CardVersionKind.Evo), new(4, CardVersionKind.Hero)], Games: 200, Wins: 100),
+            new([new(2, CardVersionKind.Hero), new(3, CardVersionKind.Evo), new(5, CardVersionKind.Hero)], Games: 200, Wins: 150),
+        };
+
+        var deck = Assert.Single(Run(TwoSpareHeroes, [SpareHeroDeck(setups)]).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, FieldedAs(deck, 4));
+        Assert.Equal(CardVersionKind.Hero, FieldedAs(deck, 5));
+    }
+
+    [Fact]
+    public void ASpareHero_GoesToTheCardThatGainsMost_WhenNeitherSetupHasBeenPlayed()
+    {
+        var gains = new SpecialGains(new Dictionary<(int, CardVersionKind), double>
+        {
+            [(4, CardVersionKind.Hero)] = 0.01,
+            [(5, CardVersionKind.Hero)] = 0.04,
+        });
+
+        var deck = Assert.Single(Run(TwoSpareHeroes, [SpareHeroDeck(gains: gains)]).Decks);
+
+        Assert.Equal(CardVersionKind.Normal, FieldedAs(deck, 4));
+        Assert.Equal(CardVersionKind.Hero, FieldedAs(deck, 5));
+    }
+
+    [Fact]
+    public void ASpareHero_GoesToJustOneCard()
+    {
+        var deck = Assert.Single(Run(TwoSpareHeroes, [SpareHeroDeck()]).Decks);
+
+        Assert.Equal(1, new[] { 4, 5 }.Count(id => FieldedAs(deck, id) == CardVersionKind.Hero));
+    }
+
+    [Fact]
+    public void FillsBothFreeSlots_WhenOnlyOneWayFitsTwoSpecials()
+    {
+        // Card 2's Hero leaves one hero slot. Card 4 owns both versions and card 5 only its Hero, so Hero 4 would
+        // leave card 5 out while Evo 4 fits both.
+        var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 2), Build.Card(4, evo: 3), Build.Card(5, evo: 2) }
+            .Concat(Build.Collection(1, 3, 6, 7, 8)).ToList();
+        var meta = Build.Deck(Build.Eight(1), versions: [new(1, CardVersionKind.Evo), new(2, CardVersionKind.Hero)]);
+
+        var deck = Assert.Single(Run(cards, [meta]).Decks);
+
+        Assert.Equal(CardVersionKind.Evo, FieldedAs(deck, 4));
+        Assert.Equal(CardVersionKind.Hero, FieldedAs(deck, 5));
     }
 
     [Fact]
@@ -273,7 +365,8 @@ public sealed class FindBestWarDecksTests
     {
         // Both hero slots are taken; evolutionLevel 2 is the Hero bit alone, so there's no Evo to field.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 2) }
-            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+            .Concat([Build.Card(2, evo: 2), Build.Card(3, evo: 2)])
+            .Concat(Build.Collection(4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(2, CardVersionKind.Hero), new(3, CardVersionKind.Hero) };
         var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
 
@@ -287,7 +380,8 @@ public sealed class FindBestWarDecksTests
     {
         // evolutionLevel 3 = Evo + Hero: with both hero slots taken, the owned Evo still fits the evo slot.
         var cards = new List<PlayerItemLevel> { Build.Card(1, evo: 3) }
-            .Concat(Build.Collection(2, 3, 4, 5, 6, 7, 8)).ToList();
+            .Concat([Build.Card(2, evo: 2), Build.Card(3, evo: 2)])
+            .Concat(Build.Collection(4, 5, 6, 7, 8)).ToList();
         var versions = new List<CardVersion> { new(2, CardVersionKind.Hero), new(3, CardVersionKind.Hero) };
         var meta = new[] { Build.Deck(Build.Eight(1), versions: versions) };
 

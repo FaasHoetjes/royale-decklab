@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { SeasonBoosts } from '../api';
-import type { BuilderCard } from '../lib/builderCards';
+import { hasVersionChoice, unlockedVersions, type BuilderCard } from '../lib/builderCards';
 import { displayLevel } from '../lib/cardDisplay';
-import { MAX_DECKS, type GeneratorOptions } from '../lib/generatorOptions';
+import { MAX_DECKS, onlyFor, type GeneratorOptions, type IncludedVersion } from '../lib/generatorOptions';
 import { loadPickerPrefs, savePickerPrefs, type FilterKey } from '../lib/pickerData';
 import { listNames } from '../lib/seasonBoosts';
 import CardPicker from './CardPicker';
@@ -10,6 +10,7 @@ import Switch from './Switch';
 import CardAvatar from './generator/CardAvatar';
 import OptionsSheet, { type SheetPatch } from './generator/OptionsSheet';
 import PickedCards from './generator/PickedCards';
+import VersionSheet, { type VersionChoice } from './generator/VersionSheet';
 import { DeckSegment, KeptCount, LevelSegment } from './generator/SegmentedChoice';
 import { BanIcon, ChevronIcon, PlusIcon, SlidersIcon } from './generator/icons';
 import { decksLabel, type PickerKind } from './generator/labels';
@@ -25,6 +26,8 @@ interface GeneratorControlsProps {
   /** Options are set or decks were swapped, so there is something to reset. */
   canReset: boolean;
   onReset: () => void;
+  /** Just Include and Exclude, for a lineup whose size and levels are fixed. */
+  rulesOnly?: boolean;
 }
 
 type Menu = 'decks' | 'level';
@@ -42,6 +45,8 @@ const levelOf = (card: BuilderCard | undefined) =>
 const DECK_MENU_WIDTH = 230;
 const LEVEL_MENU_WIDTH = 360;
 
+const specialOf = (version: IncludedVersion | undefined) => (version === 'evo' || version === 'hero' ? version : 'normal');
+
 function rulePillTone(kind: PickerKind, hasCards: boolean): Tone {
   if (!hasCards) return 'add';
   return kind === 'require' ? 'active' : 'plain';
@@ -51,7 +56,17 @@ function ruleIcon(kind: PickerKind) {
   return kind === 'require' ? <PlusIcon /> : <BanIcon />;
 }
 
-export default function GeneratorControls({ options, onChange, cards, seasonBoosts, isUpdating, isMobile, canReset, onReset }: GeneratorControlsProps) {
+export default function GeneratorControls({
+  options,
+  onChange,
+  cards,
+  seasonBoosts,
+  isUpdating,
+  isMobile,
+  canReset,
+  onReset,
+  rulesOnly,
+}: GeneratorControlsProps) {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [picker, setPicker] = useState<PickerKind | null>(null);
@@ -66,6 +81,12 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
   const ownedLevels = useMemo(() => cards.map(levelOf).filter((l): l is number => l != null), [cards]);
   const cardsLoaded = cards.length > 0;
+
+  useEffect(() => {
+    if (!cardsLoaded) return;
+    const requireAs = unlockedVersions(options.requireAs, cardById);
+    if (Object.keys(requireAs).length !== Object.keys(options.requireAs).length) onChange({ ...options, requireAs });
+  }, [cardsLoaded, cardById, options, onChange]);
 
   // Menus close on a click outside them or on Escape, which also returns focus to the pill.
   const anchors = useRef<Record<Menu, HTMLSpanElement | null>>({ decks: null, level: null });
@@ -94,18 +115,47 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
   // The picker collects its picks and applies them once when it closes: the decks are hidden behind it,
   // so fetching after every tap would only spend requests on lineups nobody sees.
   const [picks, setPicks] = useState<number[]>([]);
+  const [pickVersions, setPickVersions] = useState<Record<number, IncludedVersion>>({});
+  // The included card whose version is being asked for.
+  const [versionCard, setVersionCard] = useState<number | null>(null);
+  const setPickVersion = (id: number, version: IncludedVersion | null) =>
+    setPickVersions((current) => {
+      const { [id]: _, ...rest } = current;
+      return version ? { ...rest, [id]: version } : rest;
+    });
   const togglePick = (id: number) =>
     setPicks((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
+  const removePick = (id: number) => {
+    setPicks((list) => list.filter((x) => x !== id));
+    setPickVersion(id, null);
+  };
+  const selectCard = (id: number) => {
+    if (picker === 'require' && hasVersionChoice(cardById.get(id))) setVersionCard(id);
+    else if (picks.includes(id)) removePick(id);
+    else togglePick(id);
+  };
+  const includeAs = (id: number, choice: VersionChoice) => {
+    setPicks((list) => (list.includes(id) ? list : [...list, id]));
+    setPickVersion(id, choice === 'best' ? null : choice);
+    setVersionCard(null);
+  };
   const openPicker = (kind: PickerKind) => {
     setMenu(null);
     setSheetOpen(false);
     setPicks(options[kind]);
+    setPickVersions(options.requireAs);
     setPicker(kind);
   };
   const closePicker = () => {
     if (picker) {
       const before = options[picker];
-      if (picks.length !== before.length || picks.some((id, i) => id !== before[i])) set({ [picker]: picks });
+      const listChanged = picks.length !== before.length || picks.some((id, i) => id !== before[i]);
+      if (picker === 'ban' && listChanged) set({ ban: picks });
+      if (picker === 'require') {
+        const requireAs = onlyFor(picks, pickVersions);
+        const versionsChanged = picks.some((id) => requireAs[id] !== options.requireAs[id]);
+        if (listChanged || versionsChanged) set({ require: picks, requireAs });
+      }
     }
     setPicker(null);
   };
@@ -144,7 +194,13 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
         {ids.length ? (
           <span style={styles.stack} aria-hidden="true">
             {ids.slice(0, 3).map((id, i) => (
-              <CardAvatar key={id} card={cardById.get(id)} dim={kind === 'ban'} style={i > 0 ? styles.stacked : undefined} />
+              <CardAvatar
+                key={id}
+                card={cardById.get(id)}
+                version={kind === 'require' ? specialOf(options.requireAs[id]) : 'normal'}
+                dim={kind === 'ban'}
+                style={i > 0 ? styles.stacked : undefined}
+              />
             ))}
           </span>
         ) : (
@@ -208,7 +264,15 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
 
   return (
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
-      {isMobile ? (
+      {rulesOnly ? (
+        <div role="group" aria-label="Customize your decks" style={styles.row}>
+          {rulePills}
+          <span style={styles.status}>
+            {isUpdating && !isMobile && <span style={styles.updating}>Updating…</span>}
+            {reset}
+          </span>
+        </div>
+      ) : isMobile ? (
         <div role="group" aria-label="Customize your decks" style={styles.row}>
           <button
             type="button"
@@ -310,7 +374,9 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
                 cardName={cardName}
                 label={RULES[picker].label}
                 dim={picker === 'ban'}
-                onRemove={togglePick}
+                onRemove={removePick}
+                versions={picker === 'require' ? pickVersions : undefined}
+                onEditVersion={picker === 'require' ? setVersionCard : undefined}
               />
             )
           }
@@ -325,7 +391,7 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
               </button>
             </div>
           }
-          onSelect={togglePick}
+          onSelect={selectCard}
           onClose={closePicker}
           filters={filters}
           setFilters={setFilters}
@@ -334,6 +400,19 @@ export default function GeneratorControls({ options, onChange, cards, seasonBoos
           descending={descending}
           setDescending={setDescending}
           allowChampions
+        />
+      )}
+
+      {versionCard != null && cardById.has(versionCard) && (
+        <VersionSheet
+          card={cardById.get(versionCard)!}
+          current={picks.includes(versionCard) ? (pickVersions[versionCard] ?? 'best') : null}
+          onPick={(choice) => includeAs(versionCard, choice)}
+          onRemove={() => {
+            removePick(versionCard);
+            setVersionCard(null);
+          }}
+          onClose={() => setVersionCard(null)}
         />
       )}
     </div>

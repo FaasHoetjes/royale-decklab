@@ -1,13 +1,21 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { useMemo, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { useCrownSeriesDecks } from '../queries';
-import { isNoDuelData, type CrownSeriesLeagueId } from '../api';
-import { leagueFor, saveLeague, upgradeTargets } from '../lib/crownSeries';
+import { useAllCards, useCrownSeriesDecks, usePlayerCollection } from '../queries';
+import { isNoDuelData, type CrownSeriesLeagueId, type CrownSeriesResponse, type ScoredDeck, type SeasonBoosts } from '../api';
+import { duelOptions, leagueFor, saveLeague, upgradeTargets } from '../lib/crownSeries';
+import { toBuilderCards } from '../lib/builderCards';
+import { DEFAULT_OPTIONS, MAX_DECKS, hasActiveOptions, toQuery, type GeneratorOptions } from '../lib/generatorOptions';
+import { useOptionsQuery } from '../hooks/useOptionsQuery';
+import GeneratorControls from '../components/GeneratorControls';
+import Shortfall from '../components/warDeck/Shortfall';
 import CrownSeriesBanner from '../components/CrownSeriesBanner';
 import LeaguePicker from '../components/LeaguePicker';
 import UpgradeFirst from '../components/UpgradeFirst';
 import DeckCard from '../components/DeckCard';
+import SwapDeckModal from '../components/SwapDeckModal';
+import { useSwappableLineup } from '../hooks/useSwappableLineup';
 import LoadError from '../components/LoadError';
 import { WarDecksSkeleton } from '../components/LoadingSkeletons';
 import { SearchIcon } from '../components/navIcons';
@@ -15,20 +23,49 @@ import { SearchIcon } from '../components/navIcons';
 export default function CrownSeries() {
   const { activePlayerTag } = useApp();
   const isMobile = useIsMobile();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const league = leagueFor(searchParams.get('league'));
+  const options = useMemo(() => duelOptions(searchParams), [searchParams]);
+  const apiQuery = useOptionsQuery(options, toQuery(options), league.id);
 
-  const duelDecks = useCrownSeriesDecks(activePlayerTag, league.id);
-  const data = duelDecks.data;
-  const decks = data?.duelDecks.decks ?? [];
-  const isUpdating = duelDecks.isPlaceholderData;
+  const duelDecks = useCrownSeriesDecks(activePlayerTag, league.id, apiQuery);
+  // If changing options fails (e.g. the rate limit), keep showing the last decks for this player and league.
+  const loadedKey = `${activePlayerTag}|${league.id}`;
+  const lastLoaded = useRef<{ key: string; data: CrownSeriesResponse } | null>(null);
+  if (duelDecks.data && !duelDecks.isPlaceholderData) lastLoaded.current = { key: loadedKey, data: duelDecks.data };
+  const fallback = lastLoaded.current?.key === loadedKey ? lastLoaded.current.data : undefined;
+  const data = duelDecks.data ?? fallback;
+  const optionsFailed = duelDecks.isError && fallback != null;
+  const isUpdating = !optionsFailed && duelDecks.isPlaceholderData;
 
+  const showSearch = (leagueId: string | null, next: GeneratorOptions) => {
+    const parts = [leagueId ? `league=${leagueId}` : '', toQuery(next)].filter(Boolean);
+    navigate({ search: parts.length ? `?${parts.join('&')}` : '' }, { replace: true });
+  };
+  const changeOptions = (next: GeneratorOptions) => showSearch(searchParams.get('league'), next);
   const pickLeague = (id: CrownSeriesLeagueId) => {
     saveLeague(id);
-    const params = new URLSearchParams(searchParams);
-    params.set('league', id);
-    setSearchParams(params, { replace: true });
+    showSearch(id, options);
   };
+
+  const lineup = useSwappableLineup(data?.duelDecks.decks ?? NO_DECKS, data?.duelDecks.alternatives ?? NO_DECKS, {
+    locks: options.lock,
+    onLocksChange: (lock) => changeOptions({ ...options, lock }),
+  });
+  const decks = lineup.shownDecks;
+  const customized = hasActiveOptions(options);
+  const resetLineup = () => {
+    lineup.reset();
+    if (customized) changeOptions(DEFAULT_OPTIONS);
+  };
+
+  const catalog = useAllCards();
+  const collection = usePlayerCollection(data ? activePlayerTag : null);
+  const pickerCards = useMemo(
+    () => (catalog.data && collection.data ? toBuilderCards(catalog.data, collection.data) : []),
+    [catalog.data, collection.data]
+  );
 
   const header = (
     <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
@@ -51,9 +88,22 @@ export default function CrownSeries() {
   }
 
   const controls = (
-    <div style={styles.controls}>
-      <LeaguePicker league={league} onPick={pickLeague} />
-    </div>
+    <>
+      <div style={styles.controls}>
+        <LeaguePicker league={league} onPick={pickLeague} />
+      </div>
+      <GeneratorControls
+        rulesOnly
+        options={options}
+        onChange={changeOptions}
+        cards={pickerCards}
+        seasonBoosts={NO_BOOSTS}
+        isUpdating={isUpdating}
+        isMobile={isMobile}
+        canReset={customized || lineup.swapped}
+        onReset={resetLineup}
+      />
+    </>
   );
 
   if (duelDecks.isError && !data) {
@@ -121,11 +171,23 @@ export default function CrownSeries() {
             : `Most rounds behind these picks were played in other leagues, since few Duels at level ${data.levelCap} have been collected so far.`}
         </p>
       )}
+      {optionsFailed && (
+        <p style={styles.notice} role="alert">
+          Couldn't update your decks just now; the decks below are from before your last change. Wait a few seconds and{' '}
+          <button type="button" onClick={() => duelDecks.refetch()} style={styles.retry}>
+            try again
+          </button>
+          .
+        </p>
+      )}
+      {!optionsFailed && !isUpdating && customized && decks.length < MAX_DECKS && (
+        <Shortfall duel found={decks.length} options={options} onChange={changeOptions} isMobile={isMobile} />
+      )}
       {upgrades.length > 0 && <UpgradeFirst targets={upgrades} levelCap={data.levelCap} isMobile={isMobile} />}
       <div style={{ ...styles.decks, gap: isMobile ? '16px' : '30px', opacity: isUpdating ? 0.55 : 1 }} aria-busy={isUpdating}>
         {decks.map((deck, i) => (
           <DeckCard
-            key={deck.cardIds.join(',')}
+            key={i}
             cards={deck.cards}
             metaWinRate={deck.metaWinRate}
             uses={deck.uses}
@@ -134,17 +196,36 @@ export default function CrownSeries() {
             leagueUses={deck.leagueUses}
             cardVersions={deck.cardVersions}
             metaCardVersions={deck.metaCardVersions}
+            cardOrder={lineup.cardOrderAt(i)}
             playerScore={deck.playerScore}
             deckNumber={i + 1}
+            canSwap={!lineup.isLocked(i) && lineup.swapOptions(i).length > 1}
+            onSwap={() => lineup.openSwap(i)}
+            locked={lineup.isLocked(i)}
+            onToggleLock={() => lineup.toggleLock(i)}
             priority={i === 0}
             source="duel"
             levelCap={data.levelCap}
           />
         ))}
       </div>
+      {lineup.swapSlot != null && (
+        <SwapDeckModal
+          slotNumber={lineup.swapSlot + 1}
+          currentMaster={lineup.slots[lineup.swapSlot] ?? -1}
+          currentCardOrder={lineup.cardOrderAt(lineup.swapSlot)}
+          options={lineup.swapOptions(lineup.swapSlot)}
+          onSelect={(master) => lineup.selectForSlot(lineup.swapSlot!, master)}
+          onClose={lineup.closeSwap}
+          source="duel"
+        />
+      )}
     </div>
   );
 }
+
+const NO_DECKS: ScoredDeck[] = [];
+const NO_BOOSTS: SeasonBoosts = { level: 0, cardIds: [] };
 
 // Below this share of their rounds played in the league itself, the picks mostly reflect other leagues.
 const MIN_LEAGUE_SHARE = 0.5;
@@ -202,7 +283,27 @@ const styles = {
   controls: {
     display: 'grid' as const,
     gap: '12px',
-    marginBottom: '20px',
+    marginBottom: '12px',
+  },
+  notice: {
+    margin: '0 0 20px',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    fontSize: '14px',
+    lineHeight: 1.5,
+    backgroundColor: 'var(--chip-bg)',
+    border: '1px solid var(--chip-border)',
+    color: 'var(--text-primary)',
+  },
+  retry: {
+    border: 0,
+    background: 'none',
+    padding: 0,
+    font: 'inherit',
+    color: 'var(--accent)',
+    fontWeight: 600 as const,
+    textDecoration: 'underline' as const,
+    cursor: 'pointer',
   },
   thinNote: {
     margin: '0 0 12px',

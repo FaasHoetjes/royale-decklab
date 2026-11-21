@@ -66,7 +66,7 @@ export default function DeckCard({
 }: DeckCardProps) {
   const isMobile = useIsMobile();
 
-  const slotVersion = slotVersionOf(metaCardVersions, cardVersions);
+  const slotVersion = slotVersionOf(metaCardVersions, cardVersions, cards);
 
   const orderedCards = cardOrder ? inOrder(cards, cardOrder) : orderBySlots(cards, slotVersion);
   const deckLink = buildDeckLink(orderedCards.map((c) => c.id));

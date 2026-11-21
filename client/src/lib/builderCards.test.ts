@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { CatalogCard } from '../api';
-import { maxedCollection, toBuilderCards } from './builderCards';
+import { maxedCollection, toBuilderCards, unlockedVersions } from './builderCards';
 import { unownedNote } from './builderDecks';
 
 const catalog: CatalogCard[] = [
@@ -43,5 +43,15 @@ describe('unownedNote', () => {
   test('counts from two missing cards up', () => {
     expect(unownedNote([knight!, pekka!])).toBe("Not scored: 2 cards you don't own");
     expect(unownedNote([knight!, pekka!, giant!])).toBe("Not scored: 3 cards you don't own");
+  });
+});
+
+describe('unlockedVersions', () => {
+  const owned = toBuilderCards(catalog, [{ id: 1, name: 'Knight', level: 16, maxLevel: 16, evolutionLevel: 1 }]);
+  const cardById = new Map(owned.map((c) => [c.id, c]));
+
+  test('drops a version the player has not unlocked and keeps the rest', () => {
+    expect(unlockedVersions({ 1: 'hero', 2: 'normal' }, cardById)).toEqual({ 2: 'normal' });
+    expect(unlockedVersions({ 1: 'evo' }, cardById)).toEqual({ 1: 'evo' });
   });
 });

@@ -29,7 +29,7 @@ public sealed class CrownSeriesMeta(
     ILogger<CrownSeriesMeta> logger)
 {
     // Every round has a winner and a loser, so the average Duel deck wins half; war's prior sits above that.
-    private const double DuelPriorWinRate = 0.5;
+    internal const double DuelPriorWinRate = 0.5;
 
     // Shown to the player as their win chance, so it is the deck's likeliest win rate rather than the cautious one.
     // Weekend 1 predicting weekend 2 (Nov 2026, 64k rounds): the cautious value came out 5 points low, the median
@@ -127,5 +127,7 @@ public sealed class CrownSeriesMeta(
         Players = deck.Players,
         PickRate = deck.PickRate,
         CardVersions = deck.CardVersions,
+        Setups = deck.Setups,
+        SpecialGains = deck.SpecialGains,
     };
 }

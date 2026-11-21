@@ -16,6 +16,8 @@ type Name = { title: string; ariaLabel?: never } | { title?: never; ariaLabel: s
 
 type SheetProps = Name & {
   icon?: ReactNode;
+  /** Opened from within another dialog, such as the card picker, so it has to sit above it. */
+  overDialog?: boolean;
   footer?: ReactNode;
   onClose: () => void;
   children: ReactNode;
@@ -35,7 +37,7 @@ const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
  * A bottom sheet on phones, swiped down by its header to close, and a centred dialog on wider screens. The header
  * and footer stay put while the body scrolls.
  */
-const Sheet = ({ title, ariaLabel, icon, footer, onClose, children }: SheetProps) => {
+const Sheet = ({ title, ariaLabel, icon, overDialog, footer, onClose, children }: SheetProps) => {
   const titleId = useId();
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -125,7 +127,7 @@ const Sheet = ({ title, ariaLabel, icon, footer, onClose, children }: SheetProps
 
   return (
     <>
-      <div ref={backdropRef} className="sheet-backdrop" onClick={onClose} aria-hidden="true" />
+      <div ref={backdropRef} className={overDialog ? 'sheet-backdrop sheet-over-dialog' : 'sheet-backdrop'} onClick={onClose} aria-hidden="true" />
       <div
         ref={sheetRef}
         role="dialog"
@@ -133,7 +135,7 @@ const Sheet = ({ title, ariaLabel, icon, footer, onClose, children }: SheetProps
         aria-labelledby={title ? titleId : undefined}
         aria-label={ariaLabel}
         tabIndex={-1}
-        className="sheet"
+        className={overDialog ? 'sheet sheet-over-dialog' : 'sheet'}
       >
         <div
           className="sheet-head"

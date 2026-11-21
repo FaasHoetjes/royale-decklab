@@ -276,9 +276,9 @@ public sealed class UpgradeAdvisorTests
     }
 
     [Fact]
-    public void SuggestsAHeroUnlock_WhenOnlyTheEvoIsOwned()
+    public void SuggestsNoHeroUnlock_WhenTheOwnedEvoAlreadyFillsTheSlot()
     {
-        // Card 2 already owns its Evo; only the still-locked Hero is suggested, not a re-unlock.
+        // Card 2 owns its Evo, which fills the slot of the locked Hero and wins as often.
         var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 1) }
             .Concat(Build.Collection(1, 3, 4, 5, 6, 7, 8)).ToList();
         var meta = new[]
@@ -288,17 +288,13 @@ public sealed class UpgradeAdvisorTests
 
         var advice = _advisor.Advise(cards, meta);
 
-        var suggestion = Assert.Single(advice.Suggestions);
-        Assert.Equal(UpgradeKind.Hero, suggestion.Kind);
-        Assert.Equal(2, suggestion.CardId);
-        Assert.Equal(advice.BaselineScore * (1 / 0.94 - 1), suggestion.ScoreDelta, 10);
-        Assert.Equal([0], suggestion.AffectedDeckIndexes);
+        Assert.DoesNotContain(advice.Suggestions, s => s.CardId == 2 && s.Kind == UpgradeKind.Hero);
     }
 
     [Fact]
-    public void SuggestsAnEvoUnlock_WhenOnlyTheHeroIsOwned()
+    public void SuggestsNoEvoUnlock_WhenTheOwnedHeroAlreadyFillsTheSlot()
     {
-        // evolutionLevel 2 is the Hero bit alone, so the Evo the meta fields is still locked.
+        // evolutionLevel 2 is the Hero bit alone: the Hero fills the slot of the locked Evo, which wins as often.
         var cards = new List<PlayerItemLevel> { Build.Card(2, evo: 2) }
             .Concat(Build.Collection(1, 3, 4, 5, 6, 7, 8)).ToList();
         var meta = new[]
@@ -308,11 +304,7 @@ public sealed class UpgradeAdvisorTests
 
         var advice = _advisor.Advise(cards, meta);
 
-        var suggestion = Assert.Single(advice.Suggestions);
-        Assert.Equal(UpgradeKind.Evo, suggestion.Kind);
-        Assert.Equal(2, suggestion.CardId);
-        Assert.Equal(advice.BaselineScore * (1 / 0.94 - 1), suggestion.ScoreDelta, 10);
-        Assert.Equal([0], suggestion.AffectedDeckIndexes);
+        Assert.DoesNotContain(advice.Suggestions, s => s.CardId == 2 && s.Kind == UpgradeKind.Evo);
     }
 
     [Fact]

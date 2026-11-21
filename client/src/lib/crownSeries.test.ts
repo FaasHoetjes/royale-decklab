@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { LEAGUES, leagueFor, upgradeTargets } from './crownSeries';
+import { LEAGUES, leagueFor, upgradeTargets, duelOptions } from './crownSeries';
 
 describe('leagueFor', () => {
   test('the league in the link wins', () => {
@@ -38,5 +38,13 @@ describe('upgradeTargets', () => {
 
   test('levels are compared on the 16-level scale', () => {
     expect(upgradeTargets([{ cards: [{ id: 1, name: 'Epic', level: 11, maxLevel: 11 }] }], 16)).toEqual([]);
+  });
+});
+
+describe('duelOptions', () => {
+  test('keeps the card rules and leaves the war-only options at their defaults', () => {
+    const options = duelOptions(new URLSearchParams('league=kings&decks=2&minLevel=14&boosts=false&ban=5&require=6:evo,7&lock=1,2,3,4,7,8,9,10'));
+
+    expect(options).toEqual({ decks: 4, minLevel: null, boosts: true, ban: [5], require: [6, 7], requireAs: { 6: 'evo' }, lock: [[1, 2, 3, 4, 7, 8, 9, 10]] });
   });
 });

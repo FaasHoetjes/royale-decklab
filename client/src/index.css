@@ -546,6 +546,13 @@ input:disabled {
   outline: none;
   animation: sheet-up 0.26s cubic-bezier(0.32, 0.72, 0.35, 1);
 }
+/* Above the card picker (2000). */
+.sheet-backdrop.sheet-over-dialog {
+  z-index: 2100;
+}
+.sheet.sheet-over-dialog {
+  z-index: 2101;
+}
 .sheet-head {
   flex: 0 0 auto;
   padding: 8px 16px 10px;

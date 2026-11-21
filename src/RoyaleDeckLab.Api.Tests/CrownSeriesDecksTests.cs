@@ -96,12 +96,147 @@ public sealed class CrownSeriesDecksTests : IDisposable
             Build.Deck(Build.Eight(30), confidence: 0.50),
         };
 
-        var kings = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 3, DuelValues.Default);
-        var hammer = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Hammer, deckCount: 3, DuelValues.Default);
+        var kings = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, new LineupOptions { DeckCount = 3 }, DuelValues.Default);
+        var hammer = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Hammer, new LineupOptions { DeckCount = 3 }, DuelValues.Default);
 
         Assert.Contains(kings.Decks, d => d.CardIds.SequenceEqual(maxedDeck));
         Assert.Contains(hammer.Decks, d => d.CardIds.SequenceEqual(lowerDeck));
         Assert.All(hammer.Decks.SelectMany(d => d.Cards), card => Assert.True(LevelModel.DisplayLevel(card) <= 13));
+    }
+
+    [Fact]
+    public void Excluded_and_included_cards_shape_the_duel_lineup()
+    {
+        var cards = Build.CardMap(Build.Collection(Enumerable.Range(1, 48).ToArray()));
+        var meta = new[] { 1, 9, 17, 25, 33 }.Select((s, i) => Build.Deck(Build.Eight(s), confidence: 0.60 - i * 0.01)).ToList();
+        meta.Add(Build.Deck([1, 2, 3, 4, 5, 6, 7, 41], confidence: 0.40));
+
+        var options = new LineupOptions { BannedCards = new HashSet<int> { 9 }, RequiredCards = new HashSet<int> { 41 } };
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, options, DuelValues.Default);
+
+        Assert.Equal([1, 17, 25, 33], result.Decks.Select(d => d.CardIds.Min()).Order());
+        Assert.Contains(result.Decks, d => d.CardIds.Contains(41));
+        Assert.DoesNotContain(result.Decks.Concat(result.Alternatives), d => d.CardIds.Contains(9));
+    }
+
+    [Fact]
+    public void A_locked_deck_stays_and_the_others_are_picked_around_it()
+    {
+        var cards = Build.CardMap(Build.Collection(Enumerable.Range(1, 48).ToArray()));
+        var meta = new[] { 1, 9, 17, 25, 33 }.Select((s, i) => Build.Deck(Build.Eight(s), confidence: 0.60 - i * 0.01)).ToList();
+        int[] lockedDeck = [1, 2, 3, 4, 33, 34, 35, 36];
+        meta.Add(Build.Deck(lockedDeck, confidence: 0.40));
+
+        var options = new LineupOptions { LockedDecks = [lockedDeck] };
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, options, DuelValues.Default);
+
+        Assert.Equal(lockedDeck, result.Decks[0].CardIds);
+        Assert.Equal([9, 17, 25], result.Decks.Skip(1).Select(d => d.CardIds.Min()).Order());
+    }
+
+    [Fact]
+    public void A_locked_deck_is_found_in_the_meta_whatever_the_order_of_its_cards()
+    {
+        var cards = Build.CardMap(Build.Collection(Enumerable.Range(1, 48).ToArray()));
+        var meta = new[] { Build.Deck([8, 7, 6, 5, 4, 3, 2, 1], confidence: 0.60) };
+
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings,
+            new LineupOptions { DeckCount = 1, LockedDecks = [Build.Eight(1)] }, DuelValues.Default);
+
+        Assert.NotEqual(0, Assert.Single(result.Decks).Uses);
+    }
+
+    [Fact]
+    public void A_locked_deck_no_longer_in_the_meta_counts_at_an_even_win_rate()
+    {
+        var cards = Build.CardMap(Build.Collection(Enumerable.Range(1, 48).ToArray()));
+        var meta = new[] { Build.Deck(Build.Eight(9), confidence: 0.60) };
+
+        var options = new LineupOptions { DeckCount = 2, LockedDecks = [Build.Eight(1)] };
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, options, DuelValues.Default);
+
+        Assert.Equal(2, result.Decks.Count);
+        Assert.Equal(0.5, result.Decks[0].PlayerScore, 10);
+        Assert.Equal(0, result.Decks[0].Uses);
+    }
+
+    [Fact]
+    public void A_required_card_played_without_its_hero_costs_the_hero_value_in_a_duel()
+    {
+        var cards = Build.CardMap(Enumerable.Range(1, 48).Select(id => Build.Card(id, evo: id == 4 ? EvolutionBits.Hero : 0)));
+        var meta = new[] { 1, 9, 17, 25 }.Select(s => Build.Deck(Build.Eight(s), confidence: 0.55,
+            versions: s == 1 ? [new CardVersion(4, CardVersionKind.Hero)] : null)).ToArray();
+        var values = DuelValues.Default;
+        double Logit(double p) => Math.Log(p / (1 - p));
+
+        var best = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, LineupOptions.Default, values);
+        var asked = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 4 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [4] = CardVersionKind.Normal },
+        }, values);
+
+        var bestDeck = Assert.Single(best.Decks, d => d.CardIds.Contains(4));
+        var askedDeck = Assert.Single(asked.Decks, d => d.CardIds.Contains(4));
+        Assert.Equal(CardVersionKind.Normal, askedDeck.CardVersions!.Single(v => v.CardId == 4).Version);
+        Assert.Equal(Logit(bestDeck.PlayerScore) - values.Specials.Hero, Logit(askedDeck.PlayerScore), 10);
+    }
+
+    [Theory]
+    [InlineData(0.5, 0.1, CardVersionKind.Evo)]
+    [InlineData(0.1, 0.5, CardVersionKind.Hero)]
+    public void A_card_with_both_specials_is_played_as_the_one_worth_more(double evo, double hero, CardVersionKind shown)
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Evo | EvolutionBits.Hero : 0)));
+        var values = DuelValues.Default with { Specials = new SpecialValues(evo, hero) };
+        var meta = new[] { Build.Deck(Build.Eight(1), confidence: MetaConfidence) };
+
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, new LineupOptions { DeckCount = 1 }, values);
+
+        Assert.Equal(shown, Assert.Single(result.Decks).CardVersions!.Single(v => v.CardId == 2).Version);
+    }
+
+    [Fact]
+    public void An_owned_special_switches_to_the_version_worth_more()
+    {
+        var cards = Build.CardMap(Build.Eight(1).Select(id => Build.Card(id, evo: id switch
+        {
+            1 => EvolutionBits.Evo | EvolutionBits.Hero,
+            4 => EvolutionBits.Evo,
+            _ => 0,
+        })));
+        var values = DuelValues.Default with { Specials = new SpecialValues(Evo: 0.32, Hero: 0.12) };
+        var meta = new[] { Build.Deck(Build.Eight(1), confidence: MetaConfidence, versions:
+            [new(1, CardVersionKind.Hero), new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo)]) };
+
+        var deck = Assert.Single(_analyzer.FindBestCrownSeriesDecks(
+            meta, cards, CrownSeriesLeague.Kings, new LineupOptions { DeckCount = 1 }, values).Decks);
+
+        Assert.Equal([CardVersionKind.Evo, CardVersionKind.Normal, CardVersionKind.Normal, CardVersionKind.Evo],
+            deck.CardVersions!.Take(4).Select(v => v.Version));
+        Assert.Equal(LevelModel.WinProbability(MetaConfidence, -(0.76 - 0.64)), deck.PlayerScore, 10);
+    }
+
+    [Fact]
+    public void A_version_choice_costs_nothing_while_the_player_still_fields_what_the_meta_does()
+    {
+        var meta = new[] { 1, 9, 17, 25 }.Select(s => Build.Deck(Build.Eight(s), confidence: 0.55,
+            versions: s == 1 ? [new CardVersion(2, CardVersionKind.Evo)] : null)).ToArray();
+        Dictionary<int, PlayerItemLevel> Cards(params int[] heroes) => Build.CardMap(Enumerable.Range(1, 48)
+            .Select(id => Build.Card(id, evo: id == 2 ? EvolutionBits.Evo : heroes.Contains(id) ? EvolutionBits.Hero : 0)));
+        var normal3 = new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 3 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [3] = CardVersionKind.Normal },
+        };
+
+        var asked = _analyzer.FindBestCrownSeriesDecks(meta, Cards(3, 4), CrownSeriesLeague.Kings, normal3, DuelValues.Default);
+        var without = _analyzer.FindBestCrownSeriesDecks(meta, Cards(4), CrownSeriesLeague.Kings,
+            new LineupOptions { RequiredCards = new HashSet<int> { 3 } }, DuelValues.Default);
+
+        var askedDeck = Assert.Single(asked.Decks, d => d.CardIds.Contains(3));
+        Assert.Equal(CardVersionKind.Normal, askedDeck.CardVersions!.Single(v => v.CardId == 3).Version);
+        Assert.Equal(Assert.Single(without.Decks, d => d.CardIds.Contains(3)).PlayerScore, askedDeck.PlayerScore, 10);
     }
 
     [Fact]
@@ -185,7 +320,7 @@ public sealed class CrownSeriesDecksTests : IDisposable
             .ToList();
         var meta = new[] { Build.Deck(deck, confidence: MetaConfidence, versions: versions) };
 
-        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, deckCount: 1, values);
+        var result = _analyzer.FindBestCrownSeriesDecks(meta, cards, CrownSeriesLeague.Kings, new LineupOptions { DeckCount = 1 }, values);
 
         return Assert.Single(result.Decks).PlayerScore;
     }

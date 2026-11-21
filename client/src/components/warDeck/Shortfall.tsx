@@ -1,10 +1,12 @@
 import { LOWEST_LEVEL_CHOICE, type GeneratorOptions } from '../../lib/generatorOptions';
 
-export default function Shortfall({ found, options, onChange, isMobile }: {
+export default function Shortfall({ found, options, onChange, isMobile, duel }: {
   found: number;
   options: GeneratorOptions;
   onChange: (options: GeneratorOptions) => void;
   isMobile: boolean;
+  /** A Crown Series Duel, which always takes four decks. */
+  duel?: boolean;
 }) {
   const missing = options.decks - found;
   const set = (patch: Partial<GeneratorOptions>) => onChange({ ...options, ...patch });
@@ -28,7 +30,7 @@ export default function Shortfall({ found, options, onChange, isMobile }: {
   if (options.ban.length) {
     fixes.push({ label: 'Clear excluded cards', short: 'Clear excluded', apply: () => set({ ban: [] }) });
   }
-  if (found > 0) {
+  if (found > 0 && !duel) {
     const deckWord = found === 1 ? 'deck' : 'decks';
     fixes.push({
       label: `Show just ${found} ${deckWord}`,
@@ -43,7 +45,7 @@ export default function Shortfall({ found, options, onChange, isMobile }: {
     : `Only ${found} of ${options.decks} decks ${found === 1 ? 'fits' : 'fit'}`;
   const noDecksReason = onlyLevel
     ? `None of your popular war decks has every card at level ${minLevel} or higher.`
-    : 'None of your popular war decks fits all of these options.';
+    : `None of your popular ${duel ? 'Duel' : 'war'} decks fits all of these options.`;
   const subject = onlyLevel ? `A minimum level of ${minLevel}` : 'Your options';
   const verb = onlyLevel ? 'rules' : 'rule';
   const reason = found === 0

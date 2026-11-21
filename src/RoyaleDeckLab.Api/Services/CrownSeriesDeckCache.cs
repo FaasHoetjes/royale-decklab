@@ -14,12 +14,13 @@ public sealed class CrownSeriesDeckCache(
 
     private readonly CalculationCache<WarDeckResult> _results = new(clock);
 
-    public Task<WarDeckResult> GetAsync(CrPlayer player, CrownSeriesLeague league, CancellationToken ct = default)
+    public Task<WarDeckResult> GetAsync(CrPlayer player, CrownSeriesLeague league, LineupOptions options, CancellationToken ct = default)
     {
         var cards = player.Cards!.Select(c => c.ToPlayerItemLevel()).ToCardMap();
         var current = meta.Current;
-        var key = $"{league}|{PlayerCalculationKey.Create(player, current.Version, new LineupOptions { DeckCount = DuelDecks })}";
+        var duelOptions = options with { DeckCount = DuelDecks, MinLevel = null };
+        var key = $"{league}|{PlayerCalculationKey.Create(player, current.Version, duelOptions)}";
         return _results.GetAsync(key,
-            () => scheduler.RunAsync(token => analyzer.FindBestCrownSeriesDecks(current.ForCap(league.LevelCap()).Decks, cards, league, DuelDecks, current.Values, token)), ct);
+            () => scheduler.RunAsync(token => analyzer.FindBestCrownSeriesDecks(current.ForCap(league.LevelCap()).Decks, cards, league, duelOptions, current.Values, token)), ct);
     }
 }

@@ -33,6 +33,134 @@ public sealed class GeneratorOptionsTests
         Assert.Equal(plain.TotalScore, withDefaults.TotalScore, 12);
     }
 
+    // Cards 1-3 have their Evo unlocked and card 4 its Hero; deck 1 is played with Evo 2 and 3 and Hero 4.
+    private static readonly List<DeckMeta> SpecialDecks =
+    [
+        Build.Deck(Build.Eight(1), confidence: 0.60, versions: [new(2, CardVersionKind.Evo), new(3, CardVersionKind.Evo), new(4, CardVersionKind.Hero)]),
+        .. FiveDecks.Skip(1),
+    ];
+
+    // The war score's cost per special slot left without one.
+    private const double MissingSpecialMultiplier = 0.94;
+
+    private static List<PlayerItemLevel> SpecialCards()
+        => [.. Enumerable.Range(1, 48).Select(id => Build.Card(id, evo: id is >= 1 and <= 3 ? EvolutionBits.Evo : id == 4 ? EvolutionBits.Hero : 0))];
+
+    private static ScoredDeck DeckWith(WarDeckResult result, int cardId) => Assert.Single(result.Decks, d => d.CardIds.Contains(cardId));
+
+    private static CardVersionKind VersionOf(ScoredDeck deck, int cardId) => deck.CardVersions!.Single(v => v.CardId == cardId).Version;
+
+    [Fact]
+    public void A_required_evo_takes_another_evo_slot_at_no_cost_in_war()
+    {
+        var best = DeckWith(Run(SpecialDecks, new LineupOptions { RequiredCards = new HashSet<int> { 1 } }, SpecialCards()), 1);
+
+        var asked = DeckWith(Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 1 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [1] = CardVersionKind.Evo },
+        }, SpecialCards()), 1);
+
+        Assert.Equal(CardVersionKind.Normal, VersionOf(best, 1));
+        Assert.Equal([CardVersionKind.Evo, CardVersionKind.Evo, CardVersionKind.Normal, CardVersionKind.Hero], asked.CardVersions!.Take(4).Select(v => v.Version));
+        Assert.Equal(best.PlayerScore, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void An_owned_evo_fills_the_slot_of_an_evo_the_player_does_not_own()
+    {
+        var cards = SpecialCards().Select(c => c.Id == 2 ? Build.Card(2) : c).ToList();
+        var deck = DeckWith(Run(SpecialDecks, new LineupOptions { RequiredCards = new HashSet<int> { 1 } }, cards), 1);
+
+        Assert.Equal(CardVersionKind.Evo, VersionOf(deck, 1));
+        Assert.Equal(CardVersionKind.Normal, VersionOf(deck, 2));
+        Assert.Equal(CardVersionKind.Evo, VersionOf(deck, 3));
+        Assert.Equal(CardVersionKind.Hero, VersionOf(deck, 4));
+    }
+
+    [Fact]
+    public void A_required_card_played_without_its_evo_frees_its_slot_for_another_evo()
+    {
+        var best = DeckWith(Run(SpecialDecks, LineupOptions.Default, SpecialCards()), 2);
+
+        var asked = DeckWith(Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 2 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [2] = CardVersionKind.Normal },
+        }, SpecialCards()), 2);
+
+        Assert.Equal(CardVersionKind.Normal, VersionOf(asked, 2));
+        Assert.Equal(CardVersionKind.Evo, VersionOf(asked, 1));
+        Assert.Equal(best.PlayerScore, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void A_required_card_played_without_its_evo_costs_the_empty_slot_in_war()
+    {
+        var cards = SpecialCards().Select(c => c.Id == 1 ? Build.Card(1) : c).ToList();
+        var best = DeckWith(Run(SpecialDecks, LineupOptions.Default, cards), 2);
+
+        var asked = DeckWith(Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 2 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [2] = CardVersionKind.Normal },
+        }, cards), 2);
+
+        Assert.Equal(CardVersionKind.Normal, VersionOf(asked, 2));
+        Assert.Equal(best.PlayerScore * MissingSpecialMultiplier, asked.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void An_owned_special_switches_version_when_that_fields_one_more()
+    {
+        // The deck runs Evo 1, Evo 2 and Hero 3. The player has no Hero 3 but owns both of card 1's specials and Evo 4,
+        // so Hero 1 lets all three slots be filled.
+        List<DeckMeta> decks = [Build.Deck(Build.Eight(1), confidence: 0.60, versions:
+            [new(1, CardVersionKind.Evo), new(2, CardVersionKind.Evo), new(3, CardVersionKind.Hero)]), .. FiveDecks.Skip(1)];
+        var cards = Enumerable.Range(1, 48).Select(id => Build.Card(id, evo: id switch
+        {
+            1 => EvolutionBits.Evo | EvolutionBits.Hero,
+            2 or 4 => EvolutionBits.Evo,
+            _ => 0,
+        })).ToList();
+        var everything = cards.Select(c => c.Id == 3 ? Build.Card(3, evo: EvolutionBits.Hero) : c).ToList();
+
+        var deck = DeckWith(Run(decks, LineupOptions.Default, cards), 1);
+
+        Assert.Equal([CardVersionKind.Hero, CardVersionKind.Evo, CardVersionKind.Normal, CardVersionKind.Evo],
+            deck.CardVersions!.Take(4).Select(v => v.Version));
+        Assert.Equal(DeckWith(Run(decks, LineupOptions.Default, everything), 1).PlayerScore, deck.PlayerScore, 12);
+    }
+
+    [Fact]
+    public void Versions_asked_for_that_break_the_slot_limits_fit_no_deck()
+    {
+        var result = Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 1, 2, 3 },
+            RequiredVersions = new Dictionary<int, CardVersionKind>
+            {
+                [1] = CardVersionKind.Evo,
+                [2] = CardVersionKind.Evo,
+                [3] = CardVersionKind.Evo,
+            },
+        }, SpecialCards());
+
+        Assert.DoesNotContain(result.Decks.Concat(result.Alternatives), d => d.CardIds.Contains(1));
+    }
+
+    [Fact]
+    public void A_required_version_the_player_has_not_unlocked_fits_no_deck()
+    {
+        var result = Run(SpecialDecks, new LineupOptions
+        {
+            RequiredCards = new HashSet<int> { 5 },
+            RequiredVersions = new Dictionary<int, CardVersionKind> { [5] = CardVersionKind.Hero },
+        }, SpecialCards());
+
+        Assert.DoesNotContain(result.Decks.Concat(result.Alternatives), d => d.CardIds.Contains(5));
+    }
+
     [Fact]
     public void DeckCount_ReturnsOnlyThatManyDecks_TheStrongestOnes()
     {

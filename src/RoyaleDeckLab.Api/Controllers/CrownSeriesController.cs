@@ -23,6 +23,9 @@ public sealed class CrownSeriesController(
     public async Task<IActionResult> DuelDeck(
         string tag,
         [FromQuery] string? league,
+        [FromQuery] string? ban,
+        [FromQuery] string? require,
+        [FromQuery(Name = "lock")] string[]? locks,
         CancellationToken ct)
     {
         if (!PlayerTag.IsValid(tag))
@@ -32,6 +35,10 @@ public sealed class CrownSeriesController(
         if (!CrownSeriesLeagueExtensions.TryParse(league, out var parsedLeague))
         {
             return BadRequest(new { error = "Unknown league" });
+        }
+        if (!LineupOptions.TryParse(decks: null, minLevel: null, ban, require, locks, out var options, out var optionsError))
+        {
+            return BadRequest(new { error = optionsError });
         }
         var current = meta.Current;
         if (!meta.IsBuilt)
@@ -54,7 +61,7 @@ public sealed class CrownSeriesController(
                 return BadRequest(new { error = "Player cards data not found in API response" });
             }
 
-            var lineup = await deckCache.GetAsync(player, parsedLeague, ct);
+            var lineup = await deckCache.GetAsync(player, parsedLeague, options, ct);
             var capMeta = current.ForCap(parsedLeague.LevelCap());
             stats.NoteServed(tag);
             visitors.Add(player.Tag);

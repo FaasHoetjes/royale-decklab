@@ -40,6 +40,8 @@ export interface DeckCardData {
   name: string;
   level: number;
   maxLevel: number;
+  /** Which specials the player has unlocked: 1 = Evo, 2 = Hero. */
+  evolutionLevel?: number;
   elixirCost?: number;
   iconUrls?: CardIconUrls;
   /** The player's own level when this season's boost raises `level`. */
@@ -189,10 +191,11 @@ export function isNoDuelData(error: unknown): boolean {
 export function fetchCrownSeriesDecks(
   playerTag: string,
   league: CrownSeriesLeagueId,
+  options = '',
   signal?: AbortSignal
 ): Promise<CrownSeriesResponse> {
   return getJson(
-    `/api/player/${encodeURIComponent(playerTag)}/crown-series?league=${league}`,
+    `/api/player/${encodeURIComponent(playerTag)}/crown-series?league=${league}${options ? `&${options}` : ''}`,
     'Failed to fetch Crown Series decks',
     signal
   );
