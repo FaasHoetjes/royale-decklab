@@ -32,6 +32,23 @@ export function availableVersions(card: BuilderCard, kind: SlotKind | null): Spe
   return [];
 }
 
+export interface SpecialChoice {
+  version: SpecialVersion;
+  owned: boolean;
+}
+
+/** The card's Evo and Hero, as far as the game has them, and whether the player has unlocked each. */
+export function specialChoices(card: BuilderCard | undefined): SpecialChoice[] {
+  if (!card || card.rarity === 'champion') return [];
+  const choices: SpecialChoice[] = [];
+  if (card.iconUrls?.evolutionMedium) choices.push({ version: 'evo', owned: !!card.hasEvo });
+  if (card.iconUrls?.heroMedium) choices.push({ version: 'hero', owned: !!card.ownsHero });
+  return choices;
+}
+
+/** An included card can be asked to play as a set version only when the player has one of its specials. */
+export const hasVersionChoice = (card: BuilderCard | undefined) => specialChoices(card).some((c) => c.owned);
+
 /** Every card at max level with every Evolution and Hero unlocked, for building without a player's own cards. */
 export function maxedCollection(catalog: CatalogCard[]): OwnedCard[] {
   return catalog.map((c) => ({
@@ -65,7 +82,7 @@ export function toBuilderCards(catalog: CatalogCard[], owned: OwnedCard[]): Buil
       iconUrls: {
         medium: c.iconUrls?.medium,
         evolutionMedium: c.iconUrls?.evolutionMedium,
-        heroMedium: ownedCard?.iconUrls?.heroMedium,
+        heroMedium: ownedCard?.iconUrls?.heroMedium ?? c.iconUrls?.heroMedium,
       },
     };
   });
