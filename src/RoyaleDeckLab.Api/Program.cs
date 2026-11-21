@@ -54,6 +54,7 @@ builder.Services.AddDbContext<MetaDbContext>((sp, opt) =>
 builder.Services.AddScoped<BattleRepository>();
 builder.Services.AddScoped<CrownSeriesRepository>();
 builder.Services.AddScoped<DuelLevelFitRepository>();
+builder.Services.AddScoped<DuelLevelRefit>();
 
 builder.Services.AddHttpClient<ClashRoyaleClient>(ConfigureClashRoyaleApi)
     .ConfigurePrimaryHttpMessageHandler(CreateClashRoyaleHandler)

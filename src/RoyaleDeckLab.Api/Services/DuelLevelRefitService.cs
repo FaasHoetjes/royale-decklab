@@ -1,4 +1,3 @@
-using RoyaleDeckLab.Api.Data;
 using RoyaleDeckLab.Api.Models;
 
 namespace RoyaleDeckLab.Api.Services;
@@ -29,7 +28,7 @@ public sealed class DuelLevelRefitService(
                 }
                 catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
                 {
-                    logger.LogError(ex, "Duel level refit failed; trying again in {Hours} h", Tick.TotalHours);
+                    logger.LogError(ex, "Duel level refit failed; trying again next Tuesday or after a restart");
                 }
                 await Task.Delay(Tick, clock, stoppingToken);
             }
@@ -56,17 +55,6 @@ public sealed class DuelLevelRefitService(
             return;
         }
 
-        using var scope = scopeFactory.CreateScope();
-        var fits = scope.ServiceProvider.GetRequiredService<DuelLevelFitRepository>();
-        var rounds = scope.ServiceProvider.GetRequiredService<CrownSeriesRepository>();
-        var last = fits.Latest();
-        var latestRoundMs = rounds.LatestBattleTimeMs();
-        if (last is not null && (last.FittedAtMs >= dueMs || latestRoundMs <= last.LatestRoundMs))
-        {
-            _doneForDueMs = dueMs;
-            return;
-        }
-
         var champions = (await catalog.GetAsync(ct))
             .Where(c => RarityExtensions.IsChampion(c.Rarity))
             .Select(c => c.Id)
@@ -77,15 +65,16 @@ public sealed class DuelLevelRefitService(
             return;
         }
 
-        var fitted = DuelLevelFitter.Fit(rounds.ReadDuels(), champions);
+        // Marked before fitting: a fit that fails would fail the same way an hour later, after reading every round again.
         _doneForDueMs = dueMs;
-        if (fitted.Count == 0)
+        using var scope = scopeFactory.CreateScope();
+        var result = await scope.ServiceProvider.GetRequiredService<DuelLevelRefit>()
+            .RunAsync(dueMs, now.ToUnixTimeMilliseconds(), champions, ct);
+        if (result.Outcome == DuelLevelRefitOutcome.TooFewDuels)
         {
             logger.LogInformation("Too few Duels went to a third round for a level refit");
-            return;
         }
-        await fits.SaveAsync(new StoredDuelLevelFits(now.ToUnixTimeMilliseconds(), latestRoundMs, fitted), ct);
-        foreach (var f in fitted)
+        foreach (var f in result.Fits)
         {
             logger.LogInformation(
                 "Duel level refit, cap {Cap}: {Duels} Duels, level {PerLevel:F2} ± {PerLevelError:F2}, evo {Evo:F2} ± {EvoError:F2}, hero {Hero:F2} ± {HeroError:F2}",

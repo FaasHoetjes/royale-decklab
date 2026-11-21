@@ -18,6 +18,7 @@ public sealed class DuelLevelRefitTests : IDisposable
         services.AddDbContext<MetaDbContext>(o => o.UseSqlite($"Data Source={_dbPath}"));
         services.AddScoped<CrownSeriesRepository>();
         services.AddScoped<DuelLevelFitRepository>();
+        services.AddScoped<DuelLevelRefit>();
         _services = services.BuildServiceProvider();
         using var scope = _services.CreateScope();
         scope.ServiceProvider.GetRequiredService<MetaDbContext>().EnsureMetaSchema();
@@ -77,6 +78,51 @@ public sealed class DuelLevelRefitTests : IDisposable
         Assert.Equal([0.32, 0.2], latest.Fits.Select(f => f.Evo.Value));
         Assert.Equal([2_000L, 1_000L], fits.History(5).Select(h => h.FittedAtMs));
         Assert.Equal([2_000L], fits.History(1).Select(h => h.FittedAtMs));
+    }
+
+    [Fact]
+    public async Task Refits_once_per_tuesday_and_only_after_new_rounds()
+    {
+        const long firstTuesday = 1_000_000;
+        const long nextTuesday = 2_000_000;
+        await MergeAsync(SimulatedRounds(count: 4_000, firstBattleMs: 0));
+
+        Assert.Equal(DuelLevelRefitOutcome.Saved, (await RefitAsync(firstTuesday, nowMs: firstTuesday + 1)).Outcome);
+        Assert.Equal(DuelLevelRefitOutcome.AlreadyFitted, (await RefitAsync(firstTuesday, nowMs: firstTuesday + 2)).Outcome);
+        Assert.Equal(DuelLevelRefitOutcome.NoNewRounds, (await RefitAsync(nextTuesday, nowMs: nextTuesday + 1)).Outcome);
+
+        await MergeAsync(SimulatedRounds(count: 1, firstBattleMs: firstTuesday + 10));
+
+        var refit = await RefitAsync(nextTuesday, nowMs: nextTuesday + 2);
+        Assert.Equal(DuelLevelRefitOutcome.Saved, refit.Outcome);
+        Assert.Equal(nextTuesday + 2, LatestFits()?.FittedAtMs);
+    }
+
+    [Fact]
+    public async Task Saves_nothing_with_too_few_duels()
+    {
+        await MergeAsync(SimulatedRounds(count: 500, firstBattleMs: 0));
+
+        Assert.Equal(DuelLevelRefitOutcome.TooFewDuels, (await RefitAsync(1_000_000, nowMs: 1_000_001)).Outcome);
+        Assert.Null(LatestFits());
+    }
+
+    private static CrownSeriesRound[] SimulatedRounds(int count, long firstBattleMs)
+        => Simulated.Duels(cap: 12, count: count)
+            .Where(d => d.Rounds[0].First.PlayerTag != d.Rounds[0].Second.PlayerTag)
+            .SelectMany((d, i) => Simulated.Rounds(d, firstBattleMs + i))
+            .ToArray();
+
+    private async Task<DuelLevelRefitResult> RefitAsync(long dueMs, long nowMs)
+    {
+        using var scope = _services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<DuelLevelRefit>().RunAsync(dueMs, nowMs, Simulated.Champions);
+    }
+
+    private StoredDuelLevelFits? LatestFits()
+    {
+        using var scope = _services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<DuelLevelFitRepository>().Latest();
     }
 
     private static DuelLevelFit Fit(int cap, double evo)
