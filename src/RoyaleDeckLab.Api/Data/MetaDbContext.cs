@@ -150,10 +150,7 @@ public sealed class MetaDbContext(DbContextOptions<MetaDbContext> options) : DbC
             f.Property(x => x.Evo).HasColumnName("evo").IsRequired();
             f.Property(x => x.EvoError).HasColumnName("evo_error").IsRequired();
             f.Property(x => x.Hero).HasColumnName("hero").IsRequired();
-            f.Property(x => x.HeroError).HasColumnName("hero_error").IsRequired();
-            f.Property(x => x.Champion).HasColumnName("champion").IsRequired();
-            f.Property(x => x.ChampionError).HasColumnName("champion_error").IsRequired();
-        });
+            f.Property(x => x.HeroError).HasColumnName("hero_error").IsRequired();        });
 
         modelBuilder.Entity<CardPeriodEntity>(c =>
         {

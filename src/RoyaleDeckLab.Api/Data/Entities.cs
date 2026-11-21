@@ -101,10 +101,6 @@ public sealed class DuelLevelFitEntity
     public double Hero { get; set; }
 
     public double HeroError { get; set; }
-
-    public double Champion { get; set; }
-
-    public double ChampionError { get; set; }
 }
 
 public sealed class SeasonBoostEntity

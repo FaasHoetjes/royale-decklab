@@ -13,7 +13,7 @@ public readonly record struct Estimate(double Value, double StandardError);
 
 /// <param name="Cap"><see cref="DuelLevelFitter.AllCaps"/> for the fit across every cap.</param>
 public sealed record DuelLevelFit(
-    int Cap, int Duels, Estimate PerLevel, Estimate WeakestCard, Estimate Evo, Estimate Hero, Estimate Champion);
+    int Cap, int Duels, Estimate PerLevel, Estimate WeakestCard, Estimate Evo, Estimate Hero);
 
 /// <summary>
 /// Fits how card levels and specials move Duel odds at each level cap by comparing the rounds of one Duel: the same two
@@ -73,8 +73,7 @@ public static class DuelLevelFitter
             new Estimate(perLevel, Math.Sqrt(perLevelVariance)),
             new Estimate(weakestCard, Math.Sqrt(covariance[1, 1])),
             Coefficient(coefficients, covariance, 2),
-            Coefficient(coefficients, covariance, 3),
-            Coefficient(coefficients, covariance, 4));
+            Coefficient(coefficients, covariance, 3));
     }
 
     private static Estimate Coefficient(double[] coefficients, double[,] covariance, int index)
@@ -138,6 +137,7 @@ public static class DuelLevelFitter
             Weakest(first) - Weakest(second),
             Count(first, CardVersionKind.Evo, champions) - Count(second, CardVersionKind.Evo, champions),
             Count(first, CardVersionKind.Hero, champions) - Count(second, CardVersionKind.Hero, champions),
+            // Stored as heroes but never missing: counted apart so they don't skew the hero value.
             Champions(first, champions) - Champions(second, champions),
             decks.StrengthWithout(first.Cards, firstWin) - decks.StrengthWithout(second.Cards, 1 - firstWin),
         ];

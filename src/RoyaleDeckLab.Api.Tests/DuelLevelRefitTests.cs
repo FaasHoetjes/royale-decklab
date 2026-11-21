@@ -79,7 +79,7 @@ public sealed class DuelLevelRefitTests : IDisposable
     }
 
     private static DuelLevelFit Fit(int cap, double evo)
-        => new(cap, 5_000, new(1.8, 0.05), new(0.07, 0.02), new(evo, 0.01), new(0.12, 0.01), new(0.05, 0.02));
+        => new(cap, 5_000, new(1.8, 0.05), new(0.07, 0.02), new(evo, 0.01), new(0.12, 0.01));
 
     private CrownSeriesRepository Repository()
         => _services.CreateScope().ServiceProvider.GetRequiredService<CrownSeriesRepository>();

@@ -112,8 +112,6 @@ public static class MetaSchema
                 evo_error REAL NOT NULL,
                 hero REAL NOT NULL,
                 hero_error REAL NOT NULL,
-                champion REAL NOT NULL,
-                champion_error REAL NOT NULL,
                 CONSTRAINT PK_duel_level_fits PRIMARY KEY (fitted_at_ms, cap)
             );
             """);

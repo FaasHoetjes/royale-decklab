@@ -56,8 +56,6 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         EvoError = f.Evo.StandardError,
         Hero = f.Hero.Value,
         HeroError = f.Hero.StandardError,
-        Champion = f.Champion.Value,
-        ChampionError = f.Champion.StandardError,
     };
 
     private static DuelLevelFit ToFit(DuelLevelFitEntity e) => new(
@@ -66,6 +64,5 @@ public sealed class DuelLevelFitRepository(MetaDbContext db)
         new Estimate(e.PerLevel, e.PerLevelError),
         new Estimate(e.WeakestCard, e.WeakestCardError),
         new Estimate(e.Evo, e.EvoError),
-        new Estimate(e.Hero, e.HeroError),
-        new Estimate(e.Champion, e.ChampionError));
+        new Estimate(e.Hero, e.HeroError));
 }
