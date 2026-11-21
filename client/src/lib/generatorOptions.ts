@@ -43,10 +43,11 @@ export function parseOptions(params: URLSearchParams, stored: RememberedOptions 
   const ban = parseIdList(params.get('ban'));
   const requireAs: Record<number, IncludedVersion> = {};
   for (const entry of (params.get('require') ?? '').split(',')) {
-    const [id, version] = entry.split(':');
+    const [id, raw] = entry.split(':');
+    const version = raw?.toLowerCase();
     if (version && INCLUDED_VERSIONS.includes(version)) requireAs[Number(id)] = version as IncludedVersion;
   }
-  const require = parseIdList(params.get('require')?.replace(/:[a-z]*/g, '') ?? null).filter((id) => !ban.includes(id));
+  const require = parseIdList(params.get('require')?.replace(/:[a-z]*/gi, '') ?? null).filter((id) => !ban.includes(id));
   const lock: number[][] = [];
   const lockedCards = new Set<number>();
   for (const raw of params.getAll('lock')) {

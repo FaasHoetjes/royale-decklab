@@ -86,6 +86,13 @@ describe('included card versions', () => {
     expect(toQuery(options)).toBe('require=26000008:evo,26000001,26000003:normal');
   });
 
+  test('a version reads the same in any case', () => {
+    const options = parse('require=7:Hero');
+
+    expect(options.require).toEqual([7]);
+    expect(options.requireAs).toEqual({ 7: 'hero' });
+  });
+
   test('an unknown version counts as best, and a banned card keeps none', () => {
     const options = parse('ban=5&require=5:evo,6:gold');
 
